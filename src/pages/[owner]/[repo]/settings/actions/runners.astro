@@ -1,0 +1,236 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { getDatabase, schema } from "@/db";
+import { eq, and } from "drizzle-orm";
+import { canAdminRepo } from "@/lib/permissions";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { Server, Terminal, Copy } from "lucide-react";
+import crypto from "node:crypto";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+// Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!)
+  ),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canAdminRepo(currentUser?.id, repoData);
+
+if (!hasAccess) {
+  return Astro.redirect(`/${ownerName}/${repoName}`);
+}
+
+// Fetch Runners
+const runners = await db.query.pipelineRunners.findMany({
+    where: eq(schema.pipelineRunners.repositoryId, repoData.id)
+});
+
+// Generate or Retrieve Registration Token
+// For MVP, we'll generate a signed token or just use a stored secret.
+// Let's check `workflow_secrets` first.
+let tokenSecret = await db.query.workflowSecrets.findFirst({
+    where: and(
+        eq(schema.workflowSecrets.repositoryId, repoData.id),
+        eq(schema.workflowSecrets.name, "ACTIONS_RUNNER_TOKEN")
+    )
+});
+
+if (!tokenSecret) {
+    const newToken = crypto.randomBytes(16).toString("hex");
+    // Insert
+    await db.insert(schema.workflowSecrets).values({
+        id: crypto.randomUUID(),
+        repositoryId: repoData.id,
+        name: "ACTIONS_RUNNER_TOKEN",
+        encryptedValue: newToken, // Storing raw for MVP simplicity, usually encrypt!
+        createdById: currentUser?.id
+    });
+    tokenSecret = { encryptedValue: newToken } as any;
+}
+
+const registrationToken = `${ownerName}/${repoName}:${tokenSecret!.encryptedValue}`;
+const serverUrl = Astro.url.origin;
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  license: repoData.licenseType || "None",
+  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+  updatedAt: repoData.updatedAt,
+  openPrCount: repoData.openPrCount,
+  openIssueCount: 0 // Placeholder
+};
+---
+
+<BaseLayout title={`Runners · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="settings" />
+
+    <div class="grid gap-6 md:grid-cols-[240px_1fr]">
+      <!-- Settings Sidebar -->
+      <nav class="space-y-1">
+        <a href={`/${repo.owner}/${repo.name}/settings`} class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">
+          General
+        </a>
+        <a href="#" class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">
+          Collaborators
+        </a>
+        <a href="#" class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">
+          Webhooks
+        </a>
+        <a href={`/${repo.owner}/${repo.name}/settings/actions/runners`} class="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm font-medium text-foreground">
+          Actions
+        </a>
+        <div class="ml-4 border-l pl-4 flex flex-col space-y-1">
+            <a href="#" class="text-sm font-medium text-primary">Runners</a>
+        </div>
+      </nav>
+
+      <!-- Content -->
+      <div class="space-y-6">
+        <div class="flex items-center justify-between">
+            <div>
+                 <h2 class="text-2xl font-bold tracking-tight">Runners</h2>
+                <p class="text-muted-foreground">Manage self-hosted runners.</p>
+            </div>
+             <Button className="gap-2">
+                 New runner
+             </Button>
+        </div>
+
+        <div class="flex justify-end">
+             <Button variant="outline" id="trigger-test-btn">
+                Trigger Test Job
+             </Button>
+        </div>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>Self-hosted runners</CardTitle>
+                <CardDescription>
+                    Runners currently registered to this repository.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {runners.length > 0 ? (
+                    <div class="space-y-4">
+                        {runners.map(runner => (
+                            <div class="flex items-center justify-between p-4 border rounded-lg bg-card text-card-foreground shadow-sm">
+                                <div class="flex items-center gap-4">
+                                    <div class={`p-2 rounded-full ${runner.status === 'online' ? 'bg-green-100 dark:bg-green-900/30 text-green-600' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}>
+                                        <Server class="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <div class="font-medium flex items-center gap-2">
+                                            {runner.name}
+                                            <span class={`text-[10px] px-1.5 py-0.5 rounded-full border ${runner.status === 'online' ? 'border-green-200 text-green-600' : 'border-gray-200 text-gray-500'}`}>
+                                                {runner.status}
+                                            </span>
+                                        </div>
+                                        <div class="text-xs text-muted-foreground">
+                                            {runner.os} {runner.arch} · Last seen: {runner.lastSeenAt ? new Date(runner.lastSeenAt).toLocaleString() : 'Never'}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <Button variant="ghost" size="sm" class="text-red-500 hover:text-red-600">Remove</Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div class="text-center py-6 text-muted-foreground">
+                        No runners configured. Add one to run workflows.
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+
+        {/* Setup Instructions */}
+        <Card>
+            <CardHeader>
+                <CardTitle>Setup Runner</CardTitle>
+                <CardDescription>Run these commands on your host.</CardDescription>
+            </CardHeader>
+            <CardContent class="space-y-4">
+                <div class="bg-slate-950 text-slate-50 p-4 rounded-md font-mono text-sm overflow-x-auto relative group">
+                    <p class="mb-2 text-gray-400"># 1. Download Runner</p>
+                    <p class="select-all">curl -O {serverUrl}/runner.js</p>
+                    <br/>
+                    <p class="mb-2 text-gray-400"># 2. Register Runner</p>
+                    <p class="select-all break-all whitespace-pre-wrap">node runner.js register --url {serverUrl} --token {registrationToken}</p>
+                    <br/>
+                    <p class="mb-2 text-gray-400"># 3. Start Runner</p>
+                    <p class="select-all">node runner.js run</p>
+
+                    <Button variant="ghost" size="icon" class="absolute top-2 right-2 text-gray-400 hover:text-white">
+                        <Copy class="h-4 w-4" />
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
+
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script define:vars={{ repoId: repoData.id }}>
+    const triggerBtn = document.getElementById('trigger-test-btn');
+    triggerBtn?.addEventListener('click', async () => {
+        try {
+            triggerBtn.disabled = true;
+            triggerBtn.textContent = 'Triggering...';
+            
+            const res = await fetch('/api/actions/trigger-test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ repositoryId: repoId })
+            });
+            
+            if (res.ok) {
+                alert('Test job triggered! Check your runner logs.');
+            } else {
+                const err = await res.text();
+                alert('Failed: ' + err);
+            }
+        } catch (e) {
+            alert('Error: ' + e.message);
+        } finally {
+            triggerBtn.disabled = false;
+            triggerBtn.textContent = 'Trigger Test Job';
+        }
+    });
+</script>
