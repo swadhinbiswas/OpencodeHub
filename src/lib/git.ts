@@ -203,11 +203,14 @@ export async function listFiles(
 
   try {
     // Use ls-tree to get files
+    // Append / to path to list contents of directory, otherwise it lists the directory entry itself
+    const targetPath = path ? (path.endsWith("/") ? path : `${path}/`) : ".";
+
     const treeOutput = await git.raw([
       "ls-tree",
       "-l", // Include size
       ref,
-      path || ".",
+      targetPath,
     ]);
 
     const entries: FileEntry[] = [];

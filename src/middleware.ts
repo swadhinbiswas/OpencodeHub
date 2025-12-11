@@ -21,11 +21,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
         // If sessionId is present in payload, use it. Otherwise fall back to token check (legacy/fallback)
         const session = payload.sessionId
           ? await db.query.sessions.findFirst({
-              where: eq(schema.sessions.id, payload.sessionId),
-            })
+            where: eq(schema.sessions.id, payload.sessionId),
+          })
           : await db.query.sessions.findFirst({
-              where: eq(schema.sessions.token, token),
-            });
+            where: eq(schema.sessions.token, token),
+          });
 
         if (session && new Date(session.expiresAt) > new Date()) {
           // Fetch user
@@ -55,6 +55,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return context.redirect("/login");
   }
 
+  /*
   // 2FA Enforcement for Admins
   if (context.locals.user?.isAdmin && !context.locals.user.twoFactorEnabled) {
     const allowedPaths = [
@@ -73,6 +74,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       return context.redirect("/settings/security");
     }
   }
+  */
 
   // Redirect logged-in users away from auth pages
   const authRoutes = ["/login", "/register"];
