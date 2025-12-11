@@ -1,0 +1,159 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, and, desc } from "drizzle-orm";
+import { canReadRepo } from "@/lib/permissions";
+import { CheckCircle2, XCircle, Clock, PlayCircle } from "lucide-react";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+// Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!)
+  ),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canReadRepo(currentUser?.id, repoData);
+
+if (!hasAccess) {
+  return Astro.redirect("/404");
+}
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  license: repoData.licenseType || "None",
+  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+  updatedAt: repoData.updatedAt,
+  openPrCount: repoData.openPrCount,
+  openIssueCount: 0 // Placeholder
+};
+
+// Fetch Workflow Runs
+const workflowRuns = await db.query.workflowRuns.findMany({
+    where: eq(schema.workflowRuns.repositoryId, repoData.id),
+    orderBy: [desc(schema.workflowRuns.createdAt)],
+    with: {
+        triggeredBy: true
+    }
+});
+
+function getStatusColor(status: string | null, conclusion: string | null) {
+    if (status === 'completed') {
+        if (conclusion === 'success') return 'text-green-500';
+        if (conclusion === 'failure') return 'text-red-500';
+        return 'text-gray-500';
+    }
+    if (status === 'in_progress') return 'text-yellow-500 animate-pulse';
+    return 'text-gray-400';
+}
+
+function getStatusIcon(status: string | null, conclusion: string | null) {
+      if (status === 'completed') {
+        if (conclusion === 'success') return CheckCircle2;
+        if (conclusion === 'failure') return XCircle;
+        return CheckCircle2;
+    }
+    if (status === 'in_progress') return PlayCircle;
+    return Clock;
+}
+---
+
+<BaseLayout title={`Actions · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="actions" />
+
+    <div class="grid gap-6 md:grid-cols-[240px_1fr]">
+        {/* Sidebar Filter - Placeholder */}
+        <div class="space-y-4">
+             <h3 class="font-semibold text-sm px-2">Workflows</h3>
+             <ul class="space-y-1">
+                 <li>
+                     <a href="#" class="block px-2 py-1.5 text-sm bg-muted rounded-md font-medium text-foreground">All workflows</a>
+                 </li>
+                 {/* List workflows here dynamically later */}
+             </ul>
+        </div>
+
+        {/* Runs List */}
+        <div class="space-y-4">
+            <div class="border rounded-lg overflow-hidden">
+                <div class="bg-muted/50 px-4 py-3 border-b flex justify-between items-center">
+                    <h3 class="font-semibold text-sm">All workflow runs</h3>
+                </div>
+                {workflowRuns.length > 0 ? (
+                    <div>
+                        {workflowRuns.map(run => {
+                            const Icon = getStatusIcon(run.status, run.conclusion);
+                            const color = getStatusColor(run.status, run.conclusion);
+                            
+                            return (
+                                <div class="flex items-start gap-3 p-4 border-b last:border-0 hover:bg-muted/30 transition-colors">
+                                    <div class={`mt-0.5 ${color}`}>
+                                        <Icon class="h-5 w-5" />
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <a href="#" class="font-semibold text-foreground hover:underline truncate">
+                                                {run.name}
+                                            </a>
+                                            <span class="text-muted-foreground text-sm">#{run.runNumber}</span>
+                                        </div>
+                                        <div class="text-sm text-muted-foreground flex items-center gap-2">
+                                            <span>
+                                                {run.event} via {run.headBranch}
+                                            </span>
+                                            <span>·</span>
+                                            <span>
+                                                {run.triggeredBy?.displayName || run.triggeredBy?.username || 'System'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="text-xs text-muted-foreground whitespace-nowrap">
+                                        {run.createdAt ? new Date(run.createdAt).toLocaleString() : ''}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div class="p-12 text-center text-muted-foreground">
+                        <PlayCircle class="h-10 w-10 mx-auto mb-4 opacity-50" />
+                        <h3 class="text-lg font-medium text-foreground mb-1">No workflow runs yet</h3>
+                        <p>Get started with OpenCodeHub Actions to automate your workflow.</p>
+                        <div class="mt-4">
+                            <a href={`/${repo.owner}/${repo.name}/settings/actions/runners`} class="text-primary hover:underline">
+                                Set up a self-hosted runner
+                            </a>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    </div>
+  </div>
+</BaseLayout>
