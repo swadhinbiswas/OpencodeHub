@@ -1058,6 +1058,44 @@ export async function getFileRawContent(
   });
 }
 
+
+/**
+ * Get contributors list with commit counts
+ */
+export async function getContributors(
+  repoPath: string,
+  ref: string = "HEAD"
+): Promise<{ name: string; email: string; commits: number }[]> {
+  const git = getGit(repoPath);
+
+  try {
+    // git shortlog -sne (summary, numbered, email)
+    const output = await git.raw(["shortlog", "-sne", ref]);
+
+    const contributors: { name: string; email: string; commits: number }[] = [];
+
+    output
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .forEach((line) => {
+        const match = line.match(/^\s*(\d+)\s+(.+)\s+<(.+)>$/);
+        if (match) {
+          contributors.push({
+            commits: parseInt(match[1], 10),
+            name: match[2].trim(),
+            email: match[3].trim(),
+          });
+        }
+      });
+
+    return contributors;
+  } catch (error) {
+    logger.error("Error getting contributors:", error);
+    return [];
+  }
+}
+
 export async function installHooks(repoPath: string) {
   const hooksDir = join(repoPath, "hooks");
   const fs = await import("fs/promises");
