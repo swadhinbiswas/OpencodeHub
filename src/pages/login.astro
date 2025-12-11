@@ -1,0 +1,117 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Github } from "lucide-react";
+
+if (Astro.locals.user) {
+  return Astro.redirect("/dashboard");
+}
+---
+
+<BaseLayout title="Sign in to OpenCodeHub">
+  <div class="flex min-h-[calc(100vh-4rem)] items-center justify-center py-12">
+    <Card className="w-full max-w-md">
+      <CardHeader class="space-y-1">
+        <CardTitle class="text-2xl font-bold text-center">Sign in</CardTitle>
+        <CardDescription class="text-center">
+          Enter your credentials to access your account
+        </CardDescription>
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <form id="login-form" class="space-y-4">
+          <div class="space-y-2">
+            <Label htmlFor="login">Username or Email</Label>
+            <Input id="login" name="login" placeholder="admin" required />
+          </div>
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
+              <a
+                href="/password-reset"
+                class="text-sm text-primary hover:underline"
+              >
+                Forgot password?
+              </a>
+            </div>
+            <Input id="password" name="password" type="password" required />
+          </div>
+          <div id="error-message" class="text-sm text-destructive hidden"></div>
+          <Button type="submit" class="w-full">Sign in</Button>
+        </form>
+
+        <div class="relative">
+          <div class="absolute inset-0 flex items-center">
+            <span class="w-full border-t"></span>
+          </div>
+          <div class="relative flex justify-center text-xs uppercase">
+            <span class="bg-background px-2 text-muted-foreground">
+              Or continue with
+            </span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-2">
+          <Button variant="outline" disabled>
+            <Github className="mr-2 h-4 w-4" />
+            GitHub (Coming Soon)
+          </Button>
+        </div>
+      </CardContent>
+      <CardFooter
+        class="flex flex-col space-y-2 text-center text-sm text-muted-foreground"
+      >
+        <div>
+          Don't have an account?{" "}
+          <a href="/register" class="text-primary hover:underline"> Sign up </a>
+        </div>
+      </CardFooter>
+    </Card>
+  </div>
+</BaseLayout>
+
+<script>
+  const form = document.getElementById("login-form") as HTMLFormElement;
+  const errorMessage = document.getElementById("error-message");
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorMessage?.classList.add("hidden");
+    errorMessage!.textContent = "";
+
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        window.location.href = "/dashboard";
+      } else {
+        errorMessage?.classList.remove("hidden");
+        errorMessage!.textContent =
+          result.error?.message || "Failed to sign in";
+      }
+    } catch (error) {
+      errorMessage?.classList.remove("hidden");
+      errorMessage!.textContent = "An unexpected error occurred";
+    }
+  });
+</script>

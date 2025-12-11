@@ -1,0 +1,235 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
+import { getDatabase, schema } from "@/db";
+import { eq, and } from "drizzle-orm";
+import { canAdminRepo } from "@/lib/permissions";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+// 1. Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!)
+  ),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canAdminRepo(currentUser?.id, repoData);
+
+if (!hasAccess) {
+  return Astro.redirect(`/${ownerName}/${repoName}`);
+}
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  license: repoData.licenseType || "None",
+  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+  updatedAt: repoData.updatedAt,
+  httpCloneUrl: repoData.httpCloneUrl,
+  sshCloneUrl: repoData.sshCloneUrl,
+  openIssueCount: repoData.openIssueCount,
+  openPrCount: repoData.openPrCount,
+};
+---
+
+<BaseLayout title={`Settings · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="settings" />
+
+    <div class="grid gap-6 md:grid-cols-[240px_1fr]">
+      <!-- Settings Sidebar -->
+      <nav class="space-y-1">
+        <a
+          href="#"
+          class="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm font-medium text-foreground"
+        >
+          General
+        </a>
+        <a
+          href="#"
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Collaborators
+        </a>
+        <a
+          href="#"
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Webhooks
+        </a>
+        <a
+          href="#"
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Actions
+        </a>
+        <a
+          href="#"
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Deploy keys
+        </a>
+      </nav>
+
+      <!-- Settings Content -->
+      <div class="space-y-6">
+        <form id="update-repo-form">
+          <Card>
+            <CardHeader>
+              <CardTitle>General</CardTitle>
+              <CardDescription>
+                Update your repository details.
+              </CardDescription>
+            </CardHeader>
+            <CardContent class="space-y-4">
+              <div class="space-y-2">
+                <Label htmlFor="name">Repository Name</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  defaultValue={repo.name}
+                  required
+                />
+              </div>
+              <div class="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  name="description"
+                  defaultValue={repo.description || ""}
+                />
+              </div>
+              <div class="space-y-2">
+                <Label htmlFor="defaultBranch">Default Branch</Label>
+                <Input
+                  id="defaultBranch"
+                  name="defaultBranch"
+                  defaultValue={repo.defaultBranch}
+                />
+              </div>
+            </CardContent>
+            <CardFooter className="border-t px-6 py-4">
+              <Button type="submit">Save changes</Button>
+            </CardFooter>
+          </Card>
+        </form>
+
+        <Card className="border-red-200">
+          <CardHeader>
+            <CardTitle className="text-red-600">Danger Zone</CardTitle>
+          </CardHeader>
+          <CardContent class="space-y-4">
+            <div
+              class="flex items-center justify-between rounded-lg border border-red-200 p-4"
+            >
+              <div>
+                <h4 class="font-medium">Change visibility</h4>
+                <p class="text-sm text-muted-foreground">
+                  This repository is currently {repo.visibility}.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                className="text-red-600 border-red-200 hover:bg-red-50"
+                >Change visibility</Button
+              >
+            </div>
+            <div
+              class="flex items-center justify-between rounded-lg border border-red-200 p-4"
+            >
+              <div>
+                <h4 class="font-medium">Delete this repository</h4>
+                <p class="text-sm text-muted-foreground">
+                  Once you delete a repository, there is no going back. Please
+                  be certain.
+                </p>
+              </div>
+              <Button variant="destructive" id="delete-repo-btn"
+                >Delete this repository</Button
+              >
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script define:vars={{ owner: repo.owner, repo: repo.name }}>
+  const form = document.getElementById("update-repo-form");
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+
+    try {
+      const response = await fetch(`/api/repos/${owner}/${repo}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) throw new Error("Failed to update repository");
+
+      // Reload to show changes
+      window.location.reload();
+    } catch (error) {
+      alert(error.message);
+    }
+  });
+
+  const deleteBtn = document.getElementById("delete-repo-btn");
+  deleteBtn?.addEventListener("click", async () => {
+    const confirmed = confirm(
+      `Are you absolutely sure you want to delete ${owner}/${repo}? This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`/api/repos/${owner}/${repo}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Failed to delete repository");
+
+      window.location.href = "/dashboard";
+    } catch (error) {
+      alert(error.message);
+    }
+  });
+</script>

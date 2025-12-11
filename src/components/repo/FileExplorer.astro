@@ -1,0 +1,97 @@
+---
+import { FileText, Folder } from "lucide-react";
+
+interface Props {
+  owner: string;
+  repo: string;
+  branch: string;
+  path?: string;
+  files: {
+    name: string;
+    type: "file" | "directory" | "submodule";
+    lastCommit?: {
+      message: string;
+      date: string;
+      hash: string;
+    };
+  }[];
+}
+
+const { owner, repo, branch, path = "", files } = Astro.props;
+
+const getUrl = (file: any) => {
+  const type = file.type === "directory" ? "tree" : "blob";
+  const filePath = path ? `${path}/${file.name}` : file.name;
+  return `/${owner}/${repo}/${type}/${branch}/${filePath}`;
+};
+---
+
+<div class="rounded-lg border">
+  <div class="divide-y">
+    {
+      path && (
+        <div class="flex items-center gap-4 px-4 py-2 hover:bg-muted/30">
+          <div class="w-4 flex justify-center">
+            <span class="text-muted-foreground">..</span>
+          </div>
+          <span class="flex-1 text-sm">
+            <a
+              href={`/${owner}/${repo}/tree/${branch}/${path.split("/").slice(0, -1).join("/")}`}
+              class="hover:underline hover:text-primary font-bold text-blue-500"
+            >
+              ..
+            </a>
+          </span>
+        </div>
+      )
+    }
+    {
+      files.length > 0 ? (
+        files.map((file) => (
+          <div class="flex items-center gap-4 px-4 py-2 hover:bg-muted/30 group">
+            <div class="w-4 flex justify-center">
+              {file.type === "directory" ? (
+                <svg
+                  class="h-4 w-4 text-blue-500 fill-blue-500"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
+                  <path d="M1.75 1A1.75 1.75 0 0 0 0 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0 0 16 13.25v-8.5A1.75 1.75 0 0 0 14.25 3H7.5a.25.25 0 0 1-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1H1.75Z" />
+                </svg>
+              ) : (
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              )}
+            </div>
+            <span class="flex-1 text-sm">
+              <a
+                href={getUrl(file)}
+                class="hover:underline hover:text-primary text-foreground"
+              >
+                {file.name}
+              </a>
+            </span>
+            <span class="hidden sm:block text-sm text-muted-foreground truncate max-w-[300px]">
+              {file.lastCommit ? (
+                <a
+                  href={`/${owner}/${repo}/commit/${file.lastCommit.hash}`}
+                  class="hover:text-primary hover:underline"
+                >
+                  {file.lastCommit.message}
+                </a>
+              ) : (
+                <span class="animate-pulse bg-muted h-4 w-24 rounded inline-block" />
+              )}
+            </span>
+            <span class="text-sm text-muted-foreground whitespace-nowrap w-24 text-right">
+              {file.lastCommit?.date || ""}
+            </span>
+          </div>
+        ))
+      ) : (
+        <div class="p-8 text-center text-muted-foreground">
+          <p>This directory is empty.</p>
+        </div>
+      )
+    }
+  </div>
+</div>

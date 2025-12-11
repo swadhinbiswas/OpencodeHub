@@ -1,0 +1,260 @@
+---
+import { Button } from "@/components/ui/button";
+import { getDatabase, schema } from "@/db";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { and, desc, eq } from "drizzle-orm";
+import {
+  Book,
+  Building,
+  GitFork,
+  Link as LinkIcon,
+  Mail,
+  MapPin,
+  Star,
+  Users,
+} from "lucide-react";
+
+const { owner: username } = Astro.params;
+const db = getDatabase();
+
+// 1. Fetch User
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, username!),
+});
+
+if (!user) {
+  return Astro.redirect("/404");
+}
+
+// 2. Check permissions
+const currentUser = Astro.locals.user;
+const isOwner = currentUser?.id === user.id;
+
+// 3. Fetch Repositories
+let repoConditions = [eq(schema.repositories.ownerId, user.id)];
+
+if (!isOwner) {
+  repoConditions.push(eq(schema.repositories.visibility, "public"));
+}
+
+const repos = await db.query.repositories.findMany({
+  where: and(...repoConditions),
+  orderBy: [desc(schema.repositories.updatedAt)],
+});
+
+// Helper for time ago
+function timeAgo(date: string | number | Date) {
+  if (!date) return "";
+  const seconds = Math.floor(
+    (new Date().getTime() - new Date(date).getTime()) / 1000
+  );
+  let interval = seconds / 31536000;
+  if (interval > 1) return Math.floor(interval) + " years ago";
+  interval = seconds / 2592000;
+  if (interval > 1) return Math.floor(interval) + " months ago";
+  interval = seconds / 86400;
+  if (interval > 1) return Math.floor(interval) + " days ago";
+  interval = seconds / 3600;
+  if (interval > 1) return Math.floor(interval) + " hours ago";
+  interval = seconds / 60;
+  if (interval > 1) return Math.floor(interval) + " minutes ago";
+  return Math.floor(seconds) + " seconds ago";
+}
+---
+
+<BaseLayout title={`${user.displayName || user.username} (${user.username})`}>
+  <div class="container py-8">
+    <div class="flex flex-col md:flex-row gap-8">
+      <!-- Sidebar: User Profile -->
+      <aside class="w-full md:w-1/4 space-y-6">
+        <div class="space-y-4">
+          <div class="relative group">
+            <div
+              class="aspect-square rounded-full overflow-hidden border bg-muted flex items-center justify-center text-4xl font-bold text-muted-foreground"
+            >
+              {
+                user.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.username}
+                    class="w-full h-full object-cover"
+                  />
+                ) : (
+                  user.username[0].toUpperCase()
+                )
+              }
+            </div>
+          </div>
+
+          <div>
+            <h1 class="text-2xl font-bold leading-tight">{user.displayName}</h1>
+            <p class="text-xl text-muted-foreground font-light">
+              {user.username}
+            </p>
+          </div>
+
+          {user.bio && <p class="text-sm">{user.bio}</p>}
+
+          <div class="space-y-2 text-sm">
+            {
+              user.company && (
+                <div class="flex items-center gap-2 text-muted-foreground">
+                  <Building class="h-4 w-4" />
+                  <span>{user.company}</span>
+                </div>
+              )
+            }
+            {
+              user.location && (
+                <div class="flex items-center gap-2 text-muted-foreground">
+                  <MapPin class="h-4 w-4" />
+                  <span>{user.location}</span>
+                </div>
+              )
+            }
+            {
+              user.email &&
+                (isOwner || user.emailVerified) && ( // Only show email if owner or verified (and maybe public setting in future)
+                  <div class="flex items-center gap-2 text-muted-foreground">
+                    <Mail class="h-4 w-4" />
+                    <a href={`mailto:${user.email}`} class="hover:text-primary">
+                      {user.email}
+                    </a>
+                  </div>
+                )
+            }
+            {
+              user.website && (
+                <div class="flex items-center gap-2 text-muted-foreground">
+                  <LinkIcon class="h-4 w-4" />
+                  <a
+                    href={user.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="hover:text-primary truncate"
+                  >
+                    {user.website}
+                  </a>
+                </div>
+              )
+            }
+          </div>
+
+          <div class="flex items-center gap-1 text-sm text-muted-foreground">
+            <Users class="h-4 w-4" />
+            <span class="font-bold text-foreground">0</span> followers
+            <span>·</span>
+            <span class="font-bold text-foreground">0</span> following
+          </div>
+
+          {
+            isOwner && (
+              <Button variant="outline" class="w-full" asChild>
+                <a href="/settings/profile">Edit profile</a>
+              </Button>
+            )
+          }
+        </div>
+      </aside>
+
+      <!-- Main Content: Repositories & Activity -->
+      <main class="flex-1 space-y-6">
+        <!-- Tabs -->
+        <div class="border-b">
+          <nav class="flex gap-6 -mb-px">
+            <a
+              href={`/${user.username}`}
+              class="inline-flex items-center gap-2 border-b-2 border-primary px-1 py-3 text-sm font-medium text-foreground"
+            >
+              <Book class="h-4 w-4" />
+              Repositories
+              <span class="rounded-full bg-muted px-2 py-0.5 text-xs"
+                >{repos.length}</span
+              >
+            </a>
+            {/* Add more tabs like Projects, Packages, Stars later */}
+          </nav>
+        </div>
+
+        <!-- Repository List -->
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <input
+              type="search"
+              placeholder="Find a repository..."
+              class="flex h-9 w-full max-w-sm rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            />
+            <div class="flex gap-2">
+              {/* Filters could go here */}
+              {
+                isOwner && (
+                  <Button size="sm" asChild>
+                    <a href="/new">New</a>
+                  </Button>
+                )
+              }
+            </div>
+          </div>
+
+          <div class="divide-y border rounded-lg">
+            {
+              repos.length > 0 ? (
+                repos.map((repo) => (
+                  <div class="p-4 hover:bg-muted/30 transition-colors">
+                    <div class="flex items-start justify-between mb-2">
+                      <div class="flex items-center gap-2">
+                        <a
+                          href={`/${user.username}/${repo.name}`}
+                          class="text-xl font-semibold hover:text-primary hover:underline"
+                        >
+                          {repo.name}
+                        </a>
+                        <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-muted-foreground capitalize">
+                          {repo.visibility}
+                        </span>
+                      </div>
+                    </div>
+
+                    {repo.description && (
+                      <p class="text-muted-foreground text-sm mb-4 max-w-2xl">
+                        {repo.description}
+                      </p>
+                    )}
+
+                    <div class="flex items-center gap-4 text-xs text-muted-foreground">
+                      {repo.language && (
+                        <div class="flex items-center gap-1">
+                          <span class="h-3 w-3 rounded-full bg-blue-500" />
+                          {repo.language}
+                        </div>
+                      )}
+                      {repo.starCount > 0 && (
+                        <div class="flex items-center gap-1 hover:text-primary">
+                          <Star class="h-3 w-3" />
+                          {repo.starCount}
+                        </div>
+                      )}
+                      {repo.forkCount > 0 && (
+                        <div class="flex items-center gap-1 hover:text-primary">
+                          <GitFork class="h-3 w-3" />
+                          {repo.forkCount}
+                        </div>
+                      )}
+                      <div>Updated {timeAgo(repo.updatedAt)}</div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div class="p-8 text-center text-muted-foreground">
+                  {isOwner
+                    ? "You don't have any repositories yet."
+                    : `${user.username} doesn't have any public repositories yet.`}
+                </div>
+              )
+            }
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+</BaseLayout>

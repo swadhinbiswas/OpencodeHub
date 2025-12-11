@@ -1,0 +1,276 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect("/login");
+}
+---
+
+<BaseLayout title="Create a new repository">
+  <div class="container max-w-3xl py-10">
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold tracking-tight">Create a new repository</h1>
+      <p class="text-muted-foreground">
+        A repository contains all project files, including the revision history.
+      </p>
+    </div>
+
+    <form id="create-repo-form" class="space-y-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>Repository details</CardTitle>
+          <CardDescription>
+            Required fields are marked with an asterisk (*).
+          </CardDescription>
+        </CardHeader>
+        <CardContent class="space-y-6">
+          <div class="space-y-2">
+            <Label htmlFor="owner">Owner</Label>
+            <div class="flex items-center gap-2">
+              <div
+                class="flex items-center gap-2 rounded-md border px-3 py-2 bg-muted/50"
+              >
+                <span class="font-medium">{user.username}</span>
+              </div>
+              <span class="text-muted-foreground">/</span>
+              <Input
+                id="name"
+                name="name"
+                placeholder="repository-name"
+                required
+                pattern="[a-zA-Z0-9._-]+"
+                title="Only letters, numbers, dots, hyphens, and underscores are allowed."
+                className="w-full md:w-[300px]"
+              />
+            </div>
+            <p class="text-sm text-muted-foreground">
+              Great repository names are short and memorable.
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <Label htmlFor="description"
+              >Description <span class="text-muted-foreground">(optional)</span
+              ></Label
+            >
+            <Textarea
+              id="description"
+              name="description"
+              placeholder="Short description of your repository"
+            />
+          </div>
+
+          <div class="space-y-4">
+            <Label>Visibility</Label>
+            <div class="space-y-4">
+              <div class="flex items-start space-x-3">
+                <input
+                  type="radio"
+                  id="public"
+                  name="visibility"
+                  value="public"
+                  checked
+                  class="mt-1 h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                />
+                <div class="space-y-1">
+                  <label
+                    for="public"
+                    class="font-medium leading-none cursor-pointer"
+                  >
+                    Public
+                  </label>
+                  <p class="text-sm text-muted-foreground">
+                    Anyone on the internet can see this repository. You choose
+                    who can commit.
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-start space-x-3">
+                <input
+                  type="radio"
+                  id="private"
+                  name="visibility"
+                  value="private"
+                  class="mt-1 h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                />
+                <div class="space-y-1">
+                  <label
+                    for="private"
+                    class="font-medium leading-none cursor-pointer"
+                  >
+                    Private
+                  </label>
+                  <p class="text-sm text-muted-foreground">
+                    You choose who can see and commit to this repository.
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-start space-x-3">
+                <input
+                  type="radio"
+                  id="internal"
+                  name="visibility"
+                  value="internal"
+                  class="mt-1 h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                />
+                <div class="space-y-1">
+                  <label
+                    for="internal"
+                    class="font-medium leading-none cursor-pointer"
+                  >
+                    Internal
+                  </label>
+                  <p class="text-sm text-muted-foreground">
+                    Anyone logged in can see this repository. You choose who can
+                    commit.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Initialize this repository with:</CardTitle>
+          <CardDescription>
+            Skip this step if you're importing an existing repository.
+          </CardDescription>
+        </CardHeader>
+        <CardContent class="space-y-6">
+          <div class="flex items-start space-x-3">
+            <input
+              type="checkbox"
+              id="readme"
+              name="readme"
+              class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+            />
+            <div class="space-y-1">
+              <label
+                for="readme"
+                class="font-medium leading-none cursor-pointer"
+              >
+                Add a README file
+              </label>
+              <p class="text-sm text-muted-foreground">
+                This is where you can write a long description for your project.
+              </p>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <Label htmlFor="gitignoreTemplate">Add .gitignore</Label>
+            <select
+              id="gitignoreTemplate"
+              name="gitignoreTemplate"
+              class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:w-[300px]"
+            >
+              <option value="">None</option>
+              <option value="Node">Node</option>
+              <option value="Python">Python</option>
+              <option value="Go">Go</option>
+              <option value="Rust">Rust</option>
+              <option value="Java">Java</option>
+            </select>
+            <p class="text-sm text-muted-foreground">
+              Choose which files not to track from a list of templates.
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <Label htmlFor="licenseType">Choose a license</Label>
+            <select
+              id="licenseType"
+              name="licenseType"
+              class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:w-[300px]"
+            >
+              <option value="">None</option>
+              <option value="MIT">MIT License</option>
+              <option value="Apache-2.0">Apache License 2.0</option>
+              <option value="GPL-3.0">GNU General Public License v3.0</option>
+            </select>
+            <p class="text-sm text-muted-foreground">
+              A license tells others what they can and can't do with your code.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div class="flex justify-end gap-4">
+        <Button variant="outline" type="button" onclick="window.history.back()">
+          Cancel
+        </Button>
+        <Button type="submit" id="submit-btn"> Create repository </Button>
+      </div>
+    </form>
+  </div>
+</BaseLayout>
+
+<script>
+  const form = document.getElementById("create-repo-form") as HTMLFormElement;
+  const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    // Disable button and show loading state
+    submitBtn.disabled = true;
+    const originalText = submitBtn.innerText;
+    submitBtn.innerText = "Creating...";
+
+    try {
+      const formData = new FormData(form);
+      const data = {
+        name: formData.get("name"),
+        description: formData.get("description"),
+        visibility: formData.get("visibility"),
+        readme: formData.get("readme") === "on",
+        gitignoreTemplate: formData.get("gitignoreTemplate") || undefined,
+        licenseType: formData.get("licenseType") || undefined,
+        defaultBranch: "main", // Default
+        hasIssues: true,
+        hasWiki: true,
+        hasActions: true,
+      };
+
+      const response = await fetch("/api/repos", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to create repository");
+      }
+
+      // Redirect to the new repository
+      // Since we don't have the repo page yet, redirect to dashboard or construct the URL
+      // The API returns the created repo object which has fullName
+      window.location.href = `/${result.fullName}`;
+    } catch (error) {
+      console.error("Error creating repository:", error);
+      alert(error instanceof Error ? error.message : "An error occurred");
+
+      // Reset button
+      submitBtn.disabled = false;
+      submitBtn.innerText = originalText;
+    }
+  });
+</script>

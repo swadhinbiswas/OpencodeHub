@@ -1,0 +1,225 @@
+---
+import { GitBranch, Search, Bell, Plus, Menu } from "lucide-react"
+
+const user = Astro.locals.user;
+---
+
+<header class="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+  <div class="container flex h-14 items-center">
+    <!-- Logo -->
+    <a href="/" class="mr-6 flex items-center space-x-2">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="h-6 w-6 text-primary"
+      >
+        <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
+        <path d="M9 18c-4.51 2-5-2-7-2" />
+      </svg>
+      <span class="hidden font-bold sm:inline-block">OpenCodeHub</span>
+    </a>
+
+    <!-- Navigation -->
+    <nav class="hidden md:flex items-center space-x-6 text-sm font-medium">
+      <a href="/explore" class="text-muted-foreground transition-colors hover:text-foreground">
+        Explore
+      </a>
+      <a href="/issues" class="text-muted-foreground transition-colors hover:text-foreground">
+        Issues
+      </a>
+      <a href="/pulls" class="text-muted-foreground transition-colors hover:text-foreground">
+        Pull Requests
+      </a>
+      <a href="/actions" class="text-muted-foreground transition-colors hover:text-foreground">
+        Actions
+      </a>
+    </nav>
+
+    <!-- Spacer -->
+    <div class="flex-1"></div>
+
+    <!-- Search -->
+    <div class="hidden md:flex items-center mr-4">
+      <div class="relative">
+        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <input
+          type="search"
+          placeholder="Search repositories, issues, users..."
+          class="w-64 lg:w-96 h-9 rounded-md border border-input bg-background px-8 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        <kbd class="pointer-events-none absolute right-2.5 top-2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+          <span class="text-xs">⌘</span>K
+        </kbd>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex items-center space-x-2">
+      {user ? (
+        <>
+          <!-- Create New -->
+          <div class="relative" id="create-menu">
+            <button
+              class="inline-flex items-center justify-center rounded-md text-sm font-medium h-9 w-9 hover:bg-accent hover:text-accent-foreground"
+              aria-label="Create new"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+            <div id="create-dropdown" class="hidden absolute right-0 mt-2 w-48 rounded-md border bg-popover p-1 shadow-lg">
+              <a href="/new" class="flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
+                New Repository
+              </a>
+              <a href="/new/organization" class="flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
+                New Organization
+              </a>
+              <a href="/new/import" class="flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
+                Import Repository
+              </a>
+            </div>
+          </div>
+
+          <!-- Notifications -->
+          <a
+            href="/notifications"
+            class="inline-flex items-center justify-center rounded-md text-sm font-medium h-9 w-9 hover:bg-accent hover:text-accent-foreground relative"
+            aria-label="Notifications"
+          >
+            <Bell className="h-5 w-5" />
+            <span class="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground flex items-center justify-center">
+              3
+            </span>
+          </a>
+
+          <!-- User Menu -->
+          <div class="relative" id="user-menu">
+            <button
+              class="inline-flex items-center justify-center rounded-full h-8 w-8 bg-muted hover:ring-2 hover:ring-ring overflow-hidden"
+              aria-label="User menu"
+            >
+              {user.avatarUrl ? (
+                <img src={user.avatarUrl} alt={user.username} class="h-full w-full object-cover" />
+              ) : (
+                <span class="text-sm font-medium">{user.username.charAt(0).toUpperCase()}</span>
+              )}
+            </button>
+            <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-56 rounded-md border bg-popover p-1 shadow-lg">
+              <div class="px-2 py-1.5 text-sm">
+                <p class="font-medium">{user.displayName || user.username}</p>
+                <p class="text-muted-foreground">@{user.username}</p>
+              </div>
+              <div class="h-px bg-border my-1"></div>
+              <a href="/profile" class="flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
+                Your Profile
+              </a>
+              <a href="/repositories" class="flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
+                Your Repositories
+              </a>
+              <a href="/organizations" class="flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
+                Your Organizations
+              </a>
+              <a href="/stars" class="flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
+                Your Stars
+              </a>
+              <div class="h-px bg-border my-1"></div>
+              <a href="/settings" class="flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
+                Settings
+              </a>
+              <div class="h-px bg-border my-1"></div>
+              <form action="/api/auth/logout" method="POST">
+                <button type="submit" class="w-full flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent text-destructive">
+                  Sign Out
+                </button>
+              </form>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div class="flex items-center gap-2">
+          <a href="/login" class="inline-flex items-center justify-center rounded-md text-sm font-medium h-9 px-4 py-2 hover:bg-accent hover:text-accent-foreground">
+            Sign in
+          </a>
+          <a href="/register" class="inline-flex items-center justify-center rounded-md text-sm font-medium h-9 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90">
+            Sign up
+          </a>
+        </div>
+      )}
+
+      <!-- Mobile Menu -->
+      <button
+        class="inline-flex items-center justify-center rounded-md text-sm font-medium h-9 w-9 hover:bg-accent hover:text-accent-foreground md:hidden"
+        aria-label="Menu"
+        id="mobile-menu-btn"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile Navigation -->
+  <div id="mobile-nav" class="hidden border-t md:hidden">
+    <nav class="container py-4 space-y-2">
+      <a href="/explore" class="block px-2 py-1.5 text-sm hover:bg-accent rounded-md">Explore</a>
+      <a href="/issues" class="block px-2 py-1.5 text-sm hover:bg-accent rounded-md">Issues</a>
+      <a href="/pulls" class="block px-2 py-1.5 text-sm hover:bg-accent rounded-md">Pull Requests</a>
+      <a href="/actions" class="block px-2 py-1.5 text-sm hover:bg-accent rounded-md">Actions</a>
+      <div class="pt-2">
+        <input
+          type="search"
+          placeholder="Search..."
+          class="w-full h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground"
+        />
+      </div>
+    </nav>
+  </div>
+</header>
+
+<script>
+  // Dropdown toggle functionality
+  function setupDropdown(triggerId: string, dropdownId: string) {
+    const trigger = document.getElementById(triggerId)
+    const dropdown = document.getElementById(dropdownId)
+
+    if (trigger && dropdown) {
+      trigger.addEventListener('click', (e) => {
+        e.stopPropagation()
+        dropdown.classList.toggle('hidden')
+      })
+    }
+  }
+
+  setupDropdown('create-menu', 'create-dropdown')
+  setupDropdown('user-menu', 'user-dropdown')
+
+  // Mobile menu toggle
+  const mobileBtn = document.getElementById('mobile-menu-btn')
+  const mobileNav = document.getElementById('mobile-nav')
+
+  if (mobileBtn && mobileNav) {
+    mobileBtn.addEventListener('click', () => {
+      mobileNav.classList.toggle('hidden')
+    })
+  }
+
+  // Close dropdowns when clicking outside
+  document.addEventListener('click', () => {
+    document.querySelectorAll('[id$="-dropdown"]').forEach(el => {
+      el.classList.add('hidden')
+    })
+  })
+
+  // Keyboard shortcut for search (Cmd/Ctrl + K)
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault()
+      const searchInput = document.querySelector('input[type="search"]') as HTMLInputElement
+      if (searchInput) {
+        searchInput.focus()
+      }
+    }
+  })
+</script>

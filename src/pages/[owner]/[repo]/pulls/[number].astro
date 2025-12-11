@@ -1,0 +1,293 @@
+---
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { Button } from "@/components/ui/button";
+import { getDatabase, schema } from "@/db";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { compareBranches, getCommits } from "@/lib/git";
+import { canReadRepo, canWriteRepo } from "@/lib/permissions";
+import { getRepoPath } from "@/lib/utils";
+import { and, eq, sql } from "drizzle-orm";
+import {
+  GitPullRequest,
+  CheckCircle2,
+  XCircle,
+  GitMerge,
+  MessageSquare,
+  GitCommit,
+  FileText,
+  AlertCircle
+} from "lucide-react";
+
+const { owner: ownerName, repo: repoName, number } = Astro.params;
+const db = getDatabase();
+
+// 1. Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!)
+  ),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canReadRepo(currentUser?.id, repoData);
+const canWrite = await canWriteRepo(currentUser?.id, repoData);
+
+if (!hasAccess) {
+  return Astro.redirect("/404");
+}
+
+// Fetch PR
+const pr = await db.query.pullRequests.findFirst({
+  where: and(
+    eq(schema.pullRequests.repositoryId, repoData.id),
+    eq(schema.pullRequests.number, parseInt(number!))
+  ),
+  with: {
+      author: true
+  }
+});
+
+if (!pr) return Astro.redirect("/404");
+
+// Fetch Diff Data
+let diffData = { commits: [], diffs: [] };
+let mergeError = "";
+
+try {
+  const repoPath = repoData.diskPath;
+  diffData = await compareBranches(repoPath, pr.baseBranch, pr.headBranch);
+} catch (error) {
+  console.error("Error fetching comparison:", error);
+}
+
+
+// Fetch open issue count (for header)
+const issueCountResult = await db
+  .select({ count: sql<number>`count(*)` })
+  .from(schema.issues)
+  .where(
+    and(
+      eq(schema.issues.repositoryId, repoData.id),
+      eq(schema.issues.state, "open")
+    )
+  )
+  .get();
+
+const openIssueCount = issueCountResult?.count || 0;
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  license: repoData.licenseType || "None",
+  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+  updatedAt: repoData.updatedAt,
+  httpCloneUrl: repoData.httpCloneUrl,
+  sshCloneUrl: repoData.sshCloneUrl,
+  openIssueCount: openIssueCount,
+  openPrCount: repoData.openPrCount,
+};
+---
+
+<BaseLayout title={`PR #${pr.number}: ${pr.title} · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="pulls" />
+
+    <div class="mb-6">
+        <div class="flex items-start justify-between">
+            <div>
+                 <h1 class="text-2xl font-semibold mb-1">
+                    {pr.title} <span class="text-muted-foreground font-light">#{pr.number}</span>
+                 </h1>
+                 <div class="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                     {pr.state === 'open' && (
+                         <span class="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-500 border border-green-500/20">
+                             <GitPullRequest className="h-3 w-3" />
+                             Open
+                         </span>
+                     )}
+                     {pr.state === 'merged' && (
+                         <span class="inline-flex items-center gap-1 rounded-full bg-purple-500/10 px-2 py-0.5 text-xs font-medium text-purple-500 border border-purple-500/20">
+                             <GitMerge className="h-3 w-3" />
+                             Merged
+                         </span>
+                     )}
+                     {pr.state === 'closed' && (
+                         <span class="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-500 border border-red-500/20">
+                             <XCircle className="h-3 w-3" />
+                             Closed
+                         </span>
+                     )}
+                     
+                     <span class="font-medium text-foreground">{pr.author.username}</span>
+                     <span>wants to merge {diffData.commits.length} commits from <code class="bg-muted px-1 rounded">{pr.headBranch}</code> into <code class="bg-muted px-1 rounded">{pr.baseBranch}</code></span>
+                 </div>
+            </div>
+            {/* Action buttons could go here */}
+        </div>
+
+        <div class="grid gap-6 lg:grid-cols-4">
+            <div class="lg:col-span-3 space-y-6">
+                
+                {/* Tabs (Simple implementation for MVP) */}
+                <div class="border-b">
+                    <nav class="flex -mb-px space-x-6" aria-label="Tabs">
+                        <a href="#" class="border-primary text-primary whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2">
+                            <MessageSquare className="h-4 w-4" />
+                            Conversation
+                        </a>
+                        <a href="#commits" class="border-transparent text-muted-foreground hover:text-foreground hover:border-border whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2">
+                             <GitCommit className="h-4 w-4" />
+                            Commits
+                            <span class="bg-muted text-muted-foreground text-xs rounded-full px-2">{diffData.commits.length}</span>
+                        </a>
+                        <a href="#files" class="border-transparent text-muted-foreground hover:text-foreground hover:border-border whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            Files changed
+                            <span class="bg-muted text-muted-foreground text-xs rounded-full px-2">{diffData.diffs.length}</span>
+                        </a>
+                    </nav>
+                </div>
+
+                {/* Description */}
+                {pr.body && (
+                    <div class="border rounded-lg p-4 prose dark:prose-invert max-w-none text-sm">
+                        {pr.body}
+                    </div>
+                )}
+                
+                {/* Merge Box */}
+                {pr.state === 'open' && (
+                  <div class="border rounded-lg bg-muted/10 p-4">
+                     <div class="flex items-start gap-4">
+                         <div class="mt-1">
+                             <div class="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center text-white">
+                                 <GitMerge className="h-4 w-4" />
+                             </div>
+                         </div>
+                         <div class="flex-1">
+                             <h4 class="font-medium mb-1">This branch has no conflicts with the base branch</h4>
+                             <p class="text-sm text-muted-foreground mb-4">Merging can be performed automatically.</p>
+                             
+                             {canWrite && (
+                                 <div class="flex items-center gap-2">
+                                     <Button 
+                                        id="merge-btn" 
+                                        class="bg-green-600 hover:bg-green-700 text-white"
+                                     >
+                                         Merge pull request
+                                     </Button>
+                                     <div id="merge-error" class="text-sm text-red-500 hidden font-medium flex items-center gap-1">
+                                         <AlertCircle className="h-4 w-4" />
+                                         <span>Merge failed</span>
+                                     </div>
+                                 </div>
+                             )}
+                         </div>
+                     </div>
+                  </div>
+                )}
+
+                {/* Commits List (Visible for MVP, ideally tabbed) */}
+                <div id="commits" class="space-y-4 pt-4">
+                    <h3 class="font-semibold text-lg">Commits</h3>
+                    <div class="border rounded-lg divide-y">
+                        {diffData.commits.map(commit => (
+                            <div class="flex items-center gap-3 p-3 text-sm hover:bg-muted/10">
+                                <div class="font-mono text-muted-foreground text-xs">{commit.sha.substring(0, 7)}</div>
+                                <div class="font-medium flex-1 truncate">{commit.message}</div>
+                                <div class="text-muted-foreground text-xs">{commit.authorName}</div>
+                                <div class="text-muted-foreground text-xs text-right w-24">{new Date(commit.authorDate).toLocaleDateString()}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                 {/* File Changes (Visible for MVP, ideally tabbed) */}
+                 <div id="files" class="space-y-4 pt-4">
+                    <h3 class="font-semibold text-lg">Files changed</h3>
+                     {diffData.diffs.map(diff => (
+                       <div class="border rounded-lg overflow-hidden">
+                           <div class="bg-muted/30 px-4 py-2 border-b text-sm font-mono flex items-center justify-between">
+                               <span>{diff.file}</span>
+                               <span class="text-xs text-muted-foreground">
+                                   <span class="text-green-600">+{diff.additions}</span>
+                                   <span class="mx-1">/</span>
+                                   <span class="text-red-600">-{diff.deletions}</span>
+                               </span>
+                           </div>
+                           <div class="p-4 text-sm text-muted-foreground text-center italic bg-muted/5">
+                               {diff.status === "added" ? "New file created" : 
+                                diff.status === "deleted" ? "File deleted" : 
+                                "File modified"}
+                           </div>
+                       </div>
+                   ))}
+                </div>
+
+            </div>
+            
+            <div class="space-y-6">
+                <div class="border-t pt-4 lg:border-t-0 lg:pt-0">
+                    <div class="text-sm font-medium mb-2 text-muted-foreground">Reviewers</div>
+                    <div class="text-sm">No reviewers</div>
+                </div>
+                 <div>
+                    <div class="text-sm font-medium mb-2 text-muted-foreground">Assignees</div>
+                    <div class="text-sm">No one assigned</div>
+                </div>
+            </div>
+        </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script define:vars={{ repoOwner: repo.owner, repoName: repo.name, prNumber: pr.number }}>
+  const mergeBtn = document.getElementById("merge-btn");
+  const errorDiv = document.getElementById("merge-error");
+
+  mergeBtn?.addEventListener("click", async () => {
+    if (!confirm("Are you sure you want to merge this pull request?")) return;
+
+    mergeBtn.setAttribute("disabled", "true");
+    mergeBtn.textContent = "Merging...";
+    errorDiv.classList.add("hidden");
+
+    try {
+      const res = await fetch(`/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}/merge`, {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.message || "Failed to merge");
+      }
+
+      window.location.reload();
+    } catch (e) {
+      errorDiv.querySelector("span").textContent = e.message;
+      errorDiv.classList.remove("hidden");
+      mergeBtn.removeAttribute("disabled");
+      mergeBtn.textContent = "Merge pull request";
+    }
+  });
+</script>

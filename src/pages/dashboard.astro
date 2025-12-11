@@ -1,0 +1,188 @@
+---
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getDatabase, schema } from "@/db";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { desc, eq } from "drizzle-orm";
+import { Book, GitBranch, Plus, Star } from "lucide-react";
+
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+const db = getDatabase();
+
+// Fetch user's repositories
+const repos = await db
+  .select()
+  .from(schema.repositories)
+  .where(eq(schema.repositories.ownerId, user.id))
+  .orderBy(desc(schema.repositories.updatedAt))
+  .all();
+
+// Fetch recent activity (placeholder for now)
+const activities = [];
+---
+
+<BaseLayout title="Dashboard - OpenCodeHub">
+  <div class="container py-8">
+    <div class="flex flex-col md:flex-row gap-8">
+      <!-- Sidebar -->
+      <aside class="w-full md:w-64 space-y-6">
+        <div class="flex items-center gap-4 p-4 border rounded-lg bg-card">
+          <div
+            class="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-xl font-bold text-primary"
+          >
+            {
+              user.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt={user.username}
+                  class="h-full w-full rounded-full object-cover"
+                />
+              ) : (
+                user.username[0].toUpperCase()
+              )
+            }
+          </div>
+          <div class="overflow-hidden">
+            <h2 class="font-semibold truncate">
+              {user.displayName || user.username}
+            </h2>
+            <p class="text-sm text-muted-foreground truncate">
+              @{user.username}
+            </p>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <h3 class="font-semibold text-sm px-2">Repositories</h3>
+          <div class="space-y-1">
+            {
+              repos.map((repo) => (
+                <a
+                  href={`/${user.username}/${repo.slug}`}
+                  class="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
+                >
+                  <Book class="h-4 w-4" />
+                  <span class="truncate">{repo.name}</span>
+                </a>
+              ))
+            }
+            <a
+              href="/new"
+              class="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
+            >
+              <Plus class="h-4 w-4" />
+              <span>New Repository</span>
+            </a>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="flex-1 space-y-6">
+        <div class="flex items-center justify-between">
+          <h1 class="text-2xl font-bold">Dashboard</h1>
+          <Button asChild>
+            <a href="/new">
+              <Plus class="mr-2 h-4 w-4" />
+              New Repository
+            </a>
+          </Button>
+        </div>
+
+        <!-- Recent Activity Feed -->
+        <div class="space-y-4">
+          <h2 class="text-lg font-semibold">Recent Activity</h2>
+          {
+            activities.length > 0 ? (
+              <div class="space-y-4">{/* Activity items would go here */}</div>
+            ) : (
+              <Card>
+                <CardContent class="py-8 text-center text-muted-foreground">
+                  <p>No recent activity to show.</p>
+                  <p class="text-sm mt-2">
+                    Get started by creating a repository or exploring existing
+                    ones.
+                  </p>
+                  <div class="mt-4">
+                    <Button variant="outline" asChild>
+                      <a href="/explore">Explore</a>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          }
+        </div>
+
+        <!-- Your Repositories Grid -->
+        <div class="space-y-4">
+          <h2 class="text-lg font-semibold">Your Repositories</h2>
+          {
+            repos.length > 0 ? (
+              <div class="grid gap-4 md:grid-cols-2">
+                {repos.map((repo) => (
+                  <Card
+                    key={repo.id}
+                    class="hover:bg-accent/50 transition-colors"
+                  >
+                    <CardHeader class="p-4">
+                      <div class="flex items-start justify-between">
+                        <div class="space-y-1">
+                          <CardTitle class="text-base">
+                            <a
+                              href={`/${user.username}/${repo.slug}`}
+                              class="hover:underline flex items-center gap-2"
+                            >
+                              <Book class="h-4 w-4 text-muted-foreground" />
+                              {repo.name}
+                              <span class="text-xs font-normal text-muted-foreground border px-1.5 rounded-full">
+                                {repo.visibility}
+                              </span>
+                            </a>
+                          </CardTitle>
+                          <p class="text-sm text-muted-foreground line-clamp-2">
+                            {repo.description || "No description provided."}
+                          </p>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
+                        {repo.language && (
+                          <div class="flex items-center gap-1">
+                            <span class="h-2 w-2 rounded-full bg-blue-500" />
+                            {repo.language}
+                          </div>
+                        )}
+                        <div class="flex items-center gap-1">
+                          <Star class="h-3 w-3" />
+                          {repo.starCount}
+                        </div>
+                        <div class="flex items-center gap-1">
+                          <GitBranch class="h-3 w-3" />
+                          {repo.forkCount}
+                        </div>
+                        <div>
+                          Updated{" "}
+                          {new Date(repo.updatedAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent class="py-8 text-center text-muted-foreground">
+                  <p>You haven't created any repositories yet.</p>
+                </CardContent>
+              </Card>
+            )
+          }
+        </div>
+      </main>
+    </div>
+  </div>
+</BaseLayout>

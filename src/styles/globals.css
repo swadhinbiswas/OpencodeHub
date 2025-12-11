@@ -1,0 +1,264 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* Code syntax highlighting base */
+.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 1em;
+  color: hsl(var(--foreground));
+  background: hsl(var(--muted));
+}
+
+/* Monaco Editor customizations */
+.monaco-editor {
+  border-radius: var(--radius);
+}
+
+/* Git diff styles */
+.diff-add {
+  background-color: rgba(46, 160, 67, 0.15);
+}
+
+.diff-remove {
+  background-color: rgba(248, 81, 73, 0.15);
+}
+
+.diff-add-line {
+  @apply bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500;
+}
+
+.diff-remove-line {
+  @apply bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500;
+}
+
+.diff-context-line {
+  @apply bg-gray-50 dark:bg-gray-800/50 border-l-4 border-gray-300;
+}
+
+/* File tree styles */
+.file-tree-item {
+  @apply flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-accent transition-colors;
+}
+
+.file-tree-item.selected {
+  @apply bg-accent text-accent-foreground;
+}
+
+/* Commit graph styles */
+.commit-graph-line {
+  stroke-width: 2;
+  fill: none;
+}
+
+.commit-graph-node {
+  stroke-width: 2;
+}
+
+/* Pipeline status colors */
+.pipeline-success {
+  @apply text-green-600 dark:text-green-400;
+}
+
+.pipeline-failed {
+  @apply text-red-600 dark:text-red-400;
+}
+
+.pipeline-pending {
+  @apply text-yellow-600 dark:text-yellow-400;
+}
+
+.pipeline-running {
+  @apply text-blue-600 dark:text-blue-400;
+}
+
+/* Animation keyframes */
+@keyframes pulse-slow {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+/* Markdown preview styles */
+.markdown-body {
+  @apply text-foreground;
+}
+
+.markdown-body h1 {
+  @apply text-3xl font-bold mb-4 pb-2 border-b;
+}
+
+.markdown-body h2 {
+  @apply text-2xl font-bold mb-3 pb-2 border-b;
+}
+
+.markdown-body h3 {
+  @apply text-xl font-bold mb-2;
+}
+
+.markdown-body p {
+  @apply mb-4;
+}
+
+.markdown-body ul {
+  @apply list-disc list-inside mb-4;
+}
+
+.markdown-body ol {
+  @apply list-decimal list-inside mb-4;
+}
+
+.markdown-body code {
+  @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono;
+}
+
+.markdown-body pre {
+  @apply bg-muted p-4 rounded-lg overflow-x-auto mb-4;
+}
+
+.markdown-body pre code {
+  @apply bg-transparent p-0;
+}
+
+.markdown-body blockquote {
+  @apply border-l-4 border-muted-foreground pl-4 italic my-4;
+}
+
+.markdown-body table {
+  @apply w-full border-collapse mb-4;
+}
+
+.markdown-body th,
+.markdown-body td {
+  @apply border px-4 py-2 text-left;
+}
+
+.markdown-body th {
+  @apply bg-muted font-semibold;
+}
+
+.markdown-body a {
+  @apply text-primary hover:underline;
+}
+
+.markdown-body img {
+  @apply max-w-full rounded-lg;
+}
+
+/* Loading skeleton */
+.skeleton {
+  @apply animate-pulse bg-muted rounded;
+}
+
+/* Focus ring utility */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background;
+}

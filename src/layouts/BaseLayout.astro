@@ -1,0 +1,64 @@
+---
+import "@/styles/globals.css"
+import Header from "@/components/layout/Header.astro"
+
+interface Props {
+  title?: string
+  description?: string
+}
+
+const {
+  title = "OpenCodeHub - Self-hosted Git Platform",
+  description = "A powerful, self-hosted Git platform with CI/CD, code review, and collaboration features"
+} = Astro.props
+---
+
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+    <!-- Preload fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  </head>
+  <body class="min-h-screen bg-background font-sans antialiased">
+    <div class="relative flex min-h-screen flex-col">
+      <Header />
+      <main class="flex-1">
+        <slot />
+      </main>
+      <footer class="border-t py-6 md:py-0">
+        <div class="container flex flex-col items-center justify-between gap-4 md:h-16 md:flex-row">
+          <p class="text-center text-sm leading-loose text-muted-foreground md:text-left">
+            Built with ❤️ using OpenCodeHub. Self-hosted and open source.
+          </p>
+          <div class="flex items-center gap-4 text-sm text-muted-foreground">
+            <a href="/docs" class="hover:text-foreground">Documentation</a>
+            <a href="/api" class="hover:text-foreground">API</a>
+            <a href="https://github.com/opencodehub" class="hover:text-foreground" target="_blank" rel="noopener">GitHub</a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
+
+<style is:global>
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .container {
+    @apply mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl;
+  }
+</style>

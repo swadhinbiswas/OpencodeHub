@@ -1,0 +1,171 @@
+---
+import SettingsLayout from "@/layouts/SettingsLayout.astro";
+
+const user = Astro.locals.user;
+
+if (!user) {
+  return Astro.redirect("/login");
+}
+---
+
+<SettingsLayout title="Account Settings">
+  <div class="space-y-6">
+    <div>
+      <h3 class="text-lg font-medium leading-6 text-gray-900">
+        Account Settings
+      </h3>
+      <p class="mt-1 text-sm text-gray-500">
+        Manage your account credentials and deletion.
+      </p>
+    </div>
+
+    <div class="border-t border-gray-200 pt-6">
+      <h4 class="text-md font-medium text-gray-900">Change Password</h4>
+      <form id="password-form" class="mt-4 space-y-4">
+        <div>
+          <label
+            for="currentPassword"
+            class="block text-sm font-medium text-gray-700"
+          >
+            Current Password
+          </label>
+          <div class="mt-1">
+            <input
+              type="password"
+              name="currentPassword"
+              id="currentPassword"
+              required
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label
+            for="newPassword"
+            class="block text-sm font-medium text-gray-700"
+          >
+            New Password
+          </label>
+          <div class="mt-1">
+            <input
+              type="password"
+              name="newPassword"
+              id="newPassword"
+              required
+              minlength="8"
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label
+            for="confirmPassword"
+            class="block text-sm font-medium text-gray-700"
+          >
+            Confirm New Password
+          </label>
+          <div class="mt-1">
+            <input
+              type="password"
+              name="confirmPassword"
+              id="confirmPassword"
+              required
+              minlength="8"
+              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            />
+          </div>
+        </div>
+
+        <div class="flex justify-end">
+          <button
+            type="submit"
+            class="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          >
+            Update Password
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div class="border-t border-gray-200 pt-6">
+      <h4 class="text-md font-medium text-red-600">Delete Account</h4>
+      <p class="mt-1 text-sm text-gray-500">
+        Once you delete your account, there is no going back. Please be certain.
+      </p>
+      <div class="mt-4">
+        <button
+          type="button"
+          id="delete-account-btn"
+          class="inline-flex justify-center rounded-md border border-transparent bg-red-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+        >
+          Delete Account
+        </button>
+      </div>
+    </div>
+  </div>
+</SettingsLayout>
+
+<script>
+  const passwordForm = document.getElementById(
+    "password-form"
+  ) as HTMLFormElement;
+  const deleteBtn = document.getElementById("delete-account-btn");
+
+  passwordForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const formData = new FormData(passwordForm);
+    const data = Object.fromEntries(formData);
+
+    if (data.newPassword !== data.confirmPassword) {
+      alert("New passwords do not match");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/auth/password", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (response.ok) {
+        alert("Password updated successfully");
+        passwordForm.reset();
+      } else {
+        const error = await response.json();
+        alert(error.message || "Failed to update password");
+      }
+    } catch (error) {
+      console.error("Error updating password:", error);
+      alert("An error occurred while updating password");
+    }
+  });
+
+  deleteBtn?.addEventListener("click", async () => {
+    if (
+      confirm(
+        "Are you sure you want to delete your account? This action cannot be undone."
+      )
+    ) {
+      try {
+        const response = await fetch("/api/auth/me", {
+          method: "DELETE",
+        });
+
+        if (response.ok) {
+          window.location.href = "/";
+        } else {
+          const error = await response.json();
+          alert(error.message || "Failed to delete account");
+        }
+      } catch (error) {
+        console.error("Error deleting account:", error);
+        alert("An error occurred while deleting account");
+      }
+    }
+  });
+</script>
