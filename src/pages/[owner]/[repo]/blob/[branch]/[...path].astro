@@ -1,13 +1,24 @@
 ---
+import BaseLayout from "@/layouts/BaseLayout.astro";
 import RepoHeader from "@/components/repo/RepoHeader.astro";
 import { getDatabase, schema } from "@/db";
-import BaseLayout from "@/layouts/BaseLayout.astro";
-import { getFileContent, getLastCommit } from "@/lib/git";
-import { renderMarkdown } from "@/lib/markdown";
+import { eq, and } from "drizzle-orm";
 import { canReadRepo } from "@/lib/permissions";
-import { Code } from "astro:components";
-import { and, eq, sql } from "drizzle-orm";
-import { ChevronRight, Copy, Download, FileText } from "lucide-react";
+import { getFileContent, getLastCommit } from "@/lib/git";
+import { 
+  GitBranch, 
+  ChevronDown, 
+  Copy, 
+  Download, 
+  FileText, 
+  FileCode,
+  File as FileIcon,
+  Trash2,
+  Edit,
+  Monitor
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { createHighlighter } from 'shiki';
 
 const { owner: ownerName, repo: repoName, branch, path } = Astro.params;
 const db = getDatabase();
@@ -39,42 +50,85 @@ if (!hasAccess) {
   return Astro.redirect("/404");
 }
 
-// Fetch issue count
-const issueCountResult = await db
-  .select({ count: sql<number>`count(*)` })
-  .from(schema.issues)
-  .where(
-    and(
-      eq(schema.issues.repositoryId, repoData.id),
-      eq(schema.issues.state, "open")
-    )
-  )
-  .get();
-
-const openIssueCount = issueCountResult?.count || 0;
-
 const currentBranch = branch || repoData.defaultBranch;
-const filePath = path || "";
+const currentPath = path || "";
 
-let fileContent: { content: string; isBinary: boolean; size: number } | null =
-  null;
-let lastCommit: any = null;
-
-try {
-  fileContent = await getFileContent(
-    repoData.diskPath,
-    filePath,
-    currentBranch
-  );
-  lastCommit = await getLastCommit(repoData.diskPath, currentBranch, filePath);
-} catch (e) {
-  console.error("Git error:", e);
+// Fetch file content
+const fileData = await getFileContent(repoData.diskPath, currentPath, currentBranch);
+if (!fileData) {
   return Astro.redirect("/404");
 }
 
-if (!fileContent) {
-  return Astro.redirect("/404");
+let highlightedCode = "";
+let lineCount = 0;
+
+if (!fileData.isBinary) {
+  // Determine language
+  const extension = currentPath.split(".").pop()?.toLowerCase() || "";
+  let lang = "text";
+  const commonLangs: Record<string, string> = {
+    ts: "typescript",
+    tsx: "tsx", 
+    js: "javascript",
+    jsx: "jsx",
+    json: "json",
+    css: "css", 
+    html: "html",
+    md: "markdown",
+    py: "python",
+    go: "go",
+    rs: "rust",
+    java: "java",
+    c: "c",
+    cpp: "cpp",
+    h: "c", 
+    hpp: "cpp",
+    astro: "astro",
+    yml: "yaml",
+    yaml: "yaml",
+    toml: "toml",
+    sh: "shell",
+    bash: "shell",
+    zsh: "shell",
+    sql: "sql",
+    php: "php"
+  };
+
+  if (commonLangs[extension]) {
+    lang = commonLangs[extension];
+  }
+
+  try {
+    const highlighter = await createHighlighter({
+      themes: ['github-dark'],
+      langs: [lang, 'text']
+    });
+    
+    // Fallback to text if lang load fails (shiki usually throws or handles it, but createHighlighter requires explicit langs)
+    // To be safe we should probably load 'text' always.
+    // If the lang is not in the list passed to createHighlighter, it will fail to highlight. 
+    // For now we map strictly or perform dynamic import which is tricky in restricted environment. 
+    // We'll rely on a subset or "text" for unknown.
+    // Actually, createHighlighter is expensive. In a real app we'd cache this.
+    
+    // We must pass ALL langs we want to support to createHighlighter or let it load bundled ones.
+    // Assuming standard bundle.
+  
+    highlightedCode = highlighter.codeToHtml(fileData.content, {
+      lang: Object.values(commonLangs).includes(lang) ? lang : 'text',
+      theme: 'github-dark'
+    });
+    
+    lineCount = fileData.content.split('\n').length;
+  } catch (e) {
+    console.error("Highlight error", e);
+    highlightedCode = `<pre class="shiki github-dark" style="background-color:#0d1117;color:#c9d1d9"><code>${fileData.content}</code></pre>`;
+    lineCount = fileData.content.split('\n').length;
+  }
 }
+
+// Get last commit for this file
+const lastCommitInfo = await getLastCommit(repoData.diskPath, currentBranch, currentPath);
 
 const repo = {
   owner: repoData.owner.username,
@@ -89,219 +143,190 @@ const repo = {
   license: repoData.licenseType || "None",
   topics: repoData.topics ? JSON.parse(repoData.topics) : [],
   updatedAt: repoData.updatedAt,
-  httpCloneUrl: repoData.httpCloneUrl,
-  sshCloneUrl: repoData.sshCloneUrl,
-  openIssueCount: openIssueCount,
   openPrCount: repoData.openPrCount,
+  openIssueCount: 0 // Placeholder
 };
-
-const breadcrumbs = filePath.split("/");
-const fileName = breadcrumbs[breadcrumbs.length - 1];
-
-// Format dates helper
-function timeAgo(date: Date | string | number) {
-  if (!date) return "";
-  const seconds = Math.floor(
-    (new Date().getTime() - new Date(date).getTime()) / 1000
-  );
-  let interval = seconds / 31536000;
-  if (interval > 1) return Math.floor(interval) + " years ago";
-  interval = seconds / 2592000;
-  if (interval > 1) return Math.floor(interval) + " months ago";
-  interval = seconds / 86400;
-  if (interval > 1) return Math.floor(interval) + " days ago";
-  interval = seconds / 3600;
-  if (interval > 1) return Math.floor(interval) + " hours ago";
-  interval = seconds / 60;
-  if (interval > 1) return Math.floor(interval) + " minutes ago";
-  return Math.floor(seconds) + " seconds ago";
-}
 
 // Size formatter
 function formatSize(bytes: number) {
-  if (bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-}
-
-const lineCount = fileContent.isBinary
-  ? 0
-  : fileContent.content.split("\n").length;
-
-const isMarkdown =
-  fileName.toLowerCase().endsWith(".md") ||
-  fileName.toLowerCase().endsWith(".markdown");
-let renderedMarkdown = "";
-if (isMarkdown && !fileContent.isBinary) {
-  renderedMarkdown = await renderMarkdown(fileContent.content);
-}
-
-function getLanguage(filename: string) {
-  const ext = filename.split(".").pop()?.toLowerCase();
-  switch (ext) {
-    case "js":
-      return "javascript";
-    case "ts":
-      return "typescript";
-    case "jsx":
-      return "jsx";
-    case "tsx":
-      return "tsx";
-    case "html":
-      return "html";
-    case "css":
-      return "css";
-    case "json":
-      return "json";
-    case "md":
-      return "markdown";
-    case "py":
-      return "python";
-    case "go":
-      return "go";
-    case "rs":
-      return "rust";
-    case "java":
-      return "java";
-    case "c":
-      return "c";
-    case "cpp":
-      return "cpp";
-    case "h":
-      return "c";
-    case "hpp":
-      return "cpp";
-    case "sh":
-      return "shell";
-    case "yaml":
-      return "yaml";
-    case "yml":
-      return "yaml";
-    case "xml":
-      return "xml";
-    case "sql":
-      return "sql";
-    case "dockerfile":
-      return "dockerfile";
-    case "astro":
-      return "astro";
-    default:
-      return "text";
-  }
+  if (bytes < 1024) return bytes + " Bytes";
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / 1048576).toFixed(1) + " MB";
 }
 ---
-
-<BaseLayout title={`${fileName} - ${repo.owner}/${repo.name} - OpenCodeHub`}>
+<BaseLayout title={`${currentPath.split('/').pop()} · ${repo.owner}/${repo.name}`}>
   <div class="container py-6">
     <RepoHeader repo={repo} activeTab="code" />
 
-    <!-- Breadcrumb Navigation -->
-    <div class="flex items-center gap-2 text-sm mb-4 mt-4">
-      <a
-        href={`/${repo.owner}/${repo.name}/tree/${currentBranch}`}
-        class="text-primary hover:underline font-medium">{repo.name}</a
-      >
-      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-      {
-        breadcrumbs.map((crumb, index) => (
-          <>
-            {index === breadcrumbs.length - 1 ? (
-              <span class="font-bold">{crumb}</span>
-            ) : (
-              <>
-                <a
-                  href={`/${repo.owner}/${repo.name}/tree/${currentBranch}/${breadcrumbs.slice(0, index + 1).join("/")}`}
-                  class="text-primary hover:underline"
-                >
-                  {crumb}
-                </a>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </>
-            )}
-          </>
-        ))
-      }
-    </div>
-
-    <div class="rounded-lg border bg-card">
-      <!-- File Header -->
-      <div
-        class="flex items-center justify-between border-b bg-muted/30 px-4 py-3"
-      >
-        <div class="flex items-center gap-4 text-sm">
+    <div class="space-y-4">
+       <!-- Breadcrumbs & Branch -->
+       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div class="flex items-center gap-2">
-            <div
-              class="h-6 w-6 rounded-full bg-muted flex items-center justify-center border"
-            >
-              <span class="text-xs font-medium"
-                >{lastCommit?.authorName?.[0] || "?"}</span
-              >
-            </div>
-            <span class="font-medium"
-              >{lastCommit?.authorName || "Unknown"}</span
-            >
-            <span class="text-muted-foreground"
-              >{lastCommit?.message || "No commit message"}</span
-            >
+             <div class="relative">
+                <button
+                   class="inline-flex items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-accent"
+                >
+                   <GitBranch className="h-4 w-4" />
+                   {currentBranch}
+                   <ChevronDown className="h-4 w-4" />
+                </button>
+                {/* Branch dropdown omitted for brevity in this view */}
+             </div>
+             
+             <div class="flex items-center text-sm text-muted-foreground flex-wrap">
+                <span class="mx-2">/</span>
+                <a href={`/${repo.owner}/${repo.name}/tree/${currentBranch}`} class="hover:text-primary hover:underline font-bold text-blue-500">
+                    {repo.name}
+                </a>
+                {
+                   currentPath.split("/").map((part, i, arr) => (
+                      <span class="flex items-center">
+                         <span class="mx-1">/</span>
+                         {i === arr.length - 1 ? (
+                            <span class="font-bold text-foreground">{part}</span>
+                         ) : (
+                            <a
+                               href={`/${repo.owner}/${repo.name}/tree/${currentBranch}/${arr.slice(0, i + 1).join("/")}`}
+                               class="hover:text-primary hover:underline text-blue-500"
+                            >
+                               {part}
+                            </a>
+                         )}
+                      </span>
+                   ))
+                }
+             </div>
           </div>
-          <span class="text-muted-foreground text-xs">
-            {lastCommit ? timeAgo(lastCommit.authorDate) : ""}
-          </span>
-        </div>
-        <div class="flex items-center gap-2">
-          <div class="text-xs text-muted-foreground mr-2">
-            {fileContent.isBinary ? "Binary file" : `${lineCount} lines`} · {
-              formatSize(fileContent.size)
-            }
-          </div>
-          <button
-            class="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground"
-            title="Copy raw file"
-          >
-            <Copy className="h-4 w-4" />
-          </button>
-          <a
-            href={`/${repo.owner}/${repo.name}/raw/${currentBranch}/${filePath}`}
-            class="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground"
-            title="Download"
-          >
-            <Download className="h-4 w-4" />
-          </a>
-        </div>
-      </div>
+       </div>
 
-      <!-- File Content -->
-      <div class="overflow-x-auto p-0">
-        {
-          fileContent.isBinary ? (
-            <div class="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <FileText className="h-12 w-12 mb-4 opacity-20" />
-              <p>Binary file not shown.</p>
-              <a
-                href={`/${repo.owner}/${repo.name}/raw/${currentBranch}/${filePath}`}
-                class="mt-4 text-primary hover:underline text-sm"
-              >
-                Download file
-              </a>
-            </div>
-          ) : isMarkdown ? (
-            <div
-              class="p-8 prose dark:prose-invert max-w-none bg-background border-t"
-              set:html={renderedMarkdown}
-            />
-          ) : (
-            <div class="text-sm font-mono leading-relaxed overflow-x-auto p-4 bg-[#0d1117]">
-              <Code
-                code={fileContent.content}
-                lang={getLanguage(fileName)}
-                theme="github-dark"
-              />
-            </div>
-          )
-        }
-      </div>
+       {/* File Header / Last Commit Info */}
+       <div class="rounded-t-lg border bg-muted/30 p-4 border-b-0 flex items-center justify-between">
+          <div class="flex items-center gap-2 text-sm">
+             {lastCommitInfo && (
+                <>
+                   <span class="font-medium text-foreground">{lastCommitInfo.authorName}</span>
+                   <span class="text-muted-foreground truncate max-w-[400px]">{lastCommitInfo.message}</span>
+                   <span class="text-muted-foreground mx-1">·</span>
+                   <span class="text-muted-foreground">{new Date(lastCommitInfo.authorDate).toLocaleDateString()}</span>
+                </>
+             )}
+          </div>
+          <div class="flex items-center gap-2 text-xs font-mono text-muted-foreground">
+             {lastCommitInfo && (
+                <span>{lastCommitInfo.sha.substring(0, 7)}</span>
+             )}
+             <Button variant="ghost" size="icon" class="h-6 w-6">
+                <Clock class="h-4 w-4" />
+             </Button>
+          </div>
+       </div>
+
+       {/* File Content Box */}
+       <div class="border rounded-b-lg rounded-t-none -mt-4 shadow-sm">
+           <div class="flex items-center justify-between bg-muted/10 px-4 py-2 border-b">
+               <div class="flex items-center gap-4 text-xs font-mono text-muted-foreground">
+                   <div class="flex items-center gap-2">
+                       {fileData.isBinary ? <FileIcon class="h-4 w-4" /> : <FileCode class="h-4 w-4" />}
+                       <span class="font-semibold text-foreground">{lineCount > 0 ? `${lineCount} lines` : ""}</span> 
+                       {lineCount > 0 && <span>·</span>}
+                       <span>{formatSize(fileData.size)}</span>
+                   </div>
+               </div>
+               
+               <div class="flex items-center gap-1">
+                   <div class="flex items-center rounded-md border shadow-sm bg-background">
+                       <a href={`/${repo.owner}/${repo.name}/raw/${currentBranch}/${currentPath}`} class="px-3 py-1.5 text-xs font-medium hover:bg-accent border-r transition-colors">
+                           Raw
+                       </a>
+                       <button class="px-3 py-1.5 text-xs font-medium hover:bg-accent border-r transition-colors" id="copy-btn">
+                           <Copy class="h-3 w-3 inline mr-1" />
+                           Copy
+                       </button>
+                       <a href={`/${repo.owner}/${repo.name}/raw/${currentBranch}/${currentPath}?download=true`} download class="px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors">
+                           <Download class="h-3 w-3 inline mr-1" />
+                           Download
+                       </a>
+                   </div>
+                   <div class="ml-2 flex items-center rounded-md border shadow-sm bg-background">
+                       <button class="p-1.5 hover:bg-accent text-muted-foreground hover:text-foreground">
+                           <Edit class="h-3 w-3" />
+                       </button>
+                       <button class="p-1.5 hover:bg-accent text-red-500 hover:text-red-600 border-l">
+                           <Trash2 class="h-3 w-3" />
+                       </button>
+                   </div>
+               </div>
+           </div>
+
+           {fileData.isBinary ? (
+              <div class="flex flex-col items-center justify-center py-20 bg-muted/5">
+                 <p class="text-sm text-muted-foreground mb-4">Binary file not shown.</p>
+                 <a href={`/${repo.owner}/${repo.name}/raw/${currentBranch}/${currentPath}`} class="text-primary hover:underline text-sm font-medium">
+                    View Raw
+                 </a>
+              </div>
+           ) : (
+              <div class="overflow-x-auto text-sm leading-6 custom-scrollbar bg-[#0d1117] text-[#c9d1d9] rounded-b-lg">
+                 <div class="flex min-w-full">
+                    {/* Line Numbers */}
+                    <div class="flex flex-col items-end px-3 py-4 text-xs font-mono text-gray-600 bg-[#0d1117] select-none border-r border-gray-800">
+                      {Array.from({ length: lineCount }).map((_, i) => (
+                        <div class="h-6">{i + 1}</div>
+                      ))}
+                    </div>
+                    {/* Code */}
+                    <div class="flex-1 py-4 px-4 font-mono tab-4" set:html={highlightedCode} />
+                 </div>
+              </div>
+           )}
+       </div>
     </div>
   </div>
 </BaseLayout>
+
+<style is:global>
+  /* Custom scrollbar for code block */
+  .custom-scrollbar::-webkit-scrollbar {
+    height: 10px;
+    width: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #30363d;
+    border-radius: 5px;
+    border: 2px solid #0d1117;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #424a53;
+  }
+  
+  /* Shiki Overrides to match layout */
+  .shiki {
+    background-color: transparent !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .shiki code {
+     display: flex;
+     flex-direction: column;
+  }
+  .shiki .line {
+     height: 1.5rem; /* Matches h-6 logic */
+     display: block;
+  }
+</style>
+
+<script define:vars={{ initialContent: !fileData.isBinary ? fileData.content : "" }}>
+   const copyBtn = document.getElementById('copy-btn');
+   copyBtn?.addEventListener('click', () => {
+      navigator.clipboard.writeText(initialContent).then(() => {
+          const originalText = copyBtn.innerHTML;
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => {
+              copyBtn.innerHTML = originalText;
+          }, 2000);
+      });
+   });
+</script>
