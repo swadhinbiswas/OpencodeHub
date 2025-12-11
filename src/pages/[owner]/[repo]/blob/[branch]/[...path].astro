@@ -22,15 +22,60 @@ import {
 import { Button } from "@/components/ui/button";
 import { createHighlighter } from 'shiki';
 import { marked } from 'marked';
-import "github-markdown-css/github-markdown-dark.css";
+
+// Configure marked
+marked.use({
+  gfm: true,
+  breaks: true
+});
 
 const { owner: ownerName, repo: repoName, branch, path } = Astro.params;
 const db = getDatabase();
 
-// 1. Fetch Repo & Owner
-const user = await db.query.users.findFirst({
-  where: eq(schema.users.username, ownerName!),
-});
+// ... (code omitted)
+
+if (!fileData.isBinary) {
+  // Determine language
+  const extension = currentPath.split(".").pop()?.toLowerCase() || "";
+  let lang = "text";
+  const commonLangs: Record<string, string> = {
+    ts: "typescript",
+    tsx: "tsx", 
+    js: "javascript",
+    jsx: "jsx",
+    json: "json",
+    css: "css", 
+    html: "html",
+    md: "markdown",
+    markdown: "markdown",
+    py: "python",
+    go: "go",
+    rs: "rust",
+    java: "java",
+    c: "c",
+    cpp: "cpp",
+    h: "c", 
+    hpp: "cpp",
+    astro: "astro",
+    yml: "yaml",
+    yaml: "yaml",
+    toml: "toml",
+    sh: "shell",
+    bash: "shell",
+    zsh: "shell",
+    sql: "sql",
+    php: "php"
+  };
+
+  if (commonLangs[extension]) {
+    lang = commonLangs[extension];
+  }
+
+  if (lang === "markdown") {
+      isMarkdown = true;
+      markdownHtml = await marked.parse(fileData.content);
+  } else {
+    // ...
 
 if (!user) return Astro.redirect("/404");
 
