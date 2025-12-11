@@ -64,6 +64,10 @@ const repo = {
   sshCloneUrl: repoData.sshCloneUrl,
   openIssueCount: repoData.openIssueCount,
   openPrCount: repoData.openPrCount,
+  hasIssues: repoData.hasIssues,
+  hasWiki: repoData.hasWiki,
+  hasActions: repoData.hasActions,
+  isArchived: repoData.isArchived,
 };
 ---
 
@@ -107,8 +111,9 @@ const repo = {
       </nav>
 
       <!-- Settings Content -->
-      <div class="space-y-6">
+      <div class="space-y-8">
         <form id="update-repo-form">
+          <div class="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>General</CardTitle>
@@ -143,10 +148,34 @@ const repo = {
                 />
               </div>
             </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+               <CardTitle>Features</CardTitle>
+               <CardDescription>
+                 Enable or disable repository features.
+               </CardDescription>
+            </CardHeader>
+            <CardContent class="space-y-4">
+               <div class="flex items-center space-x-2">
+                  <input type="checkbox" id="hasIssues" name="hasIssues" checked={repo.hasIssues} class="accent-primary h-4 w-4" />
+                  <Label htmlFor="hasIssues">Issues</Label>
+               </div>
+               <div class="flex items-center space-x-2">
+                  <input type="checkbox" id="hasWiki" name="hasWiki" checked={repo.hasWiki} class="accent-primary h-4 w-4" />
+                  <Label htmlFor="hasWiki">Wiki</Label>
+               </div>
+               <div class="flex items-center space-x-2">
+                 <input type="checkbox" id="hasActions" name="hasActions" checked={repo.hasActions} class="accent-primary h-4 w-4" />
+                 <Label htmlFor="hasActions">Actions / Pipelines</Label>
+               </div>
+            </CardContent>
             <CardFooter className="border-t px-6 py-4">
               <Button type="submit">Save changes</Button>
             </CardFooter>
           </Card>
+          </div>
         </form>
 
         <Card className="border-red-200">
@@ -165,10 +194,33 @@ const repo = {
               </div>
               <Button
                 variant="outline"
+                type="button"
+                id="toggle-visibility-btn"
+                data-visibility={repo.visibility}
                 className="text-red-600 border-red-200 hover:bg-red-50"
-                >Change visibility</Button
+                >Make {repo.visibility === 'public' ? 'private' : 'public'}</Button
               >
             </div>
+
+            <div
+              class="flex items-center justify-between rounded-lg border border-red-200 p-4"
+            >
+              <div>
+                <h4 class="font-medium">Archive repository</h4>
+                <p class="text-sm text-muted-foreground">
+                   {repo.isArchived ? "Unarchive" : "Archive"} this repository.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                type="button"
+                id="toggle-archive-btn"
+                data-archived={repo.isArchived.toString()}
+                className="text-red-600 border-red-200 hover:bg-red-50"
+                >{repo.isArchived ? "Unarchive" : "Archive"} repository</Button
+              >
+            </div>
+
             <div
               class="flex items-center justify-between rounded-lg border border-red-200 p-4"
             >
@@ -197,6 +249,11 @@ const repo = {
     const formData = new FormData(form);
     const data = Object.fromEntries(formData);
 
+    // Handle checkboxes
+    data.hasIssues = formData.get("hasIssues") === "on";
+    data.hasWiki = formData.get("hasWiki") === "on";
+    data.hasActions = formData.get("hasActions") === "on";
+
     try {
       const response = await fetch(`/api/repos/${owner}/${repo}`, {
         method: "PATCH",
@@ -206,11 +263,53 @@ const repo = {
 
       if (!response.ok) throw new Error("Failed to update repository");
 
-      // Reload to show changes
+      // Reload to show changes (or maybe just show toast)
       window.location.reload();
     } catch (error) {
       alert(error.message);
     }
+  });
+
+  // Visibility
+  const toggleVisibilityBtn = document.getElementById("toggle-visibility-btn");
+  toggleVisibilityBtn?.addEventListener("click", async () => {
+     const currentVisibility = toggleVisibilityBtn.dataset.visibility;
+     const newVisibility = currentVisibility === "public" ? "private" : "public";
+     
+     const confirmed = confirm(`Are you sure you want to change visibility to ${newVisibility}?`);
+     if (!confirmed) return;
+
+     try {
+       const response = await fetch(`/api/repos/${owner}/${repo}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ visibility: newVisibility })
+       });
+       if (!response.ok) throw new Error("Failed to change visibility");
+       window.location.reload();
+     } catch (err) {
+         alert(err.message);
+     }
+  });
+
+  // Archive
+  const toggleArchiveBtn = document.getElementById("toggle-archive-btn");
+  toggleArchiveBtn?.addEventListener("click", async () => {
+    const isArchived = toggleArchiveBtn.dataset.archived === "true";
+    const confirmed = confirm(`Are you sure you want to ${isArchived ? "unarchive" : "archive"} this repository?`);
+    if(!confirmed) return;
+
+     try {
+       const response = await fetch(`/api/repos/${owner}/${repo}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isArchived: !isArchived })
+       });
+       if (!response.ok) throw new Error("Failed to update archive status");
+       window.location.reload();
+     } catch (err) {
+         alert(err.message);
+     }
   });
 
   const deleteBtn = document.getElementById("delete-repo-btn");

@@ -1,10 +1,150 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
+import { getDatabase, schema } from "@/db";
+import { eq, desc, and, like } from "drizzle-orm";
+import { Book, Star, GitBranch, Plus, Search, Lock, Globe } from "lucide-react";
+
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+const db = getDatabase();
+const q = Astro.url.searchParams.get("q") || "";
+
+// Fetch user's repositories with search
+const repos = await db
+  .select()
+  .from(schema.repositories)
+  .where(
+    and(
+      eq(schema.repositories.ownerId, user.id),
+      q ? like(schema.repositories.name, `%${q}%`) : undefined
+    )
+  )
+  .orderBy(desc(schema.repositories.updatedAt))
+  .all();
+
+function timeAgo(date: Date) {
+    const seconds = Math.floor(
+        (new Date().getTime() - new Date(date).getTime()) / 1000
+    );
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + " years ago";
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + " months ago";
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + " days ago";
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + " hours ago";
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + " minutes ago";
+    return Math.floor(seconds) + " seconds ago";
+}
 ---
 
 <BaseLayout title="Your Repositories">
-  <div class="container py-10">
-    <h1 class="text-3xl font-bold">Your Repositories</h1>
-    <p class="text-muted-foreground mt-4">This feature is coming soon.</p>
+  <div class="container py-8 max-w-5xl">
+    <div class="flex flex-col gap-6">
+      <div class="flex items-center justify-between">
+        <div>
+           <h1 class="text-3xl font-bold">Your Repositories</h1>
+           <p class="text-muted-foreground mt-1">Manage and browse your projects.</p>
+        </div>
+        <Button asChild>
+          <a href="/new">
+            <Plus class="mr-2 h-4 w-4" />
+            New Repository
+          </a>
+        </Button>
+      </div>
+
+      <div class="flex items-center gap-4">
+         <div class="relative flex-1">
+            <Search class="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <form>
+                <Input
+                name="q"
+                type="search"
+                placeholder="Find a repository..."
+                class="pl-9 w-full md:w-[400px]"
+                value={q}
+                />
+            </form>
+         </div>
+      </div>
+
+      <div class="space-y-4">
+        {repos.length === 0 ? (
+           <div class="text-center py-12 border rounded-lg bg-muted/10">
+              <div class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-4">
+                 <Book class="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h3 class="text-lg font-medium">No repositories found</h3>
+              <p class="text-muted-foreground mt-1 mb-4">
+                 {q ? "Try adjusting your search query." : "Get started by creating your first repository."}
+              </p>
+              {!q && (
+                 <Button asChild>
+                    <a href="/new">Create Repository</a>
+                 </Button>
+              )}
+           </div>
+        ) : (
+           <div class="grid gap-4">
+              {repos.map(repo => (
+                 <div class="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors">
+                    <div class="space-y-1">
+                       <div class="flex items-center gap-2">
+                          <a href={`/${repo.slug}`} class="text-xl font-semibold hover:text-primary hover:underline">
+                             {repo.name}
+                          </a>
+                          <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                             {repo.visibility === "public" ? "Public" : "Private"}
+                          </span>
+                       </div>
+                       <p class="text-muted-foreground text-sm line-clamp-1">
+                          {repo.description || "No description provided."}
+                       </p>
+                       <div class="flex items-center gap-4 text-xs text-muted-foreground mt-2">
+                           {repo.language && (
+                              <div class="flex items-center gap-1">
+                                 <span class="h-2 w-2 rounded-full bg-blue-500"></span>
+                                 {repo.language}
+                              </div>
+                           )}
+                           <div class="flex items-center gap-1">
+                               <Star class="h-3 w-3" />
+                               {repo.starCount}
+                           </div>
+                           <div class="flex items-center gap-1">
+                               <GitBranch class="h-3 w-3" />
+                               {repo.forkCount}
+                           </div>
+                           <div>
+                               Updated {timeAgo(repo.updatedAt)}
+                           </div>
+                       </div>
+                    </div>
+                    <Button variant="ghost" size="sm" asChild>
+                        <a href={`/${repo.slug}`} class="text-muted-foreground">
+                           View
+                        </a>
+                    </Button>
+                 </div>
+              ))}
+           </div>
+        )}
+      </div>
+    </div>
   </div>
 </BaseLayout>

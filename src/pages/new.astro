@@ -220,8 +220,8 @@ if (!user) {
 </BaseLayout>
 
 <script>
-  const form = document.getElementById("create-repo-form") as HTMLFormElement;
-  const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+  const form = document.getElementById("create-repo-form");
+  const submitBtn = document.getElementById("submit-btn");
 
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
