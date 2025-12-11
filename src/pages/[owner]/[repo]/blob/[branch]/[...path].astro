@@ -16,10 +16,13 @@ import {
   Trash2,
   Edit,
   Monitor,
-  Clock
+  Clock,
+  BookOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createHighlighter } from 'shiki';
+import { marked } from 'marked';
+import "github-markdown-css/github-markdown-dark.css";
 
 const { owner: ownerName, repo: repoName, branch, path } = Astro.params;
 const db = getDatabase();
@@ -61,7 +64,9 @@ if (!fileData) {
 }
 
 let highlightedCode = "";
+let markdownHtml = "";
 let lineCount = 0;
+let isMarkdown = false;
 
 if (!fileData.isBinary) {
   // Determine language
@@ -76,6 +81,7 @@ if (!fileData.isBinary) {
     css: "css", 
     html: "html",
     md: "markdown",
+    markdown: "markdown",
     py: "python",
     go: "go",
     rs: "rust",
@@ -99,33 +105,27 @@ if (!fileData.isBinary) {
     lang = commonLangs[extension];
   }
 
-  try {
-    const highlighter = await createHighlighter({
-      themes: ['github-dark'],
-      langs: [lang, 'text']
-    });
-    
-    // Fallback to text if lang load fails (shiki usually throws or handles it, but createHighlighter requires explicit langs)
-    // To be safe we should probably load 'text' always.
-    // If the lang is not in the list passed to createHighlighter, it will fail to highlight. 
-    // For now we map strictly or perform dynamic import which is tricky in restricted environment. 
-    // We'll rely on a subset or "text" for unknown.
-    // Actually, createHighlighter is expensive. In a real app we'd cache this.
-    
-    // We must pass ALL langs we want to support to createHighlighter or let it load bundled ones.
-    // Assuming standard bundle.
-  
-    highlightedCode = highlighter.codeToHtml(fileData.content, {
-      lang: Object.values(commonLangs).includes(lang) ? lang : 'text',
-      theme: 'github-dark'
-    });
-    
-    lineCount = fileData.content.split('\n').length;
-  } catch (e) {
-    console.error("Highlight error", e);
-    highlightedCode = `<pre class="shiki github-dark" style="background-color:#0d1117;color:#c9d1d9"><code>${fileData.content}</code></pre>`;
-    lineCount = fileData.content.split('\n').length;
+  if (lang === "markdown") {
+      isMarkdown = true;
+      markdownHtml = await marked.parse(fileData.content);
+  } else {
+      try {
+        const highlighter = await createHighlighter({
+          themes: ['github-dark'],
+          langs: [lang, 'text']
+        });
+        
+        highlightedCode = highlighter.codeToHtml(fileData.content, {
+          lang: Object.values(commonLangs).includes(lang) ? lang : 'text',
+          theme: 'github-dark'
+        });
+        
+      } catch (e) {
+        console.error("Highlight error", e);
+        highlightedCode = `<pre class="shiki github-dark" style="background-color:#0d1117;color:#c9d1d9"><code>${fileData.content}</code></pre>`;
+      }
   }
+  lineCount = fileData.content.split('\n').length;
 }
 
 // Get last commit for this file
@@ -234,11 +234,17 @@ function formatSize(bytes: number) {
                    </div>
                </div>
                
-               <div class="flex items-center gap-1">
-                   <div class="flex items-center rounded-md border shadow-sm bg-background">
-                       <a href={`/${repo.owner}/${repo.name}/raw/${currentBranch}/${currentPath}`} class="px-3 py-1.5 text-xs font-medium hover:bg-accent border-r transition-colors">
-                           Raw
-                       </a>
+                   <div class="flex items-center gap-1">
+                       <div class="flex items-center rounded-md border shadow-sm bg-background">
+                           {isMarkdown && (
+                               <button class="px-3 py-1.5 text-xs font-medium hover:bg-accent border-r transition-colors flex items-center gap-1">
+                                   <BookOpen class="h-3 w-3" />
+                                   Preview
+                               </button>
+                           )}
+                           <a href={`/${repo.owner}/${repo.name}/raw/${currentBranch}/${currentPath}`} class="px-3 py-1.5 text-xs font-medium hover:bg-accent border-r transition-colors">
+                               Raw
+                           </a>
                        <button class="px-3 py-1.5 text-xs font-medium hover:bg-accent border-r transition-colors" id="copy-btn">
                            <Copy class="h-3 w-3 inline mr-1" />
                            Copy
@@ -265,6 +271,10 @@ function formatSize(bytes: number) {
                  <a href={`/${repo.owner}/${repo.name}/raw/${currentBranch}/${currentPath}`} class="text-primary hover:underline text-sm font-medium">
                     View Raw
                  </a>
+              </div>
+           ) : isMarkdown ? (
+              <div class="p-8 bg-[#0d1117] rounded-b-lg">
+                 <article class="markdown-body" set:html={markdownHtml} />
               </div>
            ) : (
               <div class="overflow-x-auto text-sm leading-6 custom-scrollbar bg-[#0d1117] text-[#c9d1d9] rounded-b-lg">
