@@ -1,0 +1,125 @@
+---
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { Button } from "@/components/ui/button";
+import { getDatabase, schema } from "@/db";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { canReadRepo } from "@/lib/permissions";
+import { and, eq } from "drizzle-orm";
+import { Tag } from "lucide-react";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+// 1. Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!)
+  ),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canReadRepo(currentUser?.id, repoData);
+
+if (!hasAccess) {
+  return Astro.redirect("/404");
+}
+
+// 2. Fetch Labels
+const labels = await db.query.labels.findMany({
+  where: eq(schema.labels.repositoryId, repoData.id),
+});
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  license: repoData.licenseType || "None",
+  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+  updatedAt: repoData.updatedAt,
+  httpCloneUrl: repoData.httpCloneUrl,
+  sshCloneUrl: repoData.sshCloneUrl,
+  openIssueCount: repoData.openIssueCount,
+  openPrCount: repoData.openPrCount,
+};
+---
+
+<BaseLayout title={`Labels · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="issues" />
+
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-semibold">Labels</h1>
+      <Button>New Label</Button>
+    </div>
+
+    <div class="rounded-lg border">
+      <div
+        class="bg-muted/30 px-4 py-3 border-b font-medium text-sm text-muted-foreground"
+      >
+        {labels.length} labels
+      </div>
+      <div class="divide-y">
+        {
+          labels.length > 0 ? (
+            labels.map((label) => (
+              <div class="p-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <Tag className="h-4 w-4 text-muted-foreground" />
+                  <span
+                    class="px-2 py-0.5 rounded-full text-xs font-medium border"
+                    style={{
+                      backgroundColor: label.color + "20",
+                      color: label.color,
+                      borderColor: label.color + "40",
+                    }}
+                  >
+                    {label.name}
+                  </span>
+                  <span class="text-sm text-muted-foreground">
+                    {label.description}
+                  </span>
+                </div>
+                <div class="flex gap-2">
+                  <Button variant="ghost" size="sm">
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive"
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div class="p-8 text-center text-muted-foreground">
+              <Tag className="h-8 w-8 mx-auto mb-4 opacity-50" />
+              <p>No labels found</p>
+            </div>
+          )
+        }
+      </div>
+    </div>
+  </div>
+</BaseLayout>

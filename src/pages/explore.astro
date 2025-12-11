@@ -1,0 +1,92 @@
+---
+import { getDatabase, schema } from "@/db";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { desc, eq } from "drizzle-orm";
+import { Book, GitFork, Star } from "lucide-react";
+
+const db = getDatabase();
+
+// Fetch public repositories
+const repos = await db.query.repositories.findMany({
+  where: eq(schema.repositories.visibility, "public"),
+  orderBy: [desc(schema.repositories.updatedAt)],
+  with: {
+    owner: true,
+  },
+  limit: 20,
+});
+
+function timeAgo(date: string | number | Date) {
+  if (!date) return "";
+  const seconds = Math.floor(
+    (new Date().getTime() - new Date(date).getTime()) / 1000
+  );
+  let interval = seconds / 31536000;
+  if (interval > 1) return Math.floor(interval) + " years ago";
+  interval = seconds / 2592000;
+  if (interval > 1) return Math.floor(interval) + " months ago";
+  interval = seconds / 86400;
+  if (interval > 1) return Math.floor(interval) + " days ago";
+  interval = seconds / 3600;
+  if (interval > 1) return Math.floor(interval) + " hours ago";
+  interval = seconds / 60;
+  if (interval > 1) return Math.floor(interval) + " minutes ago";
+  return Math.floor(seconds) + " seconds ago";
+}
+---
+
+<BaseLayout title="Explore - OpenCodeHub">
+  <div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6">Explore</h1>
+
+    <div class="grid gap-4">
+      {
+        repos.length === 0 ? (
+          <div class="text-center py-12 text-gray-500">
+            <p>No public repositories found.</p>
+          </div>
+        ) : (
+          repos.map((repo) => (
+            <div class="border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
+              <div class="flex items-start justify-between">
+                <div>
+                  <div class="flex items-center gap-2 mb-1">
+                    <Book className="w-4 h-4 text-gray-500" />
+                    <a
+                      href={`/${repo.owner.username}/${repo.name}`}
+                      class="text-blue-600 hover:underline font-semibold text-lg"
+                    >
+                      {repo.owner.username}/{repo.name}
+                    </a>
+                    <span class="text-xs border rounded-full px-2 py-0.5 text-gray-500">
+                      {repo.visibility}
+                    </span>
+                  </div>
+                  <p class="text-gray-600 dark:text-gray-400 text-sm mb-3">
+                    {repo.description || "No description provided."}
+                  </p>
+                  <div class="flex items-center gap-4 text-xs text-gray-500">
+                    <div class="flex items-center gap-1">
+                      <span class="w-3 h-3 rounded-full bg-yellow-400" />
+                      <span>JavaScript</span>{" "}
+                      {/* TODO: Real language detection */}
+                    </div>
+                    <div class="flex items-center gap-1">
+                      <Star className="w-3 h-3" />
+                      <span>0</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                      <GitFork className="w-3 h-3" />
+                      <span>0</span>
+                    </div>
+                    <span>Updated {timeAgo(repo.updatedAt)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))
+        )
+      }
+    </div>
+  </div>
+</BaseLayout>

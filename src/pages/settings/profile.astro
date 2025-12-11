@@ -1,0 +1,158 @@
+---
+import SettingsLayout from "@/layouts/SettingsLayout.astro";
+
+const user = Astro.locals.user;
+
+if (!user) {
+  return Astro.redirect("/login");
+}
+---
+
+<SettingsLayout title="Public Profile">
+  <div class="space-y-6">
+    <div>
+      <h3 class="text-lg font-medium leading-6 text-foreground">
+        Public Profile
+      </h3>
+      <p class="mt-1 text-sm text-muted-foreground">
+        This information will be displayed publicly so be careful what you
+        share.
+      </p>
+    </div>
+
+    <div class="bg-card rounded-lg border shadow-sm">
+      <div class="p-6">
+        <form id="profile-form" class="space-y-6">
+          <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+            <div class="sm:col-span-4">
+              <label
+                for="displayName"
+                class="block text-sm font-medium text-foreground mb-2"
+              >
+                Name
+              </label>
+              <input
+                type="text"
+                name="displayName"
+                id="displayName"
+                value={user.displayName || ""}
+                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+              <p class="mt-2 text-sm text-muted-foreground">
+                Your name may appear around OpenCodeHub where you contribute or
+                are mentioned. You can remove it at any time.
+              </p>
+            </div>
+
+            <div class="sm:col-span-6">
+              <label
+                for="bio"
+                class="block text-sm font-medium text-foreground mb-2"
+              >
+                Bio
+              </label>
+              <textarea
+                id="bio"
+                name="bio"
+                rows="3"
+                class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >{user.bio || ""}</textarea
+              >
+              <p class="mt-2 text-sm text-muted-foreground">
+                You can @mention other users and organizations to link to them.
+              </p>
+            </div>
+
+            <div class="sm:col-span-3">
+              <label
+                for="company"
+                class="block text-sm font-medium text-foreground mb-2"
+              >
+                Company
+              </label>
+              <input
+                type="text"
+                name="company"
+                id="company"
+                value={user.company || ""}
+                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
+
+            <div class="sm:col-span-3">
+              <label
+                for="location"
+                class="block text-sm font-medium text-foreground mb-2"
+              >
+                Location
+              </label>
+              <input
+                type="text"
+                name="location"
+                id="location"
+                value={user.location || ""}
+                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
+
+            <div class="sm:col-span-4">
+              <label
+                for="website"
+                class="block text-sm font-medium text-foreground mb-2"
+              >
+                Website
+              </label>
+              <input
+                type="url"
+                name="website"
+                id="website"
+                value={user.website || ""}
+                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
+          </div>
+
+          <div class="flex justify-end">
+            <button
+              type="submit"
+              class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+            >
+              Save
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</SettingsLayout>
+
+<script>
+  const form = document.getElementById("profile-form") as HTMLFormElement;
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+
+    try {
+      const response = await fetch("/api/auth/me", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (response.ok) {
+        alert("Profile updated successfully");
+        window.location.reload();
+      } else {
+        const error = await response.json();
+        alert(error.message || "Failed to update profile");
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      alert("An error occurred while updating profile");
+    }
+  });
+</script>

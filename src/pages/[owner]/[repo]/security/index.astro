@@ -1,0 +1,229 @@
+---
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { Button } from "@/components/ui/button";
+import { getDatabase, schema } from "@/db";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { canReadRepo, canWriteRepo } from "@/lib/permissions";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { AlertCircle, CheckCircle, Shield, Play, Loader2 } from "lucide-react";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!)
+  ),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+const currentUser = Astro.locals.user;
+const hasAccess = await canReadRepo(currentUser?.id, repoData);
+const canWrite = await canWriteRepo(currentUser?.id, repoData);
+
+if (!hasAccess) return Astro.redirect("/404");
+
+// Fetch counts
+const openIssueCount = (await db
+  .select({ count: sql<number>`count(*)` })
+  .from(schema.issues)
+  .where(
+    and(
+      eq(schema.issues.repositoryId, repoData.id),
+      eq(schema.issues.state, "open")
+    )
+  )
+  .get())?.count || 0;
+
+const repoInfo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  license: repoData.licenseType || "None",
+  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+  updatedAt: repoData.updatedAt,
+  httpCloneUrl: repoData.httpCloneUrl,
+  sshCloneUrl: repoData.sshCloneUrl,
+  openIssueCount: openIssueCount,
+  openPrCount: repoData.openPrCount,
+};
+
+// Fetch latest scan
+const latestScan = await db.query.securityScans.findFirst({
+    where: eq(schema.securityScans.repositoryId, repoData.id),
+    orderBy: [desc(schema.securityScans.startedAt)],
+    with: {
+        vulnerabilities: true
+    }
+});
+
+const vulns = latestScan?.vulnerabilities || [];
+// Sort vulns by severity
+const severityOrder: Record<string, number> = { "CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "UNKNOWN": 4 };
+vulns.sort((a, b) => (severityOrder[a.severity] ?? 99) - (severityOrder[b.severity] ?? 99));
+
+---
+
+<BaseLayout title={`Security · ${repoInfo.owner}/${repoInfo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repoInfo} activeTab="security" />
+
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-semibold">Security Overview</h1>
+            <p class="text-muted-foreground">Vulnerability scanning provided by Trivy</p>
+        </div>
+        
+        {canWrite && (
+             <Button id="scan-btn" disabled={latestScan?.status === 'in_progress' || latestScan?.status === 'queued'}>
+               {latestScan?.status === 'in_progress' || latestScan?.status === 'queued' ? (
+                   <>
+                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                     Scanning...
+                   </>
+               ) : (
+                   <>
+                     <Play className="mr-2 h-4 w-4" />
+                     Run Scan
+                   </>
+               )}
+            </Button>
+        )}
+    </div>
+
+    {!latestScan ? (
+        <div class="text-center py-12 border rounded-lg bg-muted/5">
+            <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 class="text-lg font-medium">No scans yet</h3>
+            <p class="text-muted-foreground mb-4">Run a security scan to detect vulnerabilities in your code.</p>
+        </div>
+    ) : (
+        <div class="space-y-6">
+            {/* Summary Cards */}
+            <div class="grid gap-4 md:grid-cols-4">
+               <div class="border rounded-lg p-4 bg-card">
+                  <div class="text-sm font-medium text-muted-foreground">Critical</div>
+                  <div class="text-2xl font-bold text-red-600">{latestScan.criticalCount}</div>
+               </div>
+               <div class="border rounded-lg p-4 bg-card">
+                  <div class="text-sm font-medium text-muted-foreground">High</div>
+                  <div class="text-2xl font-bold text-orange-600">{latestScan.highCount}</div>
+               </div>
+               <div class="border rounded-lg p-4 bg-card">
+                  <div class="text-sm font-medium text-muted-foreground">Medium</div>
+                  <div class="text-2xl font-bold text-yellow-600">{latestScan.mediumCount}</div>
+               </div>
+               <div class="border rounded-lg p-4 bg-card">
+                  <div class="text-sm font-medium text-muted-foreground">Low</div>
+                  <div class="text-2xl font-bold text-blue-600">{latestScan.lowCount}</div>
+               </div>
+            </div>
+
+            {/* Scan Status Info */}
+            <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                <span class="font-medium">Last scan:</span>
+                <span>{latestScan.completedAt ? new Date(latestScan.completedAt).toLocaleString() : 'In Progress'}</span>
+                <span class="mx-2">•</span>
+                <span class="font-medium">Status:</span>
+                <span class={latestScan.status === 'completed' ? "text-green-600 capitalize" : "text-yellow-600 capitalize"}>{latestScan.status}</span>
+                {latestScan.status === 'failed' && (
+                    <span class="text-red-500 ml-2">Error: {latestScan.logs}</span>
+                )}
+            </div>
+
+            {/* Vulnerability List */}
+            <div class="border rounded-lg overflow-hidden">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-muted/50 text-muted-foreground border-b">
+                        <tr>
+                            <th class="px-4 py-3 font-medium">Severity</th>
+                            <th class="px-4 py-3 font-medium">ID</th>
+                            <th class="px-4 py-3 font-medium">Package</th>
+                            <th class="px-4 py-3 font-medium">Version</th>
+                            <th class="px-4 py-3 font-medium">Fixed In</th>
+                            <th class="px-4 py-3 font-medium">Title</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y">
+                        {vulns.length === 0 ? (
+                           <tr>
+                               <td colspan="6" class="px-4 py-8 text-center text-muted-foreground">
+                                   <div class="flex flex-col items-center gap-2">
+                                       <CheckCircle className="h-8 w-8 text-green-500" />
+                                       <p>No vulnerabilities found!</p>
+                                   </div>
+                               </td>
+                           </tr> 
+                        ) : (
+                           vulns.map(v => (
+                               <tr class="hover:bg-muted/5">
+                                   <td class="px-4 py-3">
+                                       <span class={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border
+                                          ${v.severity === 'CRITICAL' ? 'bg-red-100 text-red-800 border-red-200' :
+                                            v.severity === 'HIGH' ? 'bg-orange-100 text-orange-800 border-orange-200' :
+                                            v.severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                                            'bg-blue-100 text-blue-800 border-blue-200'}`}>
+                                           {v.severity}
+                                       </span>
+                                   </td>
+                                   <td class="px-4 py-3 font-mono text-xs">{v.vulnerabilityId}</td>
+                                   <td class="px-4 py-3 font-medium">{v.pkgName}</td>
+                                   <td class="px-4 py-3 font-mono text-xs">{v.installedVersion}</td>
+                                   <td class="px-4 py-3 font-mono text-xs">{v.fixedVersion}</td>
+                                   <td class="px-4 py-3 max-w-md truncate" title={v.title || ''}>{v.title}</td>
+                               </tr>
+                           ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    )}
+  </div>
+</BaseLayout>
+
+<script define:vars={{ repoOwner: repoInfo.owner, repoName: repoInfo.name }}>
+  const scanBtn = document.getElementById("scan-btn");
+
+  scanBtn?.addEventListener("click", async () => {
+     scanBtn.setAttribute("disabled", "true");
+     // Update UI to show loading state
+     scanBtn.innerHTML = '<span class="mr-2 h-4 w-4 animate-spin inline-block rounded-full border-2 border-current border-t-transparent"></span> Starting...';
+
+     try {
+         const res = await fetch(`/api/repos/${repoOwner}/${repoName}/security/scan`, {
+             method: "POST"
+         });
+         
+         if (res.ok) {
+             window.location.reload();
+         } else {
+             alert("Failed to start scan");
+             scanBtn.removeAttribute("disabled");
+             scanBtn.textContent = "Run Scan"; 
+         }
+     } catch (e) {
+         console.error(e);
+         alert("Error starting scan");
+         scanBtn.removeAttribute("disabled");
+         scanBtn.textContent = "Run Scan";
+     }
+  });
+</script>

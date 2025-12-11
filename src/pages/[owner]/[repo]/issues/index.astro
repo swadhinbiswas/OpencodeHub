@@ -1,0 +1,209 @@
+---
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { Button } from "@/components/ui/button";
+import { getDatabase, schema } from "@/db";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { canReadRepo } from "@/lib/permissions";
+import { timeAgo } from "@/lib/utils";
+import { and, desc, eq } from "drizzle-orm";
+import { AlertCircle, CheckCircle2, MessageSquare, Search } from "lucide-react";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+// 1. Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!)
+  ),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canReadRepo(currentUser?.id, repoData);
+
+if (!hasAccess) {
+  return Astro.redirect("/404");
+}
+
+// 2. Fetch Issues
+const issuesList = await db.query.issues.findMany({
+  where: eq(schema.issues.repositoryId, repoData.id),
+  orderBy: [desc(schema.issues.createdAt)],
+  with: {
+    author: true,
+    // labels: { with: { label: true } } // TODO: Fix schema relations
+  },
+});
+
+const openCount = issuesList.filter((i) => i.state === "open").length;
+const closedCount = issuesList.filter((i) => i.state === "closed").length;
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  license: repoData.licenseType || "None",
+  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+  updatedAt: repoData.updatedAt,
+  httpCloneUrl: repoData.httpCloneUrl,
+  sshCloneUrl: repoData.sshCloneUrl,
+  openIssueCount: openCount,
+  openPrCount: repoData.openPrCount,
+};
+---
+
+<BaseLayout title={`Issues · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="issues" />
+
+    <!-- Issues Header -->
+    <div
+      class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6"
+    >
+      <div class="relative flex-1 max-w-xl">
+        <Search
+          className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"
+        />
+        <input
+          type="search"
+          placeholder="Search all issues"
+          class="w-full rounded-md border border-input bg-background pl-9 pr-4 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+      </div>
+      <div class="flex gap-2">
+        <Button variant="outline" asChild>
+          <a href={`/${repo.owner}/${repo.name}/issues/labels`}>Labels</a>
+        </Button>
+        <Button variant="outline">Milestones</Button>
+        <Button asChild>
+          <a href={`/${repo.owner}/${repo.name}/issues/new`}>New Issue</a>
+        </Button>
+      </div>
+    </div>
+
+    <!-- Issues List -->
+    <div class="rounded-lg border">
+      <div class="flex items-center gap-4 border-b bg-muted/30 px-4 py-3">
+        <div class="flex items-center gap-4">
+          <a
+            href="?q=is:open"
+            class="flex items-center gap-1 text-sm font-medium text-foreground"
+          >
+            <AlertCircle className="h-4 w-4" />
+            {openCount} Open
+          </a>
+          <a
+            href="?q=is:closed"
+            class="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            {closedCount} Closed
+          </a>
+        </div>
+        <div class="flex-1"></div>
+        <div class="flex items-center gap-4 text-sm text-muted-foreground">
+          <button class="hover:text-foreground"
+            >Author <span class="ml-1">▼</span></button
+          >
+          <button class="hover:text-foreground"
+            >Label <span class="ml-1">▼</span></button
+          >
+          <button class="hover:text-foreground"
+            >Projects <span class="ml-1">▼</span></button
+          >
+          <button class="hover:text-foreground"
+            >Milestones <span class="ml-1">▼</span></button
+          >
+          <button class="hover:text-foreground"
+            >Assignee <span class="ml-1">▼</span></button
+          >
+          <button class="hover:text-foreground"
+            >Sort <span class="ml-1">▼</span></button
+          >
+        </div>
+      </div>
+
+      <div class="divide-y">
+        {
+          issuesList.length > 0 ? (
+            issuesList.map((issue) => (
+              <div class="flex items-start gap-3 p-4 hover:bg-muted/30">
+                <div class="mt-1">
+                  {issue.state === "open" ? (
+                    <AlertCircle className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <CheckCircle2 className="h-5 w-5 text-purple-600" />
+                  )}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1">
+                    <a
+                      href={`/${repo.owner}/${repo.name}/issues/${issue.number}`}
+                      class="font-semibold hover:text-primary truncate"
+                    >
+                      {issue.title}
+                    </a>
+                    {/* Labels would go here */}
+                  </div>
+                  <div class="text-xs text-muted-foreground">
+                    #{issue.number} opened {timeAgo(issue.createdAt)} by{" "}
+                    <a
+                      href={`/${issue.author.username}`}
+                      class="hover:text-primary"
+                    >
+                      {issue.author.username}
+                    </a>
+                  </div>
+                </div>
+                <div class="flex items-center gap-4 text-muted-foreground">
+                  {(issue.commentCount || 0) > 0 && (
+                    <a
+                      href={`/${repo.owner}/${repo.name}/issues/${issue.number}`}
+                      class="flex items-center gap-1 text-xs hover:text-primary"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      {issue.commentCount}
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div class="p-12 text-center">
+              <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 class="text-lg font-semibold mb-2">Welcome to issues!</h3>
+              <p class="text-muted-foreground mb-6">
+                Issues are used to track todos, bugs, feature requests, and
+                more.
+              </p>
+              <Button asChild>
+                <a href={`/${repo.owner}/${repo.name}/issues/new`}>
+                  Create the first issue
+                </a>
+              </Button>
+            </div>
+          )
+        }
+      </div>
+    </div>
+  </div>
+</BaseLayout>

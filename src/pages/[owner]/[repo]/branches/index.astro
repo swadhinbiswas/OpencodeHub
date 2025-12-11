@@ -1,0 +1,362 @@
+---
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { Button } from "@/components/ui/button";
+import { getDatabase, schema } from "@/db";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getBranches, getCommits } from "@/lib/git";
+import { canReadRepo, canWriteRepo } from "@/lib/permissions";
+import { getRepoPath } from "@/lib/utils";
+import { and, eq, sql } from "drizzle-orm";
+import {
+  GitBranch,
+  Trash2,
+  MoreHorizontal,
+  Plus,
+  Search,
+  AlertCircle,
+} from "lucide-react";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+// 1. Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!)
+  ),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canReadRepo(currentUser?.id, repoData);
+const canWrite = await canWriteRepo(currentUser?.id, repoData);
+
+if (!hasAccess) {
+  return Astro.redirect("/404");
+}
+
+// Fetch branches
+let branches: any[] = [];
+try {
+  const repoPath = getRepoPath(repoData.id);
+  const gitBranches = await getBranches(repoPath);
+
+  // For each branch, get the last commit info
+  branches = await Promise.all(
+    gitBranches.map(async (branch) => {
+      const commits = await getCommits(repoPath, {
+        ref: branch.name,
+        limit: 1,
+      });
+      const lastCommit = commits[0];
+
+      return {
+        ...branch,
+        lastCommit: lastCommit
+          ? {
+              sha: lastCommit.sha,
+              message: lastCommit.message,
+              authorName: lastCommit.authorName,
+              date: lastCommit.authorDate,
+            }
+          : null,
+      };
+    })
+  );
+} catch (error) {
+  console.error("Error fetching branches:", error);
+}
+
+// Fetch open issue count (for header)
+const issueCountResult = await db
+  .select({ count: sql<number>`count(*)` })
+  .from(schema.issues)
+  .where(
+    and(
+      eq(schema.issues.repositoryId, repoData.id),
+      eq(schema.issues.state, "open")
+    )
+  )
+  .get();
+
+const openIssueCount = issueCountResult?.count || 0;
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  license: repoData.licenseType || "None",
+  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+  updatedAt: repoData.updatedAt,
+  httpCloneUrl: repoData.httpCloneUrl,
+  sshCloneUrl: repoData.sshCloneUrl,
+  openIssueCount: openIssueCount,
+  openPrCount: repoData.openPrCount,
+};
+
+function timeAgo(date: Date | string | number) {
+  if (!date) return "";
+  const seconds = Math.floor(
+    (new Date().getTime() - new Date(date).getTime()) / 1000
+  );
+  let interval = seconds / 31536000;
+  if (interval > 1) return Math.floor(interval) + " years ago";
+  interval = seconds / 2592000;
+  if (interval > 1) return Math.floor(interval) + " months ago";
+  interval = seconds / 86400;
+  if (interval > 1) return Math.floor(interval) + " days ago";
+  interval = seconds / 3600;
+  if (interval > 1) return Math.floor(interval) + " hours ago";
+  interval = seconds / 60;
+  if (interval > 1) return Math.floor(interval) + " minutes ago";
+  return Math.floor(seconds) + " seconds ago";
+}
+---
+
+<BaseLayout title={`Branches · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="code" />
+
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-lg font-semibold flex items-center gap-2">
+        <GitBranch className="h-5 w-5" />
+        Branches
+        <span class="text-muted-foreground text-sm font-normal"
+          >{branches.length}</span
+        >
+      </h2>
+      {
+        canWrite && (
+          <Button id="new-branch-btn">
+            <Plus className="h-4 w-4 mr-2" />
+            New Branch
+          </Button>
+        )
+      }
+    </div>
+
+    <!-- New Branch Modal -->
+    <div
+      id="new-branch-modal"
+      class="hidden fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
+    >
+      <div
+        class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg"
+      >
+        <div class="flex flex-col space-y-1.5 text-center sm:text-left">
+          <h3 class="text-lg font-semibold leading-none tracking-tight">
+            Create a new branch
+          </h3>
+          <p class="text-sm text-muted-foreground">
+            Create a new branch from <strong>{repo.defaultBranch}</strong>
+          </p>
+        </div>
+        <div class="space-y-4 py-4">
+          <div class="space-y-2">
+            <label for="branch-name" class="text-sm font-medium leading-none">
+              Branch name
+            </label>
+            <input
+              id="branch-name"
+              class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              placeholder="feature/new-feature"
+            />
+          </div>
+          <div class="space-y-2">
+            <label for="source-branch" class="text-sm font-medium leading-none">
+              Source
+            </label>
+            <select
+              id="source-branch"
+              class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value={repo.defaultBranch}>{repo.defaultBranch}</option>
+              {
+                branches
+                  .filter((b) => b.name !== repo.defaultBranch)
+                  .map((b) => <option value={b.name}>{b.name}</option>)
+              }
+            </select>
+          </div>
+          <div id="error-message" class="text-sm text-red-500 hidden"></div>
+        </div>
+        <div class="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
+          <Button variant="outline" id="cancel-btn">Cancel</Button>
+          <Button id="create-branch-submit">Create branch</Button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Branches List -->
+    <div class="rounded-lg border divide-y">
+      <div class="bg-muted/30 px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">
+        Active Branches
+      </div>
+      {
+        branches.map((branch) => (
+          <div class="flex items-center justify-between p-4 hover:bg-muted/10 transition-colors">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-3 mb-1">
+                <a
+                  href={`/${repo.owner}/${repo.name}/tree/${branch.name}`}
+                  class="font-semibold text-primary hover:underline"
+                >
+                  {branch.name}
+                </a>
+                {branch.isDefault && (
+                  <span class="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                    Default
+                  </span>
+                )}
+                {branch.name === repo.defaultBranch ? (
+                  <span class="text-xs text-muted-foreground">Base branch</span>
+                ) : (
+                  <div class="flex items-center gap-2 text-xs text-muted-foreground">
+                    {/* Placeholder for ahead/behind stats */}
+                    <span>Updated {timeAgo(branch.lastCommit?.date)}</span>
+                  </div>
+                )}
+              </div>
+              <div class="text-sm text-muted-foreground flex items-center gap-2 truncate">
+                <span class="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">
+                    {branch.lastCommit?.sha.substring(0, 7)}
+                </span>
+                <span class="truncate">{branch.lastCommit?.message}</span>
+                <span class="text-xs">• {branch.lastCommit?.authorName}</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 ml-4">
+              {!branch.isDefault && (
+                <>
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={`/${repo.owner}/${repo.name}/pulls/new?head=${branch.name}&base=${repo.defaultBranch}`}>
+                      New Pull Request
+                    </a>
+                  </Button>
+                  {canWrite && (
+                    <button
+                      class="delete-branch-btn p-2 text-muted-foreground hover:text-red-600 transition-colors rounded-md hover:bg-red-50 dark:hover:bg-red-900/20"
+                      data-branch={branch.name}
+                      title="Delete branch"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        ))
+      }
+      {branches.length === 0 && (
+          <div class="p-8 text-center text-muted-foreground">
+              No branches found.
+          </div>
+      )}
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  const modal = document.getElementById("new-branch-modal");
+  const newBranchBtn = document.getElementById("new-branch-btn");
+  const cancelBtn = document.getElementById("cancel-btn");
+  const createBtn = document.getElementById("create-branch-submit");
+  const nameInput = document.getElementById("branch-name") as HTMLInputElement;
+  const sourceSelect = document.getElementById("source-branch") as HTMLSelectElement;
+  const errorMessage = document.getElementById("error-message");
+
+  // Open/Close Modal
+  newBranchBtn?.addEventListener("click", () => {
+    modal?.classList.remove("hidden");
+    nameInput?.focus();
+  });
+
+  cancelBtn?.addEventListener("click", () => {
+    modal?.classList.add("hidden");
+    if (errorMessage) errorMessage.classList.add("hidden");
+    if (nameInput) nameInput.value = "";
+  });
+
+  // Create Branch
+  createBtn?.addEventListener("click", async () => {
+    const name = nameInput?.value;
+    const startPoint = sourceSelect?.value;
+
+    if (!name) {
+      if (errorMessage) {
+        errorMessage.textContent = "Branch name is required";
+        errorMessage.classList.remove("hidden");
+      }
+      return;
+    }
+
+    createBtn.setAttribute("disabled", "true");
+    createBtn.textContent = "Creating...";
+
+    try {
+      const parts = window.location.pathname.split("/");
+      const owner = parts[1];
+      const repo = parts[2];
+
+      const res = await fetch(`/api/repos/${owner}/${repo}/branches`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, startPoint }),
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+
+      window.location.reload();
+    } catch (e: any) {
+      if (errorMessage) {
+        errorMessage.textContent = e.message;
+        errorMessage.classList.remove("hidden");
+      }
+      createBtn.removeAttribute("disabled");
+      createBtn.textContent = "Create branch";
+    }
+  });
+
+  // Delete Branch
+  document.querySelectorAll(".delete-branch-btn").forEach((btn) => {
+    btn.addEventListener("click", async (e: any) => {
+      const branch = btn.dataset.branch;
+      if (!confirm(`Are you sure you want to delete branch '${branch}'?`)) return;
+
+      try {
+        const parts = window.location.pathname.split("/");
+        const owner = parts[1];
+        const repo = parts[2];
+
+        const res = await fetch(`/api/repos/${owner}/${repo}/branches/${branch}`, {
+          method: "DELETE",
+        });
+
+        if (!res.ok) throw new Error(await res.text());
+
+        window.location.reload();
+      } catch (e: any) {
+        alert("Failed to delete branch: " + e.message);
+      }
+    });
+  });
+</script>

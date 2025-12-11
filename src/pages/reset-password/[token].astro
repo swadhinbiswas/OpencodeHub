@@ -1,0 +1,170 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDatabase } from "@/db";
+import { passwordResetTokens } from "@/db/schema";
+import { eq } from "drizzle-orm";
+
+const { token } = Astro.params;
+
+if (!token) {
+  return Astro.redirect("/login");
+}
+
+const db = getDatabase();
+const resetToken = await db.query.passwordResetTokens.findFirst({
+  where: eq(passwordResetTokens.token, token),
+});
+
+const isValid = resetToken && new Date(resetToken.expiresAt) > new Date();
+
+if (!isValid) {
+  // If token is invalid, we can either redirect or show an error state
+  // For better UX, let's show an error state on the page
+}
+---
+
+<BaseLayout title="Set New Password">
+  <div class="min-h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div class="sm:mx-auto sm:w-full sm:max-w-md">
+      <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+        Set new password
+      </h2>
+    </div>
+
+    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+      <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+        {
+          !isValid ? (
+            <div class="rounded-md bg-red-50 p-4">
+              <div class="flex">
+                <div class="flex-shrink-0">
+                  <svg
+                    class="h-5 w-5 text-red-400"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div class="ml-3">
+                  <h3 class="text-sm font-medium text-red-800">
+                    Invalid or expired link
+                  </h3>
+                  <div class="mt-2 text-sm text-red-700">
+                    <p>
+                      This password reset link is invalid or has expired. Please
+                      request a new one.
+                    </p>
+                  </div>
+                  <div class="mt-4">
+                    <div class="-mx-2 -my-1.5 flex">
+                      <a
+                        href="/password-reset"
+                        class="bg-red-50 px-2 py-1.5 rounded-md text-sm font-medium text-red-800 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-red-50 focus:ring-red-600"
+                      >
+                        Request new link
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <form class="space-y-6" id="new-password-form">
+              <input type="hidden" name="token" value={token} />
+
+              <div>
+                <label
+                  for="password"
+                  class="block text-sm font-medium text-gray-700"
+                >
+                  New Password
+                </label>
+                <div class="mt-1">
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    required
+                    minlength="8"
+                    class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  for="confirmPassword"
+                  class="block text-sm font-medium text-gray-700"
+                >
+                  Confirm Password
+                </label>
+                <div class="mt-1">
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    required
+                    minlength="8"
+                    class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <button
+                  type="submit"
+                  class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Reset Password
+                </button>
+              </div>
+            </form>
+          )
+        }
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  const form = document.getElementById("new-password-form") as HTMLFormElement;
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+
+    if (data.password !== data.confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (response.ok) {
+        alert(
+          "Password reset successfully. You can now login with your new password."
+        );
+        window.location.href = "/login";
+      } else {
+        const error = await response.json();
+        alert(error.message || "Failed to reset password");
+      }
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      alert("An error occurred while resetting password");
+    }
+  });
+</script>

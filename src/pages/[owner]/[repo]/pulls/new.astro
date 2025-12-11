@@ -1,0 +1,310 @@
+---
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { Button } from "@/components/ui/button";
+import { getDatabase, schema } from "@/db";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getBranches, compareBranches } from "@/lib/git";
+import { canReadRepo } from "@/lib/permissions";
+import { getRepoPath } from "@/lib/utils";
+import { and, eq, sql } from "drizzle-orm";
+import {
+  ArrowLeft,
+  ArrowRight,
+  GitPullRequest,
+  AlertCircle,
+  CheckCircle2,
+  FileText,
+  GitCommit,
+} from "lucide-react";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+// 1. Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!)
+  ),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canReadRepo(currentUser?.id, repoData);
+
+if (!hasAccess) {
+  return Astro.redirect("/404");
+}
+
+// Fetch branches
+let branches: string[] = [];
+try {
+  const repoPath = getRepoPath(repoData.id);
+  const gitBranches = await getBranches(repoPath);
+  branches = gitBranches.map(b => b.name);
+} catch (error) {
+  console.error("Error fetching branches:", error);
+}
+
+// Get selected branches from query params
+const baseBranch = Astro.url.searchParams.get("base") || repoData.defaultBranch;
+const headBranch = Astro.url.searchParams.get("head") || branches.find(b => b !== repoData.defaultBranch) || repoData.defaultBranch;
+
+// Fetch comparison data if branches are different
+let diffData = { commits: [], diffs: [] };
+let error = "";
+let canMerge = false;
+
+if (baseBranch !== headBranch) {
+  try {
+    const repoPath = getRepoPath(repoData.id);
+    diffData = await compareBranches(repoPath, baseBranch, headBranch);
+    canMerge = true; // Simplified: assume mergeable if git commands succeeded
+  } catch (e) {
+    error = "Failed to compare branches.";
+    console.error(e);
+  }
+}
+
+// Fetch open issue count (for header)
+const issueCountResult = await db
+  .select({ count: sql<number>`count(*)` })
+  .from(schema.issues)
+  .where(
+    and(
+      eq(schema.issues.repositoryId, repoData.id),
+      eq(schema.issues.state, "open")
+    )
+  )
+  .get();
+
+const openIssueCount = issueCountResult?.count || 0;
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  license: repoData.licenseType || "None",
+  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+  updatedAt: repoData.updatedAt,
+  httpCloneUrl: repoData.httpCloneUrl,
+  sshCloneUrl: repoData.sshCloneUrl,
+  openIssueCount: openIssueCount,
+  openPrCount: repoData.openPrCount,
+};
+---
+
+<BaseLayout title={`New Pull Request · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="pulls" />
+
+    <div class="mb-6">
+      <h1 class="text-2xl font-semibold mb-4">Compare changes</h1>
+      <p class="text-muted-foreground mb-6">
+        Compare changes across branches, commits, tags, and more below. If you
+        need to, you can also compare across forks.
+      </p>
+
+      {/* Branch Selectors */}
+      <div class="flex items-center gap-4 p-4 border rounded-lg bg-muted/30 mb-6">
+        <div class="flex items-center gap-2">
+          <GitPullRequest className="h-4 w-4 text-muted-foreground" />
+          <span class="text-sm text-muted-foreground">base:</span>
+          <select
+            class="h-8 rounded-md border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            onchange="window.location.search = `?base=${this.value}&head=${new URLSearchParams(window.location.search).get('head') || ''}`"
+          >
+            {branches.map((b) => (
+              <option value={b} selected={b === baseBranch}>{b}</option>
+            ))}
+          </select>
+        </div>
+
+        <ArrowLeft className="h-4 w-4 text-muted-foreground" />
+
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-muted-foreground">compare:</span>
+          <select
+            class="h-8 rounded-md border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            onchange="window.location.search = `?base=${new URLSearchParams(window.location.search).get('base') || ''}&head=${this.value}`"
+          >
+            {branches.map((b) => (
+              <option value={b} selected={b === headBranch}>{b}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {
+        baseBranch === headBranch ? (
+          <div class="p-8 text-center border rounded-lg bg-muted/10">
+            <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <h3 class="font-semibold text-lg">There isn't anything to compare.</h3>
+            <p class="text-muted-foreground">
+              You'll need to use two different branch names to get a valid comparison.
+            </p>
+          </div>
+        ) : diffData.commits.length === 0 ? (
+           <div class="p-8 text-center border rounded-lg bg-muted/10">
+            <CheckCircle2 className="h-8 w-8 text-green-600 mx-auto mb-2" />
+            <h3 class="font-semibold text-lg">There isn't anything to compare.</h3>
+            <p class="text-muted-foreground">
+              <strong>{baseBranch}</strong> is up to date with all commits from <strong>{headBranch}</strong>.
+            </p>
+          </div>
+        ) : (
+          <div class="grid gap-6 lg:grid-cols-4">
+            <div class="lg:col-span-3 space-y-6">
+               <div class="flex items-center justify-between border rounded-t-lg bg-green-50 dark:bg-green-950/20 px-4 py-3 border-green-200 dark:border-green-900 text-green-800 dark:text-green-300">
+                  <div class="flex items-center gap-2">
+                      <CheckCircle2 className="h-5 w-5" />
+                      <span class="font-medium">Able to merge.</span>
+                  </div>
+                  <span class="text-sm">These branches can be automatically merged.</span>
+               </div>
+               
+               {/* Create PR Form */}
+               <form id="create-pr-form" class="border rounded-b-lg p-6 space-y-4 -mt-6 rounded-t-none">
+                  <div class="space-y-2">
+                      <label for="title" class="text-sm font-medium">Title</label>
+                      <input 
+                        type="text" 
+                        id="title" 
+                        name="title" 
+                        required
+                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        value={diffData.commits[0]?.message || ""}
+                      />
+                  </div>
+                   <div class="space-y-2">
+                      <label for="body" class="text-sm font-medium">Description</label>
+                      <textarea 
+                        id="body" 
+                        name="body" 
+                        rows="4"
+                        class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        placeholder="Leave a comment"
+                      ></textarea>
+                  </div>
+                  <div class="flex justify-end">
+                      <Button type="submit" id="create-pr-btn">Create Pull Request</Button>
+                  </div>
+                  <div id="form-error" class="text-sm text-red-500 hidden"></div>
+               </form>
+
+               {/* Commits List */}
+               <div class="border rounded-lg">
+                  <div class="bg-muted/30 px-4 py-3 font-medium border-b flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                          <GitCommit className="h-4 w-4" />
+                          {diffData.commits.length} Commits
+                      </div>
+                      <div class="text-xs text-muted-foreground">
+                          {diffData.diffs.reduce((acc, curr) => acc + curr.additions, 0)} additions • {diffData.diffs.reduce((acc, curr) => acc + curr.deletions, 0)} deletions
+                      </div>
+                  </div>
+                  <div class="divide-y">
+                      {diffData.commits.map(commit => (
+                          <div class="flex items-center gap-3 p-3 text-sm hover:bg-muted/10">
+                              <div class="font-mono text-muted-foreground text-xs">{commit.sha.substring(0, 7)}</div>
+                              <div class="font-medium flex-1 truncate">{commit.message}</div>
+                              <div class="text-muted-foreground text-xs">{commit.authorName}</div>
+                              <div class="text-muted-foreground text-xs text-right w-24">{new Date(commit.authorDate).toLocaleDateString()}</div>
+                          </div>
+                      ))}
+                  </div>
+               </div>
+
+               {/* File Changes */}
+               <div class="space-y-4">
+                  <h3 class="font-semibold text-lg flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      Files changed
+                      <span class="bg-muted text-muted-foreground text-xs rounded-full px-2 py-0.5">{diffData.diffs.length}</span>
+                  </h3>
+                   {diffData.diffs.map(diff => (
+                       <div class="border rounded-lg overflow-hidden">
+                           <div class="bg-muted/30 px-4 py-2 border-b text-sm font-mono flex items-center justify-between">
+                               <span>{diff.file}</span>
+                               <span class="text-xs text-muted-foreground">
+                                   <span class="text-green-600">+{diff.additions}</span>
+                                   <span class="mx-1">/</span>
+                                   <span class="text-red-600">-{diff.deletions}</span>
+                               </span>
+                           </div>
+                           <div class="p-4 text-sm text-muted-foreground text-center italic bg-muted/5">
+                               {diff.status === "added" ? "New file created" : 
+                                diff.status === "deleted" ? "File deleted" : 
+                                "File modified"}
+                           </div>
+                       </div>
+                   ))}
+               </div>
+            </div>
+            
+            <div class="space-y-4">
+               {/* Sidebar info could go here */}
+            </div>
+          </div>
+        )
+      }
+    </div>
+  </div>
+</BaseLayout>
+
+<script define:vars={{ baseBranch, headBranch, repoOwner: repo.owner, repoName: repo.name }}>
+  const form = document.getElementById("create-pr-form");
+  const createBtn = document.getElementById("create-pr-btn");
+  const errorDiv = document.getElementById("form-error");
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    createBtn.setAttribute("disabled", "true");
+    createBtn.textContent = "Creating...";
+    errorDiv.classList.add("hidden");
+
+    const formData = new FormData(form);
+    const title = formData.get("title");
+    const body = formData.get("body");
+
+    try {
+      const res = await fetch(`/api/repos/${repoOwner}/${repoName}/pulls`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          body,
+          base: baseBranch,
+          head: headBranch
+        }),
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+
+      const data = await res.json();
+      window.location.href = `/${repoOwner}/${repoName}/pulls/${data.number}`;
+    } catch (e) {
+      errorDiv.textContent = "Failed to create PR: " + e.message;
+      errorDiv.classList.remove("hidden");
+      createBtn.removeAttribute("disabled");
+      createBtn.textContent = "Create Pull Request";
+    }
+  });
+</script>

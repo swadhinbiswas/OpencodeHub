@@ -1,0 +1,239 @@
+---
+import SettingsLayout from "@/layouts/SettingsLayout.astro";
+
+const user = Astro.locals.user;
+
+if (!user) {
+  return Astro.redirect("/login");
+}
+---
+
+<SettingsLayout title="Security Settings">
+  <div class="space-y-6">
+    <div>
+      <h3 class="text-lg font-medium leading-6 text-gray-900">
+        Security Settings
+      </h3>
+      <p class="mt-1 text-sm text-gray-500">
+        Manage your security preferences and two-factor authentication.
+      </p>
+    </div>
+
+    <div class="border-t border-gray-200 pt-6">
+      <h4 class="text-md font-medium text-gray-900">
+        Two-Factor Authentication
+      </h4>
+      <div class="mt-4">
+        {
+          user.twoFactorEnabled ? (
+            <div class="bg-green-50 border-l-4 border-green-400 p-4">
+              <div class="flex">
+                <div class="flex-shrink-0">
+                  <svg
+                    class="h-5 w-5 text-green-400"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div class="ml-3">
+                  <p class="text-sm text-green-700">
+                    Two-factor authentication is enabled.
+                  </p>
+                </div>
+              </div>
+              <div class="mt-4">
+                <button
+                  type="button"
+                  id="disable-2fa-btn"
+                  class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  Disable 2FA
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p class="text-sm text-gray-500 mb-4">
+                Add an extra layer of security to your account by enabling
+                two-factor authentication.
+              </p>
+              <button
+                type="button"
+                id="enable-2fa-btn"
+                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Enable 2FA
+              </button>
+            </div>
+          )
+        }
+      </div>
+    </div>
+
+    <!-- 2FA Setup Modal (Hidden by default) -->
+    <div
+      id="2fa-modal"
+      class="hidden fixed z-10 inset-0 overflow-y-auto"
+      aria-labelledby="modal-title"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0"
+      >
+        <div
+          class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          aria-hidden="true"
+        >
+        </div>
+        <span
+          class="hidden sm:inline-block sm:align-middle sm:h-screen"
+          aria-hidden="true">&#8203;</span
+        >
+        <div
+          class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6"
+        >
+          <div>
+            <h3
+              class="text-lg leading-6 font-medium text-gray-900"
+              id="modal-title"
+            >
+              Setup Two-Factor Authentication
+            </h3>
+            <div class="mt-2">
+              <p class="text-sm text-gray-500">
+                Scan the QR code below with your authenticator app (like Google
+                Authenticator or Authy).
+              </p>
+              <div id="qr-code-container" class="mt-4 flex justify-center">
+                <!-- QR Code will be inserted here -->
+              </div>
+              <div class="mt-4">
+                <label
+                  for="token"
+                  class="block text-sm font-medium text-gray-700"
+                >
+                  Verify Code
+                </label>
+                <div class="mt-1">
+                  <input
+                    type="text"
+                    name="token"
+                    id="token"
+                    class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                    placeholder="123456"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div
+            class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense"
+          >
+            <button
+              type="button"
+              id="verify-2fa-btn"
+              class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-2 sm:text-sm"
+            >
+              Verify & Enable
+            </button>
+            <button
+              type="button"
+              id="cancel-2fa-btn"
+              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:col-start-1 sm:text-sm"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</SettingsLayout>
+
+<script>
+  const enableBtn = document.getElementById("enable-2fa-btn");
+  const disableBtn = document.getElementById("disable-2fa-btn");
+  const modal = document.getElementById("2fa-modal");
+  const cancelBtn = document.getElementById("cancel-2fa-btn");
+  const verifyBtn = document.getElementById("verify-2fa-btn");
+  const qrContainer = document.getElementById("qr-code-container");
+  const tokenInput = document.getElementById("token") as HTMLInputElement;
+
+  let secret = "";
+
+  enableBtn?.addEventListener("click", async () => {
+    try {
+      const response = await fetch("/api/auth/2fa/setup", { method: "POST" });
+      const data = await response.json();
+
+      if (response.ok) {
+        secret = data.secret;
+        // In a real app, we'd render a QR code here. For now, we'll just show the URI or a placeholder.
+        // We can use a library like qrcode.js if available, or just show the secret.
+        qrContainer!.innerHTML = `
+          <div class="text-center">
+            <p class="text-xs text-gray-500 break-all">${data.uri}</p>
+            <p class="mt-2 font-mono font-bold">${data.secret}</p>
+          </div>
+        `;
+        modal?.classList.remove("hidden");
+      } else {
+        alert(data.message || "Failed to setup 2FA");
+      }
+    } catch (error) {
+      console.error("Error setting up 2FA:", error);
+    }
+  });
+
+  cancelBtn?.addEventListener("click", () => {
+    modal?.classList.add("hidden");
+    tokenInput!.value = "";
+  });
+
+  verifyBtn?.addEventListener("click", async () => {
+    const token = tokenInput?.value;
+    if (!token) return;
+
+    try {
+      const response = await fetch("/api/auth/2fa/enable", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, secret }),
+      });
+
+      if (response.ok) {
+        alert("2FA enabled successfully");
+        window.location.reload();
+      } else {
+        const data = await response.json();
+        alert(data.message || "Failed to verify code");
+      }
+    } catch (error) {
+      console.error("Error enabling 2FA:", error);
+    }
+  });
+
+  disableBtn?.addEventListener("click", async () => {
+    if (confirm("Are you sure you want to disable 2FA?")) {
+      try {
+        const response = await fetch("/api/auth/2fa/disable", {
+          method: "POST",
+        });
+        if (response.ok) {
+          window.location.reload();
+        } else {
+          alert("Failed to disable 2FA");
+        }
+      } catch (error) {
+        console.error("Error disabling 2FA:", error);
+      }
+    }
+  });
+</script>

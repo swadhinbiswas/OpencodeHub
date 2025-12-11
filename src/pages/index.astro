@@ -1,0 +1,247 @@
+---
+import { getDatabase, schema } from "@/db";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { eq } from "drizzle-orm";
+import {
+  Activity,
+  BookOpen,
+  Code,
+  GitBranch,
+  Settings,
+  Star,
+  Users,
+} from "lucide-react";
+
+// Fetch public repositories for the landing page
+const db = getDatabase();
+let recentRepos = [];
+let stats = {
+  repos: 0,
+  users: 0,
+  commits: 0,
+};
+
+try {
+  // Get recent public repos
+  recentRepos = await db.query.repositories.findMany({
+    where: eq(schema.repositories.visibility, "public"),
+    orderBy: (repositories, { desc }) => [desc(repositories.updatedAt)],
+    limit: 6,
+    with: {
+      owner: true,
+    },
+  });
+
+  // Get basic stats (mocked for now if tables are empty, but query structure is real)
+  const repoCount = db.select().from(schema.repositories).all().length;
+  const userCount = db.select().from(schema.users).all().length;
+
+  stats.repos = repoCount;
+  stats.users = userCount;
+} catch (e) {
+  console.error("Failed to fetch data:", e);
+}
+---
+
+<BaseLayout title="OpenCodeHub - Your Self-Hosted Git Platform">
+  <!-- Hero Section -->
+  <section class="border-b bg-gradient-to-b from-muted/50 to-background">
+    <div class="container py-16 md:py-24">
+      <div class="flex flex-col items-center text-center space-y-8">
+        <div class="space-y-4">
+          <h1 class="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
+            Self-hosted Git Platform
+            <br />
+            <span class="text-primary">for Modern Teams</span>
+          </h1>
+          <p class="mx-auto max-w-2xl text-lg text-muted-foreground">
+            Host your code, manage projects, run CI/CD pipelines, and
+            collaborate with your team. GitHub-compatible, fully self-hosted,
+            and open source.
+          </p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-4">
+          <a
+            href="/register"
+            class="inline-flex items-center justify-center rounded-md bg-primary px-8 py-3 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
+          >
+            Get Started
+          </a>
+          <a
+            href="/explore"
+            class="inline-flex items-center justify-center rounded-md border border-input bg-background px-8 py-3 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground"
+          >
+            Explore Repositories
+          </a>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-3 gap-8 pt-8 text-muted-foreground">
+          <div class="flex flex-col items-center">
+            <span class="text-2xl font-bold text-foreground">{stats.repos}</span
+            >
+            <span class="text-sm">Repositories</span>
+          </div>
+          <div class="flex flex-col items-center">
+            <span class="text-2xl font-bold text-foreground">{stats.users}</span
+            >
+            <span class="text-sm">Developers</span>
+          </div>
+          <div class="flex flex-col items-center">
+            <span class="text-2xl font-bold text-foreground">100%</span>
+            <span class="text-sm">Open Source</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Dynamic Repository List (If any exist) -->
+  {
+    recentRepos.length > 0 && (
+      <section class="container py-12">
+        <div class="flex items-center justify-between mb-8">
+          <h2 class="text-2xl font-bold tracking-tight">
+            Trending Repositories
+          </h2>
+          <a href="/explore" class="text-sm text-primary hover:underline">
+            View all
+          </a>
+        </div>
+        <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {recentRepos.map((repo) => (
+            <div class="group relative rounded-lg border p-6 hover:bg-muted/50 transition-colors">
+              <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                  <BookOpen class="h-5 w-5 text-muted-foreground" />
+                  <a
+                    href={`/${repo.owner.username}/${repo.slug}`}
+                    class="font-semibold hover:underline"
+                  >
+                    {repo.owner.username}/{repo.name}
+                  </a>
+                </div>
+                <div class="flex items-center gap-1 text-muted-foreground">
+                  <Star class="h-4 w-4" />
+                  <span class="text-xs">{repo.starCount}</span>
+                </div>
+              </div>
+              <p class="text-sm text-muted-foreground line-clamp-2 mb-4">
+                {repo.description || "No description provided."}
+              </p>
+              <div class="flex items-center gap-4 text-xs text-muted-foreground">
+                {repo.language && (
+                  <div class="flex items-center gap-1">
+                    <span class="h-2 w-2 rounded-full bg-blue-500" />
+                    {repo.language}
+                  </div>
+                )}
+                <div>
+                  Updated {new Date(repo.updatedAt).toLocaleDateString()}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  <!-- Features Grid -->
+  <section class="container py-16 md:py-24">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl font-bold tracking-tight">
+        Everything you need to ship code
+      </h2>
+      <p class="mt-4 text-lg text-muted-foreground">
+        A complete platform for version control, code review, and continuous
+        integration
+      </p>
+    </div>
+    <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+      <!-- Feature 1 -->
+      <div class="rounded-lg border bg-card p-6 shadow-sm">
+        <div
+          class="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10"
+        >
+          <Code className="h-6 w-6 text-primary" />
+        </div>
+        <h3 class="mt-4 text-lg font-semibold">Git Hosting</h3>
+        <p class="mt-2 text-muted-foreground">
+          Full Git support with SSH and HTTP protocols. Manage branches, tags,
+          and commits with ease.
+        </p>
+      </div>
+
+      <!-- Feature 2 -->
+      <div class="rounded-lg border bg-card p-6 shadow-sm">
+        <div
+          class="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10"
+        >
+          <GitBranch className="h-6 w-6 text-primary" />
+        </div>
+        <h3 class="mt-4 text-lg font-semibold">Pull Requests</h3>
+        <p class="mt-2 text-muted-foreground">
+          Review code changes with inline comments, approvals, and merge
+          strategies.
+        </p>
+      </div>
+
+      <!-- Feature 3 -->
+      <div class="rounded-lg border bg-card p-6 shadow-sm">
+        <div
+          class="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10"
+        >
+          <Activity className="h-6 w-6 text-primary" />
+        </div>
+        <h3 class="mt-4 text-lg font-semibold">CI/CD Pipelines</h3>
+        <p class="mt-2 text-muted-foreground">
+          GitHub Actions compatible workflows. Build, test, and deploy
+          automatically.
+        </p>
+      </div>
+
+      <!-- Feature 4 -->
+      <div class="rounded-lg border bg-card p-6 shadow-sm">
+        <div
+          class="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10"
+        >
+          <Users className="h-6 w-6 text-primary" />
+        </div>
+        <h3 class="mt-4 text-lg font-semibold">Team Collaboration</h3>
+        <p class="mt-2 text-muted-foreground">
+          Organizations, teams, and fine-grained permissions for enterprise
+          workflows.
+        </p>
+      </div>
+
+      <!-- Feature 5 -->
+      <div class="rounded-lg border bg-card p-6 shadow-sm">
+        <div
+          class="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10"
+        >
+          <BookOpen className="h-6 w-6 text-primary" />
+        </div>
+        <h3 class="mt-4 text-lg font-semibold">Documentation</h3>
+        <p class="mt-2 text-muted-foreground">
+          Built-in wiki, README rendering, and project documentation support.
+        </p>
+      </div>
+
+      <!-- Feature 6 -->
+      <div class="rounded-lg border bg-card p-6 shadow-sm">
+        <div
+          class="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10"
+        >
+          <Settings className="h-6 w-6 text-primary" />
+        </div>
+        <h3 class="mt-4 text-lg font-semibold">Administration</h3>
+        <p class="mt-2 text-muted-foreground">
+          Advanced controls, audit logs, and monitoring for system
+          administrators.
+        </p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

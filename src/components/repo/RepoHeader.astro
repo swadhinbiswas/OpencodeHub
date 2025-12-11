@@ -1,0 +1,263 @@
+---
+import {
+  GitBranch,
+  Star,
+  GitFork,
+  Eye,
+  Code,
+  FileText,
+  Settings,
+  Lock,
+  Globe,
+  PlayCircle,
+  Book,
+  Shield,
+  BarChart2,
+  GitPullRequest,
+  Layout,
+} from "lucide-react";
+
+interface Props {
+  repo: {
+    owner: string;
+    name: string;
+    description?: string | null;
+    visibility: string;
+    topics?: string[];
+    watchers?: number;
+    forks?: number;
+    stars?: number;
+    openIssueCount?: number;
+    openPrCount?: number;
+  };
+  activeTab:
+    | "code"
+    | "issues"
+    | "pulls"
+    | "actions"
+    | "projects"
+    | "wiki"
+    | "security"
+    | "insights"
+    | "settings";
+}
+
+const { repo, activeTab } = Astro.props;
+
+const tabs = [
+  {
+    id: "code",
+    label: "Code",
+    icon: Code,
+    href: `/${repo.owner}/${repo.name}`,
+  },
+  {
+    id: "issues",
+    label: "Issues",
+    icon: FileText,
+    href: `/${repo.owner}/${repo.name}/issues`,
+    count: repo.openIssueCount,
+  },
+  {
+    id: "pulls",
+    label: "Pull Requests",
+    icon: GitPullRequest,
+    href: `/${repo.owner}/${repo.name}/pulls`,
+    count: repo.openPrCount,
+  },
+  {
+    id: "actions",
+    label: "Actions",
+    icon: PlayCircle,
+    href: `/${repo.owner}/${repo.name}/actions`,
+  },
+  {
+    id: "projects",
+    label: "Projects",
+    icon: Layout,
+    href: `/${repo.owner}/${repo.name}/projects`,
+  },
+  {
+    id: "wiki",
+    label: "Wiki",
+    icon: Book,
+    href: `/${repo.owner}/${repo.name}/wiki`,
+  },
+  {
+    id: "security",
+    label: "Security",
+    icon: Shield,
+    href: `/${repo.owner}/${repo.name}/security`,
+  },
+  {
+    id: "insights",
+    label: "Insights",
+    icon: BarChart2,
+    href: `/${repo.owner}/${repo.name}/insights`,
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    icon: Settings,
+    href: `/${repo.owner}/${repo.name}/settings`,
+  },
+];
+---
+
+<div
+  class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-6"
+>
+  <div class="space-y-2">
+    <div class="flex items-center gap-2 text-sm text-muted-foreground">
+      <a href={`/${repo.owner}`} class="hover:text-primary">{repo.owner}</a>
+      <span>/</span>
+      <a
+        href={`/${repo.owner}/${repo.name}`}
+        class="font-semibold text-foreground hover:text-primary">{repo.name}</a
+      >
+      <span
+        class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs"
+      >
+        {
+          repo.visibility === "public" ? (
+            <>
+              <Globe className="h-3 w-3 mr-1" />
+              Public
+            </>
+          ) : (
+            <>
+              <Lock className="h-3 w-3 mr-1" />
+              Private
+            </>
+          )
+        }
+      </span>
+    </div>
+    {
+      repo.description && (
+        <p class="text-muted-foreground">{repo.description}</p>
+      )
+    }
+    {
+      repo.topics && repo.topics.length > 0 && (
+        <div class="flex flex-wrap gap-2">
+          {repo.topics.map((topic: string) => (
+            <a
+              href={`/topics/${topic}`}
+              class="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/20"
+            >
+              {topic}
+            </a>
+          ))}
+        </div>
+      )
+    }
+  </div>
+  <div class="flex items-center gap-2">
+    <div class="flex items-center rounded-md border shadow-sm">
+      <button
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium hover:bg-accent"
+      >
+        <Eye className="h-4 w-4" />
+        Watch
+        <span class="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs"
+          >{repo.watchers || 0}</span
+        >
+      </button>
+      <div class="w-px h-6 bg-border"></div>
+      <button class="px-2 py-1.5 hover:bg-accent">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="h-4 w-4"><path d="m6 9 6 6 6-6"></path></svg
+        >
+      </button>
+    </div>
+    <div class="flex items-center rounded-md border shadow-sm">
+      <button
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium hover:bg-accent"
+      >
+        <GitFork className="h-4 w-4" />
+        Fork
+        <span class="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs"
+          >{repo.forks || 0}</span
+        >
+      </button>
+      <div class="w-px h-6 bg-border"></div>
+      <button class="px-2 py-1.5 hover:bg-accent">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="h-4 w-4"><path d="m6 9 6 6 6-6"></path></svg
+        >
+      </button>
+    </div>
+    <div class="flex items-center rounded-md border shadow-sm">
+      <button
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium hover:bg-accent"
+      >
+        <Star className="h-4 w-4" />
+        Star
+        <span class="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs"
+          >{repo.stars || 0}</span
+        >
+      </button>
+      <div class="w-px h-6 bg-border"></div>
+      <button class="px-2 py-1.5 hover:bg-accent">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="h-4 w-4"><path d="m6 9 6 6 6-6"></path></svg
+        >
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Navigation Tabs -->
+<div class="border-b mb-6 overflow-x-auto">
+  <nav class="flex gap-6 -mb-px min-w-max">
+    {
+      tabs.map((tab) => (
+        <a
+          href={tab.href}
+          class:list={[
+            "inline-flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors",
+            activeTab === tab.id
+              ? "border-primary text-foreground"
+              : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
+          ]}
+        >
+          <tab.icon className="h-4 w-4" />
+          {tab.label}
+          {tab.count !== undefined && (
+            <span class="rounded-full bg-muted px-2 py-0.5 text-xs">
+              {tab.count}
+            </span>
+          )}
+        </a>
+      ))
+    }
+  </nav>
+</div>

@@ -1,0 +1,152 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { getDatabase, schema } from "@/db";
+import { eq, and } from "drizzle-orm";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+// 1. Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!)
+  ),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check auth
+const currentUser = Astro.locals.user;
+if (!currentUser) {
+  return Astro.redirect(`/login?redirect=${Astro.url.pathname}`);
+}
+
+// TODO: Check permissions (can user create issue?)
+
+const repoForHeader = {
+  ...repoData,
+  owner: repoData.owner.username,
+};
+---
+
+<BaseLayout title={`New Issue · ${ownerName}/${repoName}`}>
+  <RepoHeader repo={repoForHeader} activeTab="issues" />
+
+  <div class="container max-w-4xl py-8">
+    <div class="mb-6">
+      <h1 class="text-2xl font-semibold">New Issue</h1>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-[1fr_300px] gap-8">
+      <div class="space-y-6">
+        <form id="create-issue-form" class="space-y-4">
+          <div class="space-y-2">
+            <Input
+              id="title"
+              name="title"
+              placeholder="Title"
+              required
+              className="text-lg font-medium"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <Textarea
+              id="body"
+              name="body"
+              placeholder="Leave a comment"
+              className="min-h-[200px] font-mono text-sm"
+            />
+            <p class="text-xs text-muted-foreground">Markdown is supported.</p>
+          </div>
+
+          <div class="flex justify-end gap-2">
+            <Button variant="outline" type="button" id="cancel-btn">
+              Cancel
+            </Button>
+            <Button type="submit" id="submit-btn"> Submit new issue </Button>
+          </div>
+        </form>
+      </div>
+
+      <div class="space-y-6">
+        <div class="text-sm text-muted-foreground">
+          <h3 class="font-medium text-foreground mb-2">Assignees</h3>
+          <p>No one—assign yourself</p>
+        </div>
+        <div class="text-sm text-muted-foreground">
+          <h3 class="font-medium text-foreground mb-2">Labels</h3>
+          <p>None yet</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  const form = document.getElementById("create-issue-form") as HTMLFormElement;
+  const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+  const cancelBtn = document.getElementById("cancel-btn") as HTMLButtonElement;
+
+  cancelBtn?.addEventListener("click", () => {
+    window.history.back();
+  });
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    submitBtn.disabled = true;
+    const originalText = submitBtn.innerText;
+    submitBtn.innerText = "Submitting...";
+
+    try {
+      const formData = new FormData(form);
+      const data = {
+        title: formData.get("title"),
+        body: formData.get("body"),
+      };
+
+      // Get owner and repo from URL
+      const pathParts = window.location.pathname.split("/");
+      const owner = pathParts[1];
+      const repo = pathParts[2];
+
+      const response = await fetch(`/api/repos/${owner}/${repo}/issues`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to create issue");
+      }
+
+      // Redirect to the new issue
+      window.location.href = `/${owner}/${repo}/issues/${result.data.number}`;
+    } catch (error) {
+      console.error("Error creating issue:", error);
+      alert(error instanceof Error ? error.message : "An error occurred");
+
+      submitBtn.disabled = false;
+      submitBtn.innerText = originalText;
+    }
+  });
+</script>

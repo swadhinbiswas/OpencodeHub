@@ -1,0 +1,7 @@
+---
+const user = Astro.locals.user;
+if (user) {
+  return Astro.redirect(`/${user.username}`);
+}
+return Astro.redirect("/login");
+---

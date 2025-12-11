@@ -1,0 +1,50 @@
+# OpenCodeHub - Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Data directory (contains db, repos, uploads)
+data/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# SSH keys (generated)
+*.pem
+*.key
+!*.key.pub
+
+# Docker
+.docker/
+
+# Drizzle
+drizzle/meta/
+
+# Monaco Editor cache
+.monaco/
