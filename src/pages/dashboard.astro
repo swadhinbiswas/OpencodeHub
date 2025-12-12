@@ -62,7 +62,7 @@ const activities = [];
             {
               repos.map((repo) => (
                 <a
-                  href={`/${repo.slug}`}
+                  href={`/${repo.owner.username}/${repo.name}`}
                   class="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-md transition-colors"
                 >
                   <Book class="h-4 w-4" />
@@ -134,7 +134,7 @@ const activities = [];
                         <div class="space-y-1">
                           <CardTitle class="text-base">
                             <a
-                              href={`/${repo.slug}`}
+                              href={`/${repo.owner.username}/${repo.name}`}
                               class="hover:underline flex items-center gap-2"
                             >
                               <Book class="h-4 w-4 text-muted-foreground" />

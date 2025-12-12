@@ -116,7 +116,7 @@ try {
                 <div class="flex items-center gap-2">
                   <BookOpen class="h-5 w-5 text-muted-foreground" />
                   <a
-                    href={`/${repo.slug}`}
+                    href={`/${repo.owner.username}/${repo.name}`}
                     class="font-semibold hover:underline"
                   >
                     {repo.owner.username}/{repo.name}
