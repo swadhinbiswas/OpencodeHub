@@ -71,7 +71,7 @@ export function GlobalSearch() {
     };
 
     return (
-        <CommandDialog open={open} onOpenChange={setOpen}>
+        <CommandDialog open={open} onOpenChange={setOpen} shouldFilter={false}>
             <CommandInput
                 placeholder="Type a command or search..."
                 value={query}
