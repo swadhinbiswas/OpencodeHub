@@ -168,14 +168,17 @@ const user = Astro.locals.user;
       <a href="/pulls" class="block px-2 py-1.5 text-sm hover:bg-accent rounded-md">Pull Requests</a>
       <a href="/actions" class="block px-2 py-1.5 text-sm hover:bg-accent rounded-md">Actions</a>
       <div class="pt-2">
-        <input
-          type="search"
-          placeholder="Search..."
-          class="w-full h-9 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground"
-        />
+        <button
+          class="w-full flex items-center h-9 rounded-md border border-input bg-background px-3 text-sm text-muted-foreground text-left"
+          id="mobile-search-trigger"
+        >
+          Search...
+        </button>
       </div>
     </nav>
   </div>
+  
+  <GlobalSearch client:idle />
 </header>
 
 <script>
@@ -212,14 +215,24 @@ const user = Astro.locals.user;
     })
   })
 
-  // Keyboard shortcut for search (Cmd/Ctrl + K)
-  document.addEventListener('keydown', (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-      e.preventDefault()
-      const searchInput = document.querySelector('input[type="search"]') as HTMLInputElement
-      if (searchInput) {
-        searchInput.focus()
-      }
-    }
-  })
+  // Search Triggers
+  const searchInput = document.querySelector('input[type="search"]') as HTMLInputElement
+  const mobileSearchTrigger = document.getElementById('mobile-search-trigger')
+
+  function openSearch() {
+      window.dispatchEvent(new CustomEvent('open-global-search'));
+  }
+
+  if (searchInput) {
+      searchInput.addEventListener('click', (e) => {
+          e.preventDefault();
+          searchInput.blur(); // Don't actually focus
+          openSearch();
+      });
+      // Also handle keydown k if focused (though usually we intercept global k)
+  }
+  
+  if (mobileSearchTrigger) {
+      mobileSearchTrigger.addEventListener('click', openSearch);
+  }
 </script>

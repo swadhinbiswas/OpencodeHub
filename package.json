@@ -57,6 +57,7 @@
     "bullmq": "^5.65.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "dockerode": "^4.0.2",
     "drizzle-orm": "^0.45.1",
     "framer-motion": "^11.2.12",
