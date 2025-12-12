@@ -41,7 +41,7 @@ async function main() {
 
     // 2. Create Repository
     const repoName = "OpenCodeHub";
-    const repoSlug = `${username}/${repoName}`;
+    const repoSlug = repoName;
     const repoPath = join(process.cwd(), "data", "repos", username, `${repoName}.git`);
 
     const existingRepo = await db.query.repositories.findFirst({
