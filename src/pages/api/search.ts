@@ -1,7 +1,6 @@
-
 import type { APIRoute } from 'astro';
 import { getDatabase, schema } from '@/db';
-import { ilike, or, and, eq, desc } from 'drizzle-orm';
+import { like, or, and, eq, desc } from 'drizzle-orm';
 import { success, serverError } from '@/lib/api';
 
 export const GET: APIRoute = async ({ request }) => {
@@ -18,8 +17,8 @@ export const GET: APIRoute = async ({ request }) => {
         // Search Repositories
         const repos = await db.query.repositories.findMany({
             where: or(
-                ilike(schema.repositories.name, `%${query}%`),
-                ilike(schema.repositories.description, `%${query}%`)
+                like(schema.repositories.name, `%${query}%`),
+                like(schema.repositories.description, `%${query}%`)
             ),
             with: {
                 owner: true
@@ -31,8 +30,8 @@ export const GET: APIRoute = async ({ request }) => {
         // Search Users
         const users = await db.query.users.findMany({
             where: or(
-                ilike(schema.users.username, `%${query}%`),
-                ilike(schema.users.displayName, `%${query}%`)
+                like(schema.users.username, `%${query}%`),
+                like(schema.users.displayName, `%${query}%`)
             ),
             limit: 3
         });
