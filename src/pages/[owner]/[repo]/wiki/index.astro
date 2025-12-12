@@ -1,0 +1,130 @@
+---
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { Button } from "@/components/ui/button";
+import { getDatabase, schema } from "@/db";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { canReadRepo } from "@/lib/permissions";
+import { and, eq } from "drizzle-orm";
+import { Book, Plus } from "lucide-react";
+import { marked } from "marked";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+// 1. Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!)
+  ),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canReadRepo(currentUser?.id, repoData);
+
+if (!hasAccess) {
+  return Astro.redirect("/404");
+}
+
+// Check if Wiki is enabled
+if (!repoData.hasWiki) {
+    return Astro.redirect("/404");
+}
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+  openIssueCount: repoData.openIssueCount,
+  openPrCount: repoData.openPrCount,
+};
+
+// Fetch Wiki Home Page
+// Assuming 'home' is the default slug
+const homePage = await db.query.wikiPages.findFirst({
+    where: and(
+        eq(schema.wikiPages.repositoryId, repoData.id),
+        eq(schema.wikiPages.slug, 'home')
+    )
+});
+
+let contentHtml = '';
+if (homePage) {
+    contentHtml = await marked.parse(homePage.content);
+}
+---
+
+<BaseLayout title={`Wiki · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="wiki" />
+
+    <div class="flex flex-col md:flex-row gap-6 mt-6">
+        <!-- Sidebar (Page List) - Placeholder for now -->
+        <div class="w-full md:w-64 flex-shrink-0 space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="font-semibold">Pages</h3>
+                {homePage && (
+                     <Button size="sm" variant="outline" asChild>
+                        <a href={`/${repo.owner}/${repo.name}/wiki/_new`}>
+                            <Plus className="h-4 w-4" />
+                        </a>
+                     </Button>
+                )}
+            </div>
+            {/* List pages here if needed */}
+             <nav class="flex flex-col space-y-1">
+                <a href={`/${repo.owner}/${repo.name}/wiki`} class:list={["px-3 py-2 rounded-md text-sm font-medium", !homePage || homePage.slug === 'home' ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50"]}>
+                    Home
+                </a>
+             </nav>
+        </div>
+
+        {/* Main Content */}
+        <div class="flex-1 min-w-0">
+            {homePage ? (
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between border-b pb-4">
+                        <h1 class="text-3xl font-bold">{homePage.title}</h1>
+                        <div class="flex gap-2">
+                             <Button variant="outline" size="sm">Edit</Button>
+                             <Button variant="outline" size="sm">History</Button>
+                        </div>
+                    </div>
+                    <div class="prose max-w-none dark:prose-invert" set:html={contentHtml} />
+                </div>
+            ) : (
+                <div class="p-12 text-center border rounded-lg bg-muted/10">
+                    <Book className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 class="text-lg font-semibold mb-2">Welcome to the Wiki!</h3>
+                    <p class="text-muted-foreground mb-6">
+                        This repository has no wiki pages yet. Start by creating the home page.
+                    </p>
+                    <Button asChild>
+                         <a href={`/${repo.owner}/${repo.name}/wiki/_new`}>
+                            Create the first page
+                         </a>
+                    </Button>
+                </div>
+            )}
+        </div>
+    </div>
+  </div>
+</BaseLayout>
