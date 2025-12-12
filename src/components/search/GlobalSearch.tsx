@@ -8,7 +8,7 @@ import {
     CommandItem,
     CommandList,
 } from "@/components/ui/command";
-import { Search, FileText, User, GitBranch } from "lucide-react";
+import { Search, FileText, User, GitBranch, GitPullRequest, CircleDot, Workflow } from "lucide-react";
 
 export function GlobalSearch() {
     const [open, setOpen] = React.useState(false);
@@ -90,6 +90,9 @@ export function GlobalSearch() {
                             >
                                 {result.type === 'repository' && <GitBranch className="mr-2 h-4 w-4" />}
                                 {result.type === 'user' && <User className="mr-2 h-4 w-4" />}
+                                {result.type === 'issue' && <CircleDot className="mr-2 h-4 w-4 text-green-600" />}
+                                {result.type === 'pr' && <GitPullRequest className="mr-2 h-4 w-4 text-purple-600" />}
+                                {result.type === 'workflow' && <Workflow className="mr-2 h-4 w-4 text-blue-600" />}
                                 <div className="flex flex-col">
                                     <span>{result.title}</span>
                                     <span className="text-xs text-muted-foreground">{result.subtitle}</span>
