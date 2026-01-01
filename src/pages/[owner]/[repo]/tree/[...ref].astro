@@ -1,0 +1,463 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import {
+  GitBranch,
+  Code,
+  Tag,
+  ChevronDown,
+  Copy,
+  Download,
+  GitCommit,
+  FileText,
+  Clock,
+} from "lucide-react";
+import { getDatabase, schema } from "@/db";
+import { eq, and, sql } from "drizzle-orm";
+import {
+  listFiles,
+  getLastCommit,
+  getCommits,
+  getFileContent,
+  getBranches,
+} from "@/lib/git";
+import { canReadRepo } from "@/lib/permissions";
+import { renderMarkdown } from "@/lib/markdown";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import FileExplorer from "@/components/repo/FileExplorer.astro";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+// 1. Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!)
+  ),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canReadRepo(currentUser?.id, repoData);
+
+if (!hasAccess) {
+  return Astro.redirect("/404");
+}
+
+// Fetch issue count
+const issueCountResult = await db
+  .select({ count: sql<number>`count(*)` })
+  .from(schema.issues)
+  .where(
+    and(
+      eq(schema.issues.repositoryId, repoData.id),
+      eq(schema.issues.state, "open")
+    )
+  )
+  .get();
+
+const openIssueCount = issueCountResult?.count || 0;
+
+// 2. Git Operations
+// Extract branch and path from [...ref]
+// ref could be "main", "main/src", "feature/new", "feature/new/src"
+// We need to match against valid branches
+let branches: string[] = [repoData.defaultBranch];
+try {
+    const branchInfos = await getBranches(repoData.diskPath);
+    branches = branchInfos.map(b => b.name);
+} catch (e) {
+    console.error("Error fetching branches", e);
+}
+
+const refParam = Astro.params.ref || "";
+let currentBranch = repoData.defaultBranch;
+let currentPath = "";
+
+// Find the longest matching branch name
+const matchingBranch = branches
+    .filter(b => refParam === b || refParam.startsWith(b + "/"))
+    .sort((a, b) => b.length - a.length)[0];
+
+if (matchingBranch) {
+    currentBranch = matchingBranch;
+    currentPath = refParam.slice(matchingBranch.length).replace(/^\//, "");
+} else {
+    // If no match, maybe it's a commit hash or we default to main and treat Ref as path?
+    // For now, assume default branch if no match found (or 404)
+    // Actually, if we are in /tree/, we expect the first part to be a ref.
+    // If it's a valid commit SHA, we could use that.
+    // Let's assume it's a branch for now.
+    currentBranch = refParam.split("/")[0];
+    currentPath = refParam.split("/").slice(1).join("/");
+}
+
+let files: any[] = [];
+let latestCommit: any = null;
+let readme = "";
+
+// Format dates helper
+function timeAgo(date: Date | string | number) {
+  if (!date) return "";
+  const seconds = Math.floor(
+    (new Date().getTime() - new Date(date).getTime()) / 1000
+  );
+  let interval = seconds / 31536000;
+  if (interval > 1) return Math.floor(interval) + " years ago";
+  interval = seconds / 2592000;
+  if (interval > 1) return Math.floor(interval) + " months ago";
+  interval = seconds / 86400;
+  if (interval > 1) return Math.floor(interval) + " days ago";
+  interval = seconds / 3600;
+  if (interval > 1) return Math.floor(interval) + " hours ago";
+  interval = seconds / 60;
+  if (interval > 1) return Math.floor(interval) + " minutes ago";
+  return Math.floor(seconds) + " seconds ago";
+}
+
+try {
+  // Get files
+  const gitFiles = await listFiles(
+    repoData.diskPath,
+    currentBranch,
+    currentPath
+  );
+
+  // Map to UI format with commits
+  files = await Promise.all(
+    gitFiles.map(async (f) => {
+      const commit = await getLastCommit(
+        repoData.diskPath,
+        currentBranch,
+        f.path
+      );
+
+      const lastCommit = commit
+        ? {
+            message: commit.message,
+            date: timeAgo(commit.authorDate),
+            hash: commit.sha,
+          }
+        : undefined;
+
+      return {
+        name: f.name,
+        type: f.type,
+        lastCommit,
+      };
+    })
+  );
+
+  // Sort: directories first
+  files.sort((a, b) => {
+    if (a.type === "directory" && b.type !== "directory") return -1;
+    if (a.type !== "directory" && b.type === "directory") return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  // Get latest commit for the directory
+  const commits = await getCommits(repoData.diskPath, {
+    limit: 1,
+    ref: currentBranch,
+    path: currentPath,
+  });
+  if (commits.length > 0) {
+    latestCommit = commits[0];
+  }
+
+  // Get README
+  const readmeFile = files.find((f) => f.name.toLowerCase() === "readme.md");
+  if (readmeFile) {
+    const content = await getFileContent(
+      repoData.diskPath,
+      readmeFile.name,
+      currentBranch
+    );
+    if (content && !content.isBinary) {
+      readme = await renderMarkdown(content.content);
+    }
+  }
+} catch (error) {
+  console.error("Git error:", error);
+  // return Astro.redirect('/404'); // Don't redirect on git error, show empty repo maybe?
+}
+
+// Branches already fetched above
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  license: repoData.licenseType || "None",
+  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+  updatedAt: repoData.updatedAt,
+  httpCloneUrl: repoData.httpCloneUrl,
+  sshCloneUrl: repoData.sshCloneUrl,
+  openIssueCount: openIssueCount,
+  openPrCount: repoData.openPrCount,
+};
+---
+
+<BaseLayout title={`${repo.owner}/${repo.name} - OpenCodeHub`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="code" />
+
+    <div class="grid gap-6 lg:grid-cols-4">
+      <!-- Main Content -->
+      <div class="lg:col-span-3 space-y-4">
+        <!-- Branch/Clone Bar -->
+        <div
+          class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div class="flex items-center gap-2">
+            <!-- Branch Selector -->
+            <div class="relative">
+              <button
+                class="inline-flex items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-accent"
+                id="branch-btn"
+              >
+                <GitBranch className="h-4 w-4" />
+                {currentBranch}
+                <ChevronDown className="h-4 w-4" />
+              </button>
+              <div
+                id="branch-dropdown"
+                class="hidden absolute left-0 top-full mt-1 w-64 rounded-md border bg-popover p-2 shadow-lg z-10"
+              >
+                <input
+                  type="search"
+                  placeholder="Find a branch..."
+                  class="w-full mb-2 h-8 rounded-md border bg-background px-3 text-sm"
+                />
+                <div class="max-h-64 overflow-y-auto">
+                  <div
+                    class="text-xs font-semibold text-muted-foreground px-2 py-1"
+                  >
+                    Branches
+                  </div>
+                  {
+                    branches.map((b) => (
+                      <a
+                        href={`/${repo.owner}/${repo.name}/tree/${b}`}
+                        class={`flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent ${b === currentBranch ? "bg-accent" : ""}`}
+                      >
+                        {b === currentBranch && (
+                          <span class="text-primary">✓</span>
+                        )}
+                        {b}
+                      </a>
+                    ))
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <!-- Clone Button -->
+            <div class="relative">
+              <button
+                class="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
+                id="clone-btn"
+              >
+                <Code className="h-4 w-4" />
+                Code
+                <ChevronDown className="h-4 w-4" />
+              </button>
+              <div
+                id="clone-dropdown"
+                class="hidden absolute right-0 top-full mt-1 w-80 rounded-md border bg-popover p-4 shadow-lg z-10"
+              >
+                <div class="space-y-4">
+                  <div>
+                    <div class="flex items-center gap-2 mb-2">
+                      <button
+                        class="text-sm font-medium border-b-2 border-primary pb-1"
+                        >HTTPS</button
+                      >
+                      <button
+                        class="text-sm font-medium text-muted-foreground pb-1"
+                        >SSH</button
+                      >
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <input
+                        type="text"
+                        readonly
+                        value={repo.httpCloneUrl}
+                        class="flex-1 h-8 rounded-md border bg-muted px-2 text-xs font-mono"
+                      />
+                      <button
+                        class="inline-flex items-center justify-center h-8 w-8 rounded-md border hover:bg-accent"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div class="border-t pt-4 space-y-2">
+                    <a
+                      href={`/${repo.owner}/${repo.name}/archive/refs/heads/${currentBranch}.zip`}
+                      class="flex items-center gap-2 text-sm hover:text-primary"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download ZIP
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- File Browser -->
+        <div class="space-y-4">
+          <!-- Latest Commit -->
+          {
+            latestCommit ? (
+              <div class="flex items-center gap-4 rounded-lg border bg-muted/30 p-4">
+                <div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                  <span class="text-sm font-medium">
+                    {latestCommit.authorName[0]}
+                  </span>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 text-sm">
+                    <a href="#" class="font-medium hover:text-primary">
+                      {latestCommit.authorName}
+                    </a>
+                    <a href="#" class="truncate hover:text-primary">
+                      {latestCommit.message}
+                    </a>
+                  </div>
+                  <div class="flex items-center gap-2 text-xs text-muted-foreground">
+                    <a href="#" class="font-mono hover:text-primary">
+                      {latestCommit.sha.substring(0, 7)}
+                    </a>
+                    <span>·</span>
+                    <span>committed {timeAgo(latestCommit.authorDate)}</span>
+                  </div>
+                </div>
+                <a
+                  href={`/${repo.owner}/${repo.name}/commits/${currentBranch}`}
+                  class="text-sm text-muted-foreground hover:text-primary whitespace-nowrap"
+                >
+                  <GitCommit className="h-4 w-4 inline mr-1" />
+                  History
+                </a>
+              </div>
+            ) : (
+              <div class="p-4 text-sm text-muted-foreground border rounded-lg">
+                No commits yet.
+              </div>
+            )
+          }
+
+          <!-- File List -->
+          <FileExplorer
+            owner={repo.owner}
+            repo={repo.name}
+            branch={currentBranch}
+            path={currentPath}
+            files={files}
+          />
+
+          <!-- README -->
+          {
+            readme && (
+              <div class="rounded-lg border mt-8">
+                <div class="flex items-center gap-2 border-b px-4 py-3 bg-muted/30">
+                  <FileText className="h-4 w-4" />
+                  <span class="font-medium">README.md</span>
+                </div>
+                <div
+                  class="p-6 prose dark:prose-invert max-w-none"
+                  set:html={readme}
+                />
+              </div>
+            )
+          }
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="space-y-4">
+        <!-- About -->
+        <div class="rounded-lg border p-4">
+          <h3 class="font-semibold mb-2">About</h3>
+          <p class="text-sm text-muted-foreground mb-4">
+            {repo.description || "No description provided."}
+          </p>
+          <div class="space-y-2 text-sm">
+            <a
+              href="#"
+              class="flex items-center gap-2 text-muted-foreground hover:text-primary"
+            >
+              <svg class="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
+                <path
+                  d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 1.998 1.998 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a1.998 1.998 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 1.998 1.998 0 0 0-2.83 0l-2.5 2.5a1.998 1.998 0 0 0 0 2.83Z"
+                ></path>
+              </svg>
+              opencodehub.local/{repo.owner}/{repo.name}
+            </a>
+            <div class="flex items-center gap-2 text-muted-foreground">
+              <svg class="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
+                <path
+                  d="M8.75.75V2h.985c.304 0 .603.08.867.231l1.29.736c.038.022.08.033.124.033h2.234a.75.75 0 0 1 0 1.5h-.427l2.111 4.692a.75.75 0 0 1-.154.838l-.53-.53.53.53-.001.002-.002.002-.006.006-.016.015-.045.04a3.514 3.514 0 0 1-.686.45A4.492 4.492 0 0 1 13 11c-.88 0-1.556-.22-2.023-.454a3.515 3.515 0 0 1-.686-.45l-.045-.04a1.06 1.06 0 0 1-.016-.015l-.006-.006-.002-.002-.001-.002L10 9.5l-.53.53a.75.75 0 0 1-.154-.838L11.427 4.5H9.75a.247.247 0 0 1-.125-.034l-1.289-.736A1.75 1.75 0 0 0 7.435 3.5H7.25V5h.985c.304 0 .603.08.867.231l1.29.736a.25.25 0 0 0 .124.033h.984a.75.75 0 0 1 0 1.5h-.427l2.111 4.692a.75.75 0 0 1-.154.838l-.53-.53.53.53-.001.002-.002.002-.006.006-.016.015-.045.04a3.517 3.517 0 0 1-.686.45A4.492 4.492 0 0 1 10.75 14c-.88 0-1.556-.22-2.023-.454a3.515 3.515 0 0 1-.686-.45l-.045-.04a1.06 1.06 0 0 1-.016-.015l-.006-.006-.002-.002-.001-.002-.001-.001L8.5 12.5l-.53.53a.75.75 0 0 1-.154-.838L9.927 7.5H8.25a.247.247 0 0 1-.125-.034l-1.289-.736A1.75 1.75 0 0 0 5.965 6.5H1.75a.75.75 0 0 1 0-1.5h5.5V3.5H1.75a.75.75 0 0 1 0-1.5H6v-.75a.75.75 0 0 1 1.5 0Zm-.5 8.5h2l-1-2.22-1 2.22Zm5 3h2l-1-2.22-1 2.22Z"
+                ></path>
+              </svg>
+              {repo.license} license
+            </div>
+            <div class="flex items-center gap-2 text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              Updated {timeAgo(repo.updatedAt)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  // Branch dropdown
+  const branchBtn = document.getElementById("branch-btn");
+  const branchDropdown = document.getElementById("branch-dropdown");
+
+  branchBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    branchDropdown?.classList.toggle("hidden");
+    document.getElementById("clone-dropdown")?.classList.add("hidden");
+  });
+
+  // Clone dropdown
+  const cloneBtn = document.getElementById("clone-btn");
+  const cloneDropdown = document.getElementById("clone-dropdown");
+
+  cloneBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    cloneDropdown?.classList.toggle("hidden");
+    branchDropdown?.classList.add("hidden");
+  });
+
+  // Close dropdowns when clicking outside
+  document.addEventListener("click", () => {
+    branchDropdown?.classList.add("hidden");
+    cloneDropdown?.classList.add("hidden");
+  });
+</script>

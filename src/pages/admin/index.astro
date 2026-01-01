@@ -1,0 +1,34 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import AdminDashboard from "@/components/admin/AdminDashboard";
+
+// In a real app, middleware would protect this route
+// const user = Astro.locals.user;
+// if (!user || user.role !== 'admin') return Astro.redirect('/');
+---
+
+<AdminLayout title="OpenCodeHub Mission Control">
+  <div class="relative h-screen w-screen overflow-hidden bg-[#050510]">
+    {/* HUD Layer - Now in single component for optimized data fetching */}
+    <AdminDashboard client:only="react" />
+
+  </div>
+
+  <style>
+    /* Glassmorphism utility for the HUD */
+    :global(.glass-panel) {
+        background: rgba(13, 17, 23, 0.3);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    }
+    
+    :global(.custom-scrollbar::-webkit-scrollbar) {
+        width: 4px;
+    }
+    :global(.custom-scrollbar::-webkit-scrollbar-thumb) {
+        background: rgba(255,255,255,0.1);
+        border-radius: 2px;
+    }
+  </style>
+</AdminLayout>

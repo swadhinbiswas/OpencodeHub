@@ -6,7 +6,8 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 import { compareBranches, getCommits } from "@/lib/git";
 import { canReadRepo, canWriteRepo } from "@/lib/permissions";
 import { getRepoPath } from "@/lib/utils";
-import { and, eq, sql } from "drizzle-orm";
+import { getStackForPr } from "@/lib/stacks";
+import { and, eq, sql, asc } from "drizzle-orm";
 import {
   GitPullRequest,
   CheckCircle2,
@@ -15,7 +16,9 @@ import {
   MessageSquare,
   GitCommit,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Layers,
+  ChevronRight
 } from "lucide-react";
 
 const { owner: ownerName, repo: repoName, number } = Astro.params;
@@ -61,6 +64,46 @@ const pr = await db.query.pullRequests.findFirst({
 });
 
 if (!pr) return Astro.redirect("/404");
+
+// Fetch Stack Info for this PR
+let stackInfo: {
+  id: string;
+  name: string | null;
+  baseBranch: string;
+  entries: Array<{
+    order: number;
+    pr: {
+      id: string;
+      number: number;
+      title: string;
+      state: string;
+      isMerged: boolean | null;
+    };
+  }>;
+} | null = null;
+
+try {
+  const stackData = await getStackForPr(pr.id);
+  if (stackData) {
+    stackInfo = {
+      id: stackData.stack.id,
+      name: stackData.stack.name,
+      baseBranch: stackData.stack.baseBranch,
+      entries: stackData.entries.map(e => ({
+        order: e.entry.stackOrder,
+        pr: {
+          id: e.pr.id,
+          number: e.pr.number,
+          title: e.pr.title,
+          state: e.pr.state,
+          isMerged: e.pr.isMerged,
+        },
+      })),
+    };
+  }
+} catch (e) {
+  console.error("Failed to fetch stack info:", e);
+}
 
 // Fetch Diff Data
 let diffData = { commits: [], diffs: [] };
@@ -247,6 +290,56 @@ const repo = {
             </div>
             
             <div class="space-y-6">
+                {/* Stack Navigation */}
+                {stackInfo && stackInfo.entries.length > 1 && (
+                  <div class="border rounded-lg p-4">
+                    <div class="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-3">
+                      <Layers class="h-4 w-4" />
+                      <span>Stacked Changes</span>
+                      <span class="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                        {stackInfo.entries.length} PRs
+                      </span>
+                    </div>
+                    <div class="space-y-2">
+                      <div class="text-xs text-muted-foreground mb-2">
+                        Base: <code class="bg-muted px-1 py-0.5 rounded">{stackInfo.baseBranch}</code>
+                      </div>
+                      {stackInfo.entries.map((entry, i) => {
+                        const isCurrent = entry.pr.id === pr.id;
+                        return (
+                          <a
+                            href={`/${repo.owner}/${repo.name}/pulls/${entry.pr.number}`}
+                            class:list={[
+                              "flex items-center gap-2 p-2 rounded-md text-sm transition-colors",
+                              isCurrent 
+                                ? "bg-primary/10 border border-primary/30" 
+                                : "hover:bg-muted"
+                            ]}
+                          >
+                            <span class="text-xs text-muted-foreground w-4">{entry.order}</span>
+                            {entry.pr.isMerged ? (
+                              <GitMerge class="h-4 w-4 text-purple-500" />
+                            ) : entry.pr.state === "open" ? (
+                              <GitPullRequest class="h-4 w-4 text-green-500" />
+                            ) : (
+                              <XCircle class="h-4 w-4 text-red-500" />
+                            )}
+                            <span class:list={[
+                              "flex-1 truncate",
+                              isCurrent ? "font-medium" : ""
+                            ]}>
+                              #{entry.pr.number}
+                            </span>
+                            {isCurrent && (
+                              <span class="text-xs text-primary">current</span>
+                            )}
+                          </a>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                
                 <div class="border-t pt-4 lg:border-t-0 lg:pt-0">
                     <div class="text-sm font-medium mb-2 text-muted-foreground">Reviewers</div>
                     <div class="text-sm">No reviewers</div>

@@ -14,6 +14,7 @@ import { now } from "@/lib/utils";
 import { type APIRoute } from "astro";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { applyRateLimit } from "@/middleware/rate-limit";
 
 const loginSchema = z.object({
   login: z.string(), // username or email
@@ -22,6 +23,11 @@ const loginSchema = z.object({
 });
 
 export const POST: APIRoute = async ({ request, cookies }) => {
+  // Apply rate limiting for authentication endpoints
+  const rateLimitResponse = await applyRateLimit(request, "auth");
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
   try {
     // Parse and validate request body
     const parsed = await parseBody(request, loginSchema);
@@ -56,8 +62,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     if (!isValid) {
       return unauthorized(
-        `Invalid credentials. Debug: User=${
-          user.username
+        `Invalid credentials. Debug: User=${user.username
         }, Hash=${user.passwordHash.substring(0, 10)}...`
       );
     }

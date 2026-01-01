@@ -1,0 +1,138 @@
+/**
+ * Slack Integration Schema
+ * Workspace connections, channel mappings, and notification preferences
+ */
+
+import { relations } from "drizzle-orm";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { organizations } from "./organizations";
+import { repositories } from "./repositories";
+import { users } from "./users";
+
+// Slack workspace connections
+export const slackWorkspaces = sqliteTable("slack_workspaces", {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+
+    // Slack info
+    teamId: text("team_id").notNull(), // Slack team/workspace ID
+    teamName: text("team_name"),
+    teamDomain: text("team_domain"),
+
+    // Auth
+    accessToken: text("access_token").notNull(),
+    botUserId: text("bot_user_id"),
+    botAccessToken: text("bot_access_token"),
+
+    // Scopes
+    scopes: text("scopes"), // JSON array of granted scopes
+
+    // Installation
+    installedById: text("installed_by_id")
+        .notNull()
+        .references(() => users.id),
+    installedAt: text("installed_at").notNull().default("CURRENT_TIMESTAMP"),
+
+    // Status
+    isActive: integer("is_active", { mode: "boolean" }).default(true),
+    lastUsedAt: text("last_used_at"),
+});
+
+// Channel mappings - which repos notify which channels
+export const slackChannelMappings = sqliteTable("slack_channel_mappings", {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+        .notNull()
+        .references(() => slackWorkspaces.id, { onDelete: "cascade" }),
+    repositoryId: text("repository_id")
+        .notNull()
+        .references(() => repositories.id, { onDelete: "cascade" }),
+
+    // Channel info
+    channelId: text("channel_id").notNull(),
+    channelName: text("channel_name"),
+
+    // Notification settings (JSON array)
+    // ["pr_created", "pr_merged", "review_requested", "ci_failed", "ci_passed"]
+    notifyOn: text("notify_on").default('["pr_created","pr_merged","review_requested","ci_failed"]'),
+
+    // Filters
+    notifyBranches: text("notify_branches"), // JSON: branch patterns to notify on
+    notifyAuthors: text("notify_authors"), // JSON: specific user IDs or "all"
+
+    isActive: integer("is_active", { mode: "boolean" }).default(true),
+    createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+    updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+});
+
+// User Slack mappings - for DMs
+export const slackUserMappings = sqliteTable("slack_user_mappings", {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: text("workspace_id")
+        .notNull()
+        .references(() => slackWorkspaces.id, { onDelete: "cascade" }),
+
+    // Slack user info
+    slackUserId: text("slack_user_id").notNull(),
+    slackUsername: text("slack_username"),
+
+    // DM preferences (JSON)
+    // { "review_requested": true, "pr_approved": true, "ci_failed": true, "mentions": true }
+    dmPreferences: text("dm_preferences").default('{"review_requested":true,"pr_approved":true,"ci_failed":true}'),
+
+    // Do not disturb
+    dndEnabled: integer("dnd_enabled", { mode: "boolean" }).default(false),
+    dndStart: text("dnd_start"), // HH:MM
+    dndEnd: text("dnd_end"), // HH:MM
+    dndTimezone: text("dnd_timezone"),
+
+    isActive: integer("is_active", { mode: "boolean" }).default(true),
+    createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+});
+
+// Relations
+export const slackWorkspacesRelations = relations(slackWorkspaces, ({ one, many }) => ({
+    organization: one(organizations, {
+        fields: [slackWorkspaces.organizationId],
+        references: [organizations.id],
+    }),
+    installedBy: one(users, {
+        fields: [slackWorkspaces.installedById],
+        references: [users.id],
+    }),
+    channelMappings: many(slackChannelMappings),
+    userMappings: many(slackUserMappings),
+}));
+
+export const slackChannelMappingsRelations = relations(slackChannelMappings, ({ one }) => ({
+    workspace: one(slackWorkspaces, {
+        fields: [slackChannelMappings.workspaceId],
+        references: [slackWorkspaces.id],
+    }),
+    repository: one(repositories, {
+        fields: [slackChannelMappings.repositoryId],
+        references: [repositories.id],
+    }),
+}));
+
+export const slackUserMappingsRelations = relations(slackUserMappings, ({ one }) => ({
+    user: one(users, {
+        fields: [slackUserMappings.userId],
+        references: [users.id],
+    }),
+    workspace: one(slackWorkspaces, {
+        fields: [slackUserMappings.workspaceId],
+        references: [slackWorkspaces.id],
+    }),
+}));
+
+// Types
+export type SlackWorkspace = typeof slackWorkspaces.$inferSelect;
+export type NewSlackWorkspace = typeof slackWorkspaces.$inferInsert;
+export type SlackChannelMapping = typeof slackChannelMappings.$inferSelect;
+export type NewSlackChannelMapping = typeof slackChannelMappings.$inferInsert;
+export type SlackUserMapping = typeof slackUserMappings.$inferSelect;
+export type NewSlackUserMapping = typeof slackUserMappings.$inferInsert;

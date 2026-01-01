@@ -72,11 +72,14 @@ export const POST: APIRoute = async ({ request }) => {
       return badRequest("SSH key already exists");
     }
 
+    const keyType = key.split(" ")[0];
+
     const newKey = {
-      id: generateId(),
+      id: generateId("ssh"),
       userId: tokenPayload.userId,
       title,
-      key,
+      publicKey: key,
+      keyType,
       fingerprint,
       createdAt: now(),
     };

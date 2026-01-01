@@ -1,10 +1,272 @@
 ---
+import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
+import { desc, eq } from "drizzle-orm";
+
+const db = getDatabase();
+
+// Get filter from query params
+const filter = Astro.url.searchParams.get("filter") || "all";
+
+// Fetch workflow runs from public repos
+let workflowRuns: any[] = [];
+try {
+  const rawRuns = await db.query.workflowRuns.findMany({
+    where: filter === "success" 
+      ? eq(schema.workflowRuns.status, "success")
+      : filter === "failure"
+        ? eq(schema.workflowRuns.status, "failure")
+        : filter === "running"
+          ? eq(schema.workflowRuns.status, "running")
+          : undefined,
+    orderBy: [desc(schema.workflowRuns.createdAt)],
+    limit: 50,
+    with: {
+      repository: {
+        with: {
+          owner: true,
+        },
+      },
+      triggeredBy: true,
+    },
+  });
+
+  // Filter to only public repos
+  workflowRuns = rawRuns.filter(run => 
+    run.repository?.visibility === "public"
+  );
+} catch (e) {
+  console.error("Error fetching workflow runs:", e);
+}
+
+function timeAgo(date: string | number | Date) {
+  if (!date) return "";
+  const seconds = Math.floor(
+    (new Date().getTime() - new Date(date).getTime()) / 1000
+  );
+  if (seconds < 60) return "just now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+  return new Date(date).toLocaleDateString();
+}
+
+function formatDuration(start: string, end: string | null) {
+  if (!end) return "running...";
+  const ms = new Date(end).getTime() - new Date(start).getTime();
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}m ${secs}s`;
+}
 ---
 
-<BaseLayout title="Actions">
-  <div class="container py-10">
-    <h1 class="text-3xl font-bold">Actions</h1>
-    <p class="text-muted-foreground mt-4">This feature is coming soon.</p>
+<BaseLayout title="Actions - OpenCodeHub">
+  <div class="container py-8 max-w-5xl">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-3xl font-bold text-white flex items-center gap-3">
+          <div class="p-2 rounded-lg bg-gradient-to-br from-orange-500/20 to-amber-500/20 border border-orange-500/30">
+            <svg class="h-7 w-7 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+            </svg>
+          </div>
+          Actions
+        </h1>
+        <p class="text-gray-500 mt-2">Workflow runs across all public repositories</p>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="relative mb-6">
+      <div class="absolute -inset-[1px] bg-gradient-to-r from-orange-500/20 via-transparent to-amber-500/20 rounded-xl opacity-50"></div>
+      <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-4">
+        <div class="flex flex-wrap items-center gap-2">
+          <a
+            href="/actions?filter=all"
+            class:list={[
+              "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+              filter === "all"
+                ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
+                : "text-gray-400 hover:bg-white/5"
+            ]}
+          >
+            All
+          </a>
+          <a
+            href="/actions?filter=success"
+            class:list={[
+              "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+              filter === "success"
+                ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                : "text-gray-400 hover:bg-white/5"
+            ]}
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            Success
+          </a>
+          <a
+            href="/actions?filter=failure"
+            class:list={[
+              "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+              filter === "failure"
+                ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                : "text-gray-400 hover:bg-white/5"
+            ]}
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+            Failed
+          </a>
+          <a
+            href="/actions?filter=running"
+            class:list={[
+              "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+              filter === "running"
+                ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                : "text-gray-400 hover:bg-white/5"
+            ]}
+          >
+            <svg class="h-4 w-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            Running
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Workflow Runs List -->
+    <div class="relative">
+      <div class="absolute -inset-[1px] bg-gradient-to-r from-orange-500/20 via-transparent to-amber-500/20 rounded-xl opacity-50"></div>
+      <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm overflow-hidden">
+        {workflowRuns.length > 0 ? (
+          <div class="divide-y divide-white/5">
+            {workflowRuns.map((run) => (
+              <a
+                href={`/${run.repository?.owner?.username}/${run.repository?.name}/actions`}
+                class="block p-4 hover:bg-white/[0.02] transition-colors group"
+              >
+                <div class="flex items-start gap-3">
+                  <!-- Status Icon -->
+                  <div class:list={[
+                    "p-2 rounded-lg mt-0.5",
+                    run.status === "success" 
+                      ? "bg-green-500/10 text-green-400" 
+                      : run.status === "failure"
+                        ? "bg-red-500/10 text-red-400"
+                        : run.status === "running"
+                          ? "bg-yellow-500/10 text-yellow-400"
+                          : "bg-gray-500/10 text-gray-400"
+                  ]}>
+                    {run.status === "success" ? (
+                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    ) : run.status === "failure" ? (
+                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                      </svg>
+                    ) : run.status === "running" ? (
+                      <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                      </svg>
+                    ) : (
+                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                    )}
+                  </div>
+
+                  <div class="flex-1 min-w-0">
+                    <!-- Workflow Name & Repo -->
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="text-xs text-gray-500 font-medium">
+                        {run.repository?.owner?.username}/{run.repository?.name}
+                      </span>
+                    </div>
+                    <h3 class="font-semibold text-white group-hover:text-orange-400 transition-colors truncate">
+                      {run.workflowName || "Workflow"}
+                    </h3>
+                    
+                    <!-- Branch & Commit -->
+                    <div class="flex items-center gap-2 mt-1.5 text-xs text-gray-500">
+                      {run.branch && (
+                        <span class="flex items-center gap-1">
+                          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                          </svg>
+                          {run.branch}
+                        </span>
+                      )}
+                      {run.commitSha && (
+                        <span class="font-mono bg-white/5 px-1.5 py-0.5 rounded">
+                          {run.commitSha.slice(0, 7)}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <!-- Meta -->
+                    <div class="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                      <span>
+                        triggered {timeAgo(run.createdAt)} by {run.triggeredBy?.username || run.event || "system"}
+                      </span>
+                      {run.startedAt && (
+                        <span class="flex items-center gap-1">
+                          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                          </svg>
+                          {formatDuration(run.startedAt, run.completedAt)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <!-- Status Badge -->
+                  <div class:list={[
+                    "px-2.5 py-1 rounded-full text-xs font-medium capitalize",
+                    run.status === "success" 
+                      ? "bg-green-500/10 text-green-400 border border-green-500/30" 
+                      : run.status === "failure"
+                        ? "bg-red-500/10 text-red-400 border border-red-500/30"
+                        : run.status === "running"
+                          ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/30"
+                          : "bg-gray-500/10 text-gray-400 border border-gray-500/30"
+                  ]}>
+                    {run.status}
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div class="text-center py-16">
+            <div class="relative inline-block mb-4">
+              <svg class="h-16 w-16 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+              <div class="absolute inset-0 bg-orange-500 blur-2xl opacity-20"></div>
+            </div>
+            <h3 class="text-lg font-semibold text-white mb-2">No workflow runs found</h3>
+            <p class="text-gray-500">
+              {filter === "success" 
+                ? "No successful runs yet." 
+                : filter === "failure"
+                  ? "No failed runs. Great job! 🎉"
+                  : filter === "running"
+                    ? "No workflows currently running."
+                    : "No workflow runs have been triggered yet."}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
   </div>
 </BaseLayout>

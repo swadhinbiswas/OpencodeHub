@@ -5,6 +5,7 @@
  */
 
 import type { APIContext } from "astro";
+import { logger } from "@/lib/logger";
 
 // Plugin configuration
 export interface PluginConfig {
@@ -181,12 +182,12 @@ export interface PluginRoute {
 export interface PluginComponent {
   name: string;
   slot:
-    | "repo-header"
-    | "repo-sidebar"
-    | "issue-sidebar"
-    | "pr-sidebar"
-    | "settings-tab"
-    | "user-profile";
+  | "repo-header"
+  | "repo-sidebar"
+  | "issue-sidebar"
+  | "pr-sidebar"
+  | "settings-tab"
+  | "user-profile";
   component: React.ComponentType<any>;
 }
 
@@ -265,7 +266,7 @@ export class PluginManager {
       }
     }
 
-    console.log(`Plugin loaded: ${config.name}@${config.version}`);
+    logger.info({ name: config.name, version: config.version }, "Plugin loaded");
   }
 
   async unloadPlugin(name: string): Promise<void> {
@@ -281,7 +282,7 @@ export class PluginManager {
     }
 
     this.plugins.delete(name);
-    console.log(`Plugin unloaded: ${name}`);
+    logger.info({ name }, "Plugin unloaded");
   }
 
   async emit<T extends keyof PluginHooks>(
@@ -294,7 +295,7 @@ export class PluginManager {
       try {
         await handler(data);
       } catch (error) {
-        console.error(`Plugin ${plugin} error on ${event}:`, error);
+        logger.error({ err: error, plugin, event }, "Plugin error");
       }
     }
   }

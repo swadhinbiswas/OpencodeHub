@@ -1,10 +1,247 @@
 ---
+import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
+import { desc, eq, and, sql } from "drizzle-orm";
+
+const db = getDatabase();
+const currentUser = Astro.locals.user;
+
+// Get filter from query params
+const filter = Astro.url.searchParams.get("filter") || "open";
+const sort = Astro.url.searchParams.get("sort") || "newest";
+
+// Fetch issues from public repos, ordered by most recent
+let issues: any[] = [];
+try {
+  // Get issues with their repositories
+  const rawIssues = await db.query.issues.findMany({
+    where: filter === "closed" 
+      ? eq(schema.issues.state, "closed")
+      : filter === "all"
+        ? undefined
+        : eq(schema.issues.state, "open"),
+    orderBy: sort === "oldest" 
+      ? [schema.issues.createdAt]
+      : sort === "comments"
+        ? [desc(schema.issues.commentCount)]
+        : [desc(schema.issues.createdAt)],
+    limit: 50,
+    with: {
+      repository: {
+        with: {
+          owner: true,
+        },
+      },
+      author: true,
+    },
+  });
+
+  // Filter to only public repos
+  issues = rawIssues.filter(issue => 
+    issue.repository?.visibility === "public"
+  );
+} catch (e) {
+  console.error("Error fetching issues:", e);
+}
+
+function timeAgo(date: string | number | Date) {
+  if (!date) return "";
+  const seconds = Math.floor(
+    (new Date().getTime() - new Date(date).getTime()) / 1000
+  );
+  if (seconds < 60) return "just now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+  return new Date(date).toLocaleDateString();
+}
 ---
 
-<BaseLayout title="Issues">
-  <div class="container py-10">
-    <h1 class="text-3xl font-bold">Global Issues</h1>
-    <p class="text-muted-foreground mt-4">This feature is coming soon.</p>
+<BaseLayout title="Issues - OpenCodeHub">
+  <div class="container py-8 max-w-5xl">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-3xl font-bold text-white flex items-center gap-3">
+          <div class="p-2 rounded-lg bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-500/30">
+            <svg class="h-7 w-7 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          Issues
+        </h1>
+        <p class="text-gray-500 mt-2">Browse issues across all public repositories</p>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="relative mb-6">
+      <div class="absolute -inset-[1px] bg-gradient-to-r from-green-500/20 via-transparent to-emerald-500/20 rounded-xl opacity-50"></div>
+      <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <!-- Filter Tabs -->
+          <div class="flex items-center gap-1">
+            <a
+              href="/issues?filter=open"
+              class:list={[
+                "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                filter === "open"
+                  ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                  : "text-gray-400 hover:bg-white/5"
+              ]}
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              Open
+            </a>
+            <a
+              href="/issues?filter=closed"
+              class:list={[
+                "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                filter === "closed"
+                  ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                  : "text-gray-400 hover:bg-white/5"
+              ]}
+            >
+              <svg class="h-4   w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              Closed
+            </a>
+            <a
+              href="/issues?filter=all"
+              class:list={[
+                "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                filter === "all"
+                  ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
+                  : "text-gray-400 hover:bg-white/5"
+              ]}
+            >
+              All
+            </a>
+          </div>
+
+          <!-- Sort -->
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-gray-500">Sort:</span>
+            <select
+              id="sort-select"
+              class="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-gray-300 focus:outline-none focus:border-green-500/50"
+            >
+              <option value="newest" selected={sort === "newest"}>Newest</option>
+              <option value="oldest" selected={sort === "oldest"}>Oldest</option>
+              <option value="comments" selected={sort === "comments"}>Most commented</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Issues List -->
+    <div class="relative">
+      <div class="absolute -inset-[1px] bg-gradient-to-r from-green-500/20 via-transparent to-emerald-500/20 rounded-xl opacity-50"></div>
+      <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm overflow-hidden">
+        {issues.length > 0 ? (
+          <div class="divide-y divide-white/5">
+            {issues.map((issue) => (
+              <a
+                href={`/${issue.repository?.owner?.username}/${issue.repository?.name}/issues/${issue.number}`}
+                class="block p-4 hover:bg-white/[0.02] transition-colors group"
+              >
+                <div class="flex items-start gap-3">
+                  <!-- Status Icon -->
+                  <div class:list={[
+                    "p-2 rounded-lg mt-0.5",
+                    issue.state === "open" 
+                      ? "bg-green-500/10 text-green-400" 
+                      : "bg-purple-500/10 text-purple-400"
+                  ]}>
+                    {issue.state === "open" ? (
+                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                    ) : (
+                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                    )}
+                  </div>
+
+                  <div class="flex-1 min-w-0">
+                    <!-- Title & Repo -->
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="text-xs text-gray-500 font-medium">
+                        {issue.repository?.owner?.username}/{issue.repository?.name}
+                      </span>
+                      <span class="text-gray-600">#{issue.number}</span>
+                    </div>
+                    <h3 class="font-semibold text-white group-hover:text-green-400 transition-colors truncate">
+                      {issue.title}
+                    </h3>
+                    
+                    <!-- Meta -->
+                    <div class="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                      <span>
+                        opened {timeAgo(issue.createdAt)} by {issue.author?.username || "unknown"}
+                      </span>
+                      {(issue.commentCount || 0) > 0 && (
+                        <span class="flex items-center gap-1">
+                          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                          </svg>
+                          {issue.commentCount}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <!-- Avatar -->
+                  <div class="hidden sm:block">
+                    {issue.author?.avatarUrl ? (
+                      <img
+                        src={issue.author.avatarUrl}
+                        alt={issue.author.username}
+                        class="w-8 h-8 rounded-full ring-2 ring-white/10"
+                      />
+                    ) : (
+                      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-xs font-bold text-white ring-2 ring-white/10">
+                        {issue.author?.username?.[0]?.toUpperCase() || "?"}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div class="text-center py-16">
+            <div class="relative inline-block mb-4">
+              <svg class="h-16 w-16 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <div class="absolute inset-0 bg-green-500 blur-2xl opacity-20"></div>
+            </div>
+            <h3 class="text-lg font-semibold text-white mb-2">No issues found</h3>
+            <p class="text-gray-500">
+              {filter === "open" 
+                ? "All issues are closed! 🎉" 
+                : filter === "closed"
+                  ? "No closed issues yet."
+                  : "No issues have been created yet."}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
   </div>
 </BaseLayout>
+
+<script>
+  const sortSelect = document.getElementById("sort-select") as HTMLSelectElement;
+  sortSelect?.addEventListener("change", () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("sort", sortSelect.value);
+    window.location.href = url.toString();
+  });
+</script>

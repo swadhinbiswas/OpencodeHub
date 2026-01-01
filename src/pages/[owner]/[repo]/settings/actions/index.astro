@@ -1,0 +1,310 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, and } from "drizzle-orm";
+import { canWriteRepo } from "@/lib/permissions";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+// Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!)
+  ),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check write permissions
+const currentUser = Astro.locals.user;
+const hasWriteAccess = await canWriteRepo(currentUser?.id, repoData);
+
+if (!hasWriteAccess) {
+  return Astro.redirect(`/${ownerName}/${repoName}`);
+}
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+  openPrCount: repoData.openPrCount,
+  openIssueCount: 0
+};
+---
+
+<BaseLayout title={`Actions Settings · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="settings" />
+
+    <div class="grid gap-8 lg:grid-cols-[260px_1fr] mt-6">
+      <!-- Sidebar -->
+      <div class="space-y-2">
+        <a 
+          href={`/${repo.owner}/${repo.name}/settings`}
+          class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+          General
+        </a>
+        <a 
+          href={`/${repo.owner}/${repo.name}/settings/collaborators`}
+          class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+          </svg>
+          Collaborators
+        </a>
+        <a 
+          href={`/${repo.owner}/${repo.name}/settings/webhooks`}
+          class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+          </svg>
+          Webhooks
+        </a>
+        <div class="border-t border-white/10 my-4"></div>
+        <a 
+          href={`/${repo.owner}/${repo.name}/settings/actions`}
+          class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          Actions
+        </a>
+        <a 
+          href={`/${repo.owner}/${repo.name}/settings/actions/runners`}
+          class="flex items-center gap-2 px-3 py-2 ml-4 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path>
+          </svg>
+          Runners
+        </a>
+      </div>
+
+      <!-- Main Content -->
+      <div class="space-y-6">
+        <!-- Page Header -->
+        <div>
+          <h1 class="text-2xl font-bold text-white flex items-center gap-3">
+            <div class="p-2 rounded-lg bg-gradient-to-br from-orange-500/20 to-amber-500/20 border border-orange-500/30">
+              <svg class="h-6 w-6 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            Actions Settings
+          </h1>
+          <p class="text-gray-500 text-sm mt-2">
+            Manage workflow permissions, artifact settings, and action runners
+          </p>
+        </div>
+
+        <!-- Actions Permissions -->
+        <div class="relative">
+          <div class="absolute -inset-[1px] bg-gradient-to-r from-orange-500/20 via-transparent to-amber-500/20 rounded-xl opacity-50"></div>
+          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-6">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <svg class="h-5 w-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+              </svg>
+              Actions permissions
+            </h3>
+            
+            <div class="space-y-4">
+              <label class="flex items-start gap-3 p-4 rounded-lg border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] cursor-pointer transition-colors">
+                <input type="radio" name="actions_permission" value="all" checked class="mt-1 accent-orange-500" />
+                <div>
+                  <div class="font-medium text-white">Allow all actions and reusable workflows</div>
+                  <p class="text-sm text-gray-500 mt-1">
+                    Any action or reusable workflow can be used, regardless of who authored it.
+                  </p>
+                </div>
+              </label>
+              
+              <label class="flex items-start gap-3 p-4 rounded-lg border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] cursor-pointer transition-colors">
+                <input type="radio" name="actions_permission" value="local" class="mt-1 accent-orange-500" />
+                <div>
+                  <div class="font-medium text-white">Allow local actions only</div>
+                  <p class="text-sm text-gray-500 mt-1">
+                    Only allow actions that are defined in this repository.
+                  </p>
+                </div>
+              </label>
+              
+              <label class="flex items-start gap-3 p-4 rounded-lg border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] cursor-pointer transition-colors">
+                <input type="radio" name="actions_permission" value="disabled" class="mt-1 accent-orange-500" />
+                <div>
+                  <div class="font-medium text-white">Disable actions</div>
+                  <p class="text-sm text-gray-500 mt-1">
+                    Actions and workflow runs are disabled for this repository.
+                  </p>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Workflow Permissions -->
+        <div class="relative">
+          <div class="absolute -inset-[1px] bg-gradient-to-r from-purple-500/20 via-transparent to-pink-500/20 rounded-xl opacity-50"></div>
+          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-6">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <svg class="h-5 w-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              </svg>
+              Workflow permissions
+            </h3>
+            
+            <div class="space-y-4">
+              <label class="flex items-start gap-3 p-4 rounded-lg border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] cursor-pointer transition-colors">
+                <input type="radio" name="workflow_permission" value="read_write" checked class="mt-1 accent-purple-500" />
+                <div>
+                  <div class="font-medium text-white">Read and write permissions</div>
+                  <p class="text-sm text-gray-500 mt-1">
+                    Workflows have read and write permissions in the repository for all scopes.
+                  </p>
+                </div>
+              </label>
+              
+              <label class="flex items-start gap-3 p-4 rounded-lg border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] cursor-pointer transition-colors">
+                <input type="radio" name="workflow_permission" value="read_only" class="mt-1 accent-purple-500" />
+                <div>
+                  <div class="font-medium text-white">Read repository contents permission</div>
+                  <p class="text-sm text-gray-500 mt-1">
+                    Workflows have read permissions in the repository for the contents scope only.
+                  </p>
+                </div>
+              </label>
+            </div>
+            
+            <div class="mt-4 pt-4 border-t border-white/10">
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" class="accent-purple-500" checked />
+                <span class="text-sm text-gray-300">
+                  Allow GitHub Actions to create and approve pull requests
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Artifact and Log Retention -->
+        <div class="relative">
+          <div class="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/20 via-transparent to-blue-500/20 rounded-xl opacity-50"></div>
+          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-6">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <svg class="h-5 w-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
+              </svg>
+              Artifact and log retention
+            </h3>
+            
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-white mb-2">
+                  Artifact retention period (days)
+                </label>
+                <input 
+                  type="number" 
+                  value="90" 
+                  min="1" 
+                  max="400"
+                  class="w-full max-w-xs rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                />
+                <p class="text-xs text-gray-500 mt-1">
+                  Artifacts will be deleted after this period (1-400 days).
+                </p>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-white mb-2">
+                  Log retention period (days)
+                </label>
+                <input 
+                  type="number" 
+                  value="90" 
+                  min="1" 
+                  max="400"
+                  class="w-full max-w-xs rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                />
+                <p class="text-xs text-gray-500 mt-1">
+                  Logs will be deleted after this period (1-400 days).
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Runners Link -->
+        <div class="relative">
+          <div class="absolute -inset-[1px] bg-gradient-to-r from-green-500/20 via-transparent to-emerald-500/20 rounded-xl opacity-50"></div>
+          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-6">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-lg font-semibold text-white flex items-center gap-2">
+                  <svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path>
+                  </svg>
+                  Self-hosted runners
+                </h3>
+                <p class="text-sm text-gray-500 mt-1">
+                  Manage runners that can be used to run your workflows.
+                </p>
+              </div>
+              <a 
+                href={`/${repo.owner}/${repo.name}/settings/actions/runners`}
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-sm font-medium text-white shadow-lg shadow-green-500/25 hover:shadow-green-500/40 transition-all"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                Manage runners
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Save Button -->
+        <div class="flex justify-end">
+          <button 
+            type="button"
+            class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-orange-500 to-amber-600 text-sm font-medium text-white shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all"
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            Save changes
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

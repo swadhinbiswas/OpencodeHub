@@ -1,0 +1,236 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, and } from "drizzle-orm";
+import { canWriteRepo } from "@/lib/permissions";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+// Fetch repo & user
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!)
+  ),
+  with: { owner: true }
+});
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+if (!await canWriteRepo(currentUser?.id, repoData)) return Astro.redirect("/403");
+
+const repo = {
+  id: repoData.id,
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  license: repoData.licenseType || "None",
+  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+  updatedAt: repoData.updatedAt,
+  httpCloneUrl: repoData.httpCloneUrl,
+  sshCloneUrl: repoData.sshCloneUrl,
+  openIssueCount: repoData.openIssueCount,
+  openPrCount: repoData.openPrCount,
+};
+---
+
+<BaseLayout title={`Add Webhook - ${repo.owner}/${repo.name}`}>
+    <div class="container py-6">
+        <RepoHeader repo={repo} activeTab="settings" />
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-6">
+            <!-- Settings Sidebar -->
+            <div class="space-y-1">
+                <a href={`/${repo.owner}/${repo.name}/settings`} class="block px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+                    General
+                </a>
+                 <a href={`/${repo.owner}/${repo.name}/settings/collaborators`} class="block px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+                    Collaborators
+                </a>
+                <a href={`/${repo.owner}/${repo.name}/settings/webhooks`} class="block px-3 py-2 rounded-md text-sm font-medium bg-secondary text-secondary-foreground">
+                    Webhooks
+                </a>
+                 <a href={`/${repo.owner}/${repo.name}/settings/actions`} class="block px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+                    Actions
+                </a>
+                 <a href={`/${repo.owner}/${repo.name}/settings/deploy_keys`} class="block px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+                    Deploy Keys
+                </a>
+            </div>
+
+            <!-- Content -->
+            <div class="lg:col-span-3">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-semibold tracking-tight">Add Webhook</h2>
+                </div>
+
+                <form id="webhook-form" class="space-y-6 max-w-2xl">
+                    <div class="space-y-2">
+                        <label for="url" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Payload URL
+                        </label>
+                        <input
+                            type="url"
+                            id="url"
+                            name="url"
+                            required
+                            placeholder="https://example.com/webhook"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        />
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="content_type" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Content Type
+                        </label>
+                        <select
+                            id="content_type"
+                            name="content_type"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            <option value="json">application/json</option>
+                            <option value="form">application/x-www-form-urlencoded</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="secret" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Secret
+                        </label>
+                        <input
+                            type="password"
+                            id="secret"
+                            name="secret"
+                            placeholder="Optional secret for HMAC signature"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        />
+                    </div>
+
+                    <div class="space-y-4">
+                        <label class="text-sm font-medium leading-none">Which events would you like to trigger this webhook?</label>
+                        
+                        <div class="space-y-2">
+                            <div class="flex items-center space-x-2">
+                                <input type="radio" value="*" name="events_mode" id="events_all" class="peer" />
+                                <label for="events_all" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    Send me everything
+                                </label>
+                            </div>
+                            
+                            <div class="flex items-center space-x-2">
+                                <input type="radio" value="selected" name="events_mode" id="events_selected" checked class="peer" />
+                                <label for="events_selected" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    Let me select individual events
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="event-selection" class="grid grid-cols-2 gap-4 pl-6 pt-2">
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" name="events" value="push" id="evt_push" checked />
+                                <label for="evt_push" class="text-sm">Pushes</label>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" name="events" value="pull_request" id="evt_pr" checked />
+                                <label for="evt_pr" class="text-sm">Pull Requests</label>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" name="events" value="issue" id="evt_issue" checked />
+                                <label for="evt_issue" class="text-sm">Issues</label>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" name="events" value="release" id="evt_release" />
+                                <label for="evt_release" class="text-sm">Releases</label>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" name="events" value="workflow_run" id="evt_workflow" />
+                                <label for="evt_workflow" class="text-sm">Workflow Runs</label>
+                            </div>
+                        </div>
+                    </div>
+
+                   <div class="flex items-center space-x-2">
+                        <input type="checkbox" name="active" id="active" checked />
+                        <label for="active" class="text-sm font-medium leading-none">
+                            Active
+                        </label>
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-4 border-t">
+                        <a href={`/${repo.owner}/${repo.name}/settings/webhooks`} class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                            Cancel
+                        </a>
+                        <button type="submit" id="submit-btn" class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                            Add Webhook
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</BaseLayout>
+
+<script define:vars={{ repoId: repo.id, owner: repo.owner, repoName: repo.name }}>
+    const allRadio = document.getElementById('events_all');
+    const selectedRadio = document.getElementById('events_selected');
+    const selectionDiv = document.getElementById('event-selection');
+
+    allRadio.addEventListener('change', () => {
+        if (allRadio.checked) selectionDiv.classList.add('hidden');
+    });
+
+    selectedRadio.addEventListener('change', () => {
+        if (selectedRadio.checked) selectionDiv.classList.remove('hidden');
+    });
+
+    document.getElementById('webhook-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('submit-btn');
+        btn.disabled = true;
+        btn.innerText = "Adding...";
+
+        const formData = new FormData(e.target);
+        const data = {
+            url: formData.get('url'),
+            content_type: formData.get('content_type'),
+            secret: formData.get('secret'),
+            active: formData.get('active') === 'on',
+            events: document.getElementById('events_all').checked 
+                ? ['*'] 
+                : Array.from(document.querySelectorAll('input[name="events"]:checked')).map(cb => cb.value)
+        };
+
+        try {
+            const res = await fetch(`/api/repos/${repoId}/webhooks`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (res.ok) {
+                window.location.href = `/${owner}/${repoName}/settings/webhooks`;
+            } else {
+                alert('Failed to create webhook');
+            }
+        } catch (err) {
+            alert('Error creating webhook: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "Add Webhook";
+        }
+    });
+</script>

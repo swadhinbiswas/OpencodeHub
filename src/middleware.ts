@@ -55,26 +55,41 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return context.redirect("/login");
   }
 
-  /*
-  // 2FA Enforcement for Admins
+  // 2FA Recommendation for Admins (non-blocking)
+  // Instead of enforcing 2FA on ALL routes, only block access to sensitive admin routes
+  // and show a warning on other pages (handled by UI components)
   if (context.locals.user?.isAdmin && !context.locals.user.twoFactorEnabled) {
-    const allowedPaths = [
-      "/settings/security",
-      "/api/auth/2fa",
-      "/api/auth/logout",
-      "/_astro",
-      "/favicon.ico",
+    // Only enforce 2FA on sensitive admin operations, not general browsing
+    const sensitiveAdminRoutes = [
+      "/admin/users",
+      "/admin/settings",
+      "/api/admin/users",
+      "/api/admin/settings",
     ];
 
-    const isAllowed = allowedPaths.some((path) =>
-      context.url.pathname.startsWith(path)
+    const isSensitiveRoute = sensitiveAdminRoutes.some((route) =>
+      context.url.pathname.startsWith(route)
     );
 
-    if (!isAllowed) {
-      return context.redirect("/settings/security");
+    // Only redirect on sensitive routes, allow browsing elsewhere
+    if (isSensitiveRoute) {
+      const allowedPaths = [
+        "/settings/security",
+        "/api/auth/2fa",
+        "/api/auth/logout",
+        "/_astro",
+        "/favicon.ico",
+      ];
+
+      const isAllowed = allowedPaths.some((path) =>
+        context.url.pathname.startsWith(path)
+      );
+
+      if (!isAllowed) {
+        return context.redirect("/settings/security?require2fa=true");
+      }
     }
   }
-  */
 
   // Redirect logged-in users away from auth pages
   const authRoutes = ["/login", "/register"];

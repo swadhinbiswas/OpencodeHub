@@ -1,0 +1,71 @@
+---
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import NewMilestoneForm from "@/components/milestones/NewMilestoneForm";
+import { getDatabase, schema } from "@/db";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { canWriteRepo } from "@/lib/permissions";
+import { and, eq } from "drizzle-orm";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+// 1. Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!)
+  ),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check write permissions (only repo collaborators can create milestones)
+const currentUser = Astro.locals.user;
+const hasWriteAccess = await canWriteRepo(currentUser?.id, repoData);
+
+if (!hasWriteAccess) {
+  return Astro.redirect(`/${ownerName}/${repoName}/milestones`);
+}
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  license: repoData.licenseType || "None",
+  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+  updatedAt: repoData.updatedAt,
+  httpCloneUrl: repoData.httpCloneUrl,
+  sshCloneUrl: repoData.sshCloneUrl,
+  openIssueCount: repoData.openIssueCount,
+  openPrCount: repoData.openPrCount,
+};
+---
+
+<BaseLayout title={`New Milestone · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="issues" />
+
+    <div class="mt-8">
+      <NewMilestoneForm 
+        client:load
+        repoOwner={repo.owner}
+        repoName={repo.name}
+      />
+    </div>
+  </div>
+</BaseLayout>

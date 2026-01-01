@@ -13,6 +13,8 @@ import {
 import { createSession, createToken, hashPassword } from "@/lib/auth";
 import { generateId, isValidEmail, isValidUsername, now } from "@/lib/utils";
 import { type APIRoute } from "astro";
+import { applyRateLimit } from "@/middleware/rate-limit";
+import { RegisterUserSchema } from "@/lib/validation";
 import { z } from "zod";
 
 const registerSchema = z.object({
@@ -24,6 +26,12 @@ const registerSchema = z.object({
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
+    // Apply rate limiting
+    const rateLimitResponse = await applyRateLimit(request, "auth");
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
     // Check if registration is enabled
     if (process.env.ENABLE_REGISTRATION === "false") {
       return badRequest("Registration is currently disabled");
@@ -34,6 +42,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     if ("error" in parsed) return parsed.error;
 
     const { username, email, password, displayName } = parsed.data;
+
+    // Additional validation with Zod schema (stricter)
+    const validation = RegisterUserSchema.safeParse({ username, email, password, displayName });
+    if (!validation.success) {
+      const errorMessages = validation.error.errors.map(e => e.message).join(', ');
+      return badRequest(`Validation failed: ${errorMessages}`);
+    }
 
     // Validate username format
     if (!isValidUsername(username)) {

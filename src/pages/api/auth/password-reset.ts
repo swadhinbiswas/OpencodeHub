@@ -1,6 +1,8 @@
 import { getDatabase } from "@/db";
 import { passwordResetTokens, users } from "@/db/schema";
 import { parseBody, serverError, success } from "@/lib/api";
+import { sendPasswordResetEmail } from "@/lib/email";
+import { logger } from "@/lib/logger";
 import { generateId, now } from "@/lib/utils";
 import type { APIRoute } from "astro";
 import crypto from "crypto";
@@ -39,19 +41,8 @@ export const POST: APIRoute = async ({ request }) => {
         createdAt: now(),
       });
 
-      // TODO: Send actual email
-      // For now, we'll log the link to the console
-      const resetLink = `${
-        new URL(request.url).origin
-      }/reset-password/${token}`;
-      console.log(
-        "================================================================="
-      );
-      console.log(`Password reset link for ${email}:`);
-      console.log(resetLink);
-      console.log(
-        "================================================================="
-      );
+      // Send password reset email
+      await sendPasswordResetEmail(email, token);
     }
 
     // Always return success to prevent email enumeration
@@ -60,7 +51,7 @@ export const POST: APIRoute = async ({ request }) => {
         "If an account exists with that email, we sent a password reset link.",
     });
   } catch (error) {
-    console.error("Password reset request error:", error);
+    logger.error({ err: error }, "Password reset request error");
     return serverError("Failed to process request");
   }
 };

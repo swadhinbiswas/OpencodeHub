@@ -18,11 +18,11 @@ export interface RepoInitOptions {
   ownerName?: string;
 }
 
-export interface MergeResult {
+export type MergeResult = {
   success: boolean;
   message: string;
-  conflictFiles?: string[];
-}
+  sha?: string; // SHA of the merge commit if successful
+};
 
 export interface FileEntry {
   name: string;
@@ -44,6 +44,11 @@ export interface CommitInfo {
   committerEmail: string;
   committerDate: Date;
   parentShas: string[];
+  verification?: {
+    status: "G" | "B" | "U" | "E" | "N" | "X" | "Y" | "R"; // G=Good, B=Bad, U=Untrusted, E=Error, N=None
+    signerKeyId?: string;
+    signerName?: string;
+  };
 }
 
 export interface BranchInfo {
@@ -180,6 +185,32 @@ export async function deleteRepository(repoPath: string): Promise<void> {
 }
 
 /**
+ * Fork a repository by cloning it as a bare repo
+ */
+export async function forkRepository(sourcePath: string, targetPath: string): Promise<void> {
+  // Handle paths - if already absolute, use as-is
+  const fullSourcePath = sourcePath.startsWith('/') ? sourcePath : join(process.cwd(), sourcePath);
+  const fullTargetPath = targetPath.startsWith('/') ? targetPath : join(process.cwd(), targetPath);
+
+  // Create parent directory if needed
+  const parentDir = dirname(fullTargetPath);
+  if (!existsSync(parentDir)) {
+    mkdirSync(parentDir, { recursive: true });
+  }
+
+  // Check if source exists
+  if (!existsSync(fullSourcePath)) {
+    throw new Error(`Source repository not found: ${fullSourcePath}`);
+  }
+
+  // Clone as bare repository
+  const git = simpleGit();
+  await git.clone(fullSourcePath, fullTargetPath, ["--bare"]);
+
+  logger.info(`Repository forked from ${sourcePath} to ${targetPath}`);
+}
+
+/**
  * Get a SimpleGit instance for a repository
  */
 export function getGit(repoPath: string): SimpleGit {
@@ -246,7 +277,7 @@ export async function listFiles(
 
     return entries;
   } catch (error) {
-    logger.error("Error listing files:", error);
+    logger.error({ err: error }, "Error listing files");
     return [];
   }
 }
@@ -360,7 +391,7 @@ export async function getCommits(
   try {
     const args = [
       "log",
-      "--format=%H|%s|%b|%an|%ae|%ai|%cn|%ce|%ci|%P",
+      "--format=%H|%s|%b|%an|%ae|%ai|%cn|%ce|%ci|%P|%G?|%GK|%GS",
       `-n${limit}`,
       `--skip=${skip}`,
       ref,
@@ -385,6 +416,9 @@ export async function getCommits(
         committerEmail,
         committerDate,
         parents,
+        gpgStatus,
+        gpgKeyId,
+        gpgSigner,
       ] = line.split("|");
 
       commits.push({
@@ -398,12 +432,17 @@ export async function getCommits(
         committerEmail,
         committerDate: new Date(committerDate),
         parentShas: parents ? parents.split(" ").filter(Boolean) : [],
+        verification: {
+          status: gpgStatus as any,
+          signerKeyId: gpgKeyId || undefined,
+          signerName: gpgSigner || undefined
+        }
       });
     }
 
     return commits;
   } catch (error) {
-    logger.error("Error getting commits:", error);
+    logger.error({ err: error }, "Error getting commits");
     return [];
   }
 }
@@ -461,7 +500,7 @@ export async function getBranches(repoPath: string): Promise<BranchInfo[]> {
 
     return branches;
   } catch (error) {
-    logger.error("Error getting branches:", error);
+    logger.error({ err: error }, "Error getting branches");
     return [];
   }
 }
@@ -497,7 +536,7 @@ export async function getTags(repoPath: string): Promise<TagInfo[]> {
 
     return tags;
   } catch (error) {
-    logger.error("Error getting tags:", error);
+    logger.error({ err: error }, "Error getting tags");
     return [];
   }
 }
@@ -555,7 +594,7 @@ export async function getCommitDiff(
 
     return diffs;
   } catch (error) {
-    logger.error("Error getting commit diff:", error);
+    logger.error({ err: error }, "Error getting commit diff");
     return [];
   }
 }
@@ -615,7 +654,7 @@ export async function getBlame(
 
     return blameLines;
   } catch (error) {
-    logger.error("Error getting blame:", error);
+    logger.error({ err: error }, "Error getting blame");
     return [];
   }
 }
@@ -658,7 +697,7 @@ export async function createBranch(
   try {
     await git.branch([branchName, startPoint]);
   } catch (error) {
-    logger.error("Error creating branch:", error);
+    logger.error({ err: error }, "Error creating branch");
     throw new Error(`Failed to create branch: ${error}`);
   }
 }
@@ -674,7 +713,7 @@ export async function deleteBranch(
   try {
     await git.branch(["-D", branchName]);
   } catch (error) {
-    logger.error("Error deleting branch:", error);
+    logger.error({ err: error }, "Error deleting branch");
     throw new Error(`Failed to delete branch: ${error}`);
   }
 }
@@ -692,7 +731,7 @@ export async function getMergeBase(
     const output = await git.raw(["merge-base", base, head]);
     return output.trim();
   } catch (error) {
-    logger.error("Error getting merge base:", error);
+    logger.error({ err: error }, "Error getting merge base");
     return "";
   }
 }
@@ -742,7 +781,7 @@ export async function compareBranches(
 
     return { commits, diffs };
   } catch (error) {
-    logger.error("Error comparing branches:", error);
+    logger.error({ err: error }, "Error comparing branches");
     return { commits: [], diffs: [] };
   }
 }
@@ -803,7 +842,7 @@ export async function mergeBranch(
     // Update ref
     await git.raw(["update-ref", `refs/heads/${base}`, newCommitSha]);
 
-    return { success: true, message: "Merged successfully" };
+    return { success: true, message: "Merged successfully", sha: newCommitSha };
 
   } catch (error: any) {
     logger.error("Error merging branches:", error);
@@ -1052,7 +1091,7 @@ export async function getFileRawContent(
     });
 
     git.on("error", (err) => {
-      logger.error("Git show error:", err);
+      logger.error({ err }, "Git show error");
       resolve(null);
     });
   });
@@ -1091,7 +1130,7 @@ export async function getContributors(
 
     return contributors;
   } catch (error) {
-    logger.error("Error getting contributors:", error);
+    logger.error({ err: error }, "Error getting contributors");
     return [];
   }
 }
@@ -1105,17 +1144,128 @@ export async function installHooks(repoPath: string) {
     await fs.mkdir(hooksDir, { recursive: true });
   }
 
+  // Use environment variable for site URL, fallback to localhost for development
+  const siteUrl = process.env.SITE_URL || process.env.PUBLIC_URL || "http://localhost:3000";
+  const hookSecret = process.env.INTERNAL_HOOK_SECRET || "dev-hook-secret-change-in-production";
+
   const postReceiveScript = `#!/bin/bash
 while read oldrev newrev refname
 do
     curl -X POST \\
-         -H "Content-Type: application/json" \\
-         -d "{\\"oldrev\\":\\"$oldrev\\", \\"newrev\\":\\"$newrev\\", \\"refname\\":\\"$refname\\"}" \\
-         "http://localhost:4321/api/internal/hooks/post-receive?repo=$PWD"
+      -H "Content-Type: application/json" \\
+      -H "X-Hook-Secret: ${hookSecret}" \\
+      -d "{\\"oldrev\\":\\"$oldrev\\",\\"newrev\\":\\"$newrev\\",\\"refname\\":\\"$refname\\"}" \\
+      ${siteUrl}/api/internal/hooks/post-receive?repo=${encodeURIComponent(repoPath)}
 done
 `;
 
-  const hookPath = join(hooksDir, "post-receive");
-  await fs.writeFile(hookPath, postReceiveScript);
-  await fs.chmod(hookPath, 0o755);
+  const preReceiveScript = `#!/bin/bash
+while read oldrev newrev refname
+do
+    RESPONSE=$(curl -s -w "%{http_code}" -X POST \\
+      -H "Content-Type: application/json" \\
+      -H "X-Hook-Secret: ${hookSecret}" \\
+      -d "{\\"oldrev\\":\\"$oldrev\\",\\"newrev\\":\\"$newrev\\",\\"refname\\":\\"$refname\\"}" \\
+      ${siteUrl}/api/internal/hooks/pre-receive?repo=${encodeURIComponent(repoPath)})
+    
+    HTTP_CODE=\${RESPONSE: -3}
+    BODY=\${RESPONSE:0:\${#RESPONSE}-3}
+
+    if [ "$HTTP_CODE" -ne 200 ]; then
+        echo "Error: $BODY"
+        exit 1
+    fi
+done
+exit 0
+`;
+
+  await fs.writeFile(join(hooksDir, "post-receive"), postReceiveScript, {
+    mode: 0o755,
+  });
+
+  await fs.writeFile(join(hooksDir, "pre-receive"), preReceiveScript, {
+    mode: 0o755,
+  });
+}
+
+/**
+ * Commit a file modification to the repository
+ */
+export async function commitFile(
+  repoPath: string,
+  branch: string,
+  filePath: string,
+  content: string,
+  message: string,
+  author: { name: string; email: string }
+): Promise<string> {
+  const git = getGit(repoPath);
+
+  // We need to use plumbing commands because it's a bare repo
+  const tempIndexFile = join(repoPath, `temp_index_${Date.now()}_${Math.random().toString(36).substring(7)}`);
+
+  try {
+    // 1. Read the tree of the branch into a temporary index
+    // We set GIT_INDEX_FILE environment variable for these commands
+    const env = { ...process.env, GIT_INDEX_FILE: tempIndexFile };
+
+    // Get the tree of the current branch/commit
+    // If branch doesn't exist (empty repo), we might start fresh, but assuming branch exists
+    await git.env(env).raw(["read-tree", branch]);
+
+    // 2. Hash the new object using spawn to pipe content
+    const hashObjectOutput = await new Promise<string>((resolve, reject) => {
+      const gitProcess = spawn("git", ["hash-object", "-w", "--stdin"], {
+        cwd: repoPath,
+      });
+      let output = "";
+      gitProcess.stdout.on("data", (data) => { output += data.toString(); });
+      gitProcess.on("close", (code) => {
+        if (code === 0) resolve(output.trim());
+        else reject(new Error(`git hash-object failed with code ${code}`));
+      });
+      gitProcess.stdin.write(content);
+      gitProcess.stdin.end();
+    });
+    const blobSha = hashObjectOutput;
+
+    // 3. Update the index with the new blob
+    // git update-index --add --cacheinfo 100644 <blob_sha> <path>
+    await git.env(env).raw(["update-index", "--add", "--cacheinfo", "100644", blobSha, filePath]);
+
+    // 4. Write the new tree
+    const writeTreeOutput = await git.env(env).raw(["write-tree"]);
+    const treeSha = writeTreeOutput.trim();
+
+    // 5. Create new commit
+    // We need the parent commit
+    const parentSha = (await git.revparse([branch])).trim();
+
+    const commitTreeArgs = ["commit-tree", treeSha, "-p", parentSha, "-m", message];
+
+    // Set author/committer
+    const commitEnv = {
+      ...env,
+      GIT_AUTHOR_NAME: author.name,
+      GIT_AUTHOR_EMAIL: author.email,
+      GIT_COMMITTER_NAME: author.name,
+      GIT_COMMITTER_EMAIL: author.email
+    };
+
+    const commitTreeOutput = await git.env(commitEnv).raw(commitTreeArgs);
+    const newCommitSha = commitTreeOutput.trim();
+
+    // 6. Update the branch ref
+    await git.raw(["update-ref", `refs/heads/${branch}`, newCommitSha]);
+
+    return newCommitSha;
+  } finally {
+    // Cleanup temporary index
+    const fs = await import("fs/promises");
+    try {
+      await fs.unlink(tempIndexFile);
+    } catch (e) {
+      // Ignore cleanup error
+    }
+  }
 }

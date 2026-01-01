@@ -38,6 +38,7 @@ export const pullRequests = sqliteTable("pull_requests", {
   isMerged: integer("is_merged", { mode: "boolean" }).default(false),
   mergedAt: text("merged_at"),
   mergedById: text("merged_by_id").references(() => users.id),
+  mergeCommitSha: text("merge_commit_sha"),
   mergeSha: text("merge_sha"),
   mergeMethod: text("merge_method"), // merge, squash, rebase
 

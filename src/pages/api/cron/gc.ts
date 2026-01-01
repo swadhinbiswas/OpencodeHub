@@ -1,4 +1,5 @@
 import { getDatabase } from "@/db";
+import { logger } from "@/lib/logger";
 import type { APIRoute } from "astro";
 import { spawn } from "child_process";
 import { promisify } from "util";
@@ -16,16 +17,14 @@ export const GET: APIRoute = async ({ request }) => {
   const db = getDatabase();
   const repos = await db.query.repositories.findMany();
 
-  console.log(
-    `[GC] Starting garbage collection for ${repos.length} repositories...`
-  );
+  logger.info({ count: repos.length }, "Starting garbage collection");
 
   let successCount = 0;
   let errorCount = 0;
 
   for (const repo of repos) {
     try {
-      console.log(`[GC] Processing ${repo.ownerId}/${repo.name}...`);
+      logger.debug({ owner: repo.ownerId, name: repo.name }, "Processing repository");
       // Run git gc --auto --quiet
       const child = spawn("git", ["gc", "--auto", "--quiet"], {
         cwd: repo.diskPath,
@@ -42,14 +41,12 @@ export const GET: APIRoute = async ({ request }) => {
 
       successCount++;
     } catch (e) {
-      console.error(`[GC] Error processing ${repo.name}:`, e);
+      logger.error({ err: e, repo: repo.name }, "GC error");
       errorCount++;
     }
   }
 
-  console.log(
-    `[GC] Completed. Success: ${successCount}, Errors: ${errorCount}`
-  );
+  logger.info({ success: successCount, errors: errorCount }, "GC completed");
 
   return new Response(
     JSON.stringify({ success: successCount, errors: errorCount }),

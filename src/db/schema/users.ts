@@ -90,11 +90,36 @@ export const passwordResetTokens = sqliteTable("password_reset_tokens", {
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 
+export const gpgKeys = sqliteTable("gpg_keys", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  keyId: text("key_id").notNull(),
+  publicKey: text("public_key").notNull(),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+});
+
+export const personalAccessTokens = sqliteTable("personal_access_tokens", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  token: text("token").notNull().unique(),
+  expiresAt: text("expires_at"),
+  lastUsedAt: text("last_used_at"),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   sshKeys: many(sshKeys),
   oauthAccounts: many(oauthAccounts),
+  gpgKeys: many(gpgKeys),
+  personalAccessTokens: many(personalAccessTokens),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -118,6 +143,40 @@ export const oauthAccountsRelations = relations(oauthAccounts, ({ one }) => ({
   }),
 }));
 
+export const emailVerificationTokensRelations = relations(
+  emailVerificationTokens,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [emailVerificationTokens.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const passwordResetTokensRelations = relations(
+  passwordResetTokens,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [passwordResetTokens.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const gpgKeysRelations = relations(gpgKeys, ({ one }) => ({
+  user: one(users, {
+    fields: [gpgKeys.userId],
+    references: [users.id],
+  }),
+}));
+
+export const personalAccessTokensRelations = relations(personalAccessTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [personalAccessTokens.userId],
+    references: [users.id],
+  }),
+}));
+
 // Types
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -126,3 +185,7 @@ export type NewSession = typeof sessions.$inferInsert;
 export type SSHKey = typeof sshKeys.$inferSelect;
 export type NewSSHKey = typeof sshKeys.$inferInsert;
 export type OAuthAccount = typeof oauthAccounts.$inferSelect;
+export type GPGKey = typeof gpgKeys.$inferSelect;
+export type NewGPGKey = typeof gpgKeys.$inferInsert;
+export type PersonalAccessToken = typeof personalAccessTokens.$inferSelect;
+export type NewPersonalAccessToken = typeof personalAccessTokens.$inferInsert;

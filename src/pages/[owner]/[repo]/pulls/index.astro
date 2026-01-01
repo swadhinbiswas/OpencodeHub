@@ -1,16 +1,10 @@
 ---
 import RepoHeader from "@/components/repo/RepoHeader.astro";
-import { Button } from "@/components/ui/button";
+import PullRequestsList from "@/components/pulls/PullRequestsList";
 import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { canReadRepo } from "@/lib/permissions";
 import { and, desc, eq, sql } from "drizzle-orm";
-import {
-  CheckCircle2,
-  GitPullRequest,
-  MessageSquare,
-  Search,
-} from "lucide-react";
 
 const { owner: ownerName, repo: repoName } = Astro.params;
 const db = getDatabase();
@@ -62,27 +56,13 @@ const prsList = await db.query.pullRequests.findMany({
   orderBy: [desc(schema.pullRequests.createdAt)],
   with: {
     author: true,
+    pullRequestLabels: {
+      with: {
+        label: true,
+      },
+    },
   },
 });
-
-// Helper for time ago
-function timeAgo(date: string | number | Date) {
-  if (!date) return "";
-  const seconds = Math.floor(
-    (new Date().getTime() - new Date(date).getTime()) / 1000
-  );
-  let interval = seconds / 31536000;
-  if (interval > 1) return Math.floor(interval) + " years ago";
-  interval = seconds / 2592000;
-  if (interval > 1) return Math.floor(interval) + " months ago";
-  interval = seconds / 86400;
-  if (interval > 1) return Math.floor(interval) + " days ago";
-  interval = seconds / 3600;
-  if (interval > 1) return Math.floor(interval) + " hours ago";
-  interval = seconds / 60;
-  if (interval > 1) return Math.floor(interval) + " minutes ago";
-  return Math.floor(seconds) + " seconds ago";
-}
 
 const openCount = prsList.filter((pr) => pr.state === "open").length;
 const closedCount = prsList.filter(
@@ -107,142 +87,43 @@ const repo = {
   openIssueCount: openIssueCount,
   openPrCount: openCount,
 };
+
+// Format PRs for React component
+const formattedPRs = prsList.map(pr => ({
+  id: pr.id,
+  number: pr.number,
+  title: pr.title,
+  state: pr.state as "open" | "closed" | "merged",
+  createdAt: pr.createdAt,
+  commentCount: pr.commentCount || 0,
+  sourceBranch: pr.headBranch || "",
+  targetBranch: pr.baseBranch || "",
+  author: {
+    username: pr.author.username,
+    avatarUrl: pr.author.avatarUrl || undefined,
+  },
+  labels: pr.pullRequestLabels?.map(pl => ({
+    id: pl.label.id,
+    name: pl.label.name,
+    color: pl.label.color,
+  })) || [],
+  isDraft: pr.isDraft || false,
+}));
 ---
 
 <BaseLayout title={`Pull Requests · ${repo.owner}/${repo.name}`}>
   <div class="container py-6">
     <RepoHeader repo={repo} activeTab="pulls" />
 
-    <!-- PRs Header -->
-    <div
-      class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6"
-    >
-      <div class="relative flex-1 max-w-xl">
-        <Search
-          className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"
-        />
-        <input
-          type="search"
-          placeholder="Search all pull requests"
-          class="w-full rounded-md border border-input bg-background pl-9 pr-4 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-      </div>
-      <div class="flex gap-2">
-        <Button variant="outline">Labels</Button>
-        <Button variant="outline">Milestones</Button>
-        <Button asChild>
-          <a href={`/${repo.owner}/${repo.name}/pulls/new`}>New Pull Request</a>
-        </Button>
-      </div>
-    </div>
-
-    <!-- PRs List -->
-    <div class="rounded-lg border">
-      <div class="flex items-center gap-4 border-b bg-muted/30 px-4 py-3">
-        <div class="flex items-center gap-4">
-          <a
-            href="?q=is:open"
-            class="flex items-center gap-1 text-sm font-medium text-foreground"
-          >
-            <GitPullRequest className="h-4 w-4" />
-            {openCount} Open
-          </a>
-          <a
-            href="?q=is:closed"
-            class="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            {closedCount} Closed
-          </a>
-        </div>
-        <div class="flex-1"></div>
-        <div class="flex items-center gap-4 text-sm text-muted-foreground">
-          <button class="hover:text-foreground"
-            >Author <span class="ml-1">▼</span></button
-          >
-          <button class="hover:text-foreground"
-            >Label <span class="ml-1">▼</span></button
-          >
-          <button class="hover:text-foreground"
-            >Projects <span class="ml-1">▼</span></button
-          >
-          <button class="hover:text-foreground"
-            >Milestones <span class="ml-1">▼</span></button
-          >
-          <button class="hover:text-foreground"
-            >Assignee <span class="ml-1">▼</span></button
-          >
-          <button class="hover:text-foreground"
-            >Sort <span class="ml-1">▼</span></button
-          >
-        </div>
-      </div>
-
-      <div class="divide-y">
-        {
-          prsList.length > 0 ? (
-            prsList.map((pr) => (
-              <div class="flex items-start gap-3 p-4 hover:bg-muted/30">
-                <div class="mt-1">
-                  {pr.state === "open" ? (
-                    <GitPullRequest className="h-5 w-5 text-green-600" />
-                  ) : pr.state === "merged" ? (
-                    <GitPullRequest className="h-5 w-5 text-purple-600" />
-                  ) : (
-                    <GitPullRequest className="h-5 w-5 text-red-600" />
-                  )}
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 mb-1">
-                    <a
-                      href={`/${repo.owner}/${repo.name}/pulls/${pr.number}`}
-                      class="font-semibold hover:text-primary truncate"
-                    >
-                      {pr.title}
-                    </a>
-                    {/* Labels would go here */}
-                  </div>
-                  <div class="text-xs text-muted-foreground">
-                    #{pr.number} opened {timeAgo(pr.createdAt)} by{" "}
-                    <a
-                      href={`/${pr.author.username}`}
-                      class="hover:text-primary"
-                    >
-                      {pr.author.username}
-                    </a>
-                  </div>
-                </div>
-                <div class="flex items-center gap-4 text-muted-foreground">
-                  {pr.commentCount > 0 && (
-                    <a
-                      href={`/${repo.owner}/${repo.name}/pulls/${pr.number}`}
-                      class="flex items-center gap-1 text-xs hover:text-primary"
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                      {pr.commentCount}
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))
-          ) : (
-            <div class="p-12 text-center">
-              <GitPullRequest className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 class="text-lg font-semibold mb-2">
-                Welcome to pull requests!
-              </h3>
-              <p class="text-muted-foreground mb-6">
-                Pull requests help you collaborate on code with others.
-              </p>
-              <Button asChild>
-                <a href={`/${repo.owner}/${repo.name}/pulls/new`}>
-                  Create the first pull request
-                </a>
-              </Button>
-            </div>
-          )
-        }
-      </div>
+    <div class="mt-6">
+      <PullRequestsList 
+        client:load
+        pullRequests={formattedPRs}
+        openCount={openCount}
+        closedCount={closedCount}
+        repoOwner={repo.owner}
+        repoName={repo.name}
+      />
     </div>
   </div>
 </BaseLayout>

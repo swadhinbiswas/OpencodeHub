@@ -3,9 +3,9 @@
  * Creates the appropriate adapter based on configuration
  */
 
-import { MongoDBAdapter } from "./mongodb";
-import { PostgresAdapter } from "./postgres";
-import { RedisAdapter } from "./redis";
+// import { MongoDBAdapter } from "./mongodb";
+// import { PostgresAdapter } from "./postgres";
+// import { RedisAdapter } from "./redis";
 import { SQLiteAdapter } from "./sqlite";
 import { DatabaseAdapter, DatabaseConfig, DatabaseDriver } from "./types";
 
@@ -15,53 +15,45 @@ const adapterLoaders: Record<
   () => Promise<new (config: DatabaseConfig) => DatabaseAdapter>
 > = {
   sqlite: async () => SQLiteAdapter,
-  postgres: async () => PostgresAdapter,
-  mysql: async () => {
-    const { MySQLAdapter } = await import("./mysql");
-    return MySQLAdapter;
+  postgres: async () => {
+    const { PostgresAdapter } = await import("./postgres");
+    return PostgresAdapter;
   },
-  mongodb: async () => MongoDBAdapter,
+  mysql: async () => {
+    throw new Error("MySQL adapter not implemented");
+  },
+  mongodb: async () => { throw new Error("MongoDB adapter not implemented"); },
   turso: async () => {
-    const { TursoAdapter } = await import("./turso");
-    return TursoAdapter;
+    throw new Error("Turso adapter not implemented");
   },
   planetscale: async () => {
-    const { PlanetscaleAdapter } = await import("./planetscale");
-    return PlanetscaleAdapter;
+    throw new Error("Planetscale adapter not implemented");
   },
-  redis: async () => RedisAdapter,
+  redis: async () => { throw new Error("Redis adapter not implemented"); },
   firestore: async () => {
-    const { FirestoreAdapter } = await import("./firestore");
-    return FirestoreAdapter;
+    throw new Error("Firestore adapter not implemented");
   },
   dynamodb: async () => {
-    const { DynamoDBAdapter } = await import("./dynamodb");
-    return DynamoDBAdapter;
+    throw new Error("DynamoDB adapter not implemented");
   },
   neo4j: async () => {
-    const { Neo4jAdapter } = await import("./neo4j");
-    return Neo4jAdapter;
+    throw new Error("Neo4j adapter not implemented");
   },
-  cockroachdb: async () => PostgresAdapter, // CockroachDB is PostgreSQL-compatible
+  cockroachdb: async () => { throw new Error("CockroachDB adapter not implemented"); },
   cassandra: async () => {
-    const { CassandraAdapter } = await import("./cassandra");
-    return CassandraAdapter;
+    throw new Error("Cassandra adapter not implemented");
   },
   scylladb: async () => {
-    const { CassandraAdapter } = await import("./cassandra");
-    return CassandraAdapter; // ScyllaDB uses same driver as Cassandra
+    throw new Error("ScyllaDB adapter not implemented");
   },
   surrealdb: async () => {
-    const { SurrealDBAdapter } = await import("./surrealdb");
-    return SurrealDBAdapter;
+    throw new Error("SurrealDB adapter not implemented");
   },
   tidb: async () => {
-    const { MySQLAdapter } = await import("./mysql");
-    return MySQLAdapter; // TiDB is MySQL-compatible
+    throw new Error("TiDB adapter not implemented");
   },
   mariadb: async () => {
-    const { MySQLAdapter } = await import("./mysql");
-    return MySQLAdapter; // MariaDB is MySQL-compatible
+    throw new Error("MariaDB adapter not implemented");
   },
   custom: async () => {
     throw new Error("Custom adapter must be provided explicitly");
@@ -146,7 +138,7 @@ export class DatabaseManager {
   private adapter: DatabaseAdapter | null = null;
   private config: DatabaseConfig | null = null;
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): DatabaseManager {
     if (!DatabaseManager.instance) {

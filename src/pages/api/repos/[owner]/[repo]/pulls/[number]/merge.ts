@@ -63,18 +63,15 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
         const result = await mergeBranch(repo.diskPath, pr.baseBranch, pr.headBranch);
 
         if (result.success) {
-            // Update PR state
+            // Update PR state with all merge fields
+            const now = new Date().toISOString();
             await db.update(schema.pullRequests)
                 .set({
                     state: "merged",
-                    // mergedAt: new Date().toISOString(), // Schema might not have this? Checked earlier schema, didn't see mergedAt but has updatedAt.
-                    // Schema has `mergedAt` not shown in snippet? Snippet truncated?
-                    // `pullRequests` schema snippet earlier:
-                    // `state`, `authorId`, `headBranch`...
-                    // I should double check schema or just skip mergedAt for now if unsure.
-                    // Checking previous `viewed_code_item` of schema...
-                    // Snippet ended with `baseSha`.
-                    // I'll stick to `state: "merged"`. 
+                    isMerged: true,
+                    mergedAt: now,
+                    mergedById: user.id,
+                    updatedAt: now,
                 })
                 .where(eq(schema.pullRequests.id, pr.id));
 

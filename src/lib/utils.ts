@@ -224,3 +224,11 @@ export function timeAgo(date: string | number | Date): string {
   if (interval > 1) return Math.floor(interval) + " minutes ago";
   return Math.floor(seconds) + " seconds ago";
 }
+
+/**
+ * Get the absolute path to a repository
+ */
+export function getRepoPath(username: string, slug: string): string {
+  const reposPath = process.env.GIT_REPOS_PATH || "./data/repos";
+  return `${reposPath}/${username}/${slug}.git`;
+}

@@ -79,31 +79,31 @@ const repo = {
       <!-- Settings Sidebar -->
       <nav class="space-y-1">
         <a
-          href="#"
+          href={`/${repo.owner}/${repo.name}/settings`}
           class="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm font-medium text-foreground"
         >
           General
         </a>
         <a
-          href="#"
+          href={`/${repo.owner}/${repo.name}/settings/collaborators`}
           class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           Collaborators
         </a>
         <a
-          href="#"
+          href={`/${repo.owner}/${repo.name}/settings/webhooks`}
           class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           Webhooks
         </a>
         <a
-          href={`/${repo.owner}/${repo.name}/settings/actions/runners`}
+          href={`/${repo.owner}/${repo.name}/settings/actions`}
           class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           Actions
         </a>
         <a
-          href="#"
+          href={`/${repo.owner}/${repo.name}/settings/deploy-keys`}
           class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           Deploy keys

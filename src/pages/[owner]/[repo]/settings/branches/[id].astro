@@ -1,0 +1,152 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, and } from "drizzle-orm";
+
+const { owner, repo, id } = Astro.params;
+const db = getDatabase();
+
+const repository = await db.query.repositories.findFirst({
+  where: eq(schema.repositories.slug, repo!),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repository || repository.owner.username !== owner) {
+  return Astro.redirect("/404");
+}
+
+const rule = await db.query.branchProtection.findFirst({
+    where: and(
+        eq(schema.branchProtection.id, id!),
+        eq(schema.branchProtection.repositoryId, repository.id)
+    )
+});
+
+if (!rule) {
+    return Astro.redirect(`/${owner}/${repo}/settings/branches`);
+}
+---
+
+<BaseLayout title={`Edit Branch Protection Rule - ${owner}/${repo}`}>
+  <div class="container mx-auto px-4 py-8">
+    <div class="mx-auto max-w-2xl">
+      <h1 class="mb-6 text-2xl font-bold">Edit Branch Protection Rule</h1>
+
+      <form id="edit-rule-form" class="space-y-6 rounded-lg border border-gray-700 bg-gray-800 p-6">
+        <div>
+          <label class="mb-2 block font-medium text-gray-300">Branch Pattern</label>
+          <input
+            type="text"
+            name="pattern"
+            value={rule.pattern}
+            placeholder="main, release/*, *"
+            required
+            class="w-full rounded border border-gray-600 bg-gray-900 px-4 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+          />
+        </div>
+
+        <div class="space-y-4">
+          <label class="block font-medium text-gray-300">Protect matching branches</label>
+          
+          <div class="flex items-start gap-3">
+            <input type="checkbox" name="requiresPr" id="requiresPr" class="mt-1" checked={rule.requiresPr || false} />
+            <div>
+              <label for="requiresPr" class="font-medium text-white">Require a pull request before merging</label>
+              <p class="text-sm text-gray-500">All commits must be made to a non-protected branch and submitted via a pull request.</p>
+            </div>
+          </div>
+
+          <div class="ml-7">
+             <label class="block text-sm text-gray-400">Required approvals</label>
+             <input type="number" name="requiredApprovals" min="0" max="10" value={rule.requiredApprovals} class="mt-1 w-20 rounded border border-gray-600 bg-gray-900 px-2 py-1 text-white" />
+          </div>
+
+          <div class="flex items-start gap-3">
+            <input type="checkbox" name="dismissStaleReviews" id="dismissStaleReviews" class="mt-1" checked={rule.dismissStaleReviews || false} />
+            <div>
+              <label for="dismissStaleReviews" class="font-medium text-white">Dismiss stale pull request approvals when new commits are pushed</label>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3">
+            <input type="checkbox" name="requireCodeOwnerReviews" id="requireCodeOwnerReviews" class="mt-1" checked={rule.requireCodeOwnerReviews || false} />
+            <div>
+              <label for="requireCodeOwnerReviews" class="font-medium text-white">Require review from Code Owners</label>
+            </div>
+          </div>
+          
+          <hr class="border-gray-700 my-4" />
+
+          <div class="flex items-start gap-3">
+            <input type="checkbox" name="allowForcePushes" id="allowForcePushes" class="mt-1" checked={rule.allowForcePushes || false} />
+            <div>
+              <label for="allowForcePushes" class="font-medium text-white">Allow force pushes</label>
+              <p class="text-sm text-gray-500">Permit force pushes for all users with write access.</p>
+            </div>
+          </div>
+          
+           <div class="flex items-start gap-3">
+            <input type="checkbox" name="active" id="active" class="mt-1" checked={rule.active || false} />
+            <div>
+              <label for="active" class="font-medium text-white">Active</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-4">
+          <a
+            href={`/${owner}/${repo}/settings/branches`}
+            class="rounded px-4 py-2 text-gray-300 hover:bg-gray-700"
+          >
+            Cancel
+          </a>
+          <button
+            type="submit"
+            class="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+          >
+            Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</BaseLayout>
+
+<script define:vars={{ repoId: repository.id, ruleId: rule.id, owner, repo }}>
+  const form = document.getElementById("edit-rule-form");
+  
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+    
+    const payload = {
+      pattern: formData.get("pattern"),
+      requiresPr: formData.get("requiresPr") === "on",
+      requiredApprovals: parseInt(formData.get("requiredApprovals")),
+      dismissStaleReviews: formData.get("dismissStaleReviews") === "on",
+      requireCodeOwnerReviews: formData.get("requireCodeOwnerReviews") === "on",
+      allowForcePushes: formData.get("allowForcePushes") === "on",
+      active: formData.get("active") === "on"
+    };
+
+    try {
+      const res = await fetch(`/api/repos/${repoId}/branch-protection/${ruleId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        window.location.href = `/${owner}/${repo}/settings/branches`;
+      } else {
+        const txt = await res.text();
+        alert(`Error: ${txt}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update rule");
+    }
+  });
+</script>

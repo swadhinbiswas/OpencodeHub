@@ -25,7 +25,6 @@ export * from "./wiki";
 export * from "./organizations";
 
 // Activity and notifications
-// Activity and notifications
 export * from "./activity";
 
 // Security
@@ -33,3 +32,29 @@ export * from "./security";
 
 // Pipeline Runners
 export * from "./pipeline-runners";
+
+// === Graphite Features ===
+
+// Stacked PRs
+export * from "./stacked-prs";
+
+// Merge Queue
+export * from "./merge-queue";
+
+// AI Code Reviews
+export * from "./ai-reviews";
+
+// Developer Metrics
+export * from "./developer-metrics";
+
+// Slack Integration
+export * from "./slack-integration";
+
+// Webhooks
+export * from "./webhooks";
+
+// Branch Protection
+export * from "./branch-protection";
+
+// System Config
+export * from "./system-config";

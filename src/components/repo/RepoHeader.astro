@@ -15,6 +15,7 @@ import {
   BarChart2,
   GitPullRequest,
   Layout,
+  ChevronDown,
 } from "lucide-react";
 
 interface Props {
@@ -104,160 +105,154 @@ const tabs = [
 ];
 ---
 
-<div
-  class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-6"
->
-  <div class="space-y-2">
-    <div class="flex items-center gap-2 text-sm text-muted-foreground">
-      <a href={`/${repo.owner}`} class="hover:text-primary">{repo.owner}</a>
-      <span>/</span>
-      <a
-        href={`/${repo.owner}/${repo.name}`}
-        class="font-semibold text-foreground hover:text-primary">{repo.name}</a
-      >
-      <span
-        class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs"
-      >
-        {
-          repo.visibility === "public" ? (
-            <>
-              <Globe className="h-3 w-3 mr-1" />
-              Public
-            </>
-          ) : (
-            <>
-              <Lock className="h-3 w-3 mr-1" />
-              Private
-            </>
-          )
-        }
-      </span>
-    </div>
-    {
-      repo.description && (
-        <p class="text-muted-foreground">{repo.description}</p>
-      )
-    }
-    {
-      repo.topics && repo.topics.length > 0 && (
-        <div class="flex flex-wrap gap-2">
-          {repo.topics.map((topic: string) => (
-            <a
-              href={`/topics/${topic}`}
-              class="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/20"
-            >
-              {topic}
-            </a>
-          ))}
-        </div>
-      )
-    }
-  </div>
-  <div class="flex items-center gap-2">
-    <div class="flex items-center rounded-md border shadow-sm">
-      <button
-        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium hover:bg-accent"
-      >
-        <Eye className="h-4 w-4" />
-        Watch
-        <span class="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs"
-          >{repo.watchers || 0}</span
+<!-- Enhanced Repo Header -->
+<div class="mb-6">
+  <!-- Top Section: Repo Name & Action Buttons -->
+  <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 py-4 border-b border-white/10">
+    <!-- Repo Info -->
+    <div class="space-y-2">
+      <!-- Repo Name - BIGGER and more prominent -->
+      <div class="flex items-center gap-3 flex-wrap">
+        <a 
+          href={`/${repo.owner}`} 
+          class="text-xl font-semibold text-cyan-400 hover:underline transition-colors"
         >
-      </button>
-      <div class="w-px h-6 bg-border"></div>
-      <button class="px-2 py-1.5 hover:bg-accent">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="h-4 w-4"><path d="m6 9 6 6 6-6"></path></svg
-        >
-      </button>
-    </div>
-    <div class="flex items-center rounded-md border shadow-sm">
-      <button
-        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium hover:bg-accent"
-      >
-        <GitFork className="h-4 w-4" />
-        Fork
-        <span class="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs"
-          >{repo.forks || 0}</span
-        >
-      </button>
-      <div class="w-px h-6 bg-border"></div>
-      <button class="px-2 py-1.5 hover:bg-accent">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="h-4 w-4"><path d="m6 9 6 6 6-6"></path></svg
-        >
-      </button>
-    </div>
-    <div class="flex items-center rounded-md border shadow-sm">
-      <button
-        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium hover:bg-accent"
-      >
-        <Star className="h-4 w-4" />
-        Star
-        <span class="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs"
-          >{repo.stars || 0}</span
-        >
-      </button>
-      <div class="w-px h-6 bg-border"></div>
-      <button class="px-2 py-1.5 hover:bg-accent">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="h-4 w-4"><path d="m6 9 6 6 6-6"></path></svg
-        >
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- Navigation Tabs -->
-<div class="border-b mb-6 overflow-x-auto">
-  <nav class="flex gap-6 -mb-px min-w-max">
-    {
-      tabs.map((tab) => (
-        <a
-          href={tab.href}
-          class:list={[
-            "inline-flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition-colors",
-            activeTab === tab.id
-              ? "border-primary text-foreground"
-              : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
-          ]}
-        >
-          <tab.icon className="h-4 w-4" />
-          {tab.label}
-          {tab.count !== undefined && (
-            <span class="rounded-full bg-muted px-2 py-0.5 text-xs">
-              {tab.count}
-            </span>
-          )}
+          {repo.owner}
         </a>
-      ))
-    }
-  </nav>
+        <span class="text-xl text-gray-500">/</span>
+        <a
+          href={`/${repo.owner}/${repo.name}`}
+          class="text-xl font-bold text-white hover:text-cyan-400 transition-colors"
+        >
+          {repo.name}
+        </a>
+        <!-- Visibility Badge -->
+        <span
+          class="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/5 px-2.5 py-1 text-xs font-medium text-gray-400"
+        >
+          {
+            repo.visibility === "public" ? (
+              <>
+                <Globe className="h-3 w-3 text-green-400" />
+                <span>Public</span>
+              </>
+            ) : (
+              <>
+                <Lock className="h-3 w-3 text-orange-400" />
+                <span>Private</span>
+              </>
+            )
+          }
+        </span>
+      </div>
+      
+      <!-- Description -->
+      {
+        repo.description && (
+          <p class="text-gray-400 text-sm max-w-2xl">{repo.description}</p>
+        )
+      }
+      
+      <!-- Topics -->
+      {
+        repo.topics && repo.topics.length > 0 && (
+          <div class="flex flex-wrap gap-2 mt-2">
+            {repo.topics.map((topic: string) => (
+              <a
+                href={`/topics/${topic}`}
+                class="inline-flex items-center rounded-full bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-0.5 text-xs font-medium text-cyan-400 hover:bg-cyan-500/20 transition-colors"
+              >
+                {topic}
+              </a>
+            ))}
+          </div>
+        )
+      }
+    </div>
+    
+    <!-- Action Buttons -->
+    <div class="flex items-center gap-2 flex-wrap">
+      <!-- Watch -->
+      <div class="flex items-center rounded-lg border border-white/10 bg-white/5 overflow-hidden">
+        <button
+          class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/10 transition-colors"
+        >
+          <Eye className="h-4 w-4" />
+          Watch
+          <span class="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-xs text-cyan-400">
+            {repo.watchers || 0}
+          </span>
+        </button>
+        <div class="w-px h-6 bg-white/10"></div>
+        <button class="px-2 py-2 hover:bg-white/10 transition-colors text-gray-400">
+          <ChevronDown className="h-4 w-4" />
+        </button>
+      </div>
+      
+      <!-- Fork -->
+      <div class="flex items-center rounded-lg border border-white/10 bg-white/5 overflow-hidden">
+        <button
+          id="fork-btn"
+          data-owner={repo.owner}
+          data-repo={repo.name}
+          class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/10 transition-colors"
+        >
+          <GitFork className="h-4 w-4" />
+          Fork
+          <span class="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-xs text-purple-400">
+            {repo.forks || 0}
+          </span>
+        </button>
+      </div>
+      
+      <!-- Star -->
+      <div class="flex items-center rounded-lg border border-white/10 bg-white/5 overflow-hidden">
+        <button
+          class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/10 transition-colors"
+        >
+          <Star className="h-4 w-4" />
+          Star
+          <span class="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-xs text-yellow-400">
+            {repo.stars || 0}
+          </span>
+        </button>
+        <div class="w-px h-6 bg-white/10"></div>
+        <button class="px-2 py-2 hover:bg-white/10 transition-colors text-gray-400">
+          <ChevronDown className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <div class="overflow-x-auto -mx-4 px-4">
+    <nav class="flex gap-1 pt-3 min-w-max">
+      {
+        tabs.map((tab) => (
+          <a
+            href={tab.href}
+            class:list={[
+              "inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
+              activeTab === tab.id
+                ? "bg-white/10 text-white border border-white/10"
+                : "text-gray-400 hover:text-white hover:bg-white/5",
+            ]}
+          >
+            <tab.icon className="h-4 w-4" />
+            {tab.label}
+            {tab.count !== undefined && tab.count > 0 && (
+              <span class:list={[
+                "rounded-full px-2 py-0.5 text-xs font-medium",
+                activeTab === tab.id
+                  ? "bg-cyan-500/20 text-cyan-400"
+                  : "bg-white/10 text-gray-400"
+              ]}>
+                {tab.count}
+              </span>
+            )}
+          </a>
+        ))
+      }
+    </nav>
+  </div>
 </div>

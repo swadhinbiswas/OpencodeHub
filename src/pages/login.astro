@@ -1,17 +1,5 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Github } from "lucide-react";
 
 if (Astro.locals.user) {
   return Astro.redirect("/dashboard");
@@ -20,62 +8,106 @@ if (Astro.locals.user) {
 
 <BaseLayout title="Sign in to OpenCodeHub">
   <div class="flex min-h-[calc(100vh-4rem)] items-center justify-center py-12">
-    <Card className="w-full max-w-md">
-      <CardHeader class="space-y-1">
-        <CardTitle class="text-2xl font-bold text-center">Sign in</CardTitle>
-        <CardDescription class="text-center">
-          Enter your credentials to access your account
-        </CardDescription>
-      </CardHeader>
-      <CardContent class="space-y-4">
-        <form id="login-form" class="space-y-4">
-          <div class="space-y-2">
-            <Label htmlFor="login">Username or Email</Label>
-            <Input id="login" name="login" placeholder="admin" required />
+    <div class="w-full max-w-md">
+      <!-- Logo -->
+      <div class="text-center mb-8">
+        <a href="/" class="inline-flex items-center gap-2">
+          <div class="p-2 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600">
+            <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+            </svg>
           </div>
-          <div class="space-y-2">
-            <div class="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              <a
-                href="/password-reset"
-                class="text-sm text-primary hover:underline"
-              >
-                Forgot password?
-              </a>
+          <span class="text-2xl font-bold text-white">OpenCodeHub</span>
+        </a>
+      </div>
+
+      <!-- Login Card -->
+      <div class="relative">
+        <div class="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/30 via-purple-500/20 to-pink-500/30 rounded-2xl blur-sm"></div>
+        <div class="relative rounded-2xl border border-white/10 bg-[#0d1117]/90 backdrop-blur-xl p-8">
+          <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-white mb-2">Welcome back</h1>
+            <p class="text-gray-500 text-sm">Sign in to your account to continue</p>
+          </div>
+
+          <form id="login-form" class="space-y-5">
+            <div class="space-y-2">
+              <label for="login" class="block text-sm font-medium text-gray-300">
+                Username or Email
+              </label>
+              <input
+                id="login"
+                name="login"
+                type="text"
+                placeholder="Enter your username or email"
+                required
+                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+              />
             </div>
-            <Input id="password" name="password" type="password" required />
-          </div>
-          <div id="error-message" class="text-sm text-destructive hidden"></div>
-          <Button type="submit" class="w-full">Sign in</Button>
-        </form>
 
-        <div class="relative">
-          <div class="absolute inset-0 flex items-center">
-            <span class="w-full border-t"></span>
-          </div>
-          <div class="relative flex justify-center text-xs uppercase">
-            <span class="bg-background px-2 text-muted-foreground">
-              Or continue with
-            </span>
-          </div>
-        </div>
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <label for="password" class="block text-sm font-medium text-gray-300">
+                  Password
+                </label>
+                <a
+                  href="/password-reset"
+                  class="text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  Forgot password?
+                </a>
+              </div>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Enter your password"
+                required
+                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+              />
+            </div>
 
-        <div class="grid grid-cols-1 gap-2">
-          <Button variant="outline" disabled>
-            <Github className="mr-2 h-4 w-4" />
-            GitHub (Coming Soon)
-          </Button>
+            <div id="error-message" class="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-3 hidden"></div>
+
+            <button
+              type="submit"
+              class="w-full py-3 px-4 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-medium shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+            >
+              Sign in
+            </button>
+          </form>
+
+          <!-- Divider -->
+          <div class="relative my-6">
+            <div class="absolute inset-0 flex items-center">
+              <span class="w-full border-t border-white/10"></span>
+            </div>
+            <div class="relative flex justify-center text-xs uppercase">
+              <span class="bg-[#0d1117] px-2 text-gray-500">Or continue with</span>
+            </div>
+          </div>
+
+          <!-- Social Login -->
+          <a
+            href="/api/auth/github"
+            class="w-full py-3 px-4 rounded-lg border border-white/10 bg-white/5 text-white font-medium hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
+          >
+            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"></path>
+            </svg>
+            Continue with GitHub
+          </a>
+
+          <!-- Footer -->
+          <p class="text-center text-sm text-gray-500 mt-6">
+            Don't have an account?{" "}
+            <a href="/register" class="text-cyan-400 hover:text-cyan-300 font-medium transition-colors">
+              Sign up
+            </a>
+          </p>
         </div>
-      </CardContent>
-      <CardFooter
-        class="flex flex-col space-y-2 text-center text-sm text-muted-foreground"
-      >
-        <div>
-          Don't have an account?{" "}
-          <a href="/register" class="text-primary hover:underline"> Sign up </a>
-        </div>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   </div>
 </BaseLayout>
 
@@ -94,9 +126,7 @@ if (Astro.locals.user) {
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
 
@@ -106,8 +136,7 @@ if (Astro.locals.user) {
         window.location.href = "/dashboard";
       } else {
         errorMessage?.classList.remove("hidden");
-        errorMessage!.textContent =
-          result.error?.message || "Failed to sign in";
+        errorMessage!.textContent = result.error?.message || "Failed to sign in";
       }
     } catch (error) {
       errorMessage?.classList.remove("hidden");

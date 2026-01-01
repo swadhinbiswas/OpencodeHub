@@ -39,6 +39,10 @@ const user = Astro.locals.user;
       <a href="/actions" class="text-muted-foreground transition-colors hover:text-foreground">
         Actions
       </a>
+      <a href="/admin" class="text-muted-foreground transition-colors hover:text-purple-400 font-semibold flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-activity"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        Mission Control
+      </a>
     </nav>
 
     <!-- Spacer -->
@@ -75,9 +79,7 @@ const user = Astro.locals.user;
               <a href="/new" class="flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
                 New Repository
               </a>
-              <a href="/new/organization" class="flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
-                New Organization
-              </a>
+
               <a href="/new/import" class="flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
                 Import Repository
               </a>
@@ -120,9 +122,7 @@ const user = Astro.locals.user;
               <a href="/repositories" class="flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
                 Your Repositories
               </a>
-              <a href="/organizations" class="flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
-                Your Organizations
-              </a>
+
               <a href="/stars" class="flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
                 Your Stars
               </a>

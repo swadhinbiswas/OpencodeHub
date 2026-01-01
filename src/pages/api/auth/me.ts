@@ -22,6 +22,7 @@ const updateProfileSchema = z.object({
   location: z.string().max(100).optional(),
   website: z.string().url().max(255).optional().or(z.literal("")),
   company: z.string().max(100).optional(),
+  avatarUrl: z.string().url().max(500).optional().or(z.literal("")),
 });
 
 export const GET: APIRoute = async ({ request }) => {
@@ -76,7 +77,7 @@ export const PATCH: APIRoute = async ({ request }) => {
     const parsed = await parseBody(request, updateProfileSchema);
     if ("error" in parsed) return parsed.error;
 
-    const { displayName, bio, location, website, company } = parsed.data;
+    const { displayName, bio, location, website, company, avatarUrl } = parsed.data;
     const db = getDatabase();
 
     // Update user
@@ -88,6 +89,7 @@ export const PATCH: APIRoute = async ({ request }) => {
         location,
         website,
         company,
+        avatarUrl,
         updatedAt: now(),
       })
       .where(eq(users.id, tokenPayload.userId));

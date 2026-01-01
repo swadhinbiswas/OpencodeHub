@@ -8,6 +8,7 @@ import { generateKeyPairSync } from "crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import { Server } from "ssh2";
+import { logger } from "@/lib/logger";
 
 export interface SSHServerConfig {
   port: number;
@@ -64,21 +65,21 @@ export function createSSHServer(config: SSHServerConfig): Server {
               return;
             }
           } catch (error) {
-            console.error("Auth error:", error);
+            logger.error({ err: error }, "SSH auth error");
           }
         }
         ctx.reject(["publickey"]);
       });
 
       client.on("ready", () => {
-        console.log(`SSH client connected: ${username}`);
+        logger.info({ username }, "SSH client connected");
 
         client.on("session", (accept, reject) => {
           const session = accept();
 
           session.on("exec", async (accept, reject, info) => {
             const command = info.command;
-            console.log(`SSH exec: ${command}`);
+            logger.debug({ command }, "SSH exec");
 
             // Parse git command
             const gitCommand = parseGitCommand(command);
@@ -97,10 +98,10 @@ export function createSSHServer(config: SSHServerConfig): Server {
             const isWrite = operation === "git-receive-pack";
             const authorized = userId
               ? await authorizeRepo(
-                  userId,
-                  normalizedPath,
-                  isWrite ? "write" : "read"
-                )
+                userId,
+                normalizedPath,
+                isWrite ? "write" : "read"
+              )
               : false;
 
             if (!authorized) {
@@ -169,7 +170,7 @@ export function createSSHServer(config: SSHServerConfig): Server {
                 try {
                   await onPush(userId, normalizedPath, receivedRefs);
                 } catch (error) {
-                  console.error("Push hook error:", error);
+                  logger.error({ err: error }, "Push hook error");
                 }
               }
 
@@ -178,7 +179,7 @@ export function createSSHServer(config: SSHServerConfig): Server {
             });
 
             gitProcess.on("error", (error) => {
-              console.error("Git process error:", error);
+              logger.error({ err: error }, "Git process error");
               channel.stderr.write(`Error: ${error.message}\n`);
               channel.exit(1);
               channel.close();
@@ -193,11 +194,11 @@ export function createSSHServer(config: SSHServerConfig): Server {
       });
 
       client.on("error", (error) => {
-        console.error("SSH client error:", error);
+        logger.error({ err: error }, "SSH client error");
       });
 
       client.on("end", () => {
-        console.log(`SSH client disconnected: ${username}`);
+        logger.info({ username }, "SSH client disconnected");
       });
     }
   );
@@ -262,7 +263,7 @@ function loadOrGenerateHostKey(keyPath: string): string {
   });
 
   writeFileSync(keyPath, privateKey, { mode: 0o600 });
-  console.log(`Generated new SSH host key at ${keyPath}`);
+  logger.info({ keyPath }, "Generated new SSH host key");
 
   return privateKey;
 }
@@ -275,12 +276,12 @@ export async function startSSHServer(config: SSHServerConfig): Promise<void> {
 
   return new Promise((resolve, reject) => {
     server.listen(config.port, "0.0.0.0", () => {
-      console.log(`SSH Git server listening on port ${config.port}`);
+      logger.info({ port: config.port }, "SSH Git server listening");
       resolve();
     });
 
-    server.on("error", (error) => {
-      console.error("SSH server error:", error);
+    server.on("error", (error: Error) => {
+      logger.error({ err: error }, "SSH server error");
       reject(error);
     });
   });
