@@ -1,0 +1,272 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { BookOpen, Code, Zap, GitBranch, Bot, GitMerge, BarChart3, MessageSquare, Terminal } from "lucide-react";
+
+const features = [
+  {
+    icon: GitBranch,
+    title: "Stacked Pull Requests",
+    description: "Break large changes into reviewable stacks",
+    href: "/docs/features/stacked-prs",
+    color: "from-blue-500 to-cyan-500"
+  },
+  {
+    icon: Bot,
+    title: "AI Code Review",
+    description: "Get instant feedback from GPT-4 or Claude",
+    href: "/docs/features/ai-review",
+    color: "from-purple-500 to-pink-500"
+  },
+  {
+    icon: GitMerge,
+    title: "Smart Merge Queue",
+    description: "Automate merging with CI optimization",
+    href: "/docs/features/merge-queue",
+    color: "from-green-500 to-emerald-500"
+  },
+  {
+    icon: BarChart3,
+    title: "Developer Metrics",
+    description: "Track velocity and review efficiency",
+    href: "/admin/metrics",
+    color: "from-orange-500 to-red-500"
+  },
+  {
+    icon: MessageSquare,
+    title: "Slack Integration",
+    description: "Get notifications in Slack",
+    href: "/settings/integrations",
+    color: "from-indigo-500 to-blue-500"
+  },
+  {
+    icon: Terminal,
+    title: "OCH CLI",
+    description: "Powerful command-line interface",
+    href: "https://github.com/swadhinbiswas/OpencodeHub/tree/main/cli",
+    color: "from-cyan-500 to-teal-500"
+  }
+];
+
+const quickLinks = [
+  { title: "Getting Started", href: "#getting-started", icon: Zap },
+  { title: "Features", href: "#features", icon: Code },
+  { title: "Tutorials", href: "#tutorials", icon: BookOpen },
+];
+---
+
+<BaseLayout title="Documentation - OpenCodeHub">
+  <div class="container mx-auto py-12 px-4">
+    <!-- Hero -->
+    <div class="text-center mb-16">
+      <h1 class="text-5xl font-bold mb-4">
+        <span class="bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-400">
+          Documentation
+        </span>
+      </h1>
+      <p class="text-xl text-muted-foreground max-w-2xl mx-auto">
+        Everything you need to know about OpenCodeHub - from getting started to advanced features
+      </p>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="grid md:grid-cols-3 gap-6 mb-16">
+      {quickLinks.map((link) => {
+        const Icon = link.icon;
+        return (
+          <a
+            href={link.href}
+            class="group relative p-6 rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm hover:border-primary/50 transition-all hover:scale-105 hover:shadow-lg"
+          >
+            <div class="flex items-center gap-3 mb-2">
+              <Icon class="h-6 w-6 text-primary" />
+              <h3 class="text-lg font-semibold">{link.title}</h3>
+            </div>
+            <p class="text-sm text-muted-foreground">Quick access</p>
+          </a>
+        );
+      })}
+    </div>
+
+    <!-- Features Grid -->
+    <section id="features" class="mb-16">
+      <h2 class="text-3xl font-bold mb-8">Core Features</h2>
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {features.map((feature) => {
+          const Icon = feature.icon;
+          return (
+            <a
+              href={feature.href}
+              class="group relative p-6 rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm hover:border-primary/50 transition-all hover:scale-105"
+            >
+              <div class={`inline-flex p-3 rounded-lg bg-gradient-to-br ${feature.color} mb-4`}>
+                <Icon class="h-6 w-6 text-white" />
+              </div>
+              <h3 class="text-xl font-semibold mb-2">{feature.title}</h3>
+              <p class="text-sm text-muted-foreground mb-4">{feature.description}</p>
+              <span class="text-sm text-primary group-hover:underline">
+                Learn more →
+              </span>
+            </a>
+          );
+        })}
+      </div>
+    </section>
+
+    <!-- Getting Started -->
+    <section id="getting-started" class="mb-16">
+      <h2 class="text-3xl font-bold mb-8">Getting Started</h2>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="p-6 rounded-xl border border-white/10 bg-card/50">
+          <h3 class="text-xl font-semibold mb-4">🚀 Quick Start (5 minutes)</h3>
+          <div class="space-y-4">
+            <div class="p-4 rounded-lg bg-background/50">
+              <h4 class="font-medium mb-2">1. Install with Docker</h4>
+              <pre class="text-sm bg-black/50 p-3 rounded overflow-x-auto"><code>docker-compose up -d</code></pre>
+            </div>
+            <div class="p-4 rounded-lg bg-background/50">
+              <h4 class="font-medium mb-2">2. Create admin user</h4>
+              <pre class="text-sm bg-black/50 p-3 rounded overflow-x-auto"><code>docker-compose exec app bun run scripts/seed-admin.ts</code></pre>
+            </div>
+            <div class="p-4 rounded-lg bg-background/50">
+              <h4 class="font-medium mb-2">3. Open browser</h4>
+              <pre class="text-sm bg-black/50 p-3 rounded overflow-x-auto"><code>http://localhost:3000</code></pre>
+            </div>
+          </div>
+          <a href="/docs/installation" class="inline-flex items-center gap-2 mt-4 text-sm text-primary hover:underline">
+            Full installation guide →
+          </a>
+        </div>
+
+        <div class="p-6 rounded-xl border border-white/10 bg-card/50">
+          <h3 class="text-xl font-semibold mb-4">📚 First Steps</h3>
+          <div class="space-y-3">
+            <a href="/docs/tutorials/your-first-stack" class="block p-3 rounded-lg bg-background/50 hover:bg-primary/10 transition-colors">
+              <div class="font-medium">Tutorial: Your First Stack</div>
+              <div class="text-sm text-muted-foreground">Create your first stacked PR in 15 minutes</div>
+            </a>
+            <a href="/docs/features/ai-review" class="block p-3 rounded-lg bg-background/50 hover:bg-primary/10 transition-colors">
+              <div class="font-medium">Setup AI Code Review</div>
+              <div class="text-sm text-muted-foreground">Configure GPT-4 or Claude for automatic reviews</div>
+            </a>
+            <a href="/docs/features/merge-queue" class="block p-3 rounded-lg bg-background/50 hover:bg-primary/10 transition-colors">
+              <div class="font-medium">Use Merge Queue</div>
+              <div class="text-sm text-muted-foreground">Automate merging with stack awareness</div>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tutorials -->
+    <section id="tutorials" class="mb-16">
+      <h2 class="text-3xl font-bold mb-8">Hands-On Tutorials</h2>
+      <div class="space-y-4">
+        <a
+          href="/docs/tutorials/your-first-stack"
+          class="block p-6 rounded-xl border border-white/10 bg-card/50 hover:border-primary/50 transition-all"
+        >
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-xl font-semibold mb-2">🎓 Your First Stacked PR</h3>
+              <p class="text-sm text-muted-foreground">
+                Learn how to split a large feature into reviewable chunks in 15 minutes
+              </p>
+              <div class="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+                <span>⏱️ 15-20 minutes</span>
+                <span>📊 Beginner</span>
+                <span>💻 Hands-on coding</span>
+              </div>
+            </div>
+            <span class="text-primary">→</span>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <!-- Resources -->
+    <section class="mb-16">
+      <h2 class="text-3xl font-bold mb-8">Additional Resources</h2>
+      <div class="grid md:grid-cols-3 gap-6">
+        <a
+          href="https://github.com/swadhinbiswas/OpencodeHub"
+          target="_blank"
+          class="p-6 rounded-xl border border-white/10 bg-card/50 hover:border-primary/50 transition-all"
+        >
+          <h3 class="text-lg font-semibold mb-2">📁 GitHub Repository</h3>
+          <p class="text-sm text-muted-foreground">View source code and contribute</p>
+        </a>
+        <a
+          href="https://github.com/swadhinbiswas/OpencodeHub/issues"
+          target="_blank"
+          class="p-6 rounded-xl border border-white/10 bg-card/50 hover:border-primary/50 transition-all"
+        >
+          <h3 class="text-lg font-semibold mb-2">🐛 Report Issues</h3>
+          <p class="text-sm text-muted-foreground">Found a bug? Let us know</p>
+        </a>
+        <a
+          href="https://github.com/swadhinbiswas/OpencodeHub/discussions"
+          target="_blank"
+          class="p-6 rounded-xl border border-white/10 bg-card/50 hover:border-primary/50 transition-all"
+        >
+          <h3 class="text-lg font-semibold mb-2">💬 Discussions</h3>
+          <p class="text-sm text-muted-foreground">Ask questions and share ideas</p>
+        </a>
+      </div>
+    </section>
+
+    <!-- Feature Comparison -->
+    <section>
+      <h2 class="text-3xl font-bold mb-8">Why OpenCodeHub?</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse">
+          <thead>
+            <tr class="border-b border-white/10">
+              <th class="text-left p-4">Feature</th>
+              <th class="text-center p-4">GitHub</th>
+              <th class="text-center p-4">GitLab</th>
+              <th class="text-center p-4 text-primary">OpenCodeHub</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-white/5">
+              <td class="p-4">Stacked PRs</td>
+              <td class="text-center p-4">❌</td>
+              <td class="text-center p-4">❌</td>
+              <td class="text-center p-4 text-green-400">✅ Native</td>
+            </tr>
+            <tr class="border-b border-white/5">
+              <td class="p-4">AI Code Review</td>
+              <td class="text-center p-4">⚠️ Copilot</td>
+              <td class="text-center p-4">❌</td>
+              <td class="text-center p-4 text-green-400">✅ GPT-4 & Claude</td>
+            </tr>
+            <tr class="border-b border-white/5">
+              <td class="p-4">Smart Merge Queue</td>
+              <td class="text-center p-4">⚠️ Basic</td>
+              <td class="text-center p-4">⚠️ Basic</td>
+              <td class="text-center p-4 text-green-400">✅ Stack-aware</td>
+            </tr>
+            <tr class="border-b border-white/5">
+              <td class="p-4">Self-Hosted</td>
+              <td class="text-center p-4">❌</td>
+              <td class="text-center p-4">✅ Complex</td>
+              <td class="text-center p-4 text-green-400">✅ Simple</td>
+            </tr>
+            <tr>
+              <td class="p-4">Cost</td>
+              <td class="text-center p-4">$$$</td>
+              <td class="text-center p-4">$$$</td>
+              <td class="text-center p-4 text-green-400">Free</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  .container {
+    max-width: 1200px;
+  }
+</style>

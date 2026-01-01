@@ -5,10 +5,12 @@ const driver = process.env.DATABASE_DRIVER || "sqlite";
 const url = process.env.DATABASE_URL || "./data/opencodehub.db";
 
 // Map driver to Drizzle dialect
-const dialectMap: Record<string, "sqlite" | "postgresql" | "mysql"> = {
+const dialectMap: Record<string, "sqlite" | "postgresql" | "mysql" | "turso"> = {
   sqlite: "sqlite",
   postgres: "postgresql",
   mysql: "mysql",
+  libsql: "turso",
+  turso: "turso",
 };
 
 const dialect = dialectMap[driver] || "sqlite";
@@ -19,6 +21,9 @@ function getCredentials() {
     case "postgres":
     case "mysql":
       return { url };
+    case "libsql":
+    case "turso":
+      return { url, authToken: process.env.DATABASE_AUTH_TOKEN };
     case "sqlite":
     default:
       return { url };

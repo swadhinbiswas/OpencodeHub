@@ -1,14 +1,14 @@
 /**
- * Developer Metrics Schema
- * Track PR velocity, review efficiency, and team productivity
+ * Developer Metrics Schema - Drizzle ORM
+ * Tracks PR metrics, review efficiency, and stack analytics
  */
 
 import { relations } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { pullRequests } from "./pull-requests";
 import { repositories } from "./repositories";
 import { users } from "./users";
-import { organizations } from "./organizations";
+
 
 // Per-PR metrics
 export const prMetrics = sqliteTable("pr_metrics", {
@@ -62,7 +62,6 @@ export const reviewMetrics = sqliteTable("review_metrics", {
         .notNull()
         .references(() => users.id, { onDelete: "cascade" }),
     repositoryId: text("repository_id").references(() => repositories.id, { onDelete: "cascade" }),
-    organizationId: text("organization_id").references(() => organizations.id),
 
     // Time period
     weekOf: text("week_of").notNull(), // ISO week: "2024-W52"

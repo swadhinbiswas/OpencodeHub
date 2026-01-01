@@ -48,3 +48,4 @@ drizzle/meta/
 
 # Monaco Editor cache
 .monaco/
+.vercel

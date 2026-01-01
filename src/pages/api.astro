@@ -1,0 +1,328 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { Code2, Webhook, Key, BookOpen } from "lucide-react";
+
+const apiSections = [
+  {
+    icon: Code2,
+    title: "REST API",
+    description: "Complete REST API reference for repositories, pull requests, and more",
+    href: "/docs/api/rest-api",
+    status: "Available",
+    statusColor: "text-green-400"
+  },
+  {
+    icon: Webhook,
+    title: "Webhooks",
+    description: "Event-driven integrations with webhook payloads",
+    href: "/docs/api/webhooks",
+    status: "Available",
+    statusColor: "text-green-400"
+  },
+  {
+    icon: Key,
+    title: "Authentication",
+    description: "API tokens, OAuth, and authentication flows",
+    href: "/docs/api/authentication",
+    status: "Available",
+    statusColor: "text-green-400"
+  },
+  {
+    icon: BookOpen,
+    title: "GraphQL API",
+    description: "Flexible data querying with GraphQL",
+    href: "/docs/api/graphql",
+    status: "Coming Soon",
+    statusColor: "text-yellow-400"
+  }
+];
+
+const quickExamples = [
+  {
+    title: "Create Repository",
+    method: "POST",
+    endpoint: "/api/repos",
+    code: `curl -X POST https://git.yourcompany.com/api/repos \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "name": "my-project",
+    "description": "My awesome project",
+    "visibility": "private"
+  }'`
+  },
+  {
+    title: "List Pull Requests",
+    method: "GET",
+    endpoint: "/api/repos/:owner/:repo/pulls",
+    code: `curl https://git.yourcompany.com/api/repos/owner/repo/pulls \\
+  -H "Authorization: Bearer YOUR_TOKEN"`
+  },
+  {
+    title: "Create Pull Request",
+    method: "POST",
+    endpoint: "/api/repos/:owner/:repo/pulls",
+    code: `curl -X POST https://git.yourcompany.com/api/repos/owner/repo/pulls \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "title": "Add new feature",
+    "head": "feature-branch",
+    "base": "main",
+    "body": "This PR adds..."
+  }'`
+  }
+];
+---
+
+<BaseLayout title="API Documentation - OpenCodeHub">
+  <div class="container mx-auto py-12 px-4">
+    <!-- Hero -->
+    <div class="text-center mb-16">
+      <h1 class="text-5xl font-bold mb-4">
+        <span class="bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-400">
+          API Documentation
+        </span>
+      </h1>
+      <p class="text-xl text-muted-foreground max-w-2xl mx-auto">
+        Integrate OpenCodeHub into your workflow with our comprehensive REST API
+      </p>
+    </div>
+
+    <!-- API Overview -->
+    <section class="mb-16">
+      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {apiSections.map((section) => {
+          const Icon = section.icon;
+          return (
+            <a
+              href={section.href}
+              class="group relative p-6 rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm hover:border-primary/50 transition-all hover:scale-105"
+            >
+              <div class="flex items-center justify-between mb-4">
+                <Icon class="h-8 w-8 text-primary" />
+                <span class={`text-xs font-medium ${section.statusColor}`}>
+                  {section.status}
+                </span>
+              </div>
+              <h3 class="text-lg font-semibold mb-2">{section.title}</h3>
+              <p class="text-sm text-muted-foreground">{section.description}</p>
+            </a>
+          );
+        })}
+      </div>
+    </section>
+
+    <!-- Quick Start -->
+    <section class="mb-16">
+      <h2 class="text-3xl font-bold mb-8">Quick Start</h2>
+      <div class="grid md:grid-cols-2 gap-6">
+        <!-- Authentication -->
+        <div class="p-6 rounded-xl border border-white/10 bg-card/50">
+          <h3 class="text-xl font-semibold mb-4">1. Get API Token</h3>
+          <div class="space-y-3">
+            <p class="text-sm text-muted-foreground">
+              Generate a personal access token from your settings:
+            </p>
+            <ol class="list-decimal list-inside space-y-2 text-sm">
+              <li>Go to <a href="/settings/tokens" class="text-primary hover:underline">Settings → Tokens</a></li>
+              <li>Click "Generate New Token"</li>
+              <li>Select scopes: <code class="bg-muted px-2 py-1 rounded">repo</code>, <code class="bg-muted px-2 py-1 rounded">pr</code></li>
+              <li>Copy and save your token securely</li>
+            </ol>
+          </div>
+        </div>
+
+        <!-- Base URL -->
+        <div class="p-6 rounded-xl border border-white/10 bg-card/50">
+          <h3 class="text-xl font-semibold mb-4">2. API Base URL</h3>
+          <div class="space-y-3">
+            <p class="text-sm text-muted-foreground">
+              All API requests should be made to:
+            </p>
+            <pre class="text-sm bg-black/50 p-3 rounded overflow-x-auto"><code>https://git.yourcompany.com/api</code></pre>
+            <p class="text-xs text-muted-foreground">
+              Replace <code class="bg-muted px-1 rounded">git.yourcompany.com</code> with your instance URL
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quick Examples -->
+    <section class="mb-16">
+      <h2 class="text-3xl font-bold mb-8">Quick Examples</h2>
+      <div class="space-y-6">
+        {quickExamples.map((example) => (
+          <div class="p-6 rounded-xl border border-white/10 bg-card/50">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-semibold">{example.title}</h3>
+              <div class="flex items-center gap-2">
+                <span class={`px-3 py-1 rounded-full text-xs font-medium ${
+                  example.method === 'GET' 
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : example.method === 'POST'
+                    ? 'bg-green-500/20 text-green-400'
+                    : 'bg-yellow-500/20 text-yellow-400'
+                }`}>
+                  {example.method}
+                </span>
+                <code class="text-xs text-muted-foreground">{example.endpoint}</code>
+              </div>
+            </div>
+            <pre class="text-sm bg-black/80 p-4 rounded overflow-x-auto border border-white/5"><code>{example.code}</code></pre>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- Rate Limiting -->
+    <section class="mb-16">
+      <h2 class="text-3xl font-bold mb-8">Rate Limiting</h2>
+      <div class="p-6 rounded-xl border border-white/10 bg-card/50">
+        <div class="grid md:grid-cols-3 gap-6">
+          <div>
+            <h4 class="font-semibold mb-2">Authenticated Requests</h4>
+            <p class="text-3xl font-bold text-primary">5,000</p>
+            <p class="text-sm text-muted-foreground">requests per hour</p>
+          </div>
+          <div>
+            <h4 class="font-semibold mb-2">Unauthenticated Requests</h4>
+            <p class="text-3xl font-bold text-yellow-400">60</p>
+            <p class="text-sm text-muted-foreground">requests per hour</p>
+          </div>
+          <div>
+            <h4 class="font-semibold mb-2">Check Limits</h4>
+            <p class="text-sm text-muted-foreground mb-2">Response headers:</p>
+            <code class="text-xs bg-muted px-2 py-1 rounded block">X-RateLimit-Remaining</code>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Response Format -->
+    <section class="mb-16">
+      <h2 class="text-3xl font-bold mb-8">Response Format</h2>
+      <div class="grid md:grid-cols-2 gap-6">
+        <!-- Success -->
+        <div class="p-6 rounded-xl border border-white/10 bg-card/50">
+          <h3 class="text-lg font-semibold mb-4 text-green-400">Success Response</h3>
+          <pre class="text-sm bg-black/80 p-4 rounded overflow-x-auto"><code>{`{
+  "data": {
+    "id": "repo-123",
+    "name": "my-project",
+    "owner": {
+      "username": "swadhin",
+      "id": "user-456"
+    },
+    "visibility": "private",
+    "created_at": "2024-01-01T12:00:00Z"
+  },
+  "meta": {
+    "timestamp": "2024-01-01T12:00:01Z"
+  }
+}`}</code></pre>
+        </div>
+
+        <!-- Error -->
+        <div class="p-6 rounded-xl border border-white/10 bg-card/50">
+          <h3 class="text-lg font-semibold mb-4 text-red-400">Error Response</h3>
+          <pre class="text-sm bg-black/80 p-4 rounded overflow-x-auto"><code>{`{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Repository name is required",
+    "details": {
+      "field": "name",
+      "constraint": "required"
+    }
+  },
+  "meta": {
+    "timestamp": "2024-01-01T12:00:01Z",
+    "request_id": "req-abc123"
+  }
+}`}</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- SDKs & Libraries -->
+    <section class="mb-16">
+      <h2 class="text-3xl font-bold mb-8">SDKs & Libraries</h2>
+      <div class="grid md:grid-cols-3 gap-6">
+        <div class="p-6 rounded-xl border border-white/10 bg-card/50">
+          <h3 class="text-lg font-semibold mb-2">JavaScript/TypeScript</h3>
+          <pre class="text-sm bg-black/50 p-3 rounded mb-3"><code>npm install @opencodehub/sdk</code></pre>
+          <a href="https://github.com/swadhinbiswas/OpencodeHub/tree/main/sdk/js" class="text-sm text-primary hover:underline">
+            View docs →
+          </a>
+        </div>
+        <div class="p-6 rounded-xl border border-white/10 bg-card/50">
+          <h3 class="text-lg font-semibold mb-2">Python</h3>
+          <pre class="text-sm bg-black/50 p-3 rounded mb-3"><code>pip install opencodehub</code></pre>
+          <a href="https://github.com/swadhinbiswas/OpencodeHub/tree/main/sdk/python" class="text-sm text-primary hover:underline">
+            View docs →
+          </a>
+        </div>
+        <div class="p-6 rounded-xl border border-white/10 bg-card/50">
+          <h3 class="text-lg font-semibold mb-2">Go</h3>
+          <pre class="text-sm bg-black/50 p-3 rounded mb-3"><code>go get github.com/opencodehub/sdk-go</code></pre>
+          <a href="https://github.com/swadhinbiswas/OpencodeHub/tree/main/sdk/go" class="text-sm text-primary hover:underline">
+            View docs →
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Resources -->
+    <section>
+      <h2 class="text-3xl font-bold mb-8">Additional Resources</h2>
+      <div class="grid md:grid-cols-2 gap-6">
+        <a
+          href="/docs"
+          class="p-6 rounded-xl border border-white/10 bg-card/50 hover:border-primary/50 transition-all"
+        >
+          <h3 class="text-lg font-semibold mb-2">📖 Full Documentation</h3>
+          <p class="text-sm text-muted-foreground">
+            Complete guides, tutorials, and feature documentation
+          </p>
+        </a>
+        <a
+          href="https://github.com/swadhinbiswas/OpencodeHub/tree/main/examples"
+          target="_blank"
+          class="p-6 rounded-xl border border-white/10 bg-card/50 hover:border-primary/50 transition-all"
+        >
+          <h3 class="text-lg font-semibold mb-2">💡 Code Examples</h3>
+          <p class="text-sm text-muted-foreground">
+            Real-world integration examples and sample code
+          </p>
+        </a>
+        <a
+          href="https://github.com/swadhinbiswas/OpencodeHub/discussions"
+          target="_blank"
+          class="p-6 rounded-xl border border-white/10 bg-card/50 hover:border-primary/50 transition-all"
+        >
+          <h3 class="text-lg font-semibold mb-2">💬 Community</h3>
+          <p class="text-sm text-muted-foreground">
+            Ask questions and discuss API usage
+          </p>
+        </a>
+        <a
+          href="https://github.com/swadhinbiswas/OpencodeHub/blob/main/CHANGELOG.md"
+          target="_blank"
+          class="p-6 rounded-xl border border-white/10 bg-card/50 hover:border-primary/50 transition-all"
+        >
+          <h3 class="text-lg font-semibold mb-2">📝 Changelog</h3>
+          <p class="text-sm text-muted-foreground">
+            API changes and version history
+          </p>
+        </a>
+      </div>
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  .container {
+    max-width: 1200px;
+  }
+</style>

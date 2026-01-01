@@ -5,14 +5,14 @@
 
 import { relations } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import { organizations } from "./organizations";
+// import { organizations } from "./organizations";
 import { repositories } from "./repositories";
 import { users } from "./users";
 
 // Slack workspace connections
 export const slackWorkspaces = sqliteTable("slack_workspaces", {
     id: text("id").primaryKey(),
-    organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+    // organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }), // Removed as per instruction
 
     // Slack info
     teamId: text("team_id").notNull(), // Slack team/workspace ID
@@ -95,10 +95,6 @@ export const slackUserMappings = sqliteTable("slack_user_mappings", {
 
 // Relations
 export const slackWorkspacesRelations = relations(slackWorkspaces, ({ one, many }) => ({
-    organization: one(organizations, {
-        fields: [slackWorkspaces.organizationId],
-        references: [organizations.id],
-    }),
     installedBy: one(users, {
         fields: [slackWorkspaces.installedById],
         references: [users.id],

@@ -21,7 +21,7 @@ export const issues = sqliteTable("issues", {
     .notNull()
     .references(() => users.id),
   assigneeId: text("assignee_id").references(() => users.id),
-  milestoneId: text("milestone_id").references(() => milestones.id),
+  milestoneId: text("milestone_id"), // Reference added later in relations
   isPinned: integer("is_pinned", { mode: "boolean" }).default(false),
   isLocked: integer("is_locked", { mode: "boolean" }).default(false),
   lockReason: text("lock_reason"),
@@ -121,10 +121,6 @@ export const issuesRelations = relations(issues, ({ one, many }) => ({
   assignee: one(users, {
     fields: [issues.assigneeId],
     references: [users.id],
-  }),
-  milestone: one(milestones, {
-    fields: [issues.milestoneId],
-    references: [milestones.id],
   }),
   comments: many(issueComments),
   labels: many(issueLabels),

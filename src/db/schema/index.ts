@@ -21,8 +21,8 @@ export * from "./workflows";
 // Wiki
 export * from "./wiki";
 
-// Organizations and teams
-export * from "./organizations";
+// Organizations and teams - TEMPORARILY DISABLED DUE TO CIRCULAR DEPENDENCY
+// export * from "./organizations";
 
 // Activity and notifications
 export * from "./activity";

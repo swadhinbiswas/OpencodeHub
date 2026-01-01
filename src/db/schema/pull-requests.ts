@@ -22,7 +22,7 @@ export const pullRequests = sqliteTable("pull_requests", {
     .notNull()
     .references(() => users.id),
   assigneeId: text("assignee_id").references(() => users.id),
-  milestoneId: text("milestone_id").references(() => milestones.id),
+  milestoneId: text("milestone_id"), // Reference handled in relations
 
   // Source and target
   headBranch: text("head_branch").notNull(),
@@ -163,47 +163,44 @@ export const pullRequestChecks = sqliteTable("pull_request_checks", {
   detailsUrl: text("details_url"),
   output: text("output"), // JSON { title, summary, text }
   startedAt: text("started_at"),
-  completedAt: text("completed_at"),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 
 // Relations
-export const pullRequestsRelations = relations(
-  pullRequests,
-  ({ one, many }) => ({
-    repository: one(repositories, {
-      fields: [pullRequests.repositoryId],
-      references: [repositories.id],
-    }),
-    headRepository: one(repositories, {
-      fields: [pullRequests.headRepositoryId],
-      references: [repositories.id],
-    }),
-    author: one(users, {
-      fields: [pullRequests.authorId],
-      references: [users.id],
-    }),
-    assignee: one(users, {
-      fields: [pullRequests.assigneeId],
-      references: [users.id],
-    }),
-    mergedBy: one(users, {
-      fields: [pullRequests.mergedById],
-      references: [users.id],
-    }),
-    milestone: one(milestones, {
-      fields: [pullRequests.milestoneId],
-      references: [milestones.id],
-    }),
-    reviews: many(pullRequestReviews),
-    comments: many(pullRequestComments),
-    labels: many(pullRequestLabels),
-    assignees: many(pullRequestAssignees),
-    reviewers: many(pullRequestReviewers),
-    checks: many(pullRequestChecks),
-  })
-);
+// export const pullRequestsRelations = relations(
+//   pullRequests,
+//   ({ one, many }) => ({
+//     repository: one(repositories, {
+//       fields: [pullRequests.repositoryId],
+//       references: [repositories.id],
+//     }),
+//     headRepository: one(repositories, {
+//       fields: [pullRequests.headRepositoryId],
+//       references: [repositories.id],
+//     }),
+//     author: one(users, {
+//       fields: [pullRequests.authorId],
+//       references: [users.id],
+//     }),
+//     assignee: one(users, {
+//       fields: [pullRequests.assigneeId],
+//       references: [users.id],
+//     }),
+//     // milestone: one(milestones, { // Removed because milestoneId has no foreign key
+//     //   fields: [pullRequests.milestoneId],
+//     //   references: [milestones.id],
+//     // }),
+//     mergedBy: one(users, {
+//       fields: [pullRequests.mergedById],
+//       references: [users.id],
+//     }),
+//     reviews: many(pullRequestReviews),
+//     comments: many(pullRequestComments),
+//     labels: many(pullRequestLabels),
+//     assignees: many(pullRequestAssignees),
+//     reviewers: many(pullRequestReviewers),
+//     checks: many(pullRequestChecks),
+//   })
+// );
 
 export const pullRequestReviewsRelations = relations(
   pullRequestReviews,
