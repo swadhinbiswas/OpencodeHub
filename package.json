@@ -3,6 +3,14 @@
   "version": "1.0.0",
   "description": "A fully self-hosted, open-source GitHub/GitLab alternative with SSH git hosting, pipelines/actions, and advanced UI",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/swadhinbiswas/OpencodeHub.git"
+  },
+  "homepage": "https://github.com/swadhinbiswas/OpencodeHub#readme",
+  "bugs": {
+    "url": "https://github.com/swadhinbiswas/OpencodeHub/issues"
+  },
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
@@ -23,6 +31,7 @@
     "@astrojs/tailwind": "^5.1.0",
     "@aws-sdk/client-s3": "^3.948.0",
     "@aws-sdk/s3-request-presigner": "^3.948.0",
+    "@libsql/client": "^0.15.15",
     "@monaco-editor/react": "^4.6.0",
     "@opentelemetry/auto-instrumentations-node": "^0.67.2",
     "@opentelemetry/exporter-trace-otlp-http": "^0.208.0",
@@ -53,6 +62,7 @@
     "@radix-ui/react-toggle-group": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.2",
     "@types/nodemailer": "^7.0.4",
+    "@upstash/redis": "^1.36.0",
     "astro": "^4.11.0",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^11.1.2",

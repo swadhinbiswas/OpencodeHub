@@ -116,7 +116,7 @@ REDIS_URL=redis://localhost:6379
 
 ```bash
 # 1. Clone and configure
-git clone https://github.com/yourusername/OpenCodeHub.git
+git clone https://github.com/swadhinbiswas/OpencodeHub.git
 cd OpenCodeHub
 
 # 2. Install dependencies

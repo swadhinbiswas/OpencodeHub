@@ -312,11 +312,11 @@ const repo = {
         <div class="space-y-4">
           <!-- Latest Commit -->
           {
-            latestCommit ? (
+            latestCommit && latestCommit.authorName ? (
               <div class="flex items-center gap-4 rounded-lg border bg-muted/30 p-4">
                 <div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
                   <span class="text-sm font-medium">
-                    {latestCommit.authorName[0]}
+                    {latestCommit.authorName[0].toUpperCase()}
                   </span>
                 </div>
                 <div class="flex-1 min-w-0">

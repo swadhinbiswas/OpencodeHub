@@ -5,15 +5,18 @@
 
 import Database from "better-sqlite3";
 import { BetterSQLite3Database, drizzle } from "drizzle-orm/better-sqlite3";
+import { drizzle as drizzleLibSQL, LibSQLDatabase } from "drizzle-orm/libsql";
+import { createClient } from "@libsql/client";
 import { existsSync, mkdirSync } from "fs";
 import { dirname } from "path";
 import { logger } from "@/lib/logger";
 import * as schema from "./schema";
 
 // Database driver types
-export type DatabaseDriver = "sqlite" | "postgres" | "mysql";
+export type DatabaseDriver = "sqlite" | "postgres" | "mysql" | "libsql" | "turso";
 
-let db: BetterSQLite3Database<typeof schema> | null = null;
+let db: BetterSQLite3Database<typeof schema> | LibSQLDatabase<typeof schema> | null =
+  null;
 
 /**
  * Get database configuration from environment
@@ -27,10 +30,23 @@ function getDbConfig(): { driver: DatabaseDriver; url: string } {
 /**
  * Get or create database connection
  */
-export function getDatabase(): BetterSQLite3Database<typeof schema> {
+export function getDatabase():
+  | BetterSQLite3Database<typeof schema>
+  | LibSQLDatabase<typeof schema> {
   if (db) return db;
 
   const { driver, url } = getDbConfig();
+
+  // Support for Turso/LibSQL
+  if (driver === "libsql" || driver === "turso") {
+    const client = createClient({
+      url,
+      authToken: process.env.DATABASE_AUTH_TOKEN,
+    });
+    db = drizzleLibSQL(client, { schema });
+    logger.info({ driver: "libsql", url }, "Database connected (LibSQL)");
+    return db;
+  }
 
   // Currently only SQLite is fully supported
   // PostgreSQL and MySQL schemas need separate implementations
@@ -86,4 +102,6 @@ export function closeDatabase(): void {
 
 // Export schema and types
 export { schema };
-export type Database = BetterSQLite3Database<typeof schema>;
+export type Database =
+  | BetterSQLite3Database<typeof schema>
+  | LibSQLDatabase<typeof schema>;

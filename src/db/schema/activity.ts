@@ -5,7 +5,7 @@
 
 import { relations } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import { organizations } from "./organizations";
+// import { organizations } from "./organizations"; // Removed to prevent circular dependency
 import { repositories } from "./repositories";
 import { users } from "./users";
 
@@ -17,7 +17,6 @@ export const activities = sqliteTable("activities", {
   repositoryId: text("repository_id").references(() => repositories.id, {
     onDelete: "cascade",
   }),
-  organizationId: text("organization_id").references(() => organizations.id),
   type: text("type").notNull(), // push, create_repo, create_branch, open_issue, open_pr, comment, star, fork, etc.
   action: text("action").notNull(), // created, updated, deleted, opened, closed, merged, etc.
   refType: text("ref_type"), // branch, tag
@@ -54,7 +53,6 @@ export const notifications = sqliteTable("notifications", {
 export const auditLogs = sqliteTable("audit_logs", {
   id: text("id").primaryKey(),
   userId: text("user_id").references(() => users.id),
-  organizationId: text("organization_id").references(() => organizations.id),
   repositoryId: text("repository_id").references(() => repositories.id),
   action: text("action").notNull(),
   actorType: text("actor_type").notNull().default("user"), // user, system, oauth_app
@@ -78,10 +76,6 @@ export const activitiesRelations = relations(activities, ({ one }) => ({
     fields: [activities.repositoryId],
     references: [repositories.id],
   }),
-  organization: one(organizations, {
-    fields: [activities.organizationId],
-    references: [organizations.id],
-  }),
 }));
 
 export const notificationsRelations = relations(notifications, ({ one }) => ({
@@ -103,10 +97,6 @@ export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
   user: one(users, {
     fields: [auditLogs.userId],
     references: [users.id],
-  }),
-  organization: one(organizations, {
-    fields: [auditLogs.organizationId],
-    references: [organizations.id],
   }),
   repository: one(repositories, {
     fields: [auditLogs.repositoryId],

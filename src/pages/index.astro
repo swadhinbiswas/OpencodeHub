@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { BookOpen, Star } from "lucide-react";
 import HeroSection from "@/components/home/HeroSection";
 import FeaturesSection from "@/components/home/FeaturesSection";
+import FeatureDemosSection from "@/components/home/FeatureDemosSection";
 
 // Fetch public repositories for the landing page
 const db = getDatabase();
@@ -92,6 +93,9 @@ try {
     )
   }
 
+  <!-- Interactive Feature Demonstrations -->
+  <FeatureDemosSection client:load />
+  
   <!-- Features Section with Aceternity UI Components -->
   <FeaturesSection client:load />
   
