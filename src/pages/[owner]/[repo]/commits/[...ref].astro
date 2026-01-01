@@ -148,6 +148,16 @@ function timeAgo(date: Date) {
                         </div>
 
                         <div class="flex items-center gap-2">
+                        {commit.verification?.status === "G" && (
+                            <div class="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 border border-green-200" title={`Signed by ${commit.verification.signerName} (${commit.verification.signerKeyId})`}>
+                                Verified
+                            </div>
+                        )}
+                        {commit.verification?.status === "U" && (
+                            <div class="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200" title={`Untrusted signature by ${commit.verification.signerName}`}>
+                                Unverified
+                            </div>
+                        )}
                         <div class="flex items-center rounded-md border bg-muted/50">
                             <span class="px-2 py-1 text-xs font-mono">
                                 {commit.sha.substring(0, 7)}

@@ -301,6 +301,11 @@ export const DELETE: APIRoute = async ({ params, request }) => {
       // Continue anyway to clean up database
     }
 
+    // Clear forkedFromId references from any forks of this repo
+    await db.update(repositories)
+      .set({ forkedFromId: null })
+      .where(eq(repositories.forkedFromId, repository.id));
+
     // Delete from database (cascades to related tables)
     await db.delete(repositories).where(eq(repositories.id, repository.id));
 

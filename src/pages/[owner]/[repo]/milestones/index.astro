@@ -1,0 +1,101 @@
+---
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import MilestonesList from "@/components/milestones/MilestonesList";
+import { getDatabase, schema } from "@/db";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { canReadRepo } from "@/lib/permissions";
+import { and, eq, desc } from "drizzle-orm";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+// 1. Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!)
+  ),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canReadRepo(currentUser?.id, repoData);
+
+if (!hasAccess) {
+  return Astro.redirect("/404");
+}
+
+// 2. Try to fetch milestones if table exists, otherwise use empty array
+let milestonesList: any[] = [];
+try {
+  // Check if milestones table exists
+  if (schema.milestones) {
+    milestonesList = await db.query.milestones.findMany({
+      where: eq(schema.milestones.repositoryId, repoData.id),
+      orderBy: [desc(schema.milestones.createdAt)],
+    });
+  }
+} catch (e) {
+  // Table doesn't exist, use empty list
+  console.log("Milestones table not found, showing empty state");
+}
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  license: repoData.licenseType || "None",
+  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+  updatedAt: repoData.updatedAt,
+  httpCloneUrl: repoData.httpCloneUrl,
+  sshCloneUrl: repoData.sshCloneUrl,
+  openIssueCount: repoData.openIssueCount,
+  openPrCount: repoData.openPrCount,
+};
+
+// Format milestones for React component
+const formattedMilestones = milestonesList.map((m: any) => ({
+  id: m.id,
+  title: m.title,
+  description: m.description || undefined,
+  dueDate: m.dueOn || undefined,
+  state: m.state as "open" | "closed",
+  openIssues: m.openIssues || 0,
+  closedIssues: m.closedIssues || 0,
+  progress: m.closedIssues && m.openIssues 
+    ? Math.round((m.closedIssues / (m.openIssues + m.closedIssues)) * 100)
+    : 0,
+}));
+---
+
+<BaseLayout title={`Milestones · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="issues" />
+
+    <div class="mt-6">
+      <MilestonesList 
+        client:load
+        milestones={formattedMilestones}
+        repoOwner={repo.owner}
+        repoName={repo.name}
+      />
+    </div>
+  </div>
+</BaseLayout>

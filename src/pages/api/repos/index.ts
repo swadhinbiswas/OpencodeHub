@@ -1,8 +1,8 @@
----
+
 /**
  * Repositories API - List and create repositories
  */
-import type { APIRoute } from 'astro';
+import { type APIRoute } from 'astro';
 import { z } from 'zod';
 import { eq, desc, and, or, like, sql } from 'drizzle-orm';
 import { getDatabase } from '@/db';
@@ -222,7 +222,7 @@ export const POST: APIRoute = async ({ request }) => {
     const timestamp = now();
     const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
     const sshPort = process.env.GIT_SSH_PORT || '2222';
-    const reposPath = process.env.GIT_REPOS_PATH || './data/repositories';
+    const reposPath = process.env.GIT_REPOS_PATH || './data/repos';
     const diskPath = `${reposPath}/${user.username}/${slug}.git`;
 
     await db.insert(repositories).values({

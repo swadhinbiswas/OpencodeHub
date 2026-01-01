@@ -10,25 +10,67 @@ if (!user) {
 
 <SettingsLayout title="Public Profile">
   <div class="space-y-6">
+    <!-- Header -->
     <div>
-      <h3 class="text-lg font-medium leading-6 text-foreground">
+      <h3 class="text-xl font-bold text-white flex items-center gap-3">
+        <div class="p-2 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30">
+          <svg class="h-5 w-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+          </svg>
+        </div>
         Public Profile
       </h3>
-      <p class="mt-1 text-sm text-muted-foreground">
-        This information will be displayed publicly so be careful what you
-        share.
+      <p class="text-gray-500 text-sm mt-2 ml-12">
+        This information will be displayed publicly so be careful what you share.
       </p>
     </div>
 
-    <div class="bg-card rounded-lg border shadow-sm">
-      <div class="p-6">
+    <!-- Form Card -->
+    <div class="relative">
+      <div class="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/20 via-transparent to-purple-500/20 rounded-xl opacity-50"></div>
+      <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-6">
         <form id="profile-form" class="space-y-6">
+          <!-- Avatar Section -->
+          <div class="flex items-start gap-6 pb-6 border-b border-white/10">
+            <div class="relative group">
+              <div class="absolute -inset-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 rounded-full blur opacity-40 group-hover:opacity-60 transition-opacity"></div>
+              <div id="avatar-preview" class="relative w-24 h-24 rounded-full overflow-hidden border-4 border-[#0d1117] bg-gradient-to-br from-cyan-400 to-purple-600 flex items-center justify-center">
+                {user.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.username}
+                    class="w-full h-full object-cover"
+                    id="avatar-img"
+                  />
+                ) : (
+                  <span class="text-2xl font-bold text-white" id="avatar-letter">
+                    {user.username[0].toUpperCase()}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div class="flex-1 space-y-3">
+              <label for="avatarUrl" class="block text-sm font-medium text-gray-300">
+                Profile Picture URL
+              </label>
+              <input
+                type="url"
+                name="avatarUrl"
+                id="avatarUrl"
+                placeholder="https://example.com/your-avatar.jpg"
+                value={user.avatarUrl || ""}
+                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+              />
+              <p class="text-xs text-gray-600">
+                Enter a URL to an image (PNG, JPG, GIF). The image will be displayed on your profile.
+              </p>
+            </div>
+          </div>
+
           <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+            <!-- Name -->
             <div class="sm:col-span-4">
-              <label
-                for="displayName"
-                class="block text-sm font-medium text-foreground mb-2"
-              >
+              <label for="displayName" class="block text-sm font-medium text-gray-300 mb-2">
                 Name
               </label>
               <input
@@ -36,38 +78,32 @@ if (!user) {
                 name="displayName"
                 id="displayName"
                 value={user.displayName || ""}
-                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
               />
-              <p class="mt-2 text-sm text-muted-foreground">
-                Your name may appear around OpenCodeHub where you contribute or
-                are mentioned. You can remove it at any time.
+              <p class="mt-2 text-xs text-gray-600">
+                Your name may appear around OpenCodeHub where you contribute or are mentioned.
               </p>
             </div>
 
+            <!-- Bio -->
             <div class="sm:col-span-6">
-              <label
-                for="bio"
-                class="block text-sm font-medium text-foreground mb-2"
-              >
+              <label for="bio" class="block text-sm font-medium text-gray-300 mb-2">
                 Bio
               </label>
               <textarea
                 id="bio"
                 name="bio"
                 rows="3"
-                class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >{user.bio || ""}</textarea
-              >
-              <p class="mt-2 text-sm text-muted-foreground">
+                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all resize-none"
+              >{user.bio || ""}</textarea>
+              <p class="mt-2 text-xs text-gray-600">
                 You can @mention other users and organizations to link to them.
               </p>
             </div>
 
+            <!-- Company -->
             <div class="sm:col-span-3">
-              <label
-                for="company"
-                class="block text-sm font-medium text-foreground mb-2"
-              >
+              <label for="company" class="block text-sm font-medium text-gray-300 mb-2">
                 Company
               </label>
               <input
@@ -75,15 +111,13 @@ if (!user) {
                 name="company"
                 id="company"
                 value={user.company || ""}
-                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
               />
             </div>
 
+            <!-- Location -->
             <div class="sm:col-span-3">
-              <label
-                for="location"
-                class="block text-sm font-medium text-foreground mb-2"
-              >
+              <label for="location" class="block text-sm font-medium text-gray-300 mb-2">
                 Location
               </label>
               <input
@@ -91,33 +125,36 @@ if (!user) {
                 name="location"
                 id="location"
                 value={user.location || ""}
-                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
               />
             </div>
 
+            <!-- Website -->
             <div class="sm:col-span-4">
-              <label
-                for="website"
-                class="block text-sm font-medium text-foreground mb-2"
-              >
+              <label for="website" class="block text-sm font-medium text-gray-300 mb-2">
                 Website
               </label>
               <input
                 type="url"
                 name="website"
                 id="website"
+                placeholder="https://example.com"
                 value={user.website || ""}
-                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
               />
             </div>
           </div>
 
-          <div class="flex justify-end">
+          <!-- Submit -->
+          <div class="flex justify-end pt-4 border-t border-white/5">
             <button
               type="submit"
-              class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+              class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-sm font-medium text-white shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all"
             >
-              Save
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              Save Profile
             </button>
           </div>
         </form>
@@ -128,31 +165,64 @@ if (!user) {
 
 <script>
   const form = document.getElementById("profile-form") as HTMLFormElement;
+  const avatarInput = document.getElementById("avatarUrl") as HTMLInputElement;
+  const avatarPreview = document.getElementById("avatar-preview");
+
+  // Live avatar preview
+  let debounceTimer: number;
+  avatarInput?.addEventListener("input", () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      const url = avatarInput.value.trim();
+      if (url && avatarPreview) {
+        // Try to load the image
+        const img = new Image();
+        img.onload = () => {
+          avatarPreview.innerHTML = `<img src="${url}" alt="Avatar" class="w-full h-full object-cover" />`;
+        };
+        img.onerror = () => {
+          // Keep existing or show letter
+          const letter = document.getElementById("avatar-letter");
+          if (!letter && avatarPreview) {
+            avatarPreview.innerHTML = `<span class="text-2xl font-bold text-white">?</span>`;
+          }
+        };
+        img.src = url;
+      }
+    }, 500);
+  });
 
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const formData = new FormData(form);
     const data = Object.fromEntries(formData);
+    
+    const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>Saving...';
 
     try {
       const response = await fetch("/api/auth/me", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
 
       if (response.ok) {
-        alert("Profile updated successfully");
-        window.location.reload();
+        submitBtn.innerHTML = '<svg class="h-4 w-4 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Saved!';
+        setTimeout(() => window.location.reload(), 1000);
       } else {
         const error = await response.json();
         alert(error.message || "Failed to update profile");
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
       }
     } catch (error) {
       console.error("Error updating profile:", error);
       alert("An error occurred while updating profile");
+      submitBtn.innerHTML = originalText;
+      submitBtn.disabled = false;
     }
   });
 </script>

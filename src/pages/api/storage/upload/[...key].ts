@@ -1,24 +1,28 @@
 import { getStorage } from "@/lib/storage";
+import { verifyStorageSignature } from "@/lib/storage-auth";
 import type { APIRoute } from "astro";
+import { Readable } from "stream";
 
-export const PUT: APIRoute = async ({ params, request }) => {
+export const PUT: APIRoute = async ({ params, request, url }) => {
   const { key } = params;
   if (!key) return new Response("Missing key", { status: 400 });
 
-  const storage = getStorage();
+  // Verify signature for secure access
+  const signature = url.searchParams.get("sig");
+  const expires = url.searchParams.get("exp");
 
-  // TODO: Verify signature
+  if (!verifyStorageSignature(key, signature, expires)) {
+    return new Response("Unauthorized - Invalid or expired signature", { status: 401 });
+  }
+
+  const storage = getStorage();
 
   if (!request.body) return new Response("Body required", { status: 400 });
 
   try {
-    // We need to stream the request body to storage
-    // StorageAdapter.put expects Buffer or Readable
-    // request.body is ReadableStream (Web)
-
     // Convert Web ReadableStream to Node Readable
     const reader = request.body.getReader();
-    const nodeReadable = new (require("stream").Readable)({
+    const nodeReadable = new Readable({
       async read() {
         const { done, value } = await reader.read();
         if (done) {

@@ -1,12 +1,19 @@
+import { verifyRunnerToken } from "@/lib/runner-auth";
 import type { APIRoute } from "astro";
 import fs from "fs/promises";
 import path from "path";
 
-const ARTIFACTS_DIR = path.join(process.cwd(), "artifacts");
+const ARTIFACTS_DIR = path.join(process.cwd(), "data", "artifacts");
 
-export const GET: APIRoute = async ({ params }) => {
+export const GET: APIRoute = async ({ params, locals }) => {
   const { runId } = params;
   if (!runId) return new Response("Missing runId", { status: 400 });
+
+  // Authenticated users or runners can access artifacts
+  const user = locals.user;
+  if (!user) {
+    return new Response("Unauthorized", { status: 401 });
+  }
 
   const runDir = path.join(ARTIFACTS_DIR, runId);
   try {
@@ -38,11 +45,17 @@ export const POST: APIRoute = async ({ params, request }) => {
   const { runId } = params;
   if (!runId) return new Response("Missing runId", { status: 400 });
 
-  // TODO: Validate auth token (e.g. from runner)
+  // Validate runner auth token
+  const authHeader = request.headers.get("Authorization");
+  const token = authHeader?.replace("Bearer ", "");
+
+  if (!verifyRunnerToken(token, runId)) {
+    return new Response("Unauthorized - Invalid runner token", { status: 401 });
+  }
 
   const formData = await request.formData();
   const file = formData.get("file") as File;
-  const name = (formData.get("name") as string) || file.name;
+  const name = (formData.get("name") as string) || file?.name;
 
   if (!file) return new Response("No file uploaded", { status: 400 });
 

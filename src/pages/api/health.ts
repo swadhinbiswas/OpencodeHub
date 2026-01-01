@@ -1,4 +1,4 @@
-import { getDatabaseAdapter } from "@/db/adapter";
+import { getDb } from "@/db/adapter";
 import type { APIRoute } from "astro";
 
 export const GET: APIRoute = async () => {
@@ -10,8 +10,8 @@ export const GET: APIRoute = async () => {
   // Check database
   const dbStart = Date.now();
   try {
-    const db = getDatabaseAdapter();
-    await db.query("SELECT 1");
+    const db = getDb();
+    await db.rawQuery("SELECT 1");
     checks.database = { status: "ok", latency: Date.now() - dbStart };
   } catch (error) {
     checks.database = {

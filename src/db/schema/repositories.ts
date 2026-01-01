@@ -151,20 +151,7 @@ export const repositoryCollaborators = sqliteTable("repository_collaborators", {
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
 });
 
-export const webhooks = sqliteTable("webhooks", {
-  id: text("id").primaryKey(),
-  repositoryId: text("repository_id")
-    .notNull()
-    .references(() => repositories.id, { onDelete: "cascade" }),
-  url: text("url").notNull(),
-  secret: text("secret"),
-  events: text("events").notNull(), // JSON array
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  lastDeliveryAt: text("last_delivery_at"),
-  lastDeliveryStatus: integer("last_delivery_status"),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
-});
+
 
 // Relations
 export const repositoriesRelations = relations(
@@ -185,7 +172,7 @@ export const repositoriesRelations = relations(
     stars: many(repositoryStars),
     watchers: many(repositoryWatchers),
     collaborators: many(repositoryCollaborators),
-    webhooks: many(webhooks),
+    // webhooks: many(webhooks), // Removing relation here to avoid circular dependency or import issues for now, or I need to import it.
   })
 );
 
@@ -203,6 +190,21 @@ export const commitsRelations = relations(commits, ({ one }) => ({
   }),
   user: one(users, {
     fields: [commits.userId],
+    references: [users.id],
+  }),
+}));
+
+export const repositoryCollaboratorsRelations = relations(repositoryCollaborators, ({ one }) => ({
+  repository: one(repositories, {
+    fields: [repositoryCollaborators.repositoryId],
+    references: [repositories.id],
+  }),
+  user: one(users, {
+    fields: [repositoryCollaborators.userId],
+    references: [users.id],
+  }),
+  addedBy: one(users, {
+    fields: [repositoryCollaborators.addedById],
     references: [users.id],
   }),
 }));

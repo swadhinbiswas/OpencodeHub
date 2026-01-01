@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { getDatabase, schema } from "@/db";
 import { eq, and, sql } from "drizzle-orm";
-import { listFiles, getLastCommit, getCommits } from "@/lib/git";
+import { listFiles, getLastCommit, getCommits, getBranches } from "@/lib/git";
 import { canReadRepo } from "@/lib/permissions";
 import RepoHeader from "@/components/repo/RepoHeader.astro";
 import FileExplorer from "@/components/repo/FileExplorer.astro";
@@ -162,7 +162,16 @@ const repo = {
   openPrCount: repoData.openPrCount,
 };
 
-const branches = [repoData.defaultBranch]; // TODO: Fetch all branches
+// Fetch all branches
+let branches: string[] = [repoData.defaultBranch];
+try {
+  const branchInfos = await getBranches(repoData.diskPath);
+  branches = branchInfos.map(b => b.name);
+  // Ensure default branch is first
+  branches = [repoData.defaultBranch, ...branches.filter(b => b !== repoData.defaultBranch)];
+} catch (e) {
+  console.error("Error fetching branches:", e);
+}
 ---
 
 <BaseLayout title={`${repo.owner}/${repo.name} - OpenCodeHub`}>

@@ -1,17 +1,21 @@
 import { getStorage } from "@/lib/storage";
+import { verifyStorageSignature } from "@/lib/storage-auth";
 import type { APIRoute } from "astro";
 import { Readable } from "stream";
 
-export const GET: APIRoute = async ({ params, request }) => {
+export const GET: APIRoute = async ({ params, request, url }) => {
   const { key } = params;
   if (!key) return new Response("Missing key", { status: 400 });
 
-  const storage = getStorage();
+  // Verify signature for secure access
+  const signature = url.searchParams.get("sig");
+  const expires = url.searchParams.get("exp");
 
-  // TODO: Verify signature if we want to secure local storage access
-  // For now, assuming internal or public access for simplicity,
-  // OR we rely on the fact that the key is hard to guess (if it's a hash).
-  // But for LFS, OIDs are known.
+  if (!verifyStorageSignature(key, signature, expires)) {
+    return new Response("Unauthorized - Invalid or expired signature", { status: 401 });
+  }
+
+  const storage = getStorage();
 
   try {
     const stream = await storage.getStream(key);
@@ -21,6 +25,7 @@ export const GET: APIRoute = async ({ params, request }) => {
       headers: {
         "Content-Type": stat.contentType || "application/octet-stream",
         "Content-Length": stat.size.toString(),
+        "Cache-Control": "private, max-age=3600",
       },
     });
   } catch (e) {

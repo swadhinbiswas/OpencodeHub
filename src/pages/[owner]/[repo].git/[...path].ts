@@ -56,9 +56,9 @@ export const ALL: APIRoute = async ({ params, request }) => {
     // Check permissions
     let hasAccess = false;
     if (isUpload) {
-      hasAccess = await canReadRepo(userId, repoData);
+      hasAccess = await canReadRepo(userId || undefined, repoData);
     } else {
-      hasAccess = await canWriteRepo(userId, repoData);
+      hasAccess = await canWriteRepo(userId || undefined, repoData);
     }
 
     if (!hasAccess) {
@@ -135,6 +135,17 @@ export const ALL: APIRoute = async ({ params, request }) => {
     child.stderr.on("data", (data) => {
       console.error(`Git error (${path}):`, data.toString());
     });
+
+    // Trigger Analysis on successful push
+    if (!isUpload) { // git-receive-pack
+      child.on("close", (code) => {
+        if (code === 0) {
+          import("@/lib/analysis").then(({ analyzeRepository }) => {
+            analyzeRepository(repoData.id, userId).catch(console.error);
+          });
+        }
+      });
+    }
 
     return new Response(child.stdout as any, {
       headers: {

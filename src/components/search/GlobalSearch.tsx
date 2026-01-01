@@ -52,8 +52,8 @@ export function GlobalSearch() {
             try {
                 const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
                 const data = await res.json();
-                if (data.results) {
-                    setResults(data.results);
+                if (data.data?.results) {
+                    setResults(data.data.results);
                 }
             } catch (e) {
                 console.error(e);

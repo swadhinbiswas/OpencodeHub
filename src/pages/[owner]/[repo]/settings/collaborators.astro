@@ -1,0 +1,384 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { getDatabase, schema } from "@/db";
+import { eq, and } from "drizzle-orm";
+import { canAdminRepo } from "@/lib/permissions";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { Users, UserPlus, Trash2, Shield, Code, Eye } from "lucide-react";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+// Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!)
+  ),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canAdminRepo(currentUser?.id, repoData);
+
+if (!hasAccess) {
+  return Astro.redirect(`/${ownerName}/${repoName}`);
+}
+
+// Fetch collaborators
+const collaborators = await db.query.repositoryCollaborators.findMany({
+  where: eq(schema.repositoryCollaborators.repositoryId, repoData.id),
+  with: {
+    user: true,
+  },
+});
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  openIssueCount: repoData.openIssueCount,
+  openPrCount: repoData.openPrCount,
+  hasIssues: repoData.hasIssues,
+  hasWiki: repoData.hasWiki,
+  hasActions: repoData.hasActions,
+};
+
+function getRoleIcon(role: string) {
+  switch (role) {
+    case "maintainer": return Shield;
+    case "developer": return Code;
+    case "guest": return Eye;
+    default: return Users;
+  }
+}
+
+function getRoleDescription(role: string) {
+  switch (role) {
+    case "maintainer": return "Can push, merge PRs, and manage settings";
+    case "developer": return "Can push to branches and create PRs";
+    case "guest": return "Read-only access";
+    default: return "Unknown role";
+  }
+}
+---
+
+<BaseLayout title={`Collaborators · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="settings" />
+
+    <div class="grid gap-6 md:grid-cols-[240px_1fr]">
+      <!-- Settings Sidebar -->
+      <nav class="space-y-1">
+        <a
+          href={`/${repo.owner}/${repo.name}/settings`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          General
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/collaborators`}
+          class="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm font-medium text-foreground"
+        >
+          <Users class="h-4 w-4" />
+          Collaborators
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/webhooks`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Webhooks
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/actions/runners`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Actions
+        </a>
+      </nav>
+
+      <!-- Collaborators Content -->
+      <div class="space-y-6">
+        <!-- Add Collaborator -->
+        <Card>
+          <CardHeader>
+            <CardTitle class="flex items-center gap-2">
+              <UserPlus class="h-5 w-5" />
+              Invite Collaborator
+            </CardTitle>
+            <CardDescription>
+              Add a user to collaborate on this repository.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form id="add-collaborator-form" class="flex items-end gap-4">
+              <div class="flex-1 space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  name="username"
+                  placeholder="Enter username..."
+                  required
+                />
+              </div>
+              <div class="space-y-2">
+                <Label htmlFor="role">Role</Label>
+                <select
+                  id="role"
+                  name="role"
+                  class="flex h-10 w-40 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="developer">Developer</option>
+                  <option value="maintainer">Maintainer</option>
+                  <option value="guest">Guest (Read-only)</option>
+                </select>
+              </div>
+              <Button type="submit">
+                <UserPlus class="h-4 w-4 mr-2" />
+                Add
+              </Button>
+            </form>
+            <p id="add-error" class="text-destructive text-sm mt-2 hidden"></p>
+            <p id="add-success" class="text-green-600 text-sm mt-2 hidden"></p>
+          </CardContent>
+        </Card>
+
+        <!-- Current Collaborators -->
+        <Card>
+          <CardHeader>
+            <CardTitle class="flex items-center gap-2">
+              <Users class="h-5 w-5" />
+              Current Collaborators
+            </CardTitle>
+            <CardDescription>
+              Users with access to this repository.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {collaborators.length === 0 ? (
+              <div class="text-center py-8 text-muted-foreground">
+                <Users class="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No collaborators yet</p>
+                <p class="text-sm">Invite someone to start collaborating!</p>
+              </div>
+            ) : (
+              <div class="space-y-4">
+                {collaborators.map((collab) => {
+                  const RoleIcon = getRoleIcon(collab.role);
+                  return (
+                    <div class="flex items-center justify-between p-4 rounded-lg border" data-user-id={collab.userId}>
+                      <div class="flex items-center gap-4">
+                        {collab.user?.avatarUrl ? (
+                          <img 
+                            src={collab.user.avatarUrl} 
+                            alt={collab.user.username}
+                            class="h-10 w-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div class="h-10 w-10 rounded-full bg-muted flex items-center justify-center font-medium">
+                            {collab.user?.username?.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div>
+                          <a href={`/${collab.user?.username}`} class="font-medium hover:text-primary">
+                            {collab.user?.displayName || collab.user?.username}
+                          </a>
+                          <p class="text-sm text-muted-foreground">@{collab.user?.username}</p>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                          <RoleIcon class="h-4 w-4" />
+                          <select
+                            class="role-select bg-transparent border rounded px-2 py-1 text-sm"
+                            data-user-id={collab.userId}
+                            data-current-role={collab.role}
+                          >
+                            <option value="maintainer" selected={collab.role === "maintainer"}>Maintainer</option>
+                            <option value="developer" selected={collab.role === "developer"}>Developer</option>
+                            <option value="guest" selected={collab.role === "guest"}>Guest</option>
+                          </select>
+                        </div>
+                        <button
+                          class="remove-collab-btn text-destructive hover:bg-destructive/10 rounded p-2 transition-colors"
+                          data-user-id={collab.userId}
+                          data-username={collab.user?.username}
+                          title="Remove collaborator"
+                        >
+                          <Trash2 class="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <!-- Role Permissions Info -->
+        <Card>
+          <CardHeader>
+            <CardTitle>Role Permissions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div class="grid gap-4 md:grid-cols-3">
+              <div class="p-4 rounded-lg border">
+                <div class="flex items-center gap-2 mb-2">
+                  <Shield class="h-5 w-5 text-primary" />
+                  <span class="font-medium">Maintainer</span>
+                </div>
+                <ul class="text-sm text-muted-foreground space-y-1">
+                  <li>✓ Push to all branches</li>
+                  <li>✓ Merge pull requests</li>
+                  <li>✓ Manage issues & labels</li>
+                  <li>✓ Edit repository settings</li>
+                </ul>
+              </div>
+              <div class="p-4 rounded-lg border">
+                <div class="flex items-center gap-2 mb-2">
+                  <Code class="h-5 w-5 text-blue-500" />
+                  <span class="font-medium">Developer</span>
+                </div>
+                <ul class="text-sm text-muted-foreground space-y-1">
+                  <li>✓ Push to branches</li>
+                  <li>✓ Create pull requests</li>
+                  <li>✓ Manage issues</li>
+                  <li>✗ Cannot change settings</li>
+                </ul>
+              </div>
+              <div class="p-4 rounded-lg border">
+                <div class="flex items-center gap-2 mb-2">
+                  <Eye class="h-5 w-5 text-muted-foreground" />
+                  <span class="font-medium">Guest</span>
+                </div>
+                <ul class="text-sm text-muted-foreground space-y-1">
+                  <li>✓ View repository</li>
+                  <li>✓ Clone (read-only)</li>
+                  <li>✗ Cannot push</li>
+                  <li>✗ Cannot modify anything</li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script define:vars={{ owner: repo.owner, repo: repo.name }}>
+  // Add collaborator
+  const form = document.getElementById("add-collaborator-form");
+  const errorEl = document.getElementById("add-error");
+  const successEl = document.getElementById("add-success");
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorEl.classList.add("hidden");
+    successEl.classList.add("hidden");
+
+    const formData = new FormData(form);
+    const username = formData.get("username");
+    const role = formData.get("role");
+
+    try {
+      const response = await fetch(`/api/repos/${owner}/${repo}/collaborators`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, role }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || data.error || "Failed to add collaborator");
+      }
+
+      successEl.textContent = `Added ${username} as ${role}`;
+      successEl.classList.remove("hidden");
+      form.reset();
+      
+      // Reload to show new collaborator
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (error) {
+      errorEl.textContent = error.message;
+      errorEl.classList.remove("hidden");
+    }
+  });
+
+  // Role change
+  document.querySelectorAll(".role-select").forEach((select) => {
+    select.addEventListener("change", async (e) => {
+      const userId = e.target.dataset.userId;
+      const newRole = e.target.value;
+
+      try {
+        const response = await fetch(`/api/repos/${owner}/${repo}/collaborators/${userId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: newRole }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to update role");
+        }
+      } catch (error) {
+        alert(error.message);
+        e.target.value = e.target.dataset.currentRole;
+      }
+    });
+  });
+
+  // Remove collaborator
+  document.querySelectorAll(".remove-collab-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const userId = btn.dataset.userId;
+      const username = btn.dataset.username;
+
+      if (!confirm(`Remove ${username} from collaborators?`)) return;
+
+      try {
+        const response = await fetch(`/api/repos/${owner}/${repo}/collaborators/${userId}`, {
+          method: "DELETE",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to remove collaborator");
+        }
+
+        // Remove from DOM
+        btn.closest("[data-user-id]").remove();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+  });
+</script>

@@ -1,0 +1,295 @@
+---
+import { getDatabase } from "@/db";
+import { personalAccessTokens } from "@/db/schema";
+import SettingsLayout from "@/layouts/SettingsLayout.astro";
+import { desc, eq } from "drizzle-orm";
+
+const user = Astro.locals.user;
+
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+const db = getDatabase();
+let tokens: any[] = [];
+try {
+  tokens = await db.query.personalAccessTokens.findMany({
+    where: eq(personalAccessTokens.userId, user.id),
+    orderBy: [desc(personalAccessTokens.createdAt)],
+  });
+} catch (e) {}
+---
+
+<SettingsLayout title="Personal Access Tokens">
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h3 class="text-xl font-bold text-white flex items-center gap-3">
+          <div class="p-2 rounded-lg bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border border-yellow-500/30">
+            <svg class="h-5 w-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path>
+            </svg>
+          </div>
+          Access Tokens
+        </h3>
+        <p class="text-gray-500 text-sm mt-2 ml-12">
+          Tokens for API and Git over HTTPS authentication.
+        </p>
+      </div>
+      <button
+        type="button"
+        id="generate-token-btn"
+        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-yellow-500 to-orange-600 text-sm font-medium text-white shadow-lg shadow-yellow-500/25 hover:shadow-yellow-500/40 transition-all"
+      >
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+        Generate Token
+      </button>
+    </div>
+
+    <!-- Tokens List -->
+    <div class="relative">
+      <div class="absolute -inset-[1px] bg-gradient-to-r from-yellow-500/20 via-transparent to-orange-500/20 rounded-xl opacity-50"></div>
+      <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm overflow-hidden">
+        {tokens.length > 0 ? (
+          <div class="divide-y divide-white/5">
+            {tokens.map((token: any) => (
+              <div class="flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors group">
+                <div class="flex items-center gap-3">
+                  <div class="p-2 rounded-lg bg-yellow-500/10">
+                    <svg class="h-5 w-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <p class="font-medium text-white">{token.name}</p>
+                    <div class="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                      <span>Created {new Date(token.createdAt).toLocaleDateString()}</span>
+                      {token.expiresAt && (
+                        <span class={`px-2 py-0.5 rounded-full ${new Date(token.expiresAt) < new Date() ? 'bg-red-500/10 text-red-400' : 'bg-gray-500/10 text-gray-400'}`}>
+                          {new Date(token.expiresAt) < new Date() ? 'Expired' : `Expires ${new Date(token.expiresAt).toLocaleDateString()}`}
+                        </span>
+                      )}
+                      {token.lastUsedAt && (
+                        <span>Last used {new Date(token.lastUsedAt).toLocaleDateString()}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="delete-token-btn opacity-0 group-hover:opacity-100 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-400 hover:bg-red-500/20 transition-all"
+                  data-id={token.id}
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div class="text-center py-16">
+            <div class="relative inline-block mb-4">
+              <svg class="h-16 w-16 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path>
+              </svg>
+              <div class="absolute inset-0 bg-yellow-500 blur-2xl opacity-20"></div>
+            </div>
+            <h3 class="text-lg font-semibold text-white mb-2">No tokens yet</h3>
+            <p class="text-gray-500 mb-4">Generate a token to access the API.</p>
+            <button
+              type="button"
+              id="generate-first-token-btn"
+              class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-yellow-500 to-orange-600 text-sm font-medium text-white"
+            >
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+              </svg>
+              Generate your first token
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+
+    <!-- Generate Token Modal -->
+    <div id="generate-token-modal" class="hidden fixed z-50 inset-0 overflow-y-auto">
+      <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="fixed inset-0 bg-black/70 backdrop-blur-sm" id="modal-backdrop"></div>
+        <div class="relative rounded-2xl border border-white/10 bg-[#0d1117] p-6 w-full max-w-md">
+          <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <svg class="h-5 w-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Generate New Token
+          </h3>
+          <form id="token-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">Note</label>
+              <input
+                type="text"
+                name="name"
+                required
+                placeholder="e.g. CI/CD Pipeline"
+                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/20 transition-all"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">Expiration</label>
+              <select
+                name="expiresInDays"
+                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white focus:outline-none focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/20 transition-all"
+              >
+                <option value="30">30 days</option>
+                <option value="7">7 days</option>
+                <option value="60">60 days</option>
+                <option value="90">90 days</option>
+                <option value="365">1 year</option>
+                <option value="0">No expiration</option>
+              </select>
+            </div>
+            <div class="flex gap-3 pt-2">
+              <button
+                type="button"
+                id="cancel-token-btn"
+                class="flex-1 px-4 py-2.5 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-300 hover:bg-white/10 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                class="flex-1 px-4 py-2.5 rounded-lg bg-gradient-to-r from-yellow-500 to-orange-600 text-sm font-medium text-white"
+              >
+                Generate
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Token Result Modal -->
+    <div id="token-result-modal" class="hidden fixed z-50 inset-0 overflow-y-auto">
+      <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="fixed inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="relative rounded-2xl border border-white/10 bg-[#0d1117] p-6 w-full max-w-md text-center">
+          <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-500/20 mb-4">
+            <svg class="h-6 w-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">Token Generated!</h3>
+          <p class="text-gray-500 text-sm mb-4">
+            Copy your token now. You won't see it again!
+          </p>
+          <div class="flex items-center gap-2 bg-white/5 rounded-lg p-3 border border-white/10">
+            <input
+              type="text"
+              id="new-token-value"
+              readonly
+              class="flex-1 bg-transparent text-sm text-white font-mono outline-none"
+            />
+            <button
+              type="button"
+              id="copy-token-btn"
+              class="px-3 py-1.5 rounded-lg bg-white/10 text-sm text-gray-300 hover:bg-white/20 transition-colors"
+            >
+              Copy
+            </button>
+          </div>
+          <button
+            type="button"
+            id="close-result-btn"
+            class="w-full mt-4 px-4 py-2.5 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-sm font-medium text-white"
+          >
+            I have copied it
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</SettingsLayout>
+
+<script>
+  const generateBtn = document.getElementById("generate-token-btn");
+  const generateFirstBtn = document.getElementById("generate-first-token-btn");
+  const modal = document.getElementById("generate-token-modal");
+  const backdrop = document.getElementById("modal-backdrop");
+  const cancelBtn = document.getElementById("cancel-token-btn");
+  const form = document.getElementById("token-form") as HTMLFormElement;
+  const deleteBtns = document.querySelectorAll(".delete-token-btn");
+  
+  const resultModal = document.getElementById("token-result-modal");
+  const resultInput = document.getElementById("new-token-value") as HTMLInputElement;
+  const closeResultBtn = document.getElementById("close-result-btn");
+  const copyTokenBtn = document.getElementById("copy-token-btn");
+
+  const openModal = () => modal?.classList.remove("hidden");
+  const closeModal = () => {
+    modal?.classList.add("hidden");
+    form.reset();
+  };
+
+  generateBtn?.addEventListener("click", openModal);
+  generateFirstBtn?.addEventListener("click", openModal);
+  cancelBtn?.addEventListener("click", closeModal);
+  backdrop?.addEventListener("click", closeModal);
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+
+    try {
+      const response = await fetch("/api/user/tokens", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.get("name"),
+          expiresInDays: parseInt(formData.get("expiresInDays") as string)
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        modal?.classList.add("hidden");
+        resultModal?.classList.remove("hidden");
+        if (resultInput) resultInput.value = result.data.token;
+      } else {
+        const error = await response.json();
+        alert(error.message || "Failed to generate token");
+      }
+    } catch (error) {
+      console.error("Error generating token:", error);
+      alert("An error occurred");
+    }
+  });
+
+  closeResultBtn?.addEventListener("click", () => window.location.reload());
+
+  copyTokenBtn?.addEventListener("click", () => {
+    if (resultInput) {
+      navigator.clipboard.writeText(resultInput.value);
+      copyTokenBtn.textContent = "Copied!";
+      setTimeout(() => copyTokenBtn.textContent = "Copy", 2000);
+    }
+  });
+
+  deleteBtns.forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (confirm("Are you sure you want to delete this token?")) {
+        const id = btn.getAttribute("data-id");
+        try {
+          const response = await fetch(`/api/user/tokens/${id}`, { method: "DELETE" });
+          if (response.ok) {
+            window.location.reload();
+          } else {
+            alert("Failed to delete token");
+          }
+        } catch (error) {
+          console.error("Error deleting token:", error);
+        }
+      }
+    });
+  });
+</script>

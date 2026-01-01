@@ -21,7 +21,22 @@ export async function validateBasicAuth(
   if (!user || !user.passwordHash) return null;
 
   const isValid = await bcrypt.compare(password, user.passwordHash);
-  if (!isValid) return null;
+  if (isValid) return user.id;
 
-  return user.id;
+  // Check Personal Access Token
+  const pat = await db.query.personalAccessTokens.findFirst({
+    where: (tokens, { and, eq }) =>
+      and(eq(tokens.userId, user.id), eq(tokens.token, password)),
+  });
+
+  if (pat) {
+    // Update last used at
+    await db
+      .update(schema.personalAccessTokens)
+      .set({ lastUsedAt: new Date().toISOString() })
+      .where(eq(schema.personalAccessTokens.id, pat.id));
+    return user.id;
+  }
+
+  return null;
 }

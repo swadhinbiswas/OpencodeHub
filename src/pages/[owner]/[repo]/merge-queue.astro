@@ -1,0 +1,249 @@
+---
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { Button } from "@/components/ui/button";
+import { getDatabase, schema } from "@/db";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { canReadRepo, canWriteRepo } from "@/lib/permissions";
+import { getMergeQueue, estimateMergeTime } from "@/lib/merge-queue";
+import { and, eq, sql } from "drizzle-orm";
+import {
+  ListOrdered,
+  GitMerge,
+  Clock,
+  Play,
+  Pause,
+  X,
+  CheckCircle2,
+  AlertCircle,
+  Layers,
+  User
+} from "lucide-react";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+// Fetch owner and repo
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!)
+  ),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canReadRepo(currentUser?.id, repoData);
+const canWrite = await canWriteRepo(currentUser?.id, repoData);
+
+if (!hasAccess) {
+  return Astro.redirect("/404");
+}
+
+// Get merge queue
+let queueItems: Awaited<ReturnType<typeof getMergeQueue>> = [];
+try {
+  queueItems = await getMergeQueue(repoData.id);
+} catch (e) {
+  console.error("Failed to fetch merge queue:", e);
+}
+
+// Get issue count for header
+const issueCountResult = await db
+  .select({ count: sql<number>`count(*)` })
+  .from(schema.issues)
+  .where(
+    and(
+      eq(schema.issues.repositoryId, repoData.id),
+      eq(schema.issues.state, "open")
+    )
+  )
+  .get();
+
+const openIssueCount = issueCountResult?.count || 0;
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  license: repoData.licenseType || "None",
+  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+  updatedAt: repoData.updatedAt,
+  httpCloneUrl: repoData.httpCloneUrl,
+  sshCloneUrl: repoData.sshCloneUrl,
+  openIssueCount: openIssueCount,
+  openPrCount: repoData.openPrCount,
+};
+
+function formatTime(date: Date): string {
+  const diff = date.getTime() - Date.now();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 60) return `~${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  return `~${hours}h ${minutes % 60}m`;
+}
+---
+
+<BaseLayout title={`Merge Queue · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="pulls" />
+
+    <div class="mb-6">
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-3">
+          <ListOrdered class="h-6 w-6 text-primary" />
+          <h1 class="text-2xl font-bold">Merge Queue</h1>
+          <span class="bg-muted text-muted-foreground px-2 py-0.5 rounded-full text-sm">
+            {queueItems.length} PRs
+          </span>
+        </div>
+        {canWrite && (
+          <div class="flex items-center gap-2">
+            <Button variant="outline" size="sm">
+              <Pause class="mr-2 h-4 w-4" />
+              Pause Queue
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {queueItems.length === 0 ? (
+        <div class="text-center py-16 border rounded-lg bg-muted/10">
+          <div class="inline-flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+            <ListOrdered class="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 class="text-lg font-medium">No PRs in queue</h3>
+          <p class="text-muted-foreground mt-1 max-w-md mx-auto">
+            When PRs are added to the merge queue, they'll appear here. PRs are merged in order based on priority and position.
+          </p>
+        </div>
+      ) : (
+        <div class="space-y-3">
+          {queueItems.map((item, index) => {
+            const estMerge = estimateMergeTime(item.entry.position || index + 1);
+            return (
+              <div class="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div class="flex items-start gap-4">
+                  {/* Position */}
+                  <div class="flex-shrink-0 h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
+                    {item.entry.position || index + 1}
+                  </div>
+
+                  {/* PR Info */}
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <a 
+                        href={`/${repo.owner}/${repo.name}/pulls/${item.pr.number}`}
+                        class="font-medium hover:text-primary transition-colors"
+                      >
+                        {item.pr.title}
+                      </a>
+                      <span class="text-muted-foreground">#{item.pr.number}</span>
+                      
+                      {/* Stack badge */}
+                      {item.stack && (
+                        <span class="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                          <Layers class="h-3 w-3" />
+                          Stack of {item.stack.entries.length}
+                        </span>
+                      )}
+                    </div>
+
+                    <div class="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                      <span class="flex items-center gap-1">
+                        <User class="h-3 w-3" />
+                        {item.pr.authorId}
+                      </span>
+                      <span>
+                        <code class="bg-muted px-1 rounded">{item.pr.headBranch}</code>
+                        →
+                        <code class="bg-muted px-1 rounded">{item.pr.baseBranch}</code>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Status */}
+                  <div class="flex items-center gap-4 text-sm">
+                    {/* CI Status */}
+                    <div class="flex items-center gap-1">
+                      {item.entry.ciStatus === "success" && (
+                        <CheckCircle2 class="h-4 w-4 text-green-500" />
+                      )}
+                      {item.entry.ciStatus === "pending" && (
+                        <Clock class="h-4 w-4 text-yellow-500 animate-pulse" />
+                      )}
+                      {item.entry.ciStatus === "failure" && (
+                        <AlertCircle class="h-4 w-4 text-red-500" />
+                      )}
+                      <span class:list={[
+                        item.entry.ciStatus === "success" ? "text-green-600" :
+                        item.entry.ciStatus === "failure" ? "text-red-600" :
+                        "text-yellow-600"
+                      ]}>
+                        CI {item.entry.ciStatus}
+                      </span>
+                    </div>
+
+                    {/* Est. Merge Time */}
+                    <div class="flex items-center gap-1 text-muted-foreground">
+                      <Clock class="h-4 w-4" />
+                      <span>Est. {formatTime(estMerge)}</span>
+                    </div>
+
+                    {/* Actions */}
+                    {canWrite && (
+                      <div class="flex items-center gap-1">
+                        <button 
+                          class="p-1.5 rounded hover:bg-muted transition-colors"
+                          title="Remove from queue"
+                        >
+                          <X class="h-4 w-4 text-muted-foreground hover:text-red-500" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Stack visualization if stacked */}
+                {item.stack && item.stack.entries.length > 1 && (
+                  <div class="mt-3 pt-3 border-t">
+                    <div class="text-xs text-muted-foreground mb-2">Stack order:</div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                      {item.stack.entries.map((entry, i) => (
+                        <span class:list={[
+                          "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs",
+                          entry.isMerged ? "bg-purple-500/10 text-purple-500" :
+                          entry.prNumber === item.pr.number ? "bg-primary text-primary-foreground" :
+                          "bg-muted text-muted-foreground"
+                        ]}>
+                          {entry.isMerged && <GitMerge class="h-3 w-3" />}
+                          #{entry.prNumber}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  </div>
+</BaseLayout>

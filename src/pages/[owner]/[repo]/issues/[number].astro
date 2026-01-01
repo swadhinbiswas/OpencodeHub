@@ -1,9 +1,9 @@
 ---
 import RepoHeader from "@/components/repo/RepoHeader.astro";
+import IssueDetail from "@/components/issues/IssueDetail";
 import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { renderMarkdown } from "@/lib/markdown";
-import { timeAgo } from "@/lib/utils";
 import { and, eq } from "drizzle-orm";
 
 const { owner: ownerName, repo: repoName, number } = Astro.params;
@@ -47,6 +47,22 @@ const repoForHeader = {
   ...repoData,
   owner: repoData.owner.username,
 };
+
+// Format issue for React component
+const formattedIssue = {
+  id: issue.id,
+  number: issue.number,
+  title: issue.title,
+  body: issue.body || "",
+  state: issue.state as "open" | "closed",
+  createdAt: issue.createdAt,
+  author: {
+    username: issue.author.username,
+    avatarUrl: issue.author.avatarUrl || undefined,
+  },
+  assignees: [], // TODO: Add assignees when schema supports it
+  labels: [], // TODO: Add labels when schema relation is fixed
+};
 ---
 
 <BaseLayout
@@ -54,55 +70,13 @@ const repoForHeader = {
 >
   <RepoHeader repo={repoForHeader} activeTab="issues" />
 
-  <div class="container max-w-5xl py-8">
-    <div class="mb-8 border-b pb-8">
-      <div class="flex items-center gap-4 mb-4">
-        <h1 class="text-3xl font-semibold">{issue.title}</h1>
-        <span class="text-3xl text-muted-foreground">#{issue.number}</span>
-      </div>
-
-      <div class="flex items-center gap-2 text-sm text-muted-foreground">
-        <div
-          class={`px-3 py-1 rounded-full text-white font-medium ${issue.state === "open" ? "bg-green-600" : "bg-purple-600"}`}
-        >
-          {issue.state === "open" ? "Open" : "Closed"}
-        </div>
-        <span class="font-medium text-foreground">{issue.author.username}</span>
-        <span>opened this issue {timeAgo(issue.createdAt)}</span>
-      </div>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-[1fr_300px] gap-8">
-      <div class="space-y-8">
-        <!-- Issue Body -->
-        <div class="border rounded-lg">
-          <div
-            class="bg-muted/50 px-4 py-2 border-b flex justify-between items-center"
-          >
-            <span class="font-medium text-sm">{issue.author.username}</span>
-            <span class="text-xs text-muted-foreground"
-              >commented {timeAgo(issue.createdAt)}</span
-            >
-          </div>
-          <div
-            class="p-4 prose dark:prose-invert max-w-none"
-            set:html={bodyHtml}
-          />
-        </div>
-
-        <!-- Comments would go here -->
-      </div>
-
-      <div class="space-y-6">
-        <div class="text-sm text-muted-foreground">
-          <h3 class="font-medium text-foreground mb-2">Assignees</h3>
-          <p>No one assigned</p>
-        </div>
-        <div class="text-sm text-muted-foreground">
-          <h3 class="font-medium text-foreground mb-2">Labels</h3>
-          <p>None yet</p>
-        </div>
-      </div>
-    </div>
+  <div class="container py-8">
+    <IssueDetail 
+      client:load
+      issue={formattedIssue}
+      bodyHtml={bodyHtml}
+      repoOwner={ownerName!}
+      repoName={repoName!}
+    />
   </div>
 </BaseLayout>

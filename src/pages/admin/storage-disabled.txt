@@ -1,0 +1,388 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { 
+  HardDrive, 
+  Cloud, 
+  FolderSync, 
+  CheckCircle,
+  XCircle,
+  Info,
+  Save
+} from "lucide-react";
+
+const user = Astro.locals.user;
+
+// Only admins can access
+if (!user?.isAdmin) {
+  return Astro.redirect('/');
+}
+
+// Current storage config from env
+const currentConfig = {
+  type: process.env.STORAGE_TYPE || 'local',
+  basePath: process.env.STORAGE_PATH || './data/storage',
+  bucket: process.env.STORAGE_BUCKET || '',
+  region: process.env.STORAGE_REGION || '',
+  endpoint: process.env.STORAGE_ENDPOINT || '',
+  rcloneRemote: process.env.STORAGE_RCLONE_REMOTE || '',
+};
+
+const storageTypes = [
+  { 
+    value: 'local', 
+    label: 'Local Filesystem', 
+    icon: HardDrive,
+    description: 'Store files on the local server disk',
+    fields: ['basePath']
+  },
+  { 
+    value: 's3', 
+    label: 'S3 / MinIO / R2', 
+    icon: Cloud,
+    description: 'Amazon S3, MinIO, Cloudflare R2, or compatible',
+    fields: ['bucket', 'region', 'endpoint', 'accessKeyId', 'secretAccessKey']
+  },
+  { 
+    value: 'rclone', 
+    label: 'Rclone Remote', 
+    icon: FolderSync,
+    description: 'Google Drive, Dropbox, OneDrive, etc. via rclone',
+    fields: ['rcloneRemote', 'basePath']
+  },
+];
+
+const rcloneRemotes = [
+  { name: 'gdrive', label: 'Google Drive', command: 'rclone config create gdrive drive' },
+  { name: 'dropbox', label: 'Dropbox', command: 'rclone config create dropbox dropbox' },
+  { name: 'onedrive', label: 'OneDrive', command: 'rclone config create onedrive onedrive' },
+  { name: 's3', label: 'S3 Compatible', command: 'rclone config create mys3 s3' },
+  { name: 'b2', label: 'Backblaze B2', command: 'rclone config create b2 b2' },
+  { name: 'sftp', label: 'SFTP', command: 'rclone config create mysftp sftp' },
+];
+---
+
+<AdminLayout title="Storage Settings">
+  <div class="min-h-screen bg-background p-6">
+    <div class="max-w-4xl mx-auto space-y-6">
+      <!-- Header -->
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-bold flex items-center gap-2">
+            <HardDrive class="h-6 w-6" />
+            Storage Settings
+          </h1>
+          <p class="text-muted-foreground">Configure where repository data and artifacts are stored</p>
+        </div>
+        <a href="/admin" class="text-muted-foreground hover:text-foreground">
+          ← Back to Dashboard
+        </a>
+      </div>
+
+      <form id="storage-form">
+        <!-- Current Status & Test -->
+        <Card class="mb-6">
+            <CardHeader>
+            <CardTitle class="flex items-center gap-2">
+                <HardDrive class="h-5 w-5" />
+                Connection Test
+            </CardTitle>
+            </CardHeader>
+            <CardContent>
+             <div class="flex items-center gap-2">
+                <button type="button" id="test-connection" class="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded hover:opacity-90">
+                Test Connection with Form Data
+                </button>
+                <span id="status-text" class="text-sm text-muted-foreground"></span>
+            </div>
+            </CardContent>
+        </Card>
+
+      <!-- Storage Type Selection -->
+      <Card>
+        <CardHeader>
+          <CardTitle>Storage Backend</CardTitle>
+          <CardDescription>
+            Choose where to store repository data.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div class="grid gap-4 md:grid-cols-3">
+            {storageTypes.map((type) => {
+              const Icon = type.icon;
+              return (
+                <label 
+                  class={`relative p-4 rounded-lg border-2 cursor-pointer transition-colors hover:bg-muted/50 border-muted`}
+                >
+                  <input 
+                    type="radio" 
+                    name="storageType" 
+                    value={type.value}
+                    class="sr-only peer"
+                    required
+                  />
+                  <div class="flex flex-col items-center text-center gap-2">
+                    <Icon class={`h-8 w-8 text-muted-foreground peer-checked:text-primary`} />
+                    <span class="font-semibold">{type.label}</span>
+                    <span class="text-xs text-muted-foreground">{type.description}</span>
+                  </div>
+                  <CheckCircle class="absolute top-2 right-2 h-5 w-5 text-primary opacity-0 peer-checked:opacity-100" />
+                </label>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      <!-- Local Configuration -->
+      <div id="config-local" class="mt-6 hidden">
+      <Card>
+        <CardHeader>
+          <CardTitle>Local Storage Configuration</CardTitle>
+        </CardHeader>
+        <CardContent class="space-y-4">
+          <div class="space-y-2">
+            <Label htmlFor="local-path">Storage Path</Label>
+            <Input 
+              id="local-path" 
+              name="basePath"
+              placeholder="./data/storage"
+            />
+            <p class="text-xs text-muted-foreground">Absolute or relative path to store files</p>
+          </div>
+        </CardContent>
+      </Card>
+      </div>
+
+      <!-- S3 Configuration -->
+      <div id="config-s3" class="mt-6 hidden">
+      <Card>
+        <CardHeader>
+          <CardTitle>S3 Configuration</CardTitle>
+          <CardDescription>Works with AWS S3, MinIO, Cloudflare R2, DigitalOcean Spaces, etc.</CardDescription>
+        </CardHeader>
+        <CardContent class="space-y-4">
+          <div class="grid gap-4 md:grid-cols-2">
+            <div class="space-y-2">
+              <Label htmlFor="s3-bucket">Bucket Name</Label>
+              <Input id="s3-bucket" name="bucket" placeholder="my-bucket" />
+            </div>
+            <div class="space-y-2">
+              <Label htmlFor="s3-region">Region</Label>
+              <Input id="s3-region" name="region" placeholder="us-east-1" />
+            </div>
+          </div>
+          <div class="space-y-2">
+            <Label htmlFor="s3-endpoint">Endpoint (optional)</Label>
+            <Input id="s3-endpoint" name="endpoint" placeholder="https://s3.amazonaws.com" />
+            <p class="text-xs text-muted-foreground">Custom endpoint for MinIO, R2, etc.</p>
+          </div>
+          <div class="grid gap-4 md:grid-cols-2">
+            <div class="space-y-2">
+              <Label htmlFor="s3-key">Access Key ID</Label>
+              <Input id="s3-key" name="accessKeyId" type="password" placeholder="AKIA..." />
+            </div>
+            <div class="space-y-2">
+              <Label htmlFor="s3-secret">Secret Access Key</Label>
+              <Input id="s3-secret" name="secretAccessKey" type="password" placeholder="..." />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      </div>
+
+      <!-- Rclone Configuration -->
+      <div id="config-rclone" class="mt-6 hidden">
+      <Card>
+        <CardHeader>
+          <CardTitle>Rclone Configuration</CardTitle>
+          <CardDescription>
+            Use any rclone-supported remote. <a href="https://rclone.org/docs/" target="_blank" class="text-primary hover:underline">View docs ↗</a>
+          </CardDescription>
+        </CardHeader>
+        <CardContent class="space-y-4">
+          <div class="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+            <div class="flex gap-2">
+              <Info class="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+              <div class="text-sm">
+                <p class="font-medium text-blue-600">Prerequisites</p>
+                <p class="text-muted-foreground">
+                  1. Install rclone: <code class="bg-muted px-1 rounded">curl https://rclone.org/install.sh | sudo bash</code><br/>
+                  2. Configure remote: <code class="bg-muted px-1 rounded">rclone config</code>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <Label htmlFor="rclone-remote">Remote Name</Label>
+            <Input 
+              id="rclone-remote" 
+              name="rcloneRemote"
+              placeholder="gdrive"
+            />
+            <p class="text-xs text-muted-foreground">Name of the configured rclone remote (run <code>rclone listremotes</code>)</p>
+          </div>
+
+          <div class="space-y-2">
+            <Label htmlFor="rclone-path">Base Path</Label>
+            <Input 
+              id="rclone-path" 
+              name="basePath"
+              placeholder="opencodehub-data"
+            />
+            <p class="text-xs text-muted-foreground">Folder within the remote to store data</p>
+          </div>
+        </CardContent>
+      </Card>
+      </div>
+      
+      <div class="mt-8 flex justify-end">
+          <Button type="submit" id="save-btn" size="lg" class="bg-primary hover:bg-primary/90 text-white">
+            <Save class="w-4 h-4 mr-2" />
+            Save Configuration
+          </Button>
+      </div>
+      </form>
+    </div>
+  </div>
+</AdminLayout>
+
+    /* Fetch initial config on load */
+    async function loadConfig() {
+       try {
+         const res = await fetch('/api/admin/config/storage');
+         if (res.ok) {
+            const config = await res.json();
+            
+            // Set type
+            const radio = document.querySelector(`input[name="storageType"][value="${config.type}"]`);
+            if (radio) {
+                radio.checked = true;
+                radio.dispatchEvent(new Event('change'));
+            }
+
+            // Fill fields
+            document.querySelector('[name="basePath"]').value = config.basePath || '';
+            document.querySelector('[name="bucket"]').value = config.bucket || '';
+            document.querySelector('[name="region"]').value = config.region || '';
+            document.querySelector('[name="endpoint"]').value = config.endpoint || '';
+            document.querySelector('[name="rcloneRemote"]').value = config.rcloneRemote || '';
+            
+            // Secrets are usually hidden, maybe leave empty or placeholder
+         }
+       } catch (e) {
+           console.error("Failed to load config", e);
+       }
+    }
+    
+    // Call on load
+    loadConfig();
+
+    // Toggle config panels
+    document.querySelectorAll('input[name="storageType"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        const value = e.target.value;
+        document.querySelectorAll('[id^="config-"]').forEach(el => el.classList.add('hidden'));
+        document.getElementById(`config-${value}`)?.classList.remove('hidden');
+      });
+    });
+  
+    // Test connection
+    document.getElementById('test-connection')?.addEventListener('click', async () => {
+      const statusText = document.getElementById('status-text');
+      statusText.textContent = 'Testing...';
+      statusText.className = 'text-sm text-muted-foreground';
+      
+      const form = document.getElementById('storage-form');
+      const formData = new FormData(form);
+      const config = Object.fromEntries(formData.entries());
+      // Config mapping
+      const type = formData.get('storageType');
+      const cleanConfig = { ...config, type };
+
+      try {
+        const response = await fetch('/api/admin/storage/test', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(cleanConfig)
+        });
+        const data = await response.json();
+  
+        if (data.success) {
+          statusText.textContent = '✓ Connection successful';
+          statusText.className = 'text-sm text-green-600';
+        } else {
+          statusText.textContent = `✗ ${data.error || 'Connection failed'}`;
+          statusText.className = 'text-sm text-red-600';
+        }
+      } catch (e) {
+        statusText.textContent = '✗ Failed to test connection';
+        statusText.className = 'text-sm text-red-600';
+      }
+    });
+
+    // Save Configuration
+    document.getElementById('storage-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!confirm("Changing storage settings may make existing files inaccessible until migrated. Continue?")) return;
+
+        const btn = document.getElementById('save-btn');
+        const originalText = btn.textContent;
+        btn.textContent = 'Saving...';
+        btn.disabled = true;
+
+        const formData = new FormData(e.target);
+        const config = Object.fromEntries(formData.entries());
+        // Fix structure
+        const type = formData.get('storageType');
+        const finalConfig = {
+            type,
+            basePath: formData.get('basePath'), // Shared or specific?
+            // Specifics
+            bucket: formData.get('bucket'),
+            region: formData.get('region'),
+            endpoint: formData.get('endpoint'),
+            accessKeyId: formData.get('accessKeyId'),
+            secretAccessKey: formData.get('secretAccessKey'),
+            rcloneRemote: formData.get('rcloneRemote'),
+        };
+
+        try {
+            const res = await fetch('/api/admin/config/storage', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(finalConfig)
+            });
+            
+            if (res.ok) {
+                alert("Storage configuration saved successfully.");
+                window.location.reload();
+            } else {
+                const txt = await res.text();
+                alert("Failed to save: " + txt);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error saving configuration");
+        } finally {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    });
+  
+    // Copy env (Keeping logic but Element might be removed, safe check)
+    document.getElementById('copy-env')?.addEventListener('click', () => {
+      const envText = document.getElementById('env-output')?.textContent || '';
+      navigator.clipboard.writeText(envText.trim());
+      const btn = document.getElementById('copy-env');
+      if (btn) {
+          const original = btn.textContent;
+          btn.textContent = 'Copied!';
+          setTimeout(() => btn.textContent = original, 2000);
+      }
+    });
+  </script>

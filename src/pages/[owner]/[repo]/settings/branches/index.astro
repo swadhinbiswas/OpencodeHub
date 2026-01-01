@@ -1,0 +1,111 @@
+---
+import RepositoryLayout from "@/layouts/RepositoryLayout.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, and } from "drizzle-orm";
+
+const { owner, repo } = Astro.params;
+const db = getDatabase();
+
+const repository = await db.query.repositories.findFirst({
+  where: eq(schema.repositories.slug, repo!),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repository || repository.owner.username !== owner) {
+  return Astro.redirect("/404");
+}
+
+const rules = await db.query.branchProtection.findMany({
+  where: eq(schema.branchProtection.repositoryId, repository.id),
+  orderBy: (rules, { desc }) => [desc(rules.createdAt)],
+});
+---
+
+<Layout title={`Branch Protection - ${owner}/${repo}`}>
+  <div class="container mx-auto px-4 py-8">
+    <div class="mb-6 flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold">Branch Protection Rules</h1>
+        <p class="text-gray-400">Define rules to enforce workflows on specific branches.</p>
+      </div>
+      <a
+        href={`/${owner}/${repo}/settings/branches/new`}
+        class="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+      >
+        Add Rule
+      </a>
+    </div>
+
+    <div class="rounded-lg border border-gray-700 bg-gray-800">
+      {rules.length === 0 ? (
+        <div class="p-8 text-center text-gray-400">
+          <p>No branch protection rules defined.</p>
+        </div>
+      ) : (
+        <div class="divide-y divide-gray-700">
+          {rules.map((rule) => (
+            <div class="flex items-center justify-between p-4">
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="font-bold text-white">{rule.pattern}</h3>
+                  {!rule.active && (
+                    <span class="rounded bg-gray-600 px-2 py-0.5 text-xs text-white">Disabled</span>
+                  )}
+                </div>
+                <div class="mt-1 flex gap-4 text-sm text-gray-400">
+                  {rule.requiresPr && <span>• Requires PR</span>}
+                  {rule.requiredApprovals > 0 && <span>• {rule.requiredApprovals} Approval(s)</span>}
+                  {!rule.allowForcePushes && <span>• No Force Push</span>}
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <a
+                  href={`/${owner}/${repo}/settings/branches/${rule.id}`}
+                  class="text-blue-400 hover:underline"
+                >
+                  Edit
+                </a>
+                <button
+                  class="text-red-400 hover:underline delete-rule-btn"
+                  data-id={rule.id}
+                  data-repo-id={repository.id}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</Layout>
+
+<script>
+  document.querySelectorAll(".delete-rule-btn").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      if (!confirm("Are you sure you want to delete this rule?")) return;
+      
+      const target = e.target as HTMLButtonElement;
+      const id = target.dataset.id;
+      const repoId = target.dataset.repoId;
+
+      try {
+        const res = await fetch(`/api/repos/${repoId}/branch-protection/${id}`, {
+          method: "DELETE",
+        });
+
+        if (res.ok) {
+          window.location.reload();
+        } else {
+          alert("Failed to delete rule");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Error deleting rule");
+      }
+    });
+  });
+</script>

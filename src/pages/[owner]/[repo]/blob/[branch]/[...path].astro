@@ -32,50 +32,10 @@ marked.use({
 const { owner: ownerName, repo: repoName, branch, path } = Astro.params;
 const db = getDatabase();
 
-// ... (code omitted)
-
-if (!fileData.isBinary) {
-  // Determine language
-  const extension = currentPath.split(".").pop()?.toLowerCase() || "";
-  let lang = "text";
-  const commonLangs: Record<string, string> = {
-    ts: "typescript",
-    tsx: "tsx", 
-    js: "javascript",
-    jsx: "jsx",
-    json: "json",
-    css: "css", 
-    html: "html",
-    md: "markdown",
-    markdown: "markdown",
-    py: "python",
-    go: "go",
-    rs: "rust",
-    java: "java",
-    c: "c",
-    cpp: "cpp",
-    h: "c", 
-    hpp: "cpp",
-    astro: "astro",
-    yml: "yaml",
-    yaml: "yaml",
-    toml: "toml",
-    sh: "shell",
-    bash: "shell",
-    zsh: "shell",
-    sql: "sql",
-    php: "php"
-  };
-
-  if (commonLangs[extension]) {
-    lang = commonLangs[extension];
-  }
-
-  if (lang === "markdown") {
-      isMarkdown = true;
-      markdownHtml = await marked.parse(fileData.content);
-  } else {
-    // ...
+// Fetch Owner
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
 
 if (!user) return Astro.redirect("/404");
 

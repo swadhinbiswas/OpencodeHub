@@ -1,0 +1,315 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { Button } from "@/components/ui/button";
+import { getDatabase, schema } from "@/db";
+import { eq, desc, and, or, ne } from "drizzle-orm";
+import { 
+  Inbox, 
+  GitPullRequest, 
+  Clock, 
+  CheckCircle2, 
+  Eye,
+  Filter,
+  Search,
+  Layers,
+  Bot
+} from "lucide-react";
+
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+const db = getDatabase();
+const filter = Astro.url.searchParams.get("filter") || "review";
+
+// Fetch PRs based on filter
+let prs: any[] = [];
+let title = "Inbox";
+
+try {
+  if (filter === "review") {
+    // PRs where user is requested as reviewer
+    title = "Needs Your Review";
+    const reviewerRequests = await db.query.pullRequestReviewers.findMany({
+      where: eq(schema.pullRequestReviewers.userId, user.id),
+    });
+    
+    const prIds = reviewerRequests.map(r => r.pullRequestId);
+    if (prIds.length > 0) {
+      prs = await db.query.pullRequests.findMany({
+        where: and(
+          eq(schema.pullRequests.state, "open"),
+        ),
+        orderBy: [desc(schema.pullRequests.updatedAt)],
+        with: {
+          repository: true,
+          author: true,
+        },
+      });
+      prs = prs.filter(pr => prIds.includes(pr.id));
+    }
+  } else if (filter === "authored") {
+    // User's PRs waiting for review
+    title = "Your PRs in Review";
+    prs = await db.query.pullRequests.findMany({
+      where: and(
+        eq(schema.pullRequests.authorId, user.id),
+        eq(schema.pullRequests.state, "open"),
+      ),
+      orderBy: [desc(schema.pullRequests.updatedAt)],
+      with: {
+        repository: true,
+        author: true,
+      },
+    });
+  } else if (filter === "approved") {
+    // Approved PRs ready to merge
+    title = "Ready to Merge";
+    prs = await db.query.pullRequests.findMany({
+      where: and(
+        eq(schema.pullRequests.authorId, user.id),
+        eq(schema.pullRequests.state, "open"),
+        eq(schema.pullRequests.mergeableState, "clean"),
+      ),
+      orderBy: [desc(schema.pullRequests.updatedAt)],
+      with: {
+        repository: true,
+        author: true,
+      },
+    });
+  } else if (filter === "all") {
+    // All open PRs user is involved with
+    title = "All PRs";
+    prs = await db.query.pullRequests.findMany({
+      where: eq(schema.pullRequests.state, "open"),
+      orderBy: [desc(schema.pullRequests.updatedAt)],
+      limit: 50,
+      with: {
+        repository: true,
+        author: true,
+      },
+    });
+  }
+} catch (e) {
+  console.error("Failed to fetch PRs:", e);
+}
+
+// Get stack info for each PR
+const prsWithStacks = await Promise.all(prs.map(async (pr) => {
+  let stackInfo = null;
+  try {
+    const entry = await db.query.prStackEntries.findFirst({
+      where: eq(schema.prStackEntries.pullRequestId, pr.id),
+    });
+    if (entry) {
+      const stack = await db.query.prStacks.findFirst({
+        where: eq(schema.prStacks.id, entry.stackId),
+      });
+      if (stack) {
+        const entries = await db.query.prStackEntries.findMany({
+          where: eq(schema.prStackEntries.stackId, stack.id),
+        });
+        stackInfo = {
+          id: stack.id,
+          name: stack.name,
+          count: entries.length,
+          position: entry.stackOrder,
+        };
+      }
+    }
+  } catch (e) {}
+  return { ...pr, stackInfo };
+}));
+
+// Get review counts
+const counts = {
+  review: 0,
+  authored: 0,
+  approved: 0,
+};
+try {
+  const reviewerRequests = await db.query.pullRequestReviewers.findMany({
+    where: eq(schema.pullRequestReviewers.userId, user.id),
+  });
+  counts.review = reviewerRequests.length;
+  
+  const authored = await db.query.pullRequests.findMany({
+    where: and(
+      eq(schema.pullRequests.authorId, user.id),
+      eq(schema.pullRequests.state, "open"),
+    ),
+  });
+  counts.authored = authored.length;
+} catch (e) {}
+
+function timeAgo(date: string) {
+  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  if (seconds < 3600) return Math.floor(seconds / 60) + "m ago";
+  if (seconds < 86400) return Math.floor(seconds / 3600) + "h ago";
+  if (seconds < 604800) return Math.floor(seconds / 86400) + "d ago";
+  return new Date(date).toLocaleDateString();
+}
+---
+
+<BaseLayout title="Inbox">
+  <div class="container py-8 max-w-5xl">
+    <div class="flex flex-col gap-6">
+      <!-- Header -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <Inbox class="h-6 w-6 text-primary" />
+          <h1 class="text-2xl font-bold">Inbox</h1>
+        </div>
+        <div class="flex items-center gap-2">
+          <Button variant="outline" size="sm">
+            <Filter class="mr-2 h-4 w-4" />
+            Filter
+          </Button>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="flex items-center gap-2 border-b pb-4">
+        <a 
+          href="/inbox?filter=review"
+          class:list={[
+            "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+            filter === "review" 
+              ? "bg-primary text-primary-foreground" 
+              : "text-muted-foreground hover:bg-muted"
+          ]}
+        >
+          <Eye class="h-4 w-4" />
+          Needs Review
+          {counts.review > 0 && (
+            <span class="ml-1 bg-muted-foreground/20 px-2 py-0.5 rounded-full text-xs">
+              {counts.review}
+            </span>
+          )}
+        </a>
+        <a 
+          href="/inbox?filter=authored"
+          class:list={[
+            "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+            filter === "authored" 
+              ? "bg-primary text-primary-foreground" 
+              : "text-muted-foreground hover:bg-muted"
+          ]}
+        >
+          <Clock class="h-4 w-4" />
+          Waiting on Others
+          {counts.authored > 0 && (
+            <span class="ml-1 bg-muted-foreground/20 px-2 py-0.5 rounded-full text-xs">
+              {counts.authored}
+            </span>
+          )}
+        </a>
+        <a 
+          href="/inbox?filter=approved"
+          class:list={[
+            "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+            filter === "approved" 
+              ? "bg-primary text-primary-foreground" 
+              : "text-muted-foreground hover:bg-muted"
+          ]}
+        >
+          <CheckCircle2 class="h-4 w-4" />
+          Ready to Merge
+        </a>
+        <a 
+          href="/inbox?filter=all"
+          class:list={[
+            "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+            filter === "all" 
+              ? "bg-primary text-primary-foreground" 
+              : "text-muted-foreground hover:bg-muted"
+          ]}
+        >
+          All
+        </a>
+      </div>
+
+      <!-- PR List -->
+      <div class="space-y-2">
+        {prsWithStacks.length === 0 ? (
+          <div class="text-center py-16">
+            <div class="inline-flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+              <Inbox class="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 class="text-lg font-medium">No pull requests</h3>
+            <p class="text-muted-foreground mt-1">
+              {filter === "review" 
+                ? "No PRs waiting for your review" 
+                : filter === "authored"
+                  ? "You have no open PRs"
+                  : "No PRs to display"}
+            </p>
+          </div>
+        ) : (
+          prsWithStacks.map((pr) => (
+            <a 
+              href={`/${pr.repository?.name}/pulls/${pr.number}`}
+              class="flex items-start gap-4 p-4 rounded-lg border transition-all hover:bg-muted/50 hover:shadow-md group"
+            >
+              {/* PR Icon */}
+              <div class:list={[
+                "flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center",
+                pr.isDraft 
+                  ? "bg-gray-500/10 text-gray-500" 
+                  : "bg-green-500/10 text-green-500"
+              ]}>
+                <GitPullRequest class="h-5 w-5" />
+              </div>
+
+              {/* Content */}
+              <div class="flex-1 min-w-0">
+                <div class="flex items-start justify-between gap-2">
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span class="font-medium group-hover:text-primary transition-colors">
+                        {pr.title}
+                      </span>
+                      {pr.isDraft && (
+                        <span class="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
+                          Draft
+                        </span>
+                      )}
+                      {pr.stackInfo && (
+                        <span class="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                          <Layers class="h-3 w-3" />
+                          {pr.stackInfo.position}/{pr.stackInfo.count}
+                        </span>
+                      )}
+                    </div>
+                    <div class="text-sm text-muted-foreground mt-1">
+                      <span class="font-medium">{pr.repository?.name}</span>
+                      <span class="mx-1">•</span>
+                      <span>#{pr.number}</span>
+                      <span class="mx-1">•</span>
+                      <span>opened by {pr.author?.username}</span>
+                    </div>
+                  </div>
+                  <span class="text-xs text-muted-foreground whitespace-nowrap">
+                    {timeAgo(pr.updatedAt)}
+                  </span>
+                </div>
+                
+                {/* Stats */}
+                <div class="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                  <span class="text-green-600">+{pr.additions || 0}</span>
+                  <span class="text-red-600">-{pr.deletions || 0}</span>
+                  <span>{pr.changedFiles || 0} files</span>
+                  {pr.reviewCount > 0 && (
+                    <span>{pr.reviewCount} reviews</span>
+                  )}
+                </div>
+              </div>
+            </a>
+          ))
+        )}
+      </div>
+    </div>
+  </div>
+</BaseLayout>

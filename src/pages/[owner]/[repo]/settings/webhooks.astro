@@ -1,0 +1,369 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { getDatabase, schema } from "@/db";
+import { eq, and } from "drizzle-orm";
+import { canAdminRepo } from "@/lib/permissions";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { Webhook, Plus, Trash2, Check, X, RefreshCw, Users } from "lucide-react";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+// Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!)
+  ),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canAdminRepo(currentUser?.id, repoData);
+
+if (!hasAccess) {
+  return Astro.redirect(`/${ownerName}/${repoName}`);
+}
+
+// Fetch webhooks
+const webhooks = await db.query.webhooks.findMany({
+  where: eq(schema.webhooks.repositoryId, repoData.id),
+});
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  openIssueCount: repoData.openIssueCount,
+  openPrCount: repoData.openPrCount,
+  hasIssues: repoData.hasIssues,
+  hasWiki: repoData.hasWiki,
+  hasActions: repoData.hasActions,
+};
+
+const availableEvents = [
+  { value: "push", label: "Push", description: "Branch or tag pushed" },
+  { value: "pull_request", label: "Pull Request", description: "PR opened, closed, merged" },
+  { value: "issues", label: "Issues", description: "Issue opened, closed, etc." },
+  { value: "issue_comment", label: "Issue Comment", description: "Comment on issue or PR" },
+  { value: "release", label: "Release", description: "Release published" },
+  { value: "star", label: "Star", description: "Repository starred" },
+  { value: "fork", label: "Fork", description: "Repository forked" },
+];
+---
+
+<BaseLayout title={`Webhooks · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="settings" />
+
+    <div class="grid gap-6 md:grid-cols-[240px_1fr]">
+      <!-- Settings Sidebar -->
+      <nav class="space-y-1">
+        <a
+          href={`/${repo.owner}/${repo.name}/settings`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          General
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/collaborators`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <Users class="h-4 w-4" />
+          Collaborators
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/webhooks`}
+          class="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm font-medium text-foreground"
+        >
+          <Webhook class="h-4 w-4" />
+          Webhooks
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/actions/runners`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Actions
+        </a>
+      </nav>
+
+      <!-- Webhooks Content -->
+      <div class="space-y-6">
+        <!-- Add Webhook -->
+        <Card>
+          <CardHeader>
+            <CardTitle class="flex items-center gap-2">
+              <Plus class="h-5 w-5" />
+              Add Webhook
+            </CardTitle>
+            <CardDescription>
+              Webhooks allow external services to be notified when events happen.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form id="add-webhook-form" class="space-y-4">
+              <div class="space-y-2">
+                <Label htmlFor="url">Payload URL</Label>
+                <Input
+                  id="url"
+                  name="url"
+                  type="url"
+                  placeholder="https://example.com/webhook"
+                  required
+                />
+              </div>
+              <div class="space-y-2">
+                <Label htmlFor="secret">Secret (optional)</Label>
+                <Input
+                  id="secret"
+                  name="secret"
+                  type="password"
+                  placeholder="Used to sign payloads"
+                />
+              </div>
+              <div class="space-y-2">
+                <Label>Events</Label>
+                <div class="grid gap-2 sm:grid-cols-2">
+                  {availableEvents.map((event) => (
+                    <label class="flex items-start gap-2 p-2 rounded border hover:bg-muted cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        name="events" 
+                        value={event.value}
+                        class="mt-0.5 accent-primary"
+                        checked={event.value === "push"}
+                      />
+                      <div>
+                        <div class="font-medium text-sm">{event.label}</div>
+                        <div class="text-xs text-muted-foreground">{event.description}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <Button type="submit">
+                <Plus class="h-4 w-4 mr-2" />
+                Add Webhook
+              </Button>
+            </form>
+            <p id="add-error" class="text-destructive text-sm mt-2 hidden"></p>
+            <p id="add-success" class="text-green-600 text-sm mt-2 hidden"></p>
+          </CardContent>
+        </Card>
+
+        <!-- Current Webhooks -->
+        <Card>
+          <CardHeader>
+            <CardTitle class="flex items-center gap-2">
+              <Webhook class="h-5 w-5" />
+              Active Webhooks
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {webhooks.length === 0 ? (
+              <div class="text-center py-8 text-muted-foreground">
+                <Webhook class="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No webhooks configured</p>
+                <p class="text-sm">Add a webhook to get started!</p>
+              </div>
+            ) : (
+              <div class="space-y-4">
+                {webhooks.map((webhook) => {
+                  const events = JSON.parse(webhook.events || "[]");
+                  return (
+                    <div class="p-4 rounded-lg border" data-webhook-id={webhook.id}>
+                      <div class="flex items-center justify-between">
+                        <div class="flex-1 min-w-0">
+                          <div class="flex items-center gap-2">
+                            {webhook.isActive ? (
+                              <span class="h-2 w-2 rounded-full bg-green-500" title="Active"></span>
+                            ) : (
+                              <span class="h-2 w-2 rounded-full bg-muted-foreground" title="Inactive"></span>
+                            )}
+                            <span class="font-medium truncate">{webhook.url}</span>
+                          </div>
+                          <div class="flex flex-wrap gap-1 mt-2">
+                            {events.map((event: string) => (
+                              <span class="text-xs bg-muted px-2 py-0.5 rounded">{event}</span>
+                            ))}
+                          </div>
+                          {webhook.lastDeliveryAt && (
+                            <div class="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                              <span>Last delivery: {new Date(webhook.lastDeliveryAt).toLocaleString()}</span>
+                              {webhook.lastDeliveryStatus && (
+                                webhook.lastDeliveryStatus >= 200 && webhook.lastDeliveryStatus < 300 ? (
+                                  <span class="text-green-600">✓ {webhook.lastDeliveryStatus}</span>
+                                ) : (
+                                  <span class="text-destructive">✗ {webhook.lastDeliveryStatus}</span>
+                                )
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <button
+                            class="toggle-webhook-btn p-2 hover:bg-muted rounded"
+                            data-webhook-id={webhook.id}
+                            data-active={webhook.isActive}
+                            title={webhook.isActive ? "Disable" : "Enable"}
+                          >
+                            {webhook.isActive ? <X class="h-4 w-4" /> : <Check class="h-4 w-4" />}
+                          </button>
+                          <button
+                            class="test-webhook-btn p-2 hover:bg-muted rounded"
+                            data-webhook-id={webhook.id}
+                            title="Test webhook"
+                          >
+                            <RefreshCw class="h-4 w-4" />
+                          </button>
+                          <button
+                            class="delete-webhook-btn p-2 hover:bg-destructive/10 rounded text-destructive"
+                            data-webhook-id={webhook.id}
+                            title="Delete webhook"
+                          >
+                            <Trash2 class="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script define:vars={{ owner: repo.owner, repo: repo.name }}>
+  // Add webhook
+  const form = document.getElementById("add-webhook-form");
+  const errorEl = document.getElementById("add-error");
+  const successEl = document.getElementById("add-success");
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorEl.classList.add("hidden");
+    successEl.classList.add("hidden");
+
+    const formData = new FormData(form);
+    const url = formData.get("url");
+    const secret = formData.get("secret");
+    const events = formData.getAll("events");
+
+    if (events.length === 0) {
+      errorEl.textContent = "Select at least one event";
+      errorEl.classList.remove("hidden");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/repos/${owner}/${repo}/webhooks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, secret, events }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || data.error || "Failed to add webhook");
+      }
+
+      successEl.textContent = "Webhook added!";
+      successEl.classList.remove("hidden");
+      form.reset();
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (error) {
+      errorEl.textContent = error.message;
+      errorEl.classList.remove("hidden");
+    }
+  });
+
+  // Toggle webhook
+  document.querySelectorAll(".toggle-webhook-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.webhookId;
+      const currentActive = btn.dataset.active === "true";
+
+      try {
+        const response = await fetch(`/api/repos/${owner}/${repo}/webhooks/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive: !currentActive }),
+        });
+
+        if (!response.ok) throw new Error("Failed to toggle webhook");
+        window.location.reload();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+  });
+
+  // Delete webhook
+  document.querySelectorAll(".delete-webhook-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.webhookId;
+      if (!confirm("Delete this webhook?")) return;
+
+      try {
+        const response = await fetch(`/api/repos/${owner}/${repo}/webhooks/${id}`, {
+          method: "DELETE",
+        });
+
+        if (!response.ok) throw new Error("Failed to delete webhook");
+        btn.closest("[data-webhook-id]").remove();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+  });
+
+  // Test webhook
+  document.querySelectorAll(".test-webhook-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.webhookId;
+
+      try {
+        const response = await fetch(`/api/repos/${owner}/${repo}/webhooks/${id}/test`, {
+          method: "POST",
+        });
+
+        const data = await response.json();
+        alert(data.success ? "Test ping sent!" : `Error: ${data.message}`);
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+  });
+</script>
