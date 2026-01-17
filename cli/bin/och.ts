@@ -17,17 +17,11 @@ program
     .description("OpenCodeHub CLI - Git hosting and stack-first PR workflows")
     .version("1.0.0");
 
-// Auth commands
-program
-    .command("auth")
-    .description("Authentication commands")
-    .addCommand(authCommands);
+// Auth commands - authCommands is already named "auth"
+program.addCommand(authCommands);
 
-// Stack commands
-program
-    .command("stack")
-    .description("Manage stacked PRs")
-    .addCommand(stackCommands);
+// Stack commands - stackCommands is already named "stack"  
+program.addCommand(stackCommands);
 
 // Repo commands
 const repoCommand = program
