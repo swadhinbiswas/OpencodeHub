@@ -7,7 +7,8 @@ import { spawn } from "child_process";
 import { generateKeyPairSync } from "crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
-import { Server } from "ssh2";
+import ssh2 from "ssh2";
+const { Server } = ssh2;
 import { logger } from "@/lib/logger";
 
 export interface SSHServerConfig {
@@ -31,7 +32,7 @@ export interface SSHServerConfig {
   onPush?: (userId: string, repoPath: string, refs: string[]) => Promise<void>;
 }
 
-export function createSSHServer(config: SSHServerConfig): Server {
+export function createSSHServer(config: SSHServerConfig): InstanceType<typeof Server> {
   const {
     port,
     hostKeyPath,
