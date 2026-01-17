@@ -7,6 +7,7 @@ import { eq, and } from 'drizzle-orm';
 import { getDatabase } from '@/db';
 import { repositories, repositoryCollaborators, users } from '@/db/schema';
 import { getUserFromRequest } from '@/lib/auth';
+import { canAdminRepo, canWriteRepo } from '@/lib/permissions';
 import {
   success,
   badRequest,
@@ -178,10 +179,9 @@ export const PATCH: APIRoute = async ({ params, request }) => {
     }
 
     // Check permission
-    const isOwner = tokenPayload.userId === repository.ownerId;
-    const isAdmin = tokenPayload.isAdmin;
+    const hasPermission = await canWriteRepo(tokenPayload.userId, repository, { isAdmin: tokenPayload.isAdmin });
 
-    if (!isOwner && !isAdmin) {
+    if (!hasPermission) {
       return forbidden('You do not have permission to update this repository');
     }
 
@@ -285,11 +285,10 @@ export const DELETE: APIRoute = async ({ params, request }) => {
       return notFound('Repository not found');
     }
 
-    // Check permission (only owner or admin can delete)
-    const isOwner = tokenPayload.userId === repository.ownerId;
-    const isAdmin = tokenPayload.isAdmin;
+    // Check permission (only admin/owner can delete)
+    const hasPermission = await canAdminRepo(tokenPayload.userId, repository, { isAdmin: tokenPayload.isAdmin });
 
-    if (!isOwner && !isAdmin) {
+    if (!hasPermission) {
       return forbidden('You do not have permission to delete this repository');
     }
 
