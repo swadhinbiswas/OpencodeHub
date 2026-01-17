@@ -27,6 +27,37 @@ if (!user) {
       </p>
     </div>
 
+    <div
+      id="error-container"
+      class="hidden mb-6 rounded-md bg-destructive/15 p-4 text-destructive border border-destructive/50"
+    >
+      <div class="flex items-start gap-4">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="h-5 w-5"
+          ><circle cx="12" cy="12" r="10"></circle><path d="m15 9-6 6"
+          ></path><path d="m9 9 6 6"></path></svg
+        >
+        <div>
+          <h5
+            id="error-title"
+            class="font-medium leading-none tracking-tight mb-1"
+          >
+            Error
+          </h5>
+          <div id="error-desc" class="text-sm opacity-90"></div>
+        </div>
+      </div>
+    </div>
+
     <form id="create-repo-form" class="space-y-8">
       <Card>
         <CardHeader>
@@ -50,7 +81,7 @@ if (!user) {
                 name="name"
                 placeholder="repository-name"
                 required
-                pattern="[a-zA-Z0-9._-]+"
+                pattern="[a-zA-Z0-9._\\-]+"
                 title="Only letters, numbers, dots, hyphens, and underscores are allowed."
                 className="w-full md:w-[300px]"
               />
@@ -230,10 +261,20 @@ if (!user) {
   const submitBtn = document.getElementById(
     "submit-btn",
   ) as HTMLButtonElement | null;
+  const errorContainer = document.getElementById(
+    "error-container",
+  ) as HTMLDivElement | null;
+  const errorTitle = document.getElementById(
+    "error-title",
+  ) as HTMLElement | null;
+  const errorDesc = document.getElementById("error-desc") as HTMLElement | null;
 
   if (form && submitBtn) {
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
+
+      // Reset error
+      if (errorContainer) errorContainer.classList.add("hidden");
 
       // Disable button and show loading state
       submitBtn.disabled = true;
@@ -270,12 +311,23 @@ if (!user) {
         }
 
         // Redirect to the new repository
-        // Since we don't have the repo page yet, redirect to dashboard or construct the URL
-        // The API returns the created repo object which has fullName
         window.location.href = `/${result.fullName}`;
       } catch (error) {
         console.error("Error creating repository:", error);
-        alert(error instanceof Error ? error.message : "An error occurred");
+
+        if (errorContainer && errorTitle && errorDesc) {
+          errorContainer.classList.remove("hidden");
+          errorTitle.innerText = "Error creating repository";
+          errorDesc.innerText =
+            error instanceof Error ? error.message : "An error occurred";
+          // Scroll to error
+          errorContainer.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        } else {
+          alert(error instanceof Error ? error.message : "An error occurred");
+        }
 
         // Reset button
         submitBtn.disabled = false;

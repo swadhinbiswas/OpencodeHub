@@ -9,5 +9,16 @@
                 }
             ]
         }
-    ]
+    ],
+    "regions": [
+        "bom1"
+    ],
+    "env": {
+        "GIT_REPOS_PATH": "/tmp/repos"
+    },
+    "build": {
+        "env": {
+            "GIT_REPOS_PATH": "/tmp/repos"
+        }
+    }
 }
