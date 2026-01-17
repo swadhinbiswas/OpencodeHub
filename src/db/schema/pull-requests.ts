@@ -235,6 +235,58 @@ export const pullRequestCommentsRelations = relations(
   })
 );
 
+export const pullRequestLabelsRelations = relations(
+  pullRequestLabels,
+  ({ one }) => ({
+    pullRequest: one(pullRequests, {
+      fields: [pullRequestLabels.pullRequestId],
+      references: [pullRequests.id],
+    }),
+    label: one(labels, {
+      fields: [pullRequestLabels.labelId],
+      references: [labels.id],
+    }),
+  })
+);
+
+export const pullRequestAssigneesRelations = relations(
+  pullRequestAssignees,
+  ({ one }) => ({
+    pullRequest: one(pullRequests, {
+      fields: [pullRequestAssignees.pullRequestId],
+      references: [pullRequests.id],
+    }),
+    user: one(users, {
+      fields: [pullRequestAssignees.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const pullRequestReviewersRelations = relations(
+  pullRequestReviewers,
+  ({ one }) => ({
+    pullRequest: one(pullRequests, {
+      fields: [pullRequestReviewers.pullRequestId],
+      references: [pullRequests.id],
+    }),
+    user: one(users, {
+      fields: [pullRequestReviewers.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const pullRequestChecksRelations = relations(
+  pullRequestChecks,
+  ({ one }) => ({
+    pullRequest: one(pullRequests, {
+      fields: [pullRequestChecks.pullRequestId],
+      references: [pullRequests.id],
+    }),
+  })
+);
+
 // Types
 export type PullRequest = typeof pullRequests.$inferSelect;
 export type NewPullRequest = typeof pullRequests.$inferInsert;
