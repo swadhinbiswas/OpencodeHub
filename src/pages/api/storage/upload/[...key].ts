@@ -15,7 +15,7 @@ export const PUT: APIRoute = async ({ params, request, url }) => {
     return new Response("Unauthorized - Invalid or expired signature", { status: 401 });
   }
 
-  const storage = getStorage();
+  // Removed duplicate storage declaration
 
   if (!request.body) return new Response("Body required", { status: 400 });
 
@@ -33,6 +33,7 @@ export const PUT: APIRoute = async ({ params, request, url }) => {
       },
     });
 
+    const storage = await getStorage();
     await storage.put(key, nodeReadable);
     return new Response("OK", { status: 200 });
   } catch (e) {

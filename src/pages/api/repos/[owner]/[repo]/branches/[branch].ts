@@ -4,7 +4,7 @@ import { canWriteRepo } from "@/lib/permissions";
 import type { APIRoute } from "astro";
 import { and, eq } from "drizzle-orm";
 
-export const DELETE: APIRoute = async ({ params, request, locals }) => {
+export const DELETE: APIRoute = async ({ params, locals }) => {
     const { owner: ownerName, repo: repoName, branch } = params;
     const user = locals.user;
 

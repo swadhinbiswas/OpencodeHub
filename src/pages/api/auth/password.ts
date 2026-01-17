@@ -44,6 +44,9 @@ export const PATCH: APIRoute = async ({ request }) => {
     }
 
     // Verify current password
+    if (!user.passwordHash) {
+      return badRequest("User has no password set. Please reset your password.");
+    }
     const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!isValid) {
       return badRequest("Incorrect current password");

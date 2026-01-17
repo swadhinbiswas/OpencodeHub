@@ -112,7 +112,7 @@ function timeAgo(date: string) {
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-bold flex items-center gap-2">
-            <FileText class="h-6 w-6" />
+            <FileText className="h-6 w-6" />
             Audit Log
           </h1>
           <p class="text-muted-foreground">Track all critical system actions</p>
@@ -125,13 +125,13 @@ function timeAgo(date: string) {
       <!-- Stats -->
       <div class="grid gap-4 md:grid-cols-4">
         <Card>
-          <CardContent class="p-4">
+          <CardContent className="p-4">
             <p class="text-sm text-muted-foreground">Total Events</p>
             <p class="text-2xl font-bold">{total}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent class="p-4">
+          <CardContent className="p-4">
             <p class="text-sm text-muted-foreground">Today</p>
             <p class="text-2xl font-bold">
               {logs.filter(l => new Date(l.createdAt).toDateString() === new Date().toDateString()).length}
@@ -144,12 +144,12 @@ function timeAgo(date: string) {
       <div class="flex flex-wrap gap-4">
         <form action="/admin/audit" method="GET" class="flex gap-2 flex-1">
           <div class="relative flex-1">
-            <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
               name="q" 
               value={searchQuery}
               placeholder="Search actions, targets..."
-              class="pl-10"
+              className="pl-10"
             />
           </div>
           <select 
@@ -175,7 +175,7 @@ function timeAgo(date: string) {
         <CardContent>
           {logs.length === 0 ? (
             <div class="text-center py-12 text-muted-foreground">
-              <FileText class="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No audit events found</p>
             </div>
           ) : (
@@ -188,7 +188,7 @@ function timeAgo(date: string) {
                 return (
                   <div class="flex items-start gap-4 p-4 rounded-lg border hover:bg-muted/30 transition-colors">
                     <div class={`p-2 rounded-lg ${colorClass}`}>
-                      <ActionIcon class="h-4 w-4" />
+                      <ActionIcon className="h-4 w-4" />
                     </div>
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2">
@@ -208,7 +208,7 @@ function timeAgo(date: string) {
                             {log.user.avatarUrl ? (
                               <img src={log.user.avatarUrl} class="h-4 w-4 rounded-full" />
                             ) : (
-                              <User class="h-3 w-3" />
+                              <User className="h-3 w-3" />
                             )}
                             <span>@{log.user.username}</span>
                           </div>
@@ -234,7 +234,7 @@ function timeAgo(date: string) {
                         href={`/${log.repository.name}`}
                         class="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
                       >
-                        <GitBranch class="h-3 w-3" />
+                        <GitBranch className="h-3 w-3" />
                         {log.repository.name}
                       </a>
                     )}
@@ -254,7 +254,7 @@ function timeAgo(date: string) {
                 {page > 1 && (
                   <a href={`/admin/audit?page=${page - 1}${searchQuery ? `&q=${searchQuery}` : ''}${actionFilter ? `&action=${actionFilter}` : ''}`}>
                     <Button variant="outline" size="sm">
-                      <ChevronLeft class="h-4 w-4" />
+                      <ChevronLeft className="h-4 w-4" />
                     </Button>
                   </a>
                 )}
@@ -262,7 +262,7 @@ function timeAgo(date: string) {
                 {page < totalPages && (
                   <a href={`/admin/audit?page=${page + 1}${searchQuery ? `&q=${searchQuery}` : ''}${actionFilter ? `&action=${actionFilter}` : ''}`}>
                     <Button variant="outline" size="sm">
-                      <ChevronRight class="h-4 w-4" />
+                      <ChevronRight className="h-4 w-4" />
                     </Button>
                   </a>
                 )}

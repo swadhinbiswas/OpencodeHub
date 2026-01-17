@@ -46,18 +46,26 @@ export interface QueryResult<T = unknown> {
 export interface WhereClause {
   field: string;
   operator:
-    | "="
-    | "!="
-    | ">"
-    | "<"
-    | ">="
-    | "<="
-    | "in"
-    | "not in"
-    | "like"
-    | "ilike"
-    | "is null"
-    | "is not null";
+  | "="
+  | "!="
+  | ">"
+  | "<"
+  | ">="
+  | "<="
+  | "in"
+  | "not in"
+  | "like"
+  | "ilike"
+  | "is null"
+  | "is not null"
+  | "eq"
+  | "ne"
+  | "lt"
+  | "lte"
+  | "gt"
+  | "gte"
+  | "isNull"
+  | "isNotNull";
   value: unknown;
 }
 
@@ -180,11 +188,11 @@ export interface ForeignKeyDefinition {
 
 export interface TableAlterCommand {
   type:
-    | "add_column"
-    | "drop_column"
-    | "modify_column"
-    | "add_index"
-    | "drop_index";
+  | "add_column"
+  | "drop_column"
+  | "modify_column"
+  | "add_index"
+  | "drop_index";
   column?: ColumnDefinition;
   columnName?: string;
   index?: IndexDefinition;

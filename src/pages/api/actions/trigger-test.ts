@@ -1,9 +1,8 @@
 
 import type { APIRoute } from 'astro';
 import { z } from 'zod';
-import { eq, and } from 'drizzle-orm';
-import { getDatabase, schema } from '@/db';
-import { success, unauthorized, serverError, parseBody, notFound } from '@/lib/api';
+// unused imports removed
+import { success, unauthorized, serverError, parseBody } from '@/lib/api';
 import { getUserFromRequest } from '@/lib/auth';
 import crypto from 'node:crypto';
 

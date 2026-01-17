@@ -1,7 +1,7 @@
 
 import type { APIRoute } from 'astro';
 import { z } from 'zod';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { getDatabase, schema } from '@/db';
 import { success, unauthorized, serverError, parseBody, notFound } from '@/lib/api';
 
@@ -20,7 +20,7 @@ export const POST: APIRoute = async ({ request, params }) => {
         const parsed = await parseBody(request, completeSchema);
         if ('error' in parsed) return parsed.error;
 
-        const { runnerId, secret, status, exitCode } = parsed.data;
+        const { runnerId, secret, status } = parsed.data;
         const db = getDatabase();
 
         // Authenticate Runner

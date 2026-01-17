@@ -6,7 +6,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 import { getBranches, getCommits } from "@/lib/git";
 import { canReadRepo, canWriteRepo } from "@/lib/permissions";
 import { getRepoPath } from "@/lib/utils";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, sql, count } from "drizzle-orm";
 import {
   GitBranch,
   Trash2,
@@ -29,7 +29,7 @@ if (!user) return Astro.redirect("/404");
 const repoData = await db.query.repositories.findFirst({
   where: and(
     eq(schema.repositories.ownerId, user.id),
-    eq(schema.repositories.name, repoName!)
+    eq(schema.repositories.name, repoName!),
   ),
   with: {
     owner: true,
@@ -50,7 +50,7 @@ if (!hasAccess) {
 // Fetch branches
 let branches: any[] = [];
 try {
-  const repoPath = getRepoPath(repoData.id);
+  const repoPath = repoData.diskPath;
   const gitBranches = await getBranches(repoPath);
 
   // For each branch, get the last commit info
@@ -73,21 +73,21 @@ try {
             }
           : null,
       };
-    })
+    }),
   );
 } catch (error) {
   console.error("Error fetching branches:", error);
 }
 
 // Fetch open issue count (for header)
-const issueCountResult = await db
-  .select({ count: sql<number>`count(*)` })
+const issueCountResult = await (db as any)
+  .select({ count: count() })
   .from(schema.issues)
   .where(
     and(
       eq(schema.issues.repositoryId, repoData.id),
-      eq(schema.issues.state, "open")
-    )
+      eq(schema.issues.state, "open"),
+    ),
   )
   .get();
 
@@ -115,7 +115,7 @@ const repo = {
 function timeAgo(date: Date | string | number) {
   if (!date) return "";
   const seconds = Math.floor(
-    (new Date().getTime() - new Date(date).getTime()) / 1000
+    (new Date().getTime() - new Date(date).getTime()) / 1000,
   );
   let interval = seconds / 31536000;
   if (interval > 1) return Math.floor(interval) + " years ago";
@@ -198,7 +198,9 @@ function timeAgo(date: Date | string | number) {
           </div>
           <div id="error-message" class="text-sm text-red-500 hidden"></div>
         </div>
-        <div class="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
+        <div
+          class="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2"
+        >
           <Button variant="outline" id="cancel-btn">Cancel</Button>
           <Button id="create-branch-submit">Create branch</Button>
         </div>
@@ -207,7 +209,9 @@ function timeAgo(date: Date | string | number) {
 
     <!-- Branches List -->
     <div class="rounded-lg border divide-y">
-      <div class="bg-muted/30 px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">
+      <div
+        class="bg-muted/30 px-4 py-3 text-xs font-semibold uppercase text-muted-foreground"
+      >
         Active Branches
       </div>
       {
@@ -237,7 +241,7 @@ function timeAgo(date: Date | string | number) {
               </div>
               <div class="text-sm text-muted-foreground flex items-center gap-2 truncate">
                 <span class="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">
-                    {branch.lastCommit?.sha.substring(0, 7)}
+                  {branch.lastCommit?.sha.substring(0, 7)}
                 </span>
                 <span class="truncate">{branch.lastCommit?.message}</span>
                 <span class="text-xs">• {branch.lastCommit?.authorName}</span>
@@ -247,7 +251,9 @@ function timeAgo(date: Date | string | number) {
               {!branch.isDefault && (
                 <>
                   <Button variant="outline" size="sm" asChild>
-                    <a href={`/${repo.owner}/${repo.name}/pulls/new?head=${branch.name}&base=${repo.defaultBranch}`}>
+                    <a
+                      href={`/${repo.owner}/${repo.name}/pulls/new?head=${branch.name}&base=${repo.defaultBranch}`}
+                    >
                       New Pull Request
                     </a>
                   </Button>
@@ -266,11 +272,13 @@ function timeAgo(date: Date | string | number) {
           </div>
         ))
       }
-      {branches.length === 0 && (
+      {
+        branches.length === 0 && (
           <div class="p-8 text-center text-muted-foreground">
-              No branches found.
+            No branches found.
           </div>
-      )}
+        )
+      }
     </div>
   </div>
 </BaseLayout>
@@ -281,7 +289,9 @@ function timeAgo(date: Date | string | number) {
   const cancelBtn = document.getElementById("cancel-btn");
   const createBtn = document.getElementById("create-branch-submit");
   const nameInput = document.getElementById("branch-name") as HTMLInputElement;
-  const sourceSelect = document.getElementById("source-branch") as HTMLSelectElement;
+  const sourceSelect = document.getElementById(
+    "source-branch",
+  ) as HTMLSelectElement;
   const errorMessage = document.getElementById("error-message");
 
   // Open/Close Modal
@@ -339,17 +349,21 @@ function timeAgo(date: Date | string | number) {
   // Delete Branch
   document.querySelectorAll(".delete-branch-btn").forEach((btn) => {
     btn.addEventListener("click", async (e: any) => {
-      const branch = btn.dataset.branch;
-      if (!confirm(`Are you sure you want to delete branch '${branch}'?`)) return;
+      const branch = (btn as HTMLElement).dataset.branch;
+      if (!confirm(`Are you sure you want to delete branch '${branch}'?`))
+        return;
 
       try {
         const parts = window.location.pathname.split("/");
         const owner = parts[1];
         const repo = parts[2];
 
-        const res = await fetch(`/api/repos/${owner}/${repo}/branches/${branch}`, {
-          method: "DELETE",
-        });
+        const res = await fetch(
+          `/api/repos/${owner}/${repo}/branches/${branch}`,
+          {
+            method: "DELETE",
+          },
+        );
 
         if (!res.ok) throw new Error(await res.text());
 

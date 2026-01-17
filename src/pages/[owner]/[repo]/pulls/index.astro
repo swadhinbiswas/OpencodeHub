@@ -4,7 +4,7 @@ import PullRequestsList from "@/components/pulls/PullRequestsList";
 import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { canReadRepo } from "@/lib/permissions";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql, count } from "drizzle-orm";
 
 const { owner: ownerName, repo: repoName } = Astro.params;
 const db = getDatabase();
@@ -19,7 +19,7 @@ if (!user) return Astro.redirect("/404");
 const repoData = await db.query.repositories.findFirst({
   where: and(
     eq(schema.repositories.ownerId, user.id),
-    eq(schema.repositories.name, repoName!)
+    eq(schema.repositories.name, repoName!),
   ),
   with: {
     owner: true,
@@ -38,13 +38,13 @@ if (!hasAccess) {
 
 // Fetch issue count
 const issueCountResult = await db
-  .select({ count: sql<number>`count(*)` })
+  .select({ count: count() })
   .from(schema.issues)
   .where(
     and(
       eq(schema.issues.repositoryId, repoData.id),
-      eq(schema.issues.state, "open")
-    )
+      eq(schema.issues.state, "open"),
+    ),
   )
   .get();
 
@@ -56,7 +56,7 @@ const prsList = await db.query.pullRequests.findMany({
   orderBy: [desc(schema.pullRequests.createdAt)],
   with: {
     author: true,
-    pullRequestLabels: {
+    labels: {
       with: {
         label: true,
       },
@@ -66,7 +66,7 @@ const prsList = await db.query.pullRequests.findMany({
 
 const openCount = prsList.filter((pr) => pr.state === "open").length;
 const closedCount = prsList.filter(
-  (pr) => pr.state === "closed" || pr.state === "merged"
+  (pr) => pr.state === "closed" || pr.state === "merged",
 ).length;
 
 const repo = {
@@ -89,7 +89,7 @@ const repo = {
 };
 
 // Format PRs for React component
-const formattedPRs = prsList.map(pr => ({
+const formattedPRs = prsList.map((pr) => ({
   id: pr.id,
   number: pr.number,
   title: pr.title,
@@ -102,11 +102,12 @@ const formattedPRs = prsList.map(pr => ({
     username: pr.author.username,
     avatarUrl: pr.author.avatarUrl || undefined,
   },
-  labels: pr.pullRequestLabels?.map(pl => ({
-    id: pl.label.id,
-    name: pl.label.name,
-    color: pl.label.color,
-  })) || [],
+  labels:
+    pr.labels?.map((pl) => ({
+      id: pl.label.id,
+      name: pl.label.name,
+      color: pl.label.color,
+    })) || [],
   isDraft: pr.isDraft || false,
 }));
 ---
@@ -116,7 +117,7 @@ const formattedPRs = prsList.map(pr => ({
     <RepoHeader repo={repo} activeTab="pulls" />
 
     <div class="mt-6">
-      <PullRequestsList 
+      <PullRequestsList
         client:load
         pullRequests={formattedPRs}
         openCount={openCount}

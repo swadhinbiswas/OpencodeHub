@@ -96,14 +96,14 @@ const availableEvents = [
           href={`/${repo.owner}/${repo.name}/settings/collaborators`}
           class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
         >
-          <Users class="h-4 w-4" />
+          <Users className="h-4 w-4" />
           Collaborators
         </a>
         <a
           href={`/${repo.owner}/${repo.name}/settings/webhooks`}
           class="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm font-medium text-foreground"
         >
-          <Webhook class="h-4 w-4" />
+          <Webhook className="h-4 w-4" />
           Webhooks
         </a>
         <a
@@ -119,8 +119,8 @@ const availableEvents = [
         <!-- Add Webhook -->
         <Card>
           <CardHeader>
-            <CardTitle class="flex items-center gap-2">
-              <Plus class="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
               Add Webhook
             </CardTitle>
             <CardDescription>
@@ -169,7 +169,7 @@ const availableEvents = [
                 </div>
               </div>
               <Button type="submit">
-                <Plus class="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4 mr-2" />
                 Add Webhook
               </Button>
             </form>
@@ -181,15 +181,15 @@ const availableEvents = [
         <!-- Current Webhooks -->
         <Card>
           <CardHeader>
-            <CardTitle class="flex items-center gap-2">
-              <Webhook class="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2">
+              <Webhook className="h-5 w-5" />
               Active Webhooks
             </CardTitle>
           </CardHeader>
           <CardContent>
             {webhooks.length === 0 ? (
               <div class="text-center py-8 text-muted-foreground">
-                <Webhook class="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <Webhook className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No webhooks configured</p>
                 <p class="text-sm">Add a webhook to get started!</p>
               </div>
@@ -234,21 +234,21 @@ const availableEvents = [
                             data-active={webhook.isActive}
                             title={webhook.isActive ? "Disable" : "Enable"}
                           >
-                            {webhook.isActive ? <X class="h-4 w-4" /> : <Check class="h-4 w-4" />}
+                            {webhook.isActive ? <X class="h-4 w-4" /> : <Check className="h-4 w-4" />}
                           </button>
                           <button
                             class="test-webhook-btn p-2 hover:bg-muted rounded"
                             data-webhook-id={webhook.id}
                             title="Test webhook"
                           >
-                            <RefreshCw class="h-4 w-4" />
+                            <RefreshCw className="h-4 w-4" />
                           </button>
                           <button
                             class="delete-webhook-btn p-2 hover:bg-destructive/10 rounded text-destructive"
                             data-webhook-id={webhook.id}
                             title="Delete webhook"
                           >
-                            <Trash2 class="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </div>

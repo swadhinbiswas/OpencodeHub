@@ -19,7 +19,7 @@ if (!user) return Astro.redirect("/404");
 const repoData = await db.query.repositories.findFirst({
   where: and(
     eq(schema.repositories.ownerId, user.id),
-    eq(schema.repositories.name, repoName!)
+    eq(schema.repositories.name, repoName!),
   ),
   with: {
     owner: true,
@@ -32,7 +32,7 @@ if (!repoData) return Astro.redirect("/404");
 const issue = await db.query.issues.findFirst({
   where: and(
     eq(schema.issues.repositoryId, repoData.id),
-    eq(schema.issues.number, parseInt(number!))
+    eq(schema.issues.number, parseInt(number!)),
   ),
   with: {
     author: true,
@@ -46,6 +46,7 @@ const bodyHtml = await renderMarkdown(issue.body || "");
 const repoForHeader = {
   ...repoData,
   owner: repoData.owner.username,
+  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
 };
 
 // Format issue for React component
@@ -71,7 +72,7 @@ const formattedIssue = {
   <RepoHeader repo={repoForHeader} activeTab="issues" />
 
   <div class="container py-8">
-    <IssueDetail 
+    <IssueDetail
       client:load
       issue={formattedIssue}
       bodyHtml={bodyHtml}

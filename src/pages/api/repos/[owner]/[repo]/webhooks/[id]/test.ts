@@ -103,7 +103,7 @@ export const POST: APIRoute = async ({ params, request }) => {
         await db.update(webhooks)
             .set({
                 lastDeliveryAt: now(),
-                lastDeliveryStatus: status,
+                lastDeliveryStatus: status.toString(),
                 updatedAt: now(),
             })
             .where(eq(webhooks.id, id));

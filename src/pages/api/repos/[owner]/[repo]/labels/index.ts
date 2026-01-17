@@ -11,7 +11,7 @@ import { success, created, badRequest, unauthorized, notFound, serverError, forb
 import { generateId, now } from '@/lib/utils';
 
 // GET - List labels
-export const GET: APIRoute = async ({ params, request }) => {
+export const GET: APIRoute = async ({ params }) => {
     try {
         const { owner, repo } = params;
         if (!owner || !repo) return badRequest('Missing owner or repo');

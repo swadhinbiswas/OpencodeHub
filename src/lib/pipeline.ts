@@ -344,11 +344,11 @@ export class PipelineRunner extends EventEmitter {
       // Simple glob matching
       const regex = new RegExp(
         "^" +
-          pattern
-            .replace(/\*\*/g, ".*")
-            .replace(/\*/g, "[^/]*")
-            .replace(/\?/g, ".") +
-          "$"
+        pattern
+          .replace(/\*\*/g, ".*")
+          .replace(/\*/g, "[^/]*")
+          .replace(/\?/g, ".") +
+        "$"
       );
       return regex.test(str);
     });
@@ -452,8 +452,8 @@ export class PipelineRunner extends EventEmitter {
         const needs = Array.isArray(jobConfig.needs)
           ? jobConfig.needs
           : jobConfig.needs
-          ? [jobConfig.needs]
-          : [];
+            ? [jobConfig.needs]
+            : [];
         const needsResults: Record<
           string,
           { outputs: Record<string, string>; result: string }
@@ -541,8 +541,8 @@ export class PipelineRunner extends EventEmitter {
       const needs = Array.isArray(job.needs)
         ? job.needs
         : job.needs
-        ? [job.needs]
-        : [];
+          ? [job.needs]
+          : [];
 
       for (const dep of needs) {
         visit(dep);
@@ -776,7 +776,7 @@ export class PipelineRunner extends EventEmitter {
         try {
           await container.stop();
           await container.remove();
-        } catch {}
+        } catch { }
         this.runningJobs.delete(jobRun.id);
       }
 
@@ -1046,7 +1046,7 @@ export class PipelineRunner extends EventEmitter {
         try {
           await container.stop();
           await container.remove();
-        } catch {}
+        } catch { }
         this.runningJobs.delete(jobId);
       }
     }
@@ -1054,6 +1054,10 @@ export class PipelineRunner extends EventEmitter {
   }
 }
 
-export const pipelineRunner = new PipelineRunner();
+export const pipelineRunner = new PipelineRunner({
+  workDir: process.env.RUNNER_WORK_DIR || "./data/actions/work",
+  artifactsDir: process.env.RUNNER_ARTIFACTS_DIR || "./data/actions/artifacts",
+  cacheDir: process.env.RUNNER_CACHE_DIR || "./data/actions/cache",
+});
 
 export default PipelineRunner;

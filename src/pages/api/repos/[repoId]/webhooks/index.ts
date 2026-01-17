@@ -21,7 +21,7 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
 
     try {
         const body = await request.json();
-        const { url, secret, events, active, content_type } = body;
+        const { url, secret, events, active } = body;
 
         if (!url || !events) {
             return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400 });

@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 
 const GITHUB_CLIENT_ID = import.meta.env.OAUTH_GITHUB_CLIENT_ID;
-const GITHUB_CLIENT_SECRET = import.meta.env.OAUTH_GITHUB_CLIENT_SECRET;
+// removed unused GITHUB_CLIENT_SECRET
 const SITE_URL = import.meta.env.SITE_URL || "http://localhost:4321";
 
 export const GET: APIRoute = async ({ redirect, cookies }) => {

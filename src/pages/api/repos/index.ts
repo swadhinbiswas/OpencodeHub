@@ -4,9 +4,9 @@
  */
 import { type APIRoute } from 'astro';
 import { z } from 'zod';
-import { eq, desc, and, or, like, sql } from 'drizzle-orm';
+import { eq, desc, and, or, like, count } from 'drizzle-orm';
 import { getDatabase } from '@/db';
-import { repositories, repositoryCollaborators, users } from '@/db/schema';
+import { repositories, users } from '@/db/schema';
 import { getUserFromRequest } from '@/lib/auth';
 import {
   success,
@@ -106,9 +106,10 @@ export const GET: APIRoute = async ({ request, url }) => {
 
     // Get total count
     const countResult = await db
-      .select({ count: sql<number>`count(*)` })
+      // @ts-expect-error - select overload issue
+      .select({ count: count() })
       .from(repositories)
-      .where(and(...conditions));
+      .where(and(...conditions)) as any;
 
     const total = countResult[0]?.count || 0;
 

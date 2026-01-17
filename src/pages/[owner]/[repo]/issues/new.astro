@@ -20,7 +20,7 @@ if (!user) return Astro.redirect("/404");
 const repoData = await db.query.repositories.findFirst({
   where: and(
     eq(schema.repositories.ownerId, user.id),
-    eq(schema.repositories.name, repoName!)
+    eq(schema.repositories.name, repoName!),
   ),
   with: {
     owner: true,
@@ -40,6 +40,7 @@ if (!currentUser) {
 const repoForHeader = {
   ...repoData,
   owner: repoData.owner.username,
+  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
 };
 ---
 

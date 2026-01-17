@@ -17,7 +17,7 @@ export const wikiPages = sqliteTable("wiki_pages", {
   title: text("title").notNull(),
   content: text("content").notNull(),
   format: text("format").notNull().default("markdown"), // markdown, asciidoc, rst
-  parentId: text("parent_id").references(() => wikiPages.id),
+  parentId: text("parent_id").references((): any => wikiPages.id),
   order: integer("order").default(0),
   lastEditorId: text("last_editor_id").references(() => users.id),
   viewCount: integer("view_count").default(0),

@@ -10,7 +10,7 @@ import BackgroundGrid from "@/components/ui/BackgroundGrid.astro";
 
 // Fetch public repositories for the landing page
 const db = getDatabase();
-let recentRepos = [];
+let recentRepos: any[] = [];
 let stats = {
   repos: 0,
   users: 0,

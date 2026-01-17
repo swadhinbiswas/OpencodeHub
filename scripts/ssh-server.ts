@@ -17,7 +17,7 @@ async function main() {
         port: 2222,
         hostKeyPath: HOST_KEY_PATH,
         reposPath: REPOS_DIR,
-        authenticateUser: async (username, key) => {
+        authenticateUser: async (_, key) => {
             // We ignore the username (usually 'git') and authenticate by key
             const db = getDatabase();
 
@@ -104,7 +104,7 @@ async function main() {
                 // 2. Trigger Workflows
                 import("@/lib/workflows").then(({ triggerRepoWorkflows }) => {
                     refs.forEach(refLine => {
-                        const [oldSha, newSha, refName] = refLine.split(" ");
+                        const [, newSha, refName] = refLine.split(" ");
                         // Only trigger on branch updates (not deletions or tags for now unless supported)
                         if (newSha !== "0000000000000000000000000000000000000000" && refName.startsWith("refs/heads/")) {
                             triggerRepoWorkflows(repo.id, newSha, refName, userId).catch(console.error);

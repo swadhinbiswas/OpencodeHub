@@ -107,7 +107,7 @@ function getRoleDescription(role: string) {
           href={`/${repo.owner}/${repo.name}/settings/collaborators`}
           class="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm font-medium text-foreground"
         >
-          <Users class="h-4 w-4" />
+          <Users className="h-4 w-4" />
           Collaborators
         </a>
         <a
@@ -129,8 +129,8 @@ function getRoleDescription(role: string) {
         <!-- Add Collaborator -->
         <Card>
           <CardHeader>
-            <CardTitle class="flex items-center gap-2">
-              <UserPlus class="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
               Invite Collaborator
             </CardTitle>
             <CardDescription>
@@ -161,7 +161,7 @@ function getRoleDescription(role: string) {
                 </select>
               </div>
               <Button type="submit">
-                <UserPlus class="h-4 w-4 mr-2" />
+                <UserPlus className="h-4 w-4 mr-2" />
                 Add
               </Button>
             </form>
@@ -173,8 +173,8 @@ function getRoleDescription(role: string) {
         <!-- Current Collaborators -->
         <Card>
           <CardHeader>
-            <CardTitle class="flex items-center gap-2">
-              <Users class="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
               Current Collaborators
             </CardTitle>
             <CardDescription>
@@ -184,7 +184,7 @@ function getRoleDescription(role: string) {
           <CardContent>
             {collaborators.length === 0 ? (
               <div class="text-center py-8 text-muted-foreground">
-                <Users class="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No collaborators yet</p>
                 <p class="text-sm">Invite someone to start collaborating!</p>
               </div>
@@ -215,7 +215,7 @@ function getRoleDescription(role: string) {
                       </div>
                       <div class="flex items-center gap-4">
                         <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                          <RoleIcon class="h-4 w-4" />
+                          <RoleIcon className="h-4 w-4" />
                           <select
                             class="role-select bg-transparent border rounded px-2 py-1 text-sm"
                             data-user-id={collab.userId}
@@ -232,7 +232,7 @@ function getRoleDescription(role: string) {
                           data-username={collab.user?.username}
                           title="Remove collaborator"
                         >
-                          <Trash2 class="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
@@ -252,7 +252,7 @@ function getRoleDescription(role: string) {
             <div class="grid gap-4 md:grid-cols-3">
               <div class="p-4 rounded-lg border">
                 <div class="flex items-center gap-2 mb-2">
-                  <Shield class="h-5 w-5 text-primary" />
+                  <Shield className="h-5 w-5 text-primary" />
                   <span class="font-medium">Maintainer</span>
                 </div>
                 <ul class="text-sm text-muted-foreground space-y-1">
@@ -264,7 +264,7 @@ function getRoleDescription(role: string) {
               </div>
               <div class="p-4 rounded-lg border">
                 <div class="flex items-center gap-2 mb-2">
-                  <Code class="h-5 w-5 text-blue-500" />
+                  <Code className="h-5 w-5 text-blue-500" />
                   <span class="font-medium">Developer</span>
                 </div>
                 <ul class="text-sm text-muted-foreground space-y-1">
@@ -276,7 +276,7 @@ function getRoleDescription(role: string) {
               </div>
               <div class="p-4 rounded-lg border">
                 <div class="flex items-center gap-2 mb-2">
-                  <Eye class="h-5 w-5 text-muted-foreground" />
+                  <Eye className="h-5 w-5 text-muted-foreground" />
                   <span class="font-medium">Guest</span>
                 </div>
                 <ul class="text-sm text-muted-foreground space-y-1">

@@ -21,14 +21,15 @@ export const repositories = sqliteTable("repositories", {
   diskPath: text("disk_path").notNull(),
   sshCloneUrl: text("ssh_clone_url"),
   httpCloneUrl: text("http_clone_url"),
-  starCount: integer("star_count").default(0),
-  forkCount: integer("fork_count").default(0),
-  watchCount: integer("watch_count").default(0),
-  openIssueCount: integer("open_issue_count").default(0),
-  openPrCount: integer("open_pr_count").default(0),
-  size: integer("size").default(0), // Size in KB
+  website: text("website"),
+  starCount: integer("star_count").default(0).notNull(),
+  forkCount: integer("fork_count").default(0).notNull(),
+  watchCount: integer("watch_count").default(0).notNull(),
+  openIssueCount: integer("open_issue_count").default(0).notNull(),
+  openPrCount: integer("open_pr_count").default(0).notNull(),
+  size: integer("size").default(0).notNull(), // Size in KB
   isFork: integer("is_fork", { mode: "boolean" }).default(false),
-  forkedFromId: text("forked_from_id").references(() => repositories.id),
+  forkedFromId: text("forked_from_id").references((): any => repositories.id),
   isArchived: integer("is_archived", { mode: "boolean" }).default(false),
   isMirror: integer("is_mirror", { mode: "boolean" }).default(false),
   mirrorUrl: text("mirror_url"),
@@ -205,6 +206,17 @@ export const repositoryCollaboratorsRelations = relations(repositoryCollaborator
   }),
   addedBy: one(users, {
     fields: [repositoryCollaborators.addedById],
+    references: [users.id],
+  }),
+}));
+
+export const repositoryStarsRelations = relations(repositoryStars, ({ one }) => ({
+  repository: one(repositories, {
+    fields: [repositoryStars.repositoryId],
+    references: [repositories.id],
+  }),
+  user: one(users, {
+    fields: [repositoryStars.userId],
     references: [users.id],
   }),
 }));

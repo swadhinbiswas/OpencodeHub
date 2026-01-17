@@ -221,8 +221,8 @@ function formatSize(bytes: number) {
              {lastCommitInfo && (
                 <span>{lastCommitInfo.sha.substring(0, 7)}</span>
              )}
-             <Button variant="ghost" size="icon" class="h-6 w-6">
-                <Clock class="h-4 w-4" />
+             <Button variant="ghost" size="icon" className="h-6 w-6">
+                <Clock className="h-4 w-4" />
              </Button>
           </div>
        </div>
@@ -232,7 +232,7 @@ function formatSize(bytes: number) {
            <div class="flex items-center justify-between bg-muted/10 px-4 py-2 border-b">
                <div class="flex items-center gap-4 text-xs font-mono text-muted-foreground">
                    <div class="flex items-center gap-2">
-                       {fileData.isBinary ? <FileIcon class="h-4 w-4" /> : <FileCode class="h-4 w-4" />}
+                       {fileData.isBinary ? <FileIcon className="h-4 w-4" /> : <FileCode className="h-4 w-4" />}
                        <span class="font-semibold text-foreground">{lineCount > 0 ? `${lineCount} lines` : ""}</span> 
                        {lineCount > 0 && <span>·</span>}
                        <span>{formatSize(fileData.size)}</span>
@@ -243,7 +243,7 @@ function formatSize(bytes: number) {
                        <div class="flex items-center rounded-md border shadow-sm bg-background">
                            {isMarkdown && (
                                <button class="px-3 py-1.5 text-xs font-medium hover:bg-accent border-r transition-colors flex items-center gap-1">
-                                   <BookOpen class="h-3 w-3" />
+                                   <BookOpen className="h-3 w-3" />
                                    Preview
                                </button>
                            )}
@@ -251,20 +251,20 @@ function formatSize(bytes: number) {
                                Raw
                            </a>
                        <button class="px-3 py-1.5 text-xs font-medium hover:bg-accent border-r transition-colors" id="copy-btn">
-                           <Copy class="h-3 w-3 inline mr-1" />
+                           <Copy className="h-3 w-3 inline mr-1" />
                            Copy
                        </button>
                        <a href={`/${repo.owner}/${repo.name}/raw/${currentBranch}/${currentPath}?download=true`} download class="px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors">
-                           <Download class="h-3 w-3 inline mr-1" />
+                           <Download className="h-3 w-3 inline mr-1" />
                            Download
                        </a>
                    </div>
                    <div class="ml-2 flex items-center rounded-md border shadow-sm bg-background">
                        <button class="p-1.5 hover:bg-accent text-muted-foreground hover:text-foreground">
-                           <Edit class="h-3 w-3" />
+                           <Edit className="h-3 w-3" />
                        </button>
                        <button class="p-1.5 hover:bg-accent text-red-500 hover:text-red-600 border-l">
-                           <Trash2 class="h-3 w-3" />
+                           <Trash2 className="h-3 w-3" />
                        </button>
                    </div>
                </div>
