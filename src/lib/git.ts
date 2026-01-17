@@ -4,6 +4,15 @@
  */
 
 import { logger } from "@/lib/logger";
+import {
+  isCloudStorage,
+  initRepoInStorage,
+  finalizeRepoInit,
+  deleteRepoFromStorage,
+  parseStoragePath,
+  acquireRepo,
+  releaseRepo,
+} from "@/lib/git-storage";
 import { spawn } from "child_process";
 import { existsSync, mkdirSync, rmSync } from "fs";
 import { basename, dirname, extname, join } from "path";
@@ -90,6 +99,7 @@ export interface BlameInfo {
 
 /**
  * Initialize a new bare git repository
+ * If using cloud storage, creates locally then syncs to storage
  */
 export async function initRepository(
   repoPath: string,
@@ -104,20 +114,33 @@ export async function initRepository(
     ownerName = "Owner",
   } = options;
 
+  // For cloud storage, repoPath is a logical path like "repos/owner/name.git"
+  // We need to create in a local temp directory first
+  let localRepoPath = repoPath;
+  const usingCloud = await isCloudStorage();
+
+  if (usingCloud) {
+    // Parse owner and repo from the logical path
+    const parsed = parseStoragePath(repoPath);
+    if (parsed) {
+      localRepoPath = await initRepoInStorage(parsed.owner, parsed.repoName);
+    }
+  }
+
   // Ensure directory exists
-  const dir = dirname(repoPath);
+  const dir = dirname(localRepoPath);
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
 
   // Initialize bare repository
   const git = simpleGit();
-  await git.init(true, [repoPath]);
-  await installHooks(repoPath);
+  await git.init(true, [localRepoPath]);
+  await installHooks(localRepoPath);
 
   // If we need initial content, create a temporary working copy
   if (readme || gitignoreTemplate || licenseType) {
-    const tempPath = `${repoPath}.tmp`;
+    const tempPath = `${localRepoPath}.tmp`;
     mkdirSync(tempPath, { recursive: true });
 
     const workingGit = simpleGit(tempPath);
@@ -163,7 +186,7 @@ export async function initRepository(
     }
 
     // Push to bare repository
-    await workingGit.addRemote("origin", repoPath);
+    await workingGit.addRemote("origin", localRepoPath);
     await workingGit.push("origin", defaultBranch);
 
     // Clean up temp directory
@@ -171,16 +194,40 @@ export async function initRepository(
   }
 
   // Set default branch in bare repo
-  const bareGit = simpleGit(repoPath);
+  const bareGit = simpleGit(localRepoPath);
   await bareGit.raw(["symbolic-ref", "HEAD", `refs/heads/${defaultBranch}`]);
+
+  // If cloud storage, sync the initialized repo to storage
+  if (usingCloud) {
+    const parsed = parseStoragePath(repoPath);
+    if (parsed) {
+      await finalizeRepoInit(parsed.owner, parsed.repoName);
+    }
+  }
 }
 
 /**
- * Delete a repository from disk
+ * Delete a repository from disk and cloud storage
  */
 export async function deleteRepository(repoPath: string): Promise<void> {
+  // Delete from local filesystem if exists
   if (existsSync(repoPath)) {
     rmSync(repoPath, { recursive: true, force: true });
+  }
+
+  // If cloud storage, also delete from cloud
+  if (await isCloudStorage()) {
+    // repoPath might be a logical path (repos/owner/name.git)
+    // or a physical path - try to delete from storage either way
+    try {
+      await deleteRepoFromStorage(repoPath);
+    } catch (err) {
+      // Also try parsing it as a storage path
+      const parsed = parseStoragePath(repoPath);
+      if (parsed) {
+        await deleteRepoFromStorage(`repos/${parsed.owner}/${parsed.repoName}.git`);
+      }
+    }
   }
 }
 
