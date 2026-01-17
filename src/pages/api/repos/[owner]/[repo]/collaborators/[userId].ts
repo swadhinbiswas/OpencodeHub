@@ -35,7 +35,7 @@ export const PATCH: APIRoute = async ({ params, request }) => {
         if (!repository) return notFound('Repository not found');
 
         // Check admin permission
-        if (!await canAdminRepo(tokenPayload.userId, repository)) {
+        if (!await canAdminRepo(tokenPayload.userId, repository, { isAdmin: tokenPayload.isAdmin })) {
             return forbidden('You do not have permission to manage collaborators');
         }
 
@@ -95,10 +95,10 @@ export const DELETE: APIRoute = async ({ params, request }) => {
         if (!repository) return notFound('Repository not found');
 
         // Check admin permission OR user is removing themselves
-        const isAdmin = await canAdminRepo(tokenPayload.userId, repository);
+        const isRepoAdmin = await canAdminRepo(tokenPayload.userId, repository, { isAdmin: tokenPayload.isAdmin });
         const isSelf = tokenPayload.userId === userId;
 
-        if (!isAdmin && !isSelf) {
+        if (!isRepoAdmin && !isSelf) {
             return forbidden('You do not have permission to remove this collaborator');
         }
 

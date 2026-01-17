@@ -64,6 +64,25 @@ const envVars: EnvConfig[] = [
         defaultValue: "./data/storage",
     },
 
+    // Google Drive
+    {
+        name: "GOOGLE_CLIENT_ID",
+        required: false,
+    },
+    {
+        name: "GOOGLE_CLIENT_SECRET",
+        required: false,
+    },
+    {
+        name: "GOOGLE_REFRESH_TOKEN",
+        required: false,
+    },
+    {
+        name: "GOOGLE_FOLDER_ID",
+        required: false,
+    },
+
+
     // Git
     {
         name: "GIT_REPOS_PATH",
@@ -81,6 +100,20 @@ const envVars: EnvConfig[] = [
         name: "ENABLE_REGISTRATION",
         required: false,
         defaultValue: "true",
+    },
+
+    // Grafana Cloud Loki
+    {
+        name: "LOKI_HOST",
+        required: false,
+    },
+    {
+        name: "LOKI_USER",
+        required: false,
+    },
+    {
+        name: "LOKI_PASSWORD",
+        required: false,
     },
 ];
 
@@ -134,6 +167,14 @@ export function validateEnvironment(exitOnError: boolean = true): boolean {
         if (process.env.SITE_URL && !process.env.SITE_URL.startsWith("https://")) {
             warnings.push("⚠️  SITE_URL should use HTTPS in production");
         }
+    }
+
+    // Google Drive Validation
+    if (process.env.STORAGE_TYPE === "gdrive") {
+        if (!process.env.GOOGLE_CLIENT_ID) errors.push("❌ GOOGLE_CLIENT_ID is required when STORAGE_TYPE is 'gdrive'");
+        if (!process.env.GOOGLE_CLIENT_SECRET) errors.push("❌ GOOGLE_CLIENT_SECRET is required when STORAGE_TYPE is 'gdrive'");
+        if (!process.env.GOOGLE_REFRESH_TOKEN) errors.push("❌ GOOGLE_REFRESH_TOKEN is required when STORAGE_TYPE is 'gdrive'");
+        if (!process.env.GOOGLE_FOLDER_ID) errors.push("❌ GOOGLE_FOLDER_ID is required when STORAGE_TYPE is 'gdrive'");
     }
 
     // Print results

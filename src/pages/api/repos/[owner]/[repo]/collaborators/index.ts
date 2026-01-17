@@ -6,7 +6,7 @@ import { eq, and } from 'drizzle-orm';
 import { getDatabase } from '@/db';
 import { repositoryCollaborators, repositories, users } from '@/db/schema';
 import { getUserFromRequest } from '@/lib/auth';
-import { canAdminRepo } from '@/lib/permissions';
+import { canAdminRepo, canReadRepo } from '@/lib/permissions';
 import { success, created, badRequest, unauthorized, notFound, serverError, forbidden } from '@/lib/api';
 import { generateId, now } from '@/lib/utils';
 
@@ -34,8 +34,8 @@ export const GET: APIRoute = async ({ params, request }) => {
         if (!repository) return notFound('Repository not found');
 
         // Check read access (collaborator list is semi-public for public repos)
-        if (repository.visibility === 'private' && !tokenPayload) {
-            return unauthorized();
+        if (!await canReadRepo(tokenPayload?.userId, repository, { isAdmin: tokenPayload?.isAdmin })) {
+            return repository.visibility === 'private' ? notFound('Repository not found') : unauthorized();
         }
 
         // Get collaborators
@@ -95,7 +95,7 @@ export const POST: APIRoute = async ({ params, request }) => {
         if (!repository) return notFound('Repository not found');
 
         // Check admin permission
-        if (!await canAdminRepo(tokenPayload.userId, repository)) {
+        if (!await canAdminRepo(tokenPayload.userId, repository, { isAdmin: tokenPayload.isAdmin })) {
             return forbidden('You do not have permission to manage collaborators');
         }
 

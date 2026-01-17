@@ -5,82 +5,72 @@ import { GlobalSearch } from "@/components/search/GlobalSearch"
 const user = Astro.locals.user;
 ---
 
-<header class="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-  <div class="container flex h-14 items-center">
+<header class="sticky top-0 z-50 w-full border-b border-white/5 bg-background/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/40">
+  <div class="container h-16 flex items-center justify-between gap-4">
     <!-- Logo -->
-    <a href="/" class="mr-6 flex items-center space-x-2">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        class="h-6 w-6 text-primary"
-      >
-        <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
-        <path d="M9 18c-4.51 2-5-2-7-2" />
-      </svg>
-      <span class="hidden font-bold sm:inline-block">OpenCodeHub</span>
+    <a href="/" class="flex items-center gap-2 transition-opacity hover:opacity-80">
+      <img src="/logo.svg" alt="OpenCodeHub" class="h-9 w-auto" />
     </a>
 
     <!-- Navigation -->
-    <nav class="hidden md:flex items-center space-x-6 text-sm font-medium">
-      <a href="/explore" class="text-muted-foreground transition-colors hover:text-foreground">
+    <nav class="hidden md:flex items-center gap-1 text-sm font-medium">
+      <a href="/explore" class="px-3 py-2 rounded-md text-muted-foreground transition-all hover:text-foreground hover:bg-muted/50">
         Explore
       </a>
-      <a href="/issues" class="text-muted-foreground transition-colors hover:text-foreground">
+      <a href="/issues" class="px-3 py-2 rounded-md text-muted-foreground transition-all hover:text-foreground hover:bg-muted/50">
         Issues
       </a>
-      <a href="/pulls" class="text-muted-foreground transition-colors hover:text-foreground">
-        Pull Requests
+      <a href="/pulls" class="px-3 py-2 rounded-md text-muted-foreground transition-all hover:text-foreground hover:bg-muted/50">
+        Pulls
       </a>
-      <a href="/actions" class="text-muted-foreground transition-colors hover:text-foreground">
+      <a href="/actions" class="px-3 py-2 rounded-md text-muted-foreground transition-all hover:text-foreground hover:bg-muted/50">
         Actions
       </a>
-      <a href="/admin" class="text-muted-foreground transition-colors hover:text-purple-400 font-semibold flex items-center gap-1">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-activity"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-        Mission Control
+      <a href="/cli" class="px-3 py-2 rounded-md text-muted-foreground transition-all hover:text-foreground hover:bg-muted/50">
+        CLI
+      </a>
+      <a href="/docs/" class="px-3 py-2 rounded-md text-muted-foreground transition-all hover:text-foreground hover:bg-muted/50">
+        Docs
+      </a>
+      <div class="mx-2 h-4 w-px bg-border/50"></div>
+      <a href="/admin" class="flex items-center gap-2 px-3 py-2 rounded-md text-purple-400/90 transition-all hover:text-purple-400 hover:bg-purple-500/10">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-activity"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <span>Mission Control</span>
       </a>
     </nav>
 
-    <!-- Spacer -->
-    <div class="flex-1"></div>
-
     <!-- Search -->
-    <div class="hidden md:flex items-center mr-4">
-      <div class="relative">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+    <div class="hidden md:flex flex-1 max-w-sm">
+      <div class="relative w-full group">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
         <input
           type="search"
-          placeholder="Search repositories, issues, users..."
-          class="w-64 lg:w-96 h-9 rounded-md border border-input bg-background px-8 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          placeholder="Search..."
+          class="w-full h-9 rounded-full border border-border/50 bg-secondary/30 px-9 text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all"
         />
-        <kbd class="pointer-events-none absolute right-2.5 top-2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+        <kbd class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded bg-background/50 px-1.5 font-mono text-[10px] font-medium opacity-50 sm:flex border border-border/50">
           <span class="text-xs">⌘</span>K
         </kbd>
       </div>
     </div>
 
     <!-- Actions -->
-    <div class="flex items-center space-x-2">
+    <div class="flex items-center gap-3">
       {user ? (
         <>
           <!-- Create New -->
           <div class="relative" id="create-menu">
             <button
-              class="inline-flex items-center justify-center rounded-md text-sm font-medium h-9 w-9 hover:bg-accent hover:text-accent-foreground"
+              class="flex h-9 w-9 items-center justify-center rounded-full border border-border/50 bg-background transition-all hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               aria-label="Create new"
             >
-              <Plus className="h-5 w-5" />
+              <Plus className="h-4 w-4" />
             </button>
-            <div id="create-dropdown" class="hidden absolute right-0 mt-2 w-48 rounded-md border bg-popover p-1 shadow-lg">
-              <a href="/new" class="flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
+            <div id="create-dropdown" class="hidden absolute right-0 mt-2 w-48 rounded-lg border bg-popover p-1 shadow-lg animate-in fade-in zoom-in-95 duration-200">
+              <a href="/new" class="flex items-center rounded-md px-2 py-2 text-sm hover:bg-accent transition-colors">
                 New Repository
               </a>
-
-              <a href="/new/import" class="flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
+              <a href="/new/import" class="flex items-center rounded-md px-2 py-2 text-sm hover:bg-accent transition-colors">
                 Import Repository
               </a>
             </div>
@@ -89,19 +79,20 @@ const user = Astro.locals.user;
           <!-- Notifications -->
           <a
             href="/notifications"
-            class="inline-flex items-center justify-center rounded-md text-sm font-medium h-9 w-9 hover:bg-accent hover:text-accent-foreground relative"
+            class="flex h-9 w-9 items-center justify-center rounded-full border border-border/50 bg-background transition-all hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 relative"
             aria-label="Notifications"
           >
-            <Bell className="h-5 w-5" />
-            <span class="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground flex items-center justify-center">
-              3
+            <Bell className="h-4 w-4" />
+            <span class="absolute -top-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-red-500">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
             </span>
           </a>
 
           <!-- User Menu -->
           <div class="relative" id="user-menu">
             <button
-              class="inline-flex items-center justify-center rounded-full h-8 w-8 bg-muted hover:ring-2 hover:ring-ring overflow-hidden"
+              class="flex h-9 w-9 items-center justify-center rounded-full bg-muted border border-border/50 ring-offset-2 hover:ring-2 hover:ring-primary/20 overflow-hidden transition-all"
               aria-label="User menu"
             >
               {user.avatarUrl ? (
@@ -110,29 +101,28 @@ const user = Astro.locals.user;
                 <span class="text-sm font-medium">{user.username.charAt(0).toUpperCase()}</span>
               )}
             </button>
-            <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-56 rounded-md border bg-popover p-1 shadow-lg">
-              <div class="px-2 py-1.5 text-sm">
-                <p class="font-medium">{user.displayName || user.username}</p>
-                <p class="text-muted-foreground">@{user.username}</p>
+            <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-64 rounded-xl border bg-popover p-2 shadow-xl animate-in fade-in zoom-in-95 duration-200">
+              <div class="px-3 py-2.5">
+                <p class="font-semibold text-sm text-foreground">{user.displayName || user.username}</p>
+                <p class="text-xs text-muted-foreground truncate">@{user.username}</p>
               </div>
-              <div class="h-px bg-border my-1"></div>
-              <a href="/profile" class="flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
+              <div class="h-px bg-border/50 my-1"></div>
+              <a href="/profile" class="flex items-center rounded-lg px-3 py-2 text-sm hover:bg-accent transition-colors">
                 Your Profile
               </a>
-              <a href="/repositories" class="flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
+              <a href="/repositories" class="flex items-center rounded-lg px-3 py-2 text-sm hover:bg-accent transition-colors">
                 Your Repositories
               </a>
-
-              <a href="/stars" class="flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
+              <a href="/stars" class="flex items-center rounded-lg px-3 py-2 text-sm hover:bg-accent transition-colors">
                 Your Stars
               </a>
-              <div class="h-px bg-border my-1"></div>
-              <a href="/settings" class="flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent">
+              <div class="h-px bg-border/50 my-1"></div>
+              <a href="/settings" class="flex items-center rounded-lg px-3 py-2 text-sm hover:bg-accent transition-colors">
                 Settings
               </a>
-              <div class="h-px bg-border my-1"></div>
+              <div class="h-px bg-border/50 my-1"></div>
               <form action="/api/auth/logout" method="POST">
-                <button type="submit" class="w-full flex items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent text-destructive">
+                <button type="submit" class="w-full flex items-center rounded-lg px-3 py-2 text-sm hover:bg-red-500/10 text-red-500 transition-colors">
                   Sign Out
                 </button>
               </form>
@@ -141,10 +131,10 @@ const user = Astro.locals.user;
         </>
       ) : (
         <div class="flex items-center gap-2">
-          <a href="/login" class="inline-flex items-center justify-center rounded-md text-sm font-medium h-9 px-4 py-2 hover:bg-accent hover:text-accent-foreground">
+          <a href="/login" class="inline-flex items-center justify-center rounded-full text-sm font-medium h-9 px-5 hover:bg-muted transition-colors">
             Sign in
           </a>
-          <a href="/register" class="inline-flex items-center justify-center rounded-md text-sm font-medium h-9 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90">
+          <a href="/register" class="inline-flex items-center justify-center rounded-full text-sm font-medium h-9 px-5 bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 hover:scale-105 active:scale-95 transition-all duration-300">
             Sign up
           </a>
         </div>
@@ -152,27 +142,31 @@ const user = Astro.locals.user;
 
       <!-- Mobile Menu -->
       <button
-        class="inline-flex items-center justify-center rounded-md text-sm font-medium h-9 w-9 hover:bg-accent hover:text-accent-foreground md:hidden"
+        class="flex h-9 w-9 items-center justify-center rounded-full border border-border/50 bg-background transition-all hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 md:hidden"
         aria-label="Menu"
         id="mobile-menu-btn"
       >
-        <Menu className="h-5 w-5" />
+        <Menu className="h-4 w-4" />
       </button>
     </div>
   </div>
 
   <!-- Mobile Navigation -->
-  <div id="mobile-nav" class="hidden border-t md:hidden">
+  <div id="mobile-nav" class="hidden border-t md:hidden bg-background/95 backdrop-blur-xl">
     <nav class="container py-4 space-y-2">
-      <a href="/explore" class="block px-2 py-1.5 text-sm hover:bg-accent rounded-md">Explore</a>
-      <a href="/issues" class="block px-2 py-1.5 text-sm hover:bg-accent rounded-md">Issues</a>
-      <a href="/pulls" class="block px-2 py-1.5 text-sm hover:bg-accent rounded-md">Pull Requests</a>
-      <a href="/actions" class="block px-2 py-1.5 text-sm hover:bg-accent rounded-md">Actions</a>
+      <a href="/explore" class="block px-3 py-2 text-sm font-medium hover:bg-accent rounded-lg transition-colors">Explore</a>
+      <a href="/issues" class="block px-3 py-2 text-sm font-medium hover:bg-accent rounded-lg transition-colors">Issues</a>
+      <a href="/pulls" class="block px-3 py-2 text-sm font-medium hover:bg-accent rounded-lg transition-colors">Pull Requests</a>
+      <a href="/actions" class="block px-3 py-2 text-sm font-medium hover:bg-accent rounded-lg transition-colors">Actions</a>
+      <a href="/cli" class="block px-3 py-2 text-sm font-medium hover:bg-accent rounded-lg transition-colors">CLI</a>
+      <a href="/admin" class="block px-3 py-2 text-sm font-medium text-purple-400 hover:bg-purple-500/10 rounded-lg transition-colors">Mission Control</a>
+      
       <div class="pt-2">
         <button
-          class="w-full flex items-center h-9 rounded-md border border-input bg-background px-3 text-sm text-muted-foreground text-left"
+          class="w-full flex items-center h-10 rounded-lg border border-input bg-background/50 px-3 text-sm text-muted-foreground text-left"
           id="mobile-search-trigger"
         >
+          <Search className="mr-2 h-4 w-4" />
           Search...
         </button>
       </div>

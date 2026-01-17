@@ -1,0 +1,81 @@
+---
+
+---
+
+<div class="fixed inset-0 -z-50 pointer-events-none overflow-hidden">
+    <!-- Glowing orbs -->
+    <div
+        class="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-primary/5 blur-[120px] animate-pulse-slow"
+    >
+    </div>
+    <div
+        class="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-purple-500/5 blur-[120px] animate-pulse-slow"
+        style="animation-delay: 2s;"
+    >
+    </div>
+
+    <!-- Grid Pattern -->
+    <svg
+        class="absolute inset-0 h-full w-full stroke-white/5 [mask-image:radial-gradient(100%_100%_at_top_right,white,transparent)]"
+        aria-hidden="true"
+    >
+        <defs>
+            <pattern
+                id="grid-pattern"
+                width="40"
+                height="40"
+                patternUnits="userSpaceOnUse"
+                x="-1"
+                y="-1"
+            >
+                <path d="M.5 40V.5H40" fill="none"></path>
+            </pattern>
+        </defs>
+        <rect
+            width="100%"
+            height="100%"
+            stroke-width="0"
+            fill="url(#grid-pattern)"></rect>
+    </svg>
+
+    <!-- Floating particles -->
+    <div class="absolute inset-0 overflow-hidden">
+        <svg class="h-full w-full opacity-[0.15]">
+            <circle
+                cx="10%"
+                cy="20%"
+                r="2"
+                fill="currentColor"
+                class="text-primary animate-float"
+                style="animation-duration: 10s; animation-delay: 0s;"></circle>
+            <circle
+                cx="90%"
+                cy="60%"
+                r="3"
+                fill="currentColor"
+                class="text-purple-400 animate-float"
+                style="animation-duration: 15s; animation-delay: 2s;"></circle>
+            <circle
+                cx="50%"
+                cy="10%"
+                r="1.5"
+                fill="currentColor"
+                class="text-blue-400 animate-float"
+                style="animation-duration: 12s; animation-delay: 5s;"></circle>
+            <circle
+                cx="20%"
+                cy="80%"
+                r="2.5"
+                fill="currentColor"
+                class="text-primary animate-float"
+                style="animation-duration: 18s; animation-delay: 1s;"></circle>
+            <circle
+                cx="80%"
+                cy="30%"
+                r="2"
+                fill="currentColor"
+                class="text-purple-400 animate-float"
+                style="animation-duration: 20s; animation-delay: 4s;"></circle>
+        </svg>
+    </div>
+</div>

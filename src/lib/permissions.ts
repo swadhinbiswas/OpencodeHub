@@ -5,10 +5,21 @@ import { and, eq } from "drizzle-orm";
 
 export type PermissionLevel = "admin" | "write" | "read" | "none";
 
+export interface PermissionOptions {
+  /** If true, the user is a site-wide admin with full access to all repositories */
+  isAdmin?: boolean;
+}
+
 export async function getRepoPermission(
   userId: string | undefined,
-  repo: Repository
+  repo: Repository,
+  options?: PermissionOptions
 ): Promise<PermissionLevel> {
+  // Site-wide admins have full access to all repositories
+  if (options?.isAdmin) {
+    return "admin";
+  }
+
   // Public repos are readable by everyone
   if (repo.visibility === "public") {
     if (!userId) return "read";
@@ -53,24 +64,27 @@ export async function getRepoPermission(
 
 export async function canReadRepo(
   userId: string | undefined,
-  repo: Repository
+  repo: Repository,
+  options?: PermissionOptions
 ): Promise<boolean> {
-  const permission = await getRepoPermission(userId, repo);
+  const permission = await getRepoPermission(userId, repo, options);
   return permission !== "none";
 }
 
 export async function canWriteRepo(
   userId: string | undefined,
-  repo: Repository
+  repo: Repository,
+  options?: PermissionOptions
 ): Promise<boolean> {
-  const permission = await getRepoPermission(userId, repo);
+  const permission = await getRepoPermission(userId, repo, options);
   return permission === "write" || permission === "admin";
 }
 
 export async function canAdminRepo(
   userId: string | undefined,
-  repo: Repository
+  repo: Repository,
+  options?: PermissionOptions
 ): Promise<boolean> {
-  const permission = await getRepoPermission(userId, repo);
+  const permission = await getRepoPermission(userId, repo, options);
   return permission === "admin";
 }

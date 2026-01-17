@@ -34,7 +34,7 @@ export const GET: APIRoute = async ({ params, request, locals }) => {
         return new Response("Repository not found", { status: 404 });
     }
 
-    if (!(await canReadRepo(user?.id, repo))) {
+    if (!(await canReadRepo(user?.id, repo, { isAdmin: user?.isAdmin ?? undefined }))) {
         return new Response("Unauthorized", { status: 401 });
     }
 
@@ -84,7 +84,7 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
         return new Response("Repository not found", { status: 404 });
     }
 
-    if (!(await canWriteRepo(user.id, repo))) {
+    if (!(await canWriteRepo(user.id, repo, { isAdmin: user.isAdmin ?? undefined }))) {
         return new Response("Forbidden", { status: 403 });
     }
 

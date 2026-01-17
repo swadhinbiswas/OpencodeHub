@@ -22,8 +22,13 @@ let db: BetterSQLite3Database<typeof schema> | LibSQLDatabase<typeof schema> | n
  * Get database configuration from environment
  */
 function getDbConfig(): { driver: DatabaseDriver; url: string } {
-  const driver = (process.env.DATABASE_DRIVER || "sqlite") as DatabaseDriver;
-  const url = process.env.DATABASE_URL || "./data/opencodehub.db";
+  // Use import.meta.env for Astro/Vite, fallback to process.env for scripts
+  const envDriver = import.meta.env?.DATABASE_DRIVER || process.env.DATABASE_DRIVER;
+  const envUrl = import.meta.env?.DATABASE_URL || process.env.DATABASE_URL;
+
+  const driver = (envDriver || "sqlite") as DatabaseDriver;
+  const url = envUrl || "./data/opencodehub.db";
+
   return { driver, url };
 }
 
@@ -39,9 +44,10 @@ export function getDatabase():
 
   // Support for Turso/LibSQL
   if (driver === "libsql" || driver === "turso") {
+    const authToken = import.meta.env?.DATABASE_AUTH_TOKEN || process.env.DATABASE_AUTH_TOKEN;
     const client = createClient({
       url,
-      authToken: process.env.DATABASE_AUTH_TOKEN,
+      authToken,
     });
     db = drizzleLibSQL(client, { schema });
     logger.info({ driver: "libsql", url }, "Database connected (LibSQL)");
