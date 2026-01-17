@@ -311,7 +311,7 @@ if (!user) {
         }
 
         // Redirect to the new repository
-        window.location.href = `/${result.fullName}`;
+        window.location.href = `/${result.data.fullName}`;
       } catch (error) {
         console.error("Error creating repository:", error);
 
