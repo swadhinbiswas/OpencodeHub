@@ -17,7 +17,7 @@ export const authCommands = new Command("auth")
 authCommands
     .command("login")
     .description("Login to OpenCodeHub")
-    .option("-u, --url <url>", "OpenCodeHub server URL", "http://localhost:4321")
+    .option("-u, --url <url>", "OpenCodeHub server URL", "http://localhost:3000")
     .option("-t, --token <token>", "Personal access token")
     .action(async (options) => {
         console.log(chalk.blue("\n🔐 OpenCodeHub Login\n"));
@@ -30,8 +30,8 @@ authCommands
                 const answers = await inquirer.prompt([
                     {
                         type: "input",
-                        name: "email",
-                        message: "Email:",
+                        name: "login",
+                        message: "Username or Email:",
                     },
                     {
                         type: "password",
@@ -45,7 +45,7 @@ authCommands
 
                 // Call auth API
                 const response = await apiCall(options.url, "/api/auth/login", "POST", {
-                    email: answers.email,
+                    login: answers.login,
                     password: answers.password,
                 });
 
