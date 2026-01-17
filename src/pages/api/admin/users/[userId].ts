@@ -5,7 +5,7 @@ import { type APIRoute } from 'astro';
 import { eq } from 'drizzle-orm';
 import { getDatabase } from '@/db';
 import { users } from '@/db/schema';
-import { success, badRequest, unauthorized, notFound, serverError, forbidden } from '@/lib/api';
+import { success, badRequest, notFound, serverError, forbidden } from '@/lib/api';
 import { now } from '@/lib/utils';
 
 export const PATCH: APIRoute = async ({ params, request, locals }) => {

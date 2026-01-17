@@ -35,7 +35,7 @@ if (!user) {
             Required fields are marked with an asterisk (*).
           </CardDescription>
         </CardHeader>
-        <CardContent class="space-y-6">
+        <CardContent className="space-y-6">
           <div class="space-y-2">
             <Label htmlFor="owner">Owner</Label>
             <div class="flex items-center gap-2">
@@ -150,7 +150,7 @@ if (!user) {
             Skip this step if you're importing an existing repository.
           </CardDescription>
         </CardHeader>
-        <CardContent class="space-y-6">
+        <CardContent className="space-y-6">
           <div class="flex items-start space-x-3">
             <input
               type="checkbox"
@@ -210,9 +210,13 @@ if (!user) {
       </Card>
 
       <div class="flex justify-end gap-4">
-        <Button variant="outline" type="button" onclick="window.history.back()">
+        <button
+          type="button"
+          onclick="window.history.back()"
+          class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+        >
           Cancel
-        </Button>
+        </button>
         <Button type="submit" id="submit-btn"> Create repository </Button>
       </div>
     </form>
@@ -220,57 +224,63 @@ if (!user) {
 </BaseLayout>
 
 <script>
-  const form = document.getElementById("create-repo-form");
-  const submitBtn = document.getElementById("submit-btn");
+  const form = document.getElementById(
+    "create-repo-form",
+  ) as HTMLFormElement | null;
+  const submitBtn = document.getElementById(
+    "submit-btn",
+  ) as HTMLButtonElement | null;
 
-  form?.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  if (form && submitBtn) {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-    // Disable button and show loading state
-    submitBtn.disabled = true;
-    const originalText = submitBtn.innerText;
-    submitBtn.innerText = "Creating...";
+      // Disable button and show loading state
+      submitBtn.disabled = true;
+      const originalText = submitBtn.innerText;
+      submitBtn.innerText = "Creating...";
 
-    try {
-      const formData = new FormData(form);
-      const data = {
-        name: formData.get("name"),
-        description: formData.get("description"),
-        visibility: formData.get("visibility"),
-        readme: formData.get("readme") === "on",
-        gitignoreTemplate: formData.get("gitignoreTemplate") || undefined,
-        licenseType: formData.get("licenseType") || undefined,
-        defaultBranch: "main", // Default
-        hasIssues: true,
-        hasWiki: true,
-        hasActions: true,
-      };
+      try {
+        const formData = new FormData(form);
+        const data = {
+          name: formData.get("name"),
+          description: formData.get("description"),
+          visibility: formData.get("visibility"),
+          readme: formData.get("readme") === "on",
+          gitignoreTemplate: formData.get("gitignoreTemplate") || undefined,
+          licenseType: formData.get("licenseType") || undefined,
+          defaultBranch: "main", // Default
+          hasIssues: true,
+          hasWiki: true,
+          hasActions: true,
+        };
 
-      const response = await fetch("/api/repos", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
+        const response = await fetch("/api/repos", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        });
 
-      const result = await response.json();
+        const result = await response.json();
 
-      if (!response.ok) {
-        throw new Error(result.message || "Failed to create repository");
+        if (!response.ok) {
+          throw new Error(result.message || "Failed to create repository");
+        }
+
+        // Redirect to the new repository
+        // Since we don't have the repo page yet, redirect to dashboard or construct the URL
+        // The API returns the created repo object which has fullName
+        window.location.href = `/${result.fullName}`;
+      } catch (error) {
+        console.error("Error creating repository:", error);
+        alert(error instanceof Error ? error.message : "An error occurred");
+
+        // Reset button
+        submitBtn.disabled = false;
+        submitBtn.innerText = originalText;
       }
-
-      // Redirect to the new repository
-      // Since we don't have the repo page yet, redirect to dashboard or construct the URL
-      // The API returns the created repo object which has fullName
-      window.location.href = `/${result.fullName}`;
-    } catch (error) {
-      console.error("Error creating repository:", error);
-      alert(error instanceof Error ? error.message : "An error occurred");
-
-      // Reset button
-      submitBtn.disabled = false;
-      submitBtn.innerText = originalText;
-    }
-  });
+    });
+  }
 </script>

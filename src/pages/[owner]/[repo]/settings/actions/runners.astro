@@ -150,7 +150,7 @@ const repo = {
                             <div class="flex items-center justify-between p-4 border rounded-lg bg-card text-card-foreground shadow-sm">
                                 <div class="flex items-center gap-4">
                                     <div class={`p-2 rounded-full ${runner.status === 'online' ? 'bg-green-100 dark:bg-green-900/30 text-green-600' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}>
-                                        <Server class="h-5 w-5" />
+                                        <Server className="h-5 w-5" />
                                     </div>
                                     <div>
                                         <div class="font-medium flex items-center gap-2">
@@ -165,7 +165,7 @@ const repo = {
                                     </div>
                                 </div>
                                 <div>
-                                    <Button variant="ghost" size="sm" class="text-red-500 hover:text-red-600">Remove</Button>
+                                    <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600">Remove</Button>
                                 </div>
                             </div>
                         ))}
@@ -184,7 +184,7 @@ const repo = {
                 <CardTitle>Setup Runner</CardTitle>
                 <CardDescription>Run these commands on your host.</CardDescription>
             </CardHeader>
-            <CardContent class="space-y-4">
+            <CardContent className="space-y-4">
                 <div class="bg-slate-950 text-slate-50 p-4 rounded-md font-mono text-sm overflow-x-auto relative group">
                     <p class="mb-2 text-gray-400"># 1. Download Runner</p>
                     <p class="select-all">curl -O {serverUrl}/runner.js</p>
@@ -195,8 +195,8 @@ const repo = {
                     <p class="mb-2 text-gray-400"># 3. Start Runner</p>
                     <p class="select-all">node runner.js run</p>
 
-                    <Button variant="ghost" size="icon" class="absolute top-2 right-2 text-gray-400 hover:text-white">
-                        <Copy class="h-4 w-4" />
+                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-gray-400 hover:text-white">
+                        <Copy className="h-4 w-4" />
                     </Button>
                 </div>
             </CardContent>

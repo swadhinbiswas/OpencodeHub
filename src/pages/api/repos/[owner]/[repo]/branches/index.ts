@@ -4,7 +4,7 @@ import { canReadRepo, canWriteRepo } from "@/lib/permissions";
 import type { APIRoute } from "astro";
 import { and, eq } from "drizzle-orm";
 
-export const GET: APIRoute = async ({ params, request, locals }) => {
+export const GET: APIRoute = async ({ params, locals }) => {
     const { owner: ownerName, repo: repoName } = params;
     const user = locals.user;
 

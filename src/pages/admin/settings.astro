@@ -17,7 +17,7 @@ if (!user?.isAdmin) return Astro.redirect('/');
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-bold flex items-center gap-2">
-            <Settings class="h-6 w-6" />
+            <Settings className="h-6 w-6" />
             Global Settings
           </h1>
           <p class="text-muted-foreground">Configure general system behavior</p>
@@ -32,12 +32,12 @@ if (!user?.isAdmin) return Astro.redirect('/');
         {/* General Settings */}
         <Card>
           <CardHeader>
-            <CardTitle class="flex items-center gap-2">
-              <Globe class="h-5 w-5" /> General
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5" /> General
             </CardTitle>
             <CardDescription>Basic site information</CardDescription>
           </CardHeader>
-          <CardContent class="space-y-4">
+          <CardContent className="space-y-4">
             <div class="grid gap-2">
               <Label htmlFor="siteName">Site Name</Label>
               <Input id="siteName" name="siteName" placeholder="OpenCodeHub" />
@@ -52,11 +52,11 @@ if (!user?.isAdmin) return Astro.redirect('/');
         {/* Authentication */}
         <Card>
           <CardHeader>
-            <CardTitle class="flex items-center gap-2">
-              <Lock class="h-5 w-5" /> Authentication
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" /> Authentication
             </CardTitle>
           </CardHeader>
-          <CardContent class="space-y-4">
+          <CardContent className="space-y-4">
             <div class="flex items-center gap-2">
               <input type="checkbox" id="allowSignups" name="allowSignups" class="h-4 w-4 rounded border-gray-300" />
               <Label htmlFor="allowSignups">Allow Public Signups</Label>
@@ -68,12 +68,12 @@ if (!user?.isAdmin) return Astro.redirect('/');
         {/* Email SMTP */}
         <Card>
           <CardHeader>
-            <CardTitle class="flex items-center gap-2">
-              <Mail class="h-5 w-5" /> Email (SMTP)
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" /> Email (SMTP)
             </CardTitle>
             <CardDescription>Configure outgoing email for notifications</CardDescription>
           </CardHeader>
-          <CardContent class="space-y-4">
+          <CardContent className="space-y-4">
             <div class="grid gap-4 md:grid-cols-2">
               <div class="grid gap-2">
                 <Label htmlFor="smtpHost">SMTP Host</Label>
@@ -103,7 +103,7 @@ if (!user?.isAdmin) return Astro.redirect('/');
 
         <div class="flex justify-end">
             <Button type="submit" id="save-btn" size="lg">
-                <Save class="w-4 h-4 mr-2" />
+                <Save className="w-4 h-4 mr-2" />
                 Save Changes
             </Button>
         </div>

@@ -1,4 +1,5 @@
 
+// @ts-ignore
 import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import * as schema from "./schema";
@@ -65,7 +66,7 @@ async function seed() {
         const id = faker.string.uuid();
 
         // Generate random languages stats
-        const repoLangs = {};
+        const repoLangs: Record<string, number> = {};
         const langCount = Math.floor(Math.random() * 4) + 1;
         let totalPerc = 100;
         for (let j = 0; j < langCount; j++) {
@@ -142,10 +143,14 @@ async function seed() {
                 id: faker.string.uuid(),
                 number: i + 1,
                 title: faker.hacker.verb() + " " + faker.hacker.adjective() + " " + faker.hacker.noun(),
-                description: faker.lorem.sentence(),
+                body: faker.lorem.sentence(),
                 repositoryId: repo.id,
                 authorId: user.id,
-                status: Math.random() > 0.7 ? 'closed' : 'open',
+                state: Math.random() > 0.7 ? 'closed' : 'open',
+                headBranch: 'feature-' + faker.word.noun(),
+                baseBranch: 'main',
+                headSha: faker.git.commitSha(),
+                baseSha: faker.git.commitSha(),
                 createdAt: faker.date.recent({ days: 30 }).toISOString(),
                 updatedAt: faker.date.recent().toISOString()
             });

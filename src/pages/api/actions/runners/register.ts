@@ -3,7 +3,7 @@ import type { APIRoute } from 'astro';
 import { z } from 'zod';
 import { eq, and } from 'drizzle-orm';
 import { getDatabase, schema } from '@/db';
-import { success, badRequest, unauthorized, serverError, parseBody } from '@/lib/api';
+import { success, unauthorized, serverError, parseBody } from '@/lib/api';
 import crypto from 'node:crypto';
 
 const registerSchema = z.object({

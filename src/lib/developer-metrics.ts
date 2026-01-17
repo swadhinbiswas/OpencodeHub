@@ -76,7 +76,7 @@ export async function recordPrMetrics(
         : null;
 
     // Count commits on the PR (using git log if needed, but for now use stored count)
-    const commitCount = pr.commitCount || 1;
+    const commitCount = 1; // TODO: Fetch actual commit count from git or add to schema
 
     const metricsData = {
         pullRequestId,

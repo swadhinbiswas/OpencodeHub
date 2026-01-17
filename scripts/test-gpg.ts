@@ -4,9 +4,9 @@ import * as openpgp from 'openpgp';
 async function test() {
     try {
         console.log("Generating key...");
-        const { privateKey, publicKey } = await openpgp.generateKey({
+        const { publicKey } = await openpgp.generateKey({
             type: 'ecc',
-            curve: 'curve25519',
+            curve: 'ed25519' as any,
             userIDs: [{ name: 'Test', email: 'test@example.com' }],
         });
         console.log("Key generated.");

@@ -66,7 +66,7 @@ export function error(
     error: {
       code,
       message,
-      ...(details && { details }),
+      ...(typeof details === 'object' && details ? { details } : {}),
     },
   };
 

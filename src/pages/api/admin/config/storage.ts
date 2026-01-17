@@ -1,10 +1,8 @@
-import { getStorage, updateStorageConfig } from "@/lib/storage";
-import { getDatabase, schema } from "@/db";
-import { eq } from "drizzle-orm";
+import { updateStorageConfig } from "@/lib/storage";
 import type { APIRoute } from "astro";
 
 // GET /api/admin/config/storage
-export const GET: APIRoute = async ({ request, locals }) => {
+export const GET: APIRoute = async ({ locals }) => {
     // Check admin permissions
     const user = locals.user;
     if (!user?.isAdmin) {

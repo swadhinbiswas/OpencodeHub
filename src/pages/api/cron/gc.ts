@@ -2,9 +2,9 @@ import { getDatabase } from "@/db";
 import { logger } from "@/lib/logger";
 import type { APIRoute } from "astro";
 import { spawn } from "child_process";
-import { promisify } from "util";
+// removed
 
-const exec = promisify(require("child_process").exec);
+// const exec = default... removed
 
 export const GET: APIRoute = async ({ request }) => {
   const authHeader = request.headers.get("Authorization");

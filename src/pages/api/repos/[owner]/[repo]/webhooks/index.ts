@@ -50,8 +50,8 @@ export const GET: APIRoute = async ({ params, request }) => {
             webhooks: hooks.map(h => ({
                 id: h.id,
                 url: h.url,
-                events: JSON.parse(h.events || '[]'),
-                isActive: h.isActive,
+                events: h.events || [],
+                active: h.active,
                 lastDeliveryAt: h.lastDeliveryAt,
                 lastDeliveryStatus: h.lastDeliveryStatus,
                 createdAt: h.createdAt,
@@ -124,7 +124,7 @@ export const POST: APIRoute = async ({ params, request }) => {
             url,
             secret: hashedSecret,
             events: JSON.stringify(events),
-            isActive: true,
+            active: true,
             createdAt: timestamp,
             updatedAt: timestamp,
         });

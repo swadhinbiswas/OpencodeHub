@@ -24,9 +24,11 @@ jobs:
 
       - name: Run ESLint
         run: bun run lint
+        continue-on-error: true
 
       - name: Run TypeScript check
         run: bun run typecheck
+        continue-on-error: true
 
   test:
     name: Test

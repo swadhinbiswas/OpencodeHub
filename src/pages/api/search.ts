@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getDatabase, schema } from '@/db';
-import { like, or, and, eq, desc } from 'drizzle-orm';
+import { like, or, eq, desc } from 'drizzle-orm';
 import { success, serverError } from '@/lib/api';
 
 export const GET: APIRoute = async ({ request }) => {

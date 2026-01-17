@@ -6,16 +6,14 @@
 
 import type { APIRoute } from "astro";
 import { getDatabase, schema } from "@/db";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import {
     getStackSyncStatus,
     pushStackToRemote,
     pullStackFromRemote,
-    detectLocalStack
 } from "@/lib/sync";
-import { getStack } from "@/lib/stacks";
 
-export const GET: APIRoute = async ({ params, locals, url }) => {
+export const GET: APIRoute = async ({ params, locals }) => {
     const user = locals.user;
     if (!user) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });

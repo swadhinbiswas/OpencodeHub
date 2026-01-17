@@ -4,8 +4,8 @@ import RepoHeader from "@/components/repo/RepoHeader.astro";
 import { getDatabase, schema } from "@/db";
 import { eq, and } from "drizzle-orm";
 import { canReadRepo } from "@/lib/permissions";
-import { getCommits } from "@/lib/git";
-import { GitCommit, Copy, GitBranch } from "lucide-react";
+import { getCommits, type CommitInfo } from "@/lib/git";
+import { GitCommit as GitCommitIcon, Copy, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const { owner: ownerName, repo: repoName, ref: refParam } = Astro.params;
@@ -24,7 +24,7 @@ if (!user) return Astro.redirect("/404");
 const repoData = await db.query.repositories.findFirst({
   where: and(
     eq(schema.repositories.ownerId, user.id),
-    eq(schema.repositories.name, repoName!)
+    eq(schema.repositories.name, repoName!),
   ),
   with: {
     owner: true,
@@ -57,7 +57,7 @@ const repo = {
 };
 
 // Fetch commits
-let commits = [];
+let commits: CommitInfo[] = [];
 try {
   commits = await getCommits(repoData.diskPath, {
     ref: ref,
@@ -82,20 +82,20 @@ commits.forEach((commit) => {
 });
 
 function timeAgo(date: Date) {
-    const seconds = Math.floor(
-        (new Date().getTime() - new Date(date).getTime()) / 1000
-    );
-    let interval = seconds / 31536000;
-    if (interval > 1) return Math.floor(interval) + " years ago";
-    interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + " months ago";
-    interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + " days ago";
-    interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + " hours ago";
-    interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + " minutes ago";
-    return Math.floor(seconds) + " seconds ago";
+  const seconds = Math.floor(
+    (new Date().getTime() - new Date(date).getTime()) / 1000,
+  );
+  let interval = seconds / 31536000;
+  if (interval > 1) return Math.floor(interval) + " years ago";
+  interval = seconds / 2592000;
+  if (interval > 1) return Math.floor(interval) + " months ago";
+  interval = seconds / 86400;
+  if (interval > 1) return Math.floor(interval) + " days ago";
+  interval = seconds / 3600;
+  if (interval > 1) return Math.floor(interval) + " hours ago";
+  interval = seconds / 60;
+  if (interval > 1) return Math.floor(interval) + " minutes ago";
+  return Math.floor(seconds) + " seconds ago";
 }
 ---
 
@@ -104,82 +104,88 @@ function timeAgo(date: Date) {
     <RepoHeader repo={repo} activeTab="code" />
 
     <div class="flex items-center justify-between mb-6">
-        <div class="flex items-center gap-2">
-            <GitBranch className="h-5 w-5 text-muted-foreground" />
-            <span class="font-medium text-lg">{ref}</span>
-        </div>
+      <div class="flex items-center gap-2">
+        <GitBranch className="h-5 w-5 text-muted-foreground" />
+        <span class="font-medium text-lg">{ref}</span>
+      </div>
     </div>
 
     <div class="space-y-8">
       {
         Object.keys(commitsByDate).length === 0 ? (
-           <div class="text-center py-10 text-muted-foreground">
-             No commits found.
-           </div>
+          <div class="text-center py-10 text-muted-foreground">
+            No commits found.
+          </div>
         ) : (
-            Object.entries(commitsByDate).map(([date, dateCommits]) => (
-                <div>
-                <div class="flex items-center gap-2 mb-4 text-muted-foreground">
-                    <GitCommit className="h-4 w-4" />
-                    <span class="text-sm font-medium">Commits on {date}</span>
-                </div>
-                <div class="rounded-lg border bg-card">
-                    {dateCommits.map((commit, index) => (
-                    <div
-                        class={`flex items-start justify-between p-4 ${
-                        index !== dateCommits.length - 1 ? "border-b" : ""
-                        }`}
-                    >
-                        <div class="space-y-1">
-                        <div class="flex items-baseline gap-2">
-                            <a
-                            href="#"
-                            class="font-semibold hover:text-primary hover:underline"
-                            >
-                            {commit.message}
-                            </a>
-                        </div>
-                        <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                            <span class="font-medium text-foreground">
-                            {commit.authorName}
-                            </span>
-                            <span>committed {timeAgo(commit.authorDate)}</span>
-                        </div>
-                        </div>
-
-                        <div class="flex items-center gap-2">
-                        {commit.verification?.status === "G" && (
-                            <div class="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 border border-green-200" title={`Signed by ${commit.verification.signerName} (${commit.verification.signerKeyId})`}>
-                                Verified
-                            </div>
-                        )}
-                        {commit.verification?.status === "U" && (
-                            <div class="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200" title={`Untrusted signature by ${commit.verification.signerName}`}>
-                                Unverified
-                            </div>
-                        )}
-                        <div class="flex items-center rounded-md border bg-muted/50">
-                            <span class="px-2 py-1 text-xs font-mono">
-                                {commit.sha.substring(0, 7)}
-                            </span>
-                            <button class="border-l px-2 py-1 hover:bg-background">
-                            <Copy className="h-3 w-3" />
-                            </button>
-                        </div>
-                        <a 
-                            href={`/${repo.owner}/${repo.name}/tree/${commit.sha}`}
-                            class="inline-flex items-center justify-center p-2 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
-                            title="Browse files"
+          Object.entries(commitsByDate).map(([date, dateCommits]) => (
+            <div>
+              <div class="flex items-center gap-2 mb-4 text-muted-foreground">
+                <GitCommitIcon className="h-4 w-4" />
+                <span class="text-sm font-medium">Commits on {date}</span>
+              </div>
+              <div class="rounded-lg border bg-card">
+                {dateCommits.map((commit, index) => (
+                  <div
+                    class={`flex items-start justify-between p-4 ${
+                      index !== dateCommits.length - 1 ? "border-b" : ""
+                    }`}
+                  >
+                    <div class="space-y-1">
+                      <div class="flex items-baseline gap-2">
+                        <a
+                          href="#"
+                          class="font-semibold hover:text-primary hover:underline"
                         >
-                            <span class="sr-only">Browse files</span>
-                            <span class="text-xs font-mono">&lt;&gt;</span>
+                          {commit.message}
                         </a>
-                        </div>
+                      </div>
+                      <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span class="font-medium text-foreground">
+                          {commit.authorName}
+                        </span>
+                        <span>committed {timeAgo(commit.authorDate)}</span>
+                      </div>
                     </div>
-                    ))}
-                </div>
-                </div>
-            ))
+
+                    <div class="flex items-center gap-2">
+                      {commit.verification?.status === "G" && (
+                        <div
+                          class="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 border border-green-200"
+                          title={`Signed by ${commit.verification.signerName} (${commit.verification.signerKeyId})`}
+                        >
+                          Verified
+                        </div>
+                      )}
+                      {commit.verification?.status === "U" && (
+                        <div
+                          class="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200"
+                          title={`Untrusted signature by ${commit.verification.signerName}`}
+                        >
+                          Unverified
+                        </div>
+                      )}
+                      <div class="flex items-center rounded-md border bg-muted/50">
+                        <span class="px-2 py-1 text-xs font-mono">
+                          {commit.sha.substring(0, 7)}
+                        </span>
+                        <button class="border-l px-2 py-1 hover:bg-background">
+                          <Copy className="h-3 w-3" />
+                        </button>
+                      </div>
+                      <a
+                        href={`/${repo.owner}/${repo.name}/tree/${commit.sha}`}
+                        class="inline-flex items-center justify-center p-2 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
+                        title="Browse files"
+                      >
+                        <span class="sr-only">Browse files</span>
+                        <span class="text-xs font-mono">&lt;&gt;</span>
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))
         )
       }
     </div>

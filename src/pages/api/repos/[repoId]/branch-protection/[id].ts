@@ -2,7 +2,7 @@ import { getDatabase, schema } from "@/db";
 import type { APIRoute } from "astro";
 import { eq, and } from "drizzle-orm";
 
-export const DELETE: APIRoute = async ({ params, request }) => {
+export const DELETE: APIRoute = async ({ params }) => {
     const { repoId, id } = params;
     if (!repoId || !id) return new Response("IDs required", { status: 400 });
 

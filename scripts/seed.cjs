@@ -1,5 +1,4 @@
-const Database = require("better-sqlite3");
-const { v4: uuidv4 } = require("nanoid"); // or just use crypto
+// custom uuid removed
 
 const db = new Database("./data/opencodehub.db");
 

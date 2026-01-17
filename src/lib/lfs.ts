@@ -65,7 +65,7 @@ export async function processLfsBatch(
   req: LfsBatchRequest,
   baseUrl: string
 ): Promise<LfsBatchResponse> {
-  const storage = getStorage();
+  const storage = await getStorage();
   const response: LfsBatchResponse = {
     transfer: "basic",
     objects: [],

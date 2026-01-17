@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import type { APIRoute } from "astro";
 
 // GET /api/admin/config/general
-export const GET: APIRoute = async ({ request, locals }) => {
+export const GET: APIRoute = async ({ locals }) => {
     const user = locals.user;
     if (!user?.isAdmin) {
         return new Response("Unauthorized", { status: 403 });

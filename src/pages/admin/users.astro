@@ -62,7 +62,7 @@ const [totalUsers, activeUsers, adminUsers] = await Promise.all([
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-bold flex items-center gap-2">
-            <Users class="h-6 w-6" />
+            <Users className="h-6 w-6" />
             User Management
           </h1>
           <p class="text-muted-foreground">Manage all registered users</p>
@@ -75,9 +75,9 @@ const [totalUsers, activeUsers, adminUsers] = await Promise.all([
       <!-- Stats -->
       <div class="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardContent class="p-4 flex items-center gap-4">
+          <CardContent className="p-4 flex items-center gap-4">
             <div class="p-3 rounded-full bg-blue-500/10">
-              <Users class="h-5 w-5 text-blue-500" />
+              <Users className="h-5 w-5 text-blue-500" />
             </div>
             <div>
               <p class="text-sm text-muted-foreground">Total Users</p>
@@ -86,9 +86,9 @@ const [totalUsers, activeUsers, adminUsers] = await Promise.all([
           </CardContent>
         </Card>
         <Card>
-          <CardContent class="p-4 flex items-center gap-4">
+          <CardContent className="p-4 flex items-center gap-4">
             <div class="p-3 rounded-full bg-green-500/10">
-              <CheckCircle class="h-5 w-5 text-green-500" />
+              <CheckCircle className="h-5 w-5 text-green-500" />
             </div>
             <div>
               <p class="text-sm text-muted-foreground">Active</p>
@@ -97,9 +97,9 @@ const [totalUsers, activeUsers, adminUsers] = await Promise.all([
           </CardContent>
         </Card>
         <Card>
-          <CardContent class="p-4 flex items-center gap-4">
+          <CardContent className="p-4 flex items-center gap-4">
             <div class="p-3 rounded-full bg-orange-500/10">
-              <Shield class="h-5 w-5 text-orange-500" />
+              <Shield className="h-5 w-5 text-orange-500" />
             </div>
             <div>
               <p class="text-sm text-muted-foreground">Admins</p>
@@ -112,12 +112,12 @@ const [totalUsers, activeUsers, adminUsers] = await Promise.all([
       <!-- Search -->
       <form action="/admin/users" method="GET" class="flex gap-2">
         <div class="relative flex-1">
-          <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
             name="q" 
             value={searchQuery}
             placeholder="Search by username, email, or name..."
-            class="pl-10"
+            className="pl-10"
           />
         </div>
         <Button type="submit">Search</Button>
@@ -165,18 +165,18 @@ const [totalUsers, activeUsers, adminUsers] = await Promise.all([
                     <td class="p-3">
                       {u.isActive ? (
                         <span class="inline-flex items-center gap-1 text-xs bg-green-500/10 text-green-500 px-2 py-1 rounded">
-                          <CheckCircle class="h-3 w-3" /> Active
+                          <CheckCircle className="h-3 w-3" /> Active
                         </span>
                       ) : (
                         <span class="inline-flex items-center gap-1 text-xs bg-red-500/10 text-red-500 px-2 py-1 rounded">
-                          <Ban class="h-3 w-3" /> Banned
+                          <Ban className="h-3 w-3" /> Banned
                         </span>
                       )}
                     </td>
                     <td class="p-3">
                       {u.isAdmin ? (
                         <span class="inline-flex items-center gap-1 text-xs bg-orange-500/10 text-orange-500 px-2 py-1 rounded">
-                          <Shield class="h-3 w-3" /> Admin
+                          <Shield className="h-3 w-3" /> Admin
                         </span>
                       ) : (
                         <span class="text-sm text-muted-foreground">User</span>
@@ -195,7 +195,7 @@ const [totalUsers, activeUsers, adminUsers] = await Promise.all([
                               data-is-admin={u.isAdmin}
                               title={u.isAdmin ? "Remove admin" : "Make admin"}
                             >
-                              <Shield class="h-4 w-4" />
+                              <Shield className="h-4 w-4" />
                             </button>
                             <button
                               class="toggle-ban-btn p-1.5 text-xs rounded hover:bg-muted"
@@ -203,7 +203,7 @@ const [totalUsers, activeUsers, adminUsers] = await Promise.all([
                               data-is-active={u.isActive}
                               title={u.isActive ? "Ban user" : "Unban user"}
                             >
-                              <Ban class="h-4 w-4" />
+                              <Ban className="h-4 w-4" />
                             </button>
                           </>
                         )}
@@ -225,7 +225,7 @@ const [totalUsers, activeUsers, adminUsers] = await Promise.all([
                 {page > 1 && (
                   <a href={`/admin/users?page=${page - 1}${searchQuery ? `&q=${searchQuery}` : ''}`}>
                     <Button variant="outline" size="sm">
-                      <ChevronLeft class="h-4 w-4" />
+                      <ChevronLeft className="h-4 w-4" />
                     </Button>
                   </a>
                 )}
@@ -233,7 +233,7 @@ const [totalUsers, activeUsers, adminUsers] = await Promise.all([
                 {page < totalPages && (
                   <a href={`/admin/users?page=${page + 1}${searchQuery ? `&q=${searchQuery}` : ''}`}>
                     <Button variant="outline" size="sm">
-                      <ChevronRight class="h-4 w-4" />
+                      <ChevronRight className="h-4 w-4" />
                     </Button>
                   </a>
                 )}

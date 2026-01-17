@@ -5,7 +5,7 @@
 import type { APIRoute } from "astro";
 import { getDatabase, schema } from "@/db";
 import { eq } from "drizzle-orm";
-import { getStack, reorderStack, removeFromStack, updateStackStatus } from "@/lib/stacks";
+import { getStack, reorderStack } from "@/lib/stacks";
 
 export const GET: APIRoute = async ({ params, locals }) => {
     const user = locals.user;

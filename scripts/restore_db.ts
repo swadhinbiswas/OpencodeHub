@@ -81,7 +81,7 @@ async function main() {
         console.log("Successfully cloned code to OpenCodeHub repo.");
     } else {
         console.log("Repo directory already exists. Fetching latest changes...");
-        const git = simpleGit(repoPath);
+        simpleGit(repoPath);
         // We can't easily fetch from non-remote. 
         // But since we are pretending to "push", we can use the bare repo as remote for current dir?
         // Or re-clone?

@@ -1,6 +1,6 @@
 import { getDatabase, schema } from "@/db";
-import { compareBranches, getCommit, getMergeBase } from "@/lib/git";
-import { canReadRepo, canWriteRepo } from "@/lib/permissions";
+import { compareBranches, getCommit } from "@/lib/git";
+import { canWriteRepo } from "@/lib/permissions";
 import type { APIRoute } from "astro";
 import { and, desc, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";

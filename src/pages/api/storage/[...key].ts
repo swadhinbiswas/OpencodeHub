@@ -3,7 +3,7 @@ import { verifyStorageSignature } from "@/lib/storage-auth";
 import type { APIRoute } from "astro";
 import { Readable } from "stream";
 
-export const GET: APIRoute = async ({ params, request, url }) => {
+export const GET: APIRoute = async ({ params, url }) => {
   const { key } = params;
   if (!key) return new Response("Missing key", { status: 400 });
 
@@ -15,7 +15,7 @@ export const GET: APIRoute = async ({ params, request, url }) => {
     return new Response("Unauthorized - Invalid or expired signature", { status: 401 });
   }
 
-  const storage = getStorage();
+  const storage = await getStorage();
 
   try {
     const stream = await storage.getStream(key);
