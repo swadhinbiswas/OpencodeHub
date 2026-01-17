@@ -29,7 +29,7 @@
     "@astrojs/node": "^8.3.0",
     "@astrojs/react": "^3.6.0",
     "@astrojs/tailwind": "^5.1.0",
-    "@astrojs/vercel": "^9.0.2",
+    "@astrojs/vercel": "^7.7.0",
     "@aws-sdk/client-s3": "^3.948.0",
     "@aws-sdk/s3-request-presigner": "^3.948.0",
     "@libsql/client": "^0.15.15",
