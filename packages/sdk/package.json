@@ -1,0 +1,25 @@
+{
+    "name": "@opencodehub/sdk",
+    "version": "0.1.0",
+    "description": "Official TypeScript SDK for OpenCodeHub",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "test": "vitest"
+    },
+    "keywords": [
+        "opencodehub",
+        "sdk",
+        "api"
+    ],
+    "author": "OpenCodeHub Team",
+    "license": "MIT",
+    "devDependencies": {
+        "typescript": "^5.0.0",
+        "vitest": "^1.0.0"
+    },
+    "dependencies": {
+        "axios": "^1.6.0"
+    }
+}

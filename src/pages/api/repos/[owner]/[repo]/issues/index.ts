@@ -7,6 +7,7 @@ import {
   unauthorized,
 } from "@/lib/api";
 import { getUserFromRequest } from "@/lib/auth";
+import { canReadRepo } from "@/lib/permissions";
 import { generateId } from "@/lib/utils";
 import type { APIRoute } from "astro";
 import { and, desc, eq, sql } from "drizzle-orm";
@@ -55,6 +56,13 @@ export const POST: APIRoute = async ({ request, params }) => {
     });
 
     if (!repo) return notFound("Repository not found");
+
+    // Check permissions
+    // Issues can be created by anyone who can read the repository
+    const hasPermission = await canReadRepo(userId, repo);
+    if (!hasPermission) {
+      return notFound("Repository not found");
+    }
 
     // 4. Get next issue number
     // We need to find the max number for this repo

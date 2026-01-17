@@ -955,7 +955,7 @@ export class OneDriveStorageAdapter extends StorageAdapter {
       await this.graphRequest(`:/${encodeURIComponent(fullPath)}:/content`, {
         method: 'PUT',
         headers: { 'Content-Type': options?.contentType || 'application/octet-stream' },
-        body: buffer,
+        body: buffer as any,
       });
     } else {
       // Create upload session for large files
@@ -975,7 +975,7 @@ export class OneDriveStorageAdapter extends StorageAdapter {
             'Content-Length': String(chunk.length),
             'Content-Range': `bytes ${i}-${i + chunk.length - 1}/${buffer.length}`,
           },
-          body: chunk,
+          body: chunk as any,
         });
       }
     }
@@ -1179,6 +1179,11 @@ export async function getStorage(): Promise<StorageAdapter> {
       accessKeyId: process.env.STORAGE_ACCESS_KEY_ID,
       secretAccessKey: process.env.STORAGE_SECRET_ACCESS_KEY,
       rcloneRemote: process.env.STORAGE_RCLONE_REMOTE,
+      // Google Drive
+      googleClientId: process.env.GOOGLE_CLIENT_ID,
+      googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      googleRefreshToken: process.env.GOOGLE_REFRESH_TOKEN,
+      googleFolderId: process.env.GOOGLE_FOLDER_ID,
     };
     storageInstance = createStorageAdapter(config);
     lastConfigHash = JSON.stringify(config);

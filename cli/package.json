@@ -1,25 +1,44 @@
 {
     "name": "opencodehub-cli",
-    "version": "1.0.0",
-    "description": "CLI for OpenCodeHub - Stack-first PR workflows",
+    "version": "1.0.1",
+    "description": "Stack-first PR workflows from your terminal - CLI for OpenCodeHub",
+    "author": "Swadhin Biswas <swadhinbiswas@duck.com>",
+    "license": "MIT",
     "type": "module",
     "bin": {
-        "och": "./bin/och.js"
+        "och": "dist/bin/och.js"
+    },
+    "files": [
+        "bin",
+        "dist",
+        "README.md",
+        "LICENSE"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/swadhinbiswas/OpencodeHub.git",
+        "directory": "cli"
+    },
+    "homepage": "https://github.com/swadhinbiswas/OpencodeHub#readme",
+    "bugs": {
+        "url": "https://github.com/swadhinbiswas/OpencodeHub/issues"
     },
     "scripts": {
         "build": "tsc",
         "dev": "tsx bin/och.ts",
-        "test": "vitest"
+        "prepublishOnly": "npm run build",
+        "test": "vitest run"
     },
     "dependencies": {
-        "commander": "^12.0.0",
         "chalk": "^5.3.0",
-        "ora": "^8.0.0",
-        "inquirer": "^9.2.0",
+        "commander": "^12.0.0",
         "conf": "^12.0.0",
+        "inquirer": "^9.2.0",
+        "ora": "^8.0.0",
         "simple-git": "^3.25.0"
     },
     "devDependencies": {
+        "@types/inquirer": "^9.0.9",
         "@types/node": "^20.14.9",
         "tsx": "^4.15.0",
         "typescript": "^5.5.2",
@@ -30,8 +49,16 @@
     },
     "keywords": [
         "git",
+        "github",
+        "gitlab",
         "stacked-prs",
+        "stacked-diffs",
         "code-review",
-        "cli"
+        "cli",
+        "devops",
+        "pull-request",
+        "pr",
+        "workflow",
+        "opencodehub"
     ]
 }

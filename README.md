@@ -1,7 +1,7 @@
 # OpenCodeHub
 
 <p align="center">
-  <img src="public/logo.png" alt="OpenCodeHub Logo" width="200">
+  <img src="public/logo.svg" alt="OpenCodeHub Logo" width="200">
 </p>
 
 <p align="center">
@@ -66,6 +66,7 @@
 - **Universal Database Adapter** - PostgreSQL, MySQL, SQLite, MongoDB, Turso, PlanetScale
 - **Flexible Storage** - Local, S3, MinIO, Google Drive, Azure Blob, R2
 - **Production-Ready** - Rate limiting, CSRF, input validation, error monitoring
+- **Comprehensive Docs** - Integrated documentation site with guides and API reference
 
 ---
 
@@ -127,11 +128,6 @@ docker-compose exec app bun run scripts/seed-admin.ts
 
 # Access at http://localhost:3000
 ```
-
----
-# Advanced Features Documentation Insert
-
-**Insert this content into README.md after line 131 (after Docker installation section, before Configuration section)**
 
 ---
 
@@ -209,7 +205,7 @@ och status                  # Show stack status (alias: st)
 
 #### How It Works
 
-```
+```text
 main
  └── PR #123: Add database schema
       └── PR #124: Add authentication service  
@@ -322,7 +318,7 @@ AI provides:
 - **Fix Suggestions**: Actionable improvements
 
 **Example:**
-```
+```text
 🔴 CRITICAL: SQL Injection Vulnerability
 File: src/api/users.ts:45
 Issue: User input directly concatenated into SQL query
@@ -436,12 +432,12 @@ Position  PR     Title                Status
 #### Viewing Metrics
 
 **Personal Dashboard:**
-```
+```text
 /metrics/me
 ```
 
 **Team Dashboard (Admin):**
-```
+```text
 /admin/metrics
 ```
 
@@ -454,7 +450,7 @@ och metrics show --repo owner/repo
 
 #### Example Metrics View
 
-```
+```text
 📊 Your Metrics (Last 30 Days)
 
 PR Velocity
@@ -1045,7 +1041,7 @@ Content-Type: application/json
 ### Rate Limits
 
 All endpoints return rate limit headers:
-```
+```http
 X-RateLimit-Limit: 100
 X-RateLimit-Remaining: 95
 X-RateLimit-Reset: 2026-01-01T15:30:00Z
@@ -1194,6 +1190,24 @@ curl http://localhost:3000/api/health
   "version": "1.0.0"
 }
 ```
+
+---
+
+## 🗺️ Roadmap
+
+We are constantly improving OpenCodeHub to make it the ultimate self-hosted development platform.
+
+### Q2 2026: Advanced AI Agents
+- [ ] **Auto-Fix Agents**: Autonomous agents that can silently fix lint errors and simple bugs.
+- [ ] **Test Generation**: Automatically generate unit and integration tests for new code.
+
+### Q3 2026: Federation & Social
+- [ ] **ActivityPub Support**: Follow users and repositories across different OpenCodeHub instances.
+- [ ] **Federated Merge Requests**: Cross-instance collaboration (like Email but better).
+
+### Q4 2026: Ecosystem Expansion
+- [ ] **Mobile App**: Native iOS and Android apps for reviewing code on the go.
+- [ ] **IDE Extensions**: dedicated VS Code and JetBrains plugins.
 
 ---
 

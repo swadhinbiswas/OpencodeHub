@@ -1,0 +1,15 @@
+# Ignore source files (dist is included)
+src/
+tsconfig.json
+
+# Dev files
+*.test.ts
+*.spec.ts
+.vscode/
+.idea/
+
+# Other
+node_modules/
+coverage/
+.env
+.env.*

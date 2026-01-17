@@ -19,7 +19,7 @@ if (!user) return Astro.redirect("/404");
 const repoData = await db.query.repositories.findFirst({
   where: and(
     eq(schema.repositories.ownerId, user.id),
-    eq(schema.repositories.name, repoName!)
+    eq(schema.repositories.name, repoName!),
   ),
   with: {
     owner: true,
@@ -48,7 +48,7 @@ try {
   }
 } catch (e) {
   // Table doesn't exist, use empty list
-  console.log("Milestones table not found, showing empty state");
+  // Table doesn't exist, use empty list
 }
 
 const repo = {
@@ -79,9 +79,10 @@ const formattedMilestones = milestonesList.map((m: any) => ({
   state: m.state as "open" | "closed",
   openIssues: m.openIssues || 0,
   closedIssues: m.closedIssues || 0,
-  progress: m.closedIssues && m.openIssues 
-    ? Math.round((m.closedIssues / (m.openIssues + m.closedIssues)) * 100)
-    : 0,
+  progress:
+    m.closedIssues && m.openIssues
+      ? Math.round((m.closedIssues / (m.openIssues + m.closedIssues)) * 100)
+      : 0,
 }));
 ---
 
@@ -90,7 +91,7 @@ const formattedMilestones = milestonesList.map((m: any) => ({
     <RepoHeader repo={repo} activeTab="issues" />
 
     <div class="mt-6">
-      <MilestonesList 
+      <MilestonesList
         client:load
         milestones={formattedMilestones}
         repoOwner={repo.owner}

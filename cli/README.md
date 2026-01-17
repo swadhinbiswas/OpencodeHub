@@ -1,29 +1,59 @@
-# OCH CLI - OpenCodeHub Command Line Interface
+<p align="center">
+  <img src="https://raw.githubusercontent.com/swadhinbiswas/OpenCodeHub/main/public/logo.svg" alt="OpenCodeHub CLI" width="120" />
+</p>
 
-**Stack-first PR workflows from your terminal.**
+<h1 align="center">OpenCodeHub CLI</h1>
 
-## Installation
+<p align="center">
+  <strong>Stack-first PR workflows from your terminal</strong>
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/opencodehub-cli"><img src="https://img.shields.io/npm/v/opencodehub-cli.svg?style=flat-square" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/opencodehub-cli"><img src="https://img.shields.io/npm/dm/opencodehub-cli.svg?style=flat-square" alt="npm downloads" /></a>
+  <a href="https://github.com/swadhinbiswas/OpencodeHub/blob/main/cli/LICENSE"><img src="https://img.shields.io/npm/l/opencodehub-cli.svg?style=flat-square" alt="license" /></a>
+  <a href="https://github.com/swadhinbiswas/OpencodeHub"><img src="https://img.shields.io/github/stars/swadhinbiswas/OpenCodeHub?style=flat-square" alt="GitHub stars" /></a>
+</p>
+
+<p align="center">
+  <a href="#-installation">Installation</a> •
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-commands">Commands</a> •
+  <a href="#-workflow-examples">Examples</a> •
+  <a href="#-contributing">Contributing</a>
+</p>
+
+---
+
+## ✨ Features
+
+- 📚 **Stacked PRs** - Create dependent pull requests that automatically update when parent changes
+- 🔄 **Smart Sync** - Rebase entire stacks with a single command
+- 🚀 **Fast Workflow** - Submit, update, and manage PRs without leaving your terminal
+- 🔗 **GitHub/GitLab Alternative** - Works with self-hosted OpenCodeHub instances
+- 🎯 **Zero Config** - Works out of the box with sensible defaults
+
+## 📦 Installation
 
 ```bash
-# Install globally
+# Install globally with npm
 npm install -g opencodehub-cli
 
-# Or use with npx (no installation needed)
-npx opencodehub-cli
+# Or with yarn
+yarn global add opencodehub-cli
+
+# Or with pnpm
+pnpm add -g opencodehub-cli
 
 # Verify installation
 och --version
 ```
 
-## Quick Start
+## 🚀 Quick Start
 
 ```bash
 # 1. Login to your OpenCodeHub instance
 och auth login
-
-# Enter your email and password when prompted
-# Or use a personal access token:
-och auth login --token YOUR_TOKEN
 
 # 2. Navigate to your repository
 cd your-repo
@@ -31,335 +61,151 @@ cd your-repo
 # 3. Initialize (one-time setup)
 och init --url https://git.yourcompany.com
 
-# 4. You're ready! Try:
-och status
+# 4. Create your first stack
+och stack create my-feature
+
+# 5. Make changes, commit, and submit
+git add . && git commit -m "Add feature"
+och stack submit
 ```
 
-## Commands
+## 📖 Commands
 
 ### Authentication
 
-```bash
-# Interactive login
-och auth login
-
-# Login with server URL
-och auth login --url https://git.yourcompany.com
-
-# Login with token (CI/CD)
-och auth login --token YOUR_ACCESS_TOKEN
-
-# Check who you're logged in as
-och auth whoami
-
-# Logout
-och auth logout
-```
+| Command | Description |
+|---------|-------------|
+| `och auth login` | Interactive login |
+| `och auth login --token TOKEN` | Login with access token (for CI/CD) |
+| `och auth whoami` | Show current user |
+| `och auth logout` | Clear stored credentials |
 
 ### Stack Management
 
-**Create Stacked Branches:**
-```bash
-# Create a new branch in current stack
-och stack create \u003cbranch-name\u003e
-
-# Example:
-git checkout main
-och stack create database-schema
-# Make changes, commit
-och stack create auth-service
-# Make changes, commit
-```
-
-**View Stack:**
-```bash
-# See all branches in current stack
-och stack view
-
-# Short alias:
-och stack ls
-
-# Example output:
-# 📚 Current Stack
-#   ┌─ main (base)
-#   ├─ stack/database-schema ✓ Pushed
-#   └─ stack/auth-service  * Current
-```
-
-**Submit Stack:**
-```bash
-# Push current branch and create/update PR
-och stack submit
-
-# Create as draft PR
-och stack submit --draft
-
-# This will:
-# - Push your branch to origin
-# - Create  PR or update existing one
-# - Link it to parent PR if in a stack
-```
-
-**Sync Stack:**
-```bash
-# Rebase entire stack on latest main
-och stack sync
-
-# This handles:
-# - Fetching latest from origin
-# - Rebasing each branch in order
-# - Detecting and reporting conflicts
-```
-
-**Reorder Stack:**
-```bash
-# Interactively reorder branches
-och stack reorder
-
-# Choose new order from list
-# Stack dependencies will be updated
-```
+| Command | Description |
+|---------|-------------|
+| `och stack create <name>` | Create a new branch in current stack |
+| `och stack view` / `och stack ls` | View all branches in current stack |
+| `och stack submit` | Push and create/update PR |
+| `och stack submit --draft` | Submit as draft PR |
+| `och stack sync` | Rebase entire stack on latest main |
+| `och stack reorder` | Interactively reorder branches |
 
 ### Repository Operations
 
-```bash
-# Initialize repo for OpenCodeHub
-och init [--url \u003cserver-url\u003e]
+| Command | Description |
+|---------|-------------|
+| `och init` | Initialize repo for OpenCodeHub |
+| `och status` / `och st` | Show current stack status |
+| `och sync` | Sync with remote |
 
-# Show current stack status
-och status
-# Alias: och st
+## 🔄 Workflow Examples
 
-# Sync with remote (bi-directional)
-och sync
-```
-
-## Workflow Examples
-
-### Example 1: Create a Feature Stack
+### Creating a Feature Stack
 
 ```bash
 # Start from main
-git checkout main
-git pull
+git checkout main && git pull
 
 # Create base layer
-och stack create user-models
-# ... edit files ...
-git add .
+och stack create database-schema
+# ... make changes ...
 git commit -m "Add user database models"
 
-# Create middleware layer (builds on user-models)
-och stack create auth-middleware
-# ... edit files ...
-git add .
-git commit -m "Add authentication middleware"
-
-# Create UI layer (builds on auth-middleware)
-och stack create login-page
-# ... edit files ...
-git add .
-git commit -m "Add login page UI"
+# Create next layer (builds on database-schema)
+och stack create auth-service
+# ... make changes ...
+git commit -m "Add authentication service"
 
 # Submit entire stack
 och stack submit
 
 # Result:
-# PR #301: Add user database models (main ← user-models)
-# PR #302: Add auth middleware (user-models ← auth-middleware)
-# PR #303: Add login page (auth-middleware ← login-page)
+# PR #1: Add user database models (main ← database-schema)
+# PR #2: Add auth service (database-schema ← auth-service)
 ```
 
-### Example 2: Update Stack After Review
+### Updating After Review
 
 ```bash
-# You're on stack/login-page
-# Reviewer requested changes
-
-# Make changes
-git add .
-git commit -m "Address review feedback"
+# Make requested changes
+git add . && git commit -m "Address review feedback"
 
 # Resubmit (updates PR automatically)
 och stack submit
 
-# If base changed, sync the whole stack
+# If main changed, sync the whole stack
 och stack sync
 ```
 
-### Example 3: collaboration on Stacks
+## ⚙️ Configuration
+
+OCH CLI stores configuration in `~/.ochrc`.
 
 ```bash
-# Teammate created a stack, you want to build on it
-git fetch
-git checkout their-branch
-
-# Create your branch on top
-och stack create my-feature
-# ... make changes ...
-git commit -m "My changes"
-
-# Submit (will link your PR to theirs)
-och stack submit
-```
-
-## Configuration
-
-OCH CLI stores configuration in `~/.ochrc` (JSON format).
-
-**View config:**
-```bash
+# View config
 och config list
-```
 
-**Set config:**
-```bash
+# Set config
 och config set host https://git.yourcompany.com
-och config set token YOUR_TOKEN
+och config set defaultBranch main
 ```
 
-**Config file structure:**
-```json
-{
-  "host": "https://git.yourcompany.com",
-  "token": "your-access-token",
-  "defaultBranch": "main"
-}
-```
-
-## Troubleshooting
-
-### "Not logged in" Error
-
-```bash
-# Check auth status
-och auth whoami
-
-# If not logged in:
-och auth login
-```
-
-### "No stack found" Error
-
-```bash
-# Ensure you're in a git repository
-git status
-
-# Initialize if needed
-och init
-
-# Check current branch
-git branch
-```
-
-### Permission Denied
-
-```bash
-# Verify your token has correct permissions
-och auth whoami
-
-# Login again with fresh token
-och auth logout
-och auth login --token NEW_TOKEN
-```
-
-### Stack Sync Conflicts
-
-```bash
-# If sync encounters conflicts:
-# 1. Resolve conflicts in each branch
-# 2. Continue sync:
-git rebase --continue
-
-# 3. Or abort and do manual rebase:
-git rebase --abort
-git checkout main
-git pull
-git checkout your-branch
-git rebase main
-```
-
-## CI/CD Usage
+## 🔧 CI/CD Usage
 
 ```yaml
-# .github/workflows/deploy.yml
-name: Deploy Stack
-on:
-  push:
-    branches: ['stack/**']
+# .github/workflows/pr.yml
+name: Submit PR
+on: push
 
 jobs:
-  deploy:
+  submit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-
+      - uses: actions/checkout@v4
+      
       - name: Setup Node
-        uses: actions/setup-node@v3
-
-      - name: Install OCH CLI
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install CLI
         run: npm install -g opencodehub-cli
-
-      - name: Login
-        run: och auth login --token ${{ secrets.OCH_TOKEN }}
-
-      - name: Submit PR
-        run: och stack submit
+      
+      - name: Login & Submit
+        run: |
+          och auth login --token ${{ secrets.OCH_TOKEN }}
+          och stack submit
 ```
 
-## Advanced Features
+## 🤝 Contributing
 
-### Custom PR Templates
-
-Create `.github/pull_request_template.md` in your repo:
-
-```markdown
-## Description
-<!-- What does this PR do? -->
-
-## Stack Position
-<!-- Part of stack: #XXX → This PR → #YYY -->
-
-## Checklist
-- [ ] Tests pass
-- [ ] Docs updated
-```
-
-### Hooks
-
-OCH CLI supports git hooks for validation:
+We welcome contributions! Please see our [Contributing Guide](https://github.com/swadhinbiswas/OpencodeHub/blob/main/CONTRIBUTING.md).
 
 ```bash
-# .git/hooks/pre-push
-#!/bin/bash
-# Validate stack before push
-och stack verify || exit 1
+# Clone the repo
+git clone https://github.com/swadhinbiswas/OpencodeHub.git
+cd OpenCodeHub/cli
+
+# Install dependencies
+npm install
+
+# Run in development mode
+npm run dev
 ```
 
-## API Integration
+## 📝 License
 
-OCH CLI uses OpenCodeHub REST API. Token permissions needed:
-- `repo` - Repository read/write
-- `pr` - Pull request create/update
-- `user` - Read user profile
+MIT License - see [LICENSE](./LICENSE) for details.
 
-Generate token: `https://your-server/settings/tokens`
+## 🔗 Links
 
-## Contributing
+- [OpenCodeHub](https://github.com/swadhinbiswas/OpencodeHub) - The main project
+- [Documentation](https://github.com/swadhinbiswas/OpencodeHub#readme)
+- [Report Issues](https://github.com/swadhinbiswas/OpencodeHub/issues)
 
-OCH CLI is open source! Contribute at:
-https://github.com/swadhinbiswas/OpencodeHub/tree/main/cli
+---
 
-## Support
-
-- **Documentation**: https://git.yourcompany.com/docs
-- **Issues**: https://github.com/swadhinbiswas/OpencodeHub/issues
-- **Discussions**: https://github.com/swadhinbiswas/OpencodeHub/discussions
-
-## changelog
-
-See [CHANGELOG.md](./CHANGELOG.md) for version history.
-
-## License
-
-MIT License - see [LICENSE](../LICENSE)
+<p align="center">
+  Made with ❤️ by <a href="https://github.com/swadhinbiswas">Swadhin Biswas</a>
+</p>

@@ -372,7 +372,7 @@ openssl rand -base64 32  # INTERNAL_HOOK_SECRET
 ### 5.1. Install Vercel CLI (Optional)
 
 ```bash
-npm install -g vercel
+bun install -g vercel
 vercel login
 ```
 

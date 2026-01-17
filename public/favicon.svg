@@ -1,0 +1,18 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="owl-logo">
+<circle id="outer-circle" cx="256" cy="256" r="230" fill="#0D2C54"/>
+<path id="inner-circle-teal" d="M486 256C486 383.025 383.025 486 256 486C128.975 486 26 383.025 26 256C26 128.975 128.975 26 256 26C383.025 26 486 128.975 486 256Z" fill="#008080"/>
+<path id="blue-accents" d="M256 486C128.975 486 26 383.025 26 256C26 128.975 128.975 26 256 26C383.025 26 486 128.975 486 256C486 383.025 383.025 486 256 486Z" fill="#0080FF" fill-opacity="0.6"/>
+<path id="owl-brows" d="M88.4 124.8C88.4 124.8 173.2 227.6 256 227.6C338.8 227.6 423.6 124.8 423.6 124.8C423.6 124.8 423.6 256 423.6 256C423.6 256 338.8 338.8 256 338.8C173.2 338.8 88.4 256 88.4 256C88.4 256 88.4 124.8 88.4 124.8Z" fill="#0D2C54"/>
+<path id="owl-body-teal" d="M256 338.8C173.2 338.8 88.4 256 88.4 256C88.4 348.6 163.4 423.6 256 423.6C348.6 423.6 423.6 348.6 423.6 256C423.6 256 338.8 338.8 256 338.8Z" fill="#008080"/>
+<path id="circuit" d="M256 66V180" stroke="#0080FF" stroke-width="16" stroke-linecap="round"/>
+<circle id="circuit-dot" cx="294" cy="114" r="16" fill="#0080FF"/>
+<path id="circuit-branch" d="M256 144H294" stroke="#0080FF" stroke-width="16" stroke-linecap="round"/>
+<g id="eyes">
+<circle cx="176" cy="256" r="64" fill="#008080"/>
+<circle cx="336" cy="256" r="64" fill="#008080"/>
+<path d="M156 236L136 256L156 276" stroke="#0D2C54" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M356 236L376 256L356 276" stroke="#0D2C54" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</g>
+</svg>

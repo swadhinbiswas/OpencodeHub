@@ -18,7 +18,7 @@ if (!user) return Astro.redirect("/404");
 const repoData = await db.query.repositories.findFirst({
   where: and(
     eq(schema.repositories.ownerId, user.id),
-    eq(schema.repositories.name, repoName!)
+    eq(schema.repositories.name, repoName!),
   ),
   with: {
     owner: true,
@@ -46,7 +46,7 @@ const repo = {
   watchers: repoData.watchCount,
   topics: repoData.topics ? JSON.parse(repoData.topics) : [],
   openPrCount: repoData.openPrCount,
-  openIssueCount: 0
+  openIssueCount: 0,
 };
 
 // Fetch deploy keys
@@ -58,9 +58,7 @@ try {
       orderBy: [desc(schema.deployKeys.createdAt)],
     });
   }
-} catch (e) {
-  console.log("Deploy keys table not found");
-}
+} catch (e) {}
 ---
 
 <BaseLayout title={`Deploy Keys · ${repo.owner}/${repo.name}`}>
@@ -70,50 +68,108 @@ try {
     <div class="grid gap-8 lg:grid-cols-[260px_1fr] mt-6">
       <!-- Sidebar -->
       <div class="space-y-2">
-        <a 
+        <a
           href={`/${repo.owner}/${repo.name}/settings`}
           class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
         >
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          <svg
+            class="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+            ></path>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
           </svg>
           General
         </a>
-        <a 
+        <a
           href={`/${repo.owner}/${repo.name}/settings/collaborators`}
           class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
         >
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+          <svg
+            class="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+            ></path>
           </svg>
           Collaborators
         </a>
-        <a 
+        <a
           href={`/${repo.owner}/${repo.name}/settings/webhooks`}
           class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
         >
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+          <svg
+            class="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+            ></path>
           </svg>
           Webhooks
         </a>
-        <a 
+        <a
           href={`/${repo.owner}/${repo.name}/settings/actions`}
           class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
         >
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          <svg
+            class="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+            ></path>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
           Actions
         </a>
-        <a 
+        <a
           href={`/${repo.owner}/${repo.name}/settings/deploy-keys`}
           class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
         >
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+          <svg
+            class="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+            ></path>
           </svg>
           Deploy keys
         </a>
@@ -125,23 +181,45 @@ try {
         <div class="flex items-center justify-between">
           <div>
             <h1 class="text-2xl font-bold text-white flex items-center gap-3">
-              <div class="p-2 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30">
-                <svg class="h-6 w-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+              <div
+                class="p-2 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30"
+              >
+                <svg
+                  class="h-6 w-6 text-cyan-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+                  ></path>
                 </svg>
               </div>
               Deploy Keys
             </h1>
             <p class="text-gray-500 text-sm mt-2">
-              Deploy keys grant read-only or read/write access to a single repository.
+              Deploy keys grant read-only or read/write access to a single
+              repository.
             </p>
           </div>
-          <button 
+          <button
             id="add-key-btn"
             class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-sm font-medium text-white shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all"
           >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            <svg
+              class="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4v16m8-8H4"></path>
             </svg>
             Add deploy key
           </button>
@@ -149,41 +227,56 @@ try {
 
         <!-- Add Key Form (hidden by default) -->
         <div id="add-key-form" class="hidden relative">
-          <div class="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/20 via-transparent to-blue-500/20 rounded-xl opacity-50"></div>
-          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-6">
-            <h3 class="text-lg font-semibold text-white mb-4">Add a new deploy key</h3>
+          <div
+            class="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/20 via-transparent to-blue-500/20 rounded-xl opacity-50"
+          >
+          </div>
+          <div
+            class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-6"
+          >
+            <h3 class="text-lg font-semibold text-white mb-4">
+              Add a new deploy key
+            </h3>
             <form class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-white mb-2">Title</label>
-                <input 
-                  type="text" 
+                <label class="block text-sm font-medium text-white mb-2"
+                  >Title</label
+                >
+                <input
+                  type="text"
                   placeholder="e.g., Production Server"
                   class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-white mb-2">Key</label>
-                <textarea 
+                <label class="block text-sm font-medium text-white mb-2"
+                  >Key</label
+                >
+                <textarea
                   rows="4"
                   placeholder="Paste your public SSH key here..."
                   class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all resize-none font-mono text-sm"
                 ></textarea>
               </div>
               <div class="flex items-center gap-3">
-                <input type="checkbox" id="allow-write" class="accent-cyan-500" />
+                <input
+                  type="checkbox"
+                  id="allow-write"
+                  class="accent-cyan-500"
+                />
                 <label for="allow-write" class="text-sm text-gray-300">
                   Allow write access
                 </label>
               </div>
               <div class="flex justify-end gap-3">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   id="cancel-add-key"
                   class="px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-300 hover:bg-white/10 transition-colors"
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   type="submit"
                   class="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-sm font-medium text-white"
                 >
@@ -196,53 +289,95 @@ try {
 
         <!-- Deploy Keys List -->
         <div class="relative">
-          <div class="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/20 via-transparent to-blue-500/20 rounded-xl opacity-50"></div>
-          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm overflow-hidden">
-            {deployKeys.length > 0 ? (
-              <div class="divide-y divide-white/5">
-                {deployKeys.map((key: any) => (
-                  <div class="flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors">
-                    <div class="flex items-center gap-3">
-                      <div class="p-2 rounded-lg bg-cyan-500/10">
-                        <svg class="h-5 w-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
-                        </svg>
-                      </div>
-                      <div>
-                        <div class="font-medium text-white">{key.title}</div>
-                        <div class="text-xs text-gray-500">
-                          Added {new Date(key.createdAt).toLocaleDateString()} • 
-                          {key.readOnly ? 'Read-only' : 'Read/Write'}
+          <div
+            class="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/20 via-transparent to-blue-500/20 rounded-xl opacity-50"
+          >
+          </div>
+          <div
+            class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm overflow-hidden"
+          >
+            {
+              deployKeys.length > 0 ? (
+                <div class="divide-y divide-white/5">
+                  {deployKeys.map((key: any) => (
+                    <div class="flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors">
+                      <div class="flex items-center gap-3">
+                        <div class="p-2 rounded-lg bg-cyan-500/10">
+                          <svg
+                            class="h-5 w-5 text-cyan-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+                            />
+                          </svg>
+                        </div>
+                        <div>
+                          <div class="font-medium text-white">{key.title}</div>
+                          <div class="text-xs text-gray-500">
+                            Added {new Date(key.createdAt).toLocaleDateString()}{" "}
+                            •{key.readOnly ? "Read-only" : "Read/Write"}
+                          </div>
                         </div>
                       </div>
+                      <button class="text-red-400 hover:text-red-300 text-sm">
+                        Delete
+                      </button>
                     </div>
-                    <button class="text-red-400 hover:text-red-300 text-sm">Delete</button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div class="p-16 text-center">
-                <div class="relative inline-block mb-6">
-                  <svg class="h-16 w-16 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
-                  </svg>
-                  <div class="absolute inset-0 bg-cyan-500 blur-2xl opacity-20"></div>
+                  ))}
                 </div>
-                <h2 class="text-xl font-bold text-white mb-2">No deploy keys yet</h2>
-                <p class="text-gray-500 mb-6 max-w-md mx-auto">
-                  Deploy keys allow servers to access your repository without requiring authentication from a user account.
-                </p>
-                <button 
-                  id="add-first-key-btn"
-                  class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-sm font-medium text-white shadow-lg shadow-cyan-500/25"
-                >
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                  </svg>
-                  Add your first deploy key
-                </button>
-              </div>
-            )}
+              ) : (
+                <div class="p-16 text-center">
+                  <div class="relative inline-block mb-6">
+                    <svg
+                      class="h-16 w-16 text-cyan-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="1.5"
+                        d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+                      />
+                    </svg>
+                    <div class="absolute inset-0 bg-cyan-500 blur-2xl opacity-20" />
+                  </div>
+                  <h2 class="text-xl font-bold text-white mb-2">
+                    No deploy keys yet
+                  </h2>
+                  <p class="text-gray-500 mb-6 max-w-md mx-auto">
+                    Deploy keys allow servers to access your repository without
+                    requiring authentication from a user account.
+                  </p>
+                  <button
+                    id="add-first-key-btn"
+                    class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-sm font-medium text-white shadow-lg shadow-cyan-500/25"
+                  >
+                    <svg
+                      class="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                    Add your first deploy key
+                  </button>
+                </div>
+              )
+            }
           </div>
         </div>
       </div>
@@ -252,15 +387,15 @@ try {
 
 <script>
   // Toggle add key form
-  const addKeyBtn = document.getElementById('add-key-btn');
-  const addFirstKeyBtn = document.getElementById('add-first-key-btn');
-  const cancelBtn = document.getElementById('cancel-add-key');
-  const form = document.getElementById('add-key-form');
+  const addKeyBtn = document.getElementById("add-key-btn");
+  const addFirstKeyBtn = document.getElementById("add-first-key-btn");
+  const cancelBtn = document.getElementById("cancel-add-key");
+  const form = document.getElementById("add-key-form");
 
-  const showForm = () => form?.classList.remove('hidden');
-  const hideForm = () => form?.classList.add('hidden');
+  const showForm = () => form?.classList.remove("hidden");
+  const hideForm = () => form?.classList.add("hidden");
 
-  addKeyBtn?.addEventListener('click', showForm);
-  addFirstKeyBtn?.addEventListener('click', showForm);
-  cancelBtn?.addEventListener('click', hideForm);
+  addKeyBtn?.addEventListener("click", showForm);
+  addFirstKeyBtn?.addEventListener("click", showForm);
+  cancelBtn?.addEventListener("click", hideForm);
 </script>

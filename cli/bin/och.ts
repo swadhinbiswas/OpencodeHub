@@ -59,4 +59,4 @@ program
         // TODO: Show current stack
     });
 
-program.parse();
+program.parse(process.argv);

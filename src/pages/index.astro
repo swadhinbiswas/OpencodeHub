@@ -6,6 +6,7 @@ import { BookOpen, Star } from "lucide-react";
 import HeroSection from "@/components/home/HeroSection";
 import FeaturesSection from "@/components/home/FeaturesSection";
 import FeatureDemosSection from "@/components/home/FeatureDemosSection";
+import BackgroundGrid from "@/components/ui/BackgroundGrid.astro";
 
 // Fetch public repositories for the landing page
 const db = getDatabase();
@@ -28,8 +29,10 @@ try {
   });
 
   // Get basic stats
-  const repoCount = db.select().from(schema.repositories).all().length;
-  const userCount = db.select().from(schema.users).all().length;
+  const repositories = await db.select().from(schema.repositories).all();
+  const repoCount = repositories.length;
+  const users = await db.select().from(schema.users).all();
+  const userCount = users.length;
 
   stats.repos = repoCount;
   stats.users = userCount;
@@ -39,6 +42,7 @@ try {
 ---
 
 <BaseLayout title="OpenCodeHub - Your Self-Hosted Git Platform">
+  <BackgroundGrid />
   <!-- Hero Section with Aceternity UI Components -->
   <HeroSection client:load />
 
@@ -50,16 +54,19 @@ try {
           <h2 class="text-2xl font-semibold tracking-tight">
             Trending Repositories
           </h2>
-          <a href="/explore" class="text-sm text-primary hover:text-primary/80 transition-colors">
+          <a
+            href="/explore"
+            class="text-sm text-primary hover:text-primary/80 transition-colors"
+          >
             View all →
           </a>
         </div>
         <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {recentRepos.map((repo) => (
+          {recentRepos.map((repo: any) => (
             <div class="group relative rounded-xl border border-white/5 bg-card p-6 transition-all duration-300 hover:border-primary/30 hover:shadow-[0_0_30px_rgba(124,140,255,0.1)] hover:-translate-y-1">
               <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-2">
-                  <BookOpen class="h-4 w-4 text-muted-foreground" />
+                  <BookOpen className="h-4 w-4 text-muted-foreground" />
                   <a
                     href={`/${repo.owner.username}/${repo.name}`}
                     class="font-medium hover:text-primary transition-colors"
@@ -68,7 +75,7 @@ try {
                   </a>
                 </div>
                 <div class="flex items-center gap-1 text-muted-foreground">
-                  <Star class="h-3.5 w-3.5" />
+                  <Star className="h-3.5 w-3.5" />
                   <span class="text-xs font-medium">{repo.starCount}</span>
                 </div>
               </div>
@@ -95,24 +102,32 @@ try {
 
   <!-- Interactive Feature Demonstrations -->
   <FeatureDemosSection client:load />
-  
+
   <!-- Features Section with Aceternity UI Components -->
   <FeaturesSection client:load />
-  
+
   <!-- Footer CTA -->
   <section class="container py-20 border-t border-white/5">
-    <div class="relative rounded-2xl border border-white/10 bg-gradient-to-br from-primary/10 via-transparent to-purple-500/10 p-12 overflow-hidden">
+    <div
+      class="relative rounded-2xl border border-white/10 bg-gradient-to-br from-primary/10 via-transparent to-purple-500/10 p-12 overflow-hidden"
+    >
       <!-- Background decorations -->
-      <div class="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full blur-[100px] pointer-events-none" />
-      <div class="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/20 rounded-full blur-[80px] pointer-events-none" />
-      
+      <div
+        class="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full blur-[100px] pointer-events-none"
+      >
+      </div>
+      <div
+        class="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/20 rounded-full blur-[80px] pointer-events-none"
+      >
+      </div>
+
       <div class="relative z-10 text-center max-w-2xl mx-auto">
         <h2 class="text-3xl md:text-4xl font-bold mb-4">
           Ready to ship faster?
         </h2>
         <p class="text-muted-foreground mb-8">
-          Join thousands of developers using OpenCodeHub to streamline their workflow
-          with stacked PRs, AI reviews, and smart merge queues.
+          Join thousands of developers using OpenCodeHub to streamline their
+          workflow with stacked PRs, AI reviews, and smart merge queues.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
           <a
@@ -122,7 +137,7 @@ try {
             Get Started Free
           </a>
           <a
-            href="https://github.com/opencodehub/opencodehub"
+            href="https://github.com/swadhinbiswas/OpencodeHub"
             class="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/5 px-8 py-3.5 text-sm font-medium hover:bg-white/10 transition-all"
           >
             Star on GitHub ⭐

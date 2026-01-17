@@ -93,7 +93,18 @@ STORAGE_TYPE=s3
 STORAGE_BUCKET=opencodehub-production
 STORAGE_REGION=us-east-1
 S3_ACCESS_KEY=<your-access-key>
+S3_ACCESS_KEY=<your-access-key>
 S3_SECRET_KEY=<your-secret-key>
+```
+
+**Google Drive + Turso Stack:**
+See [docs/GDRIVE_STACK.md](docs/GDRIVE_STACK.md) for detailed setup.
+```bash
+STORAGE_TYPE=gdrive
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_REFRESH_TOKEN=...
+GOOGLE_FOLDER_ID=...
 ```
 
 **Optional but Recommended:**
