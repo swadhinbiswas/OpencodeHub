@@ -57,7 +57,7 @@ export const GET: APIRoute = async ({ params, request }) => {
     const repository = await db.query.repositories.findFirst({
       where: and(
         eq(repositories.ownerId, ownerUser.id),
-        eq(repositories.slug, repo)
+        eq(repositories.name, repo)
       ),
       with: {
         owner: {
@@ -170,7 +170,7 @@ export const PATCH: APIRoute = async ({ params, request }) => {
     const repository = await db.query.repositories.findFirst({
       where: and(
         eq(repositories.ownerId, ownerUser.id),
-        eq(repositories.slug, repo)
+        eq(repositories.name, repo)
       ),
     });
 
@@ -277,7 +277,7 @@ export const DELETE: APIRoute = async ({ params, request }) => {
     const repository = await db.query.repositories.findFirst({
       where: and(
         eq(repositories.ownerId, ownerUser.id),
-        eq(repositories.slug, repo)
+        eq(repositories.name, repo)
       ),
     });
 

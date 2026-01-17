@@ -223,6 +223,35 @@ export function getGit(repoPath: string): SimpleGit {
 }
 
 /**
+ * Check if a repository is empty (has no commits)
+ */
+export async function isRepoEmpty(repoPath: string): Promise<boolean> {
+  const git = getGit(repoPath);
+  try {
+    // Try to get HEAD ref - if it fails, repo is empty
+    await git.raw(["rev-parse", "HEAD"]);
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Get the actual default branch of a repository (from git, not database)
+ * Returns null if repository is empty
+ */
+export async function getActualDefaultBranch(repoPath: string): Promise<string | null> {
+  const git = getGit(repoPath);
+  try {
+    const headRef = await git.raw(["symbolic-ref", "--short", "HEAD"]);
+    return headRef.trim();
+  } catch {
+    // Repository might be empty or HEAD detached
+    return null;
+  }
+}
+
+/**
  * List files in a directory at a specific ref
  */
 export async function listFiles(
@@ -233,6 +262,11 @@ export async function listFiles(
   const git = getGit(repoPath);
 
   try {
+    // Check if repository is empty first
+    if (await isRepoEmpty(repoPath)) {
+      return [];
+    }
+
     // Use ls-tree to get files
     // Append / to path to list contents of directory, otherwise it lists the directory entry itself
     const targetPath = path ? (path.endsWith("/") ? path : `${path}/`) : ".";
@@ -277,7 +311,11 @@ export async function listFiles(
 
     return entries;
   } catch (error) {
-    logger.error({ err: error }, "Error listing files");
+    // Only log if it's not an empty repo issue
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (!errorMessage.includes("Not a valid object name") && !errorMessage.includes("unknown revision")) {
+      logger.error({ err: error }, "Error listing files");
+    }
     return [];
   }
 }
@@ -389,6 +427,11 @@ export async function getCommits(
   const { ref = "HEAD", path, limit = 30, skip = 0 } = options;
 
   try {
+    // Check if repository is empty first
+    if (await isRepoEmpty(repoPath)) {
+      return [];
+    }
+
     const args = [
       "log",
       "--format=%H|%s|%b|%an|%ae|%ai|%cn|%ce|%ci|%P|%G?|%GK|%GS",
@@ -442,7 +485,11 @@ export async function getCommits(
 
     return commits;
   } catch (error) {
-    logger.error({ err: error }, "Error getting commits");
+    // Only log if it's not an empty repo issue
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (!errorMessage.includes("unknown revision") && !errorMessage.includes("ambiguous argument")) {
+      logger.error({ err: error }, "Error getting commits");
+    }
     return [];
   }
 }
