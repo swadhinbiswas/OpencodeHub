@@ -21,6 +21,7 @@ import {
 } from '@/lib/api';
 import { generateId, now, slugify, isValidRepoName } from '@/lib/utils';
 import { initRepository } from '@/lib/git';
+import { getDiskPath } from '@/lib/git-storage';
 
 const createRepoSchema = z.object({
   name: z.string().min(1).max(100),
@@ -223,8 +224,7 @@ export const POST: APIRoute = async ({ request }) => {
     const timestamp = now();
     const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
     const sshPort = process.env.GIT_SSH_PORT || '2222';
-    const reposPath = process.env.GIT_REPOS_PATH || './data/repos';
-    const diskPath = `${reposPath}/${user.username}/${slug}.git`;
+    const diskPath = await getDiskPath(user.username, slug);
 
     await db.insert(repositories).values({
       id: repoId,
