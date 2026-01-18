@@ -54,7 +54,6 @@ export const GET: APIRoute = async ({ params, request }) => {
             where: eq(schema.pullRequestComments.pullRequestId, pr.id),
             with: {
                 author: true,
-                resolvedBy: true,
             },
             orderBy: [desc(schema.pullRequestComments.createdAt)],
         });

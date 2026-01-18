@@ -138,6 +138,36 @@ export const POST: APIRoute = async ({ request }) => {
                 isDraft: false,
                 createdAt: now,
                 updatedAt: now,
+                // Providing defaults for potentially required fields that might not be explicitly set
+                // These fields are often nullable or have default values in the schema,
+                // but explicitly setting them to null or a default can prevent type errors
+                // if the Drizzle schema expects them to be present even if nullable.
+                mergedAt: null,
+                closedAt: null,
+                mergeCommitSha: null,
+                headCommitSha: null,
+                baseCommitSha: null,
+                url: "", // Assuming a default empty string or null
+                htmlUrl: "",
+                diffUrl: "",
+                patchUrl: "",
+                nodeId: "",
+                locked: false,
+                activeLockReason: null,
+                userLogin: tokenPayload.userLogin, // Assuming userLogin is available in tokenPayload
+                assigneeId: null,
+                milestoneId: null,
+                autoMerge: false,
+                rebaseable: false,
+                mergeable: null, // Can be true, false, or null
+                mergeableState: "unknown", // "clean", "dirty", "unknown", "blocked"
+                mergedBy: null,
+                comments: 0,
+                reviewComments: 0,
+                commits: 0,
+                additions: 0,
+                deletions: 0,
+                changedFiles: 0,
             });
 
             // Add to stack
