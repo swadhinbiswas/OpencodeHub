@@ -209,7 +209,7 @@ function createPrEventMessage(
             elements: [
                 {
                     type: "mrkdwn",
-                    text: `\`${pr.headBranch}\` → \`${pr.baseBranch}\``,
+                    text: { type: "plain_text", text: `\`${pr.headBranch}\` 2192 \`${pr.baseBranch}\`` },
                 },
             ],
         },
