@@ -255,8 +255,9 @@ function timeAgo(date: string) {
           ) : (
             prsWithStacks.map((pr) => (
               <a
+                data-pr-item
                 href={`/${pr.repository?.name}/pulls/${pr.number}`}
-                class="flex items-start gap-4 p-4 rounded-lg border transition-all hover:bg-muted/50 hover:shadow-md group"
+                class="flex items-start gap-4 p-4 rounded-lg border transition-all hover:bg-muted/50 hover:shadow-md group cursor-pointer"
               >
                 {/* PR Icon */}
                 <div
@@ -320,4 +321,133 @@ function timeAgo(date: string) {
       </div>
     </div>
   </div>
+
+  <!-- Keyboard Shortcuts Help Modal -->
+  <div
+    id="keyboard-shortcuts-modal"
+    class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+  >
+    <div
+      class="bg-background border rounded-lg shadow-lg p-6 max-w-md w-full mx-4"
+    >
+      <h3 class="text-lg font-semibold mb-4">Keyboard Shortcuts</h3>
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between">
+          <kbd class="px-2 py-1 bg-muted rounded text-xs">j</kbd>
+          <span>Next PR</span>
+        </div>
+        <div class="flex justify-between">
+          <kbd class="px-2 py-1 bg-muted rounded text-xs">k</kbd>
+          <span>Previous PR</span>
+        </div>
+        <div class="flex justify-between">
+          <kbd class="px-2 py-1 bg-muted rounded text-xs">o</kbd>
+          <span>Open selected PR</span>
+        </div>
+        <div class="flex justify-between">
+          <kbd class="px-2 py-1 bg-muted rounded text-xs">r</kbd>
+          <span>Refresh</span>
+        </div>
+        <div class="flex justify-between">
+          <kbd class="px-2 py-1 bg-muted rounded text-xs">?</kbd>
+          <span>Show this help</span>
+        </div>
+        <div class="flex justify-between">
+          <kbd class="px-2 py-1 bg-muted rounded text-xs">Esc</kbd>
+          <span>Close dialog</span>
+        </div>
+      </div>
+      <button
+        onclick="document.getElementById('keyboard-shortcuts-modal').classList.add('hidden')"
+        class="mt-4 w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+      >
+        Got it
+      </button>
+    </div>
+  </div>
+
+  <!-- Keyboard hint -->
+  <div
+    class="fixed bottom-4 right-4 text-xs text-muted-foreground bg-background border rounded-lg px-3 py-2 shadow-lg"
+  >
+    Press <kbd class="px-1.5 py-0.5 bg-muted rounded text-xs mx-0.5">?</kbd> for keyboard
+    shortcuts
+  </div>
+
+  <script>
+    // Keyboard shortcut handler
+    function initInboxKeyboardShortcuts() {
+      let selectedIndex = 0;
+      const prItems = document.querySelectorAll("[data-pr-item]");
+
+      if (prItems.length === 0) return;
+
+      // Highlight the first item
+      const highlightPR = (index) => {
+        prItems.forEach((item, i) => {
+          if (i === index) {
+            item.classList.add("ring-2", "ring-primary", "bg-primary/5");
+            item.scrollIntoView({ block: "nearest", behavior: "smooth" });
+          } else {
+            item.classList.remove("ring-2", "ring-primary", "bg-primary/5");
+          }
+        });
+      };
+
+      // Initialize
+      highlightPR(0);
+
+      // Add keyboard listener
+      document.addEventListener("keydown", (e) => {
+        // Don't trigger if user is typing in an input
+        if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") {
+          return;
+        }
+
+        switch (e.key.toLowerCase()) {
+          case "j": // Next PR
+            e.preventDefault();
+            selectedIndex = Math.min(selectedIndex + 1, prItems.length - 1);
+            highlightPR(selectedIndex);
+            break;
+
+          case "k": // Previous PR
+            e.preventDefault();
+            selectedIndex = Math.max(selectedIndex - 1, 0);
+            highlightPR(selectedIndex);
+            break;
+
+          case "o": // Open PR
+          case "enter":
+            e.preventDefault();
+            prItems[selectedIndex]?.click();
+            break;
+
+          case "r": // Refresh
+            e.preventDefault();
+            window.location.reload();
+            break;
+
+          case "?": // Show help
+            e.preventDefault();
+            document
+              .getElementById("keyboard-shortcuts-modal")
+              ?.classList.toggle("hidden");
+            break;
+
+          case "escape":
+            e.preventDefault();
+            document
+              .getElementById("keyboard-shortcuts-modal")
+              ?.classList.add("hidden");
+            break;
+        }
+      });
+
+      console.log("✅ Inbox keyboard shortcuts active");
+    }
+
+    // Auto-init on page load
+    initInboxKeyboardShortcuts();
+  </script>
 </BaseLayout>
