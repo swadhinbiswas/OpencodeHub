@@ -1,9 +1,13 @@
+/**
+ * Trigger Test Action
+ */
 
 import type { APIRoute } from 'astro';
 import { z } from 'zod';
-// unused imports removed
-import { success, unauthorized, serverError, parseBody } from '@/lib/api';
+import { getDatabase, schema } from "@/db";
+import { success, unauthorized, serverError, parseBody, notFound } from '@/lib/api';
 import { getUserFromRequest } from '@/lib/auth';
+import { eq } from "drizzle-orm";
 import crypto from 'node:crypto';
 
 const triggerSchema = z.object({
