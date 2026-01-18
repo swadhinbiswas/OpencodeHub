@@ -75,7 +75,6 @@ async function seed() {
                 readme: true,
                 repoName: name,
                 ownerName: user.username,
-                description
             });
         } catch (e) {
             console.error(`Failed to init repo ${name}:`, e);
