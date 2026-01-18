@@ -238,6 +238,7 @@ export function extractBearerToken(authHeader: string | null): string | null {
 
 /**
  * Get user from request
+ * Supports both JWT tokens and Personal Access Tokens (PAT)
  */
 export async function getUserFromRequest(
   request: Request
@@ -261,7 +262,60 @@ export async function getUserFromRequest(
     return null;
   }
 
+  // Check if it's a Personal Access Token (starts with och_)
+  if (token.startsWith("och_")) {
+    return verifyPersonalAccessToken(token);
+  }
+
+  // Otherwise, treat it as a JWT
   return verifyToken(token);
+}
+
+/**
+ * Verify a Personal Access Token
+ */
+async function verifyPersonalAccessToken(token: string): Promise<TokenPayload | null> {
+  try {
+    const { getDatabase } = await import("@/db");
+    const { personalAccessTokens, users } = await import("@/db/schema/users");
+    const { eq, and, gt } = await import("drizzle-orm");
+
+    const db = getDatabase();
+
+    // Find the token
+    const pat = await db.query.personalAccessTokens.findFirst({
+      where: eq(personalAccessTokens.token, token),
+      with: {
+        user: true,
+      },
+    });
+
+    if (!pat) {
+      return null;
+    }
+
+    // Check if expired
+    if (pat.expiresAt && new Date(pat.expiresAt) < new Date()) {
+      return null;
+    }
+
+    // Update last used
+    await db
+      .update(personalAccessTokens)
+      .set({ lastUsedAt: new Date().toISOString() })
+      .where(eq(personalAccessTokens.id, pat.id));
+
+    // Return user info as TokenPayload
+    return {
+      userId: pat.user.id,
+      username: pat.user.username,
+      email: pat.user.email,
+      isAdmin: pat.user.isAdmin || false,
+    };
+  } catch (error) {
+    console.error("PAT verification error:", error);
+    return null;
+  }
 }
 
 /**
