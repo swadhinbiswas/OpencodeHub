@@ -53,7 +53,7 @@ export async function getSlackConfig(organizationId: string): Promise<SlackConfi
     const db = getDatabase();
 
     const workspace = await db.query.slackWorkspaces.findFirst({
-        where: eq(schema.slackWorkspaces.organizationId, organizationId),
+        where: eq(schema.slackWorkspaces.teamId, organizationId),
     });
 
     if (!workspace || !workspace.botAccessToken) {
