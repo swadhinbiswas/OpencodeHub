@@ -279,7 +279,6 @@ export async function syncCIStatus(
     // Get check runs from database (these would be updated by webhook handlers)
     const checks = await db.query.pullRequestChecks.findMany({
         where: eq(schema.pullRequestChecks.pullRequestId, pullRequestId),
-        orderBy: [desc(schema.pullRequestChecks.createdAt)],
     });
 
     // Determine overall status
