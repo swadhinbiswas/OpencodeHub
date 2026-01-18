@@ -84,7 +84,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
       headers["Content-Type"] = "application/octet-stream";
     }
 
-    return new Response(content, {
+    return new Response(new Uint8Array(content), {
       status: 200,
       headers,
     });

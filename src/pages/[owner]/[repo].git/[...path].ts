@@ -108,9 +108,9 @@ export const ALL: APIRoute = async ({ params, request }) => {
     // Check permissions
     let hasAccess = false;
     if (isUpload) {
-      hasAccess = await canReadRepo(userId, repoData);
+      hasAccess = await canReadRepo(userId || undefined, repoData);
     } else {
-      hasAccess = await canWriteRepo(userId, repoData);
+      hasAccess = await canWriteRepo(userId || undefined, repoData);
     }
 
     if (!hasAccess) {
