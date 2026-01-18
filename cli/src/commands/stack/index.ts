@@ -43,26 +43,124 @@ stackCommands
         }
     });
 
-// Submit stack to remote
+// Submit stack to remote and create PRs
 stackCommands
     .command("submit")
-    .description("Push stack and create/update PRs")
+    .description("Push stack and create/update PRs for all branches")
     .option("-d, --draft", "Create PRs as drafts")
+    .option("-m, --message <message>", "PR title prefix")
     .action(async (options) => {
-        const spinner = ora("Submitting stack...").start();
+        const config = getConfig();
+
+        if (!config.token) {
+            console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+            process.exit(1);
+        }
+
+        const spinner = ora("Analyzing stack...").start();
 
         try {
-            // Get current branch
-            const currentBranch = await git.revparse(["--abbrev-ref", "HEAD"]);
+            // Get all stack branches
+            const branches = await git.branchLocal();
+            const currentBranch = (await git.revparse(["--abbrev-ref", "HEAD"])).trim();
+            const stackBranches = branches.all.filter(b => b.startsWith("stack/"));
 
-            // Push current branch
-            spinner.text = "Pushing branch...";
-            await git.push(["-u", "origin", currentBranch.trim()]);
+            if (stackBranches.length === 0) {
+                spinner.fail("No stack branches found");
+                console.log(chalk.dim("Run ") + chalk.cyan("och stack create <name>") + chalk.dim(" to start a stack."));
+                process.exit(1);
+            }
 
-            spinner.succeed(`Pushed ${chalk.green(currentBranch.trim())}`);
+            // Get repository info from git remote
+            const remotes = await git.getRemotes(true);
+            const origin = remotes.find(r => r.name === "origin");
 
-            console.log("\n" + chalk.dim("Stack submitted! Create PRs at:"));
-            console.log(chalk.cyan("  http://localhost:4321/your-repo/compare"));
+            if (!origin?.refs?.push) {
+                spinner.fail("No origin remote found");
+                process.exit(1);
+            }
+
+            // Parse owner/repo from remote URL
+            const remoteUrl = origin.refs.push;
+            const match = remoteUrl.match(/[:/]([^/]+)\/([^/.]+)/);
+
+            if (!match) {
+                spinner.fail("Could not parse repository from remote URL");
+                process.exit(1);
+            }
+
+            const [, owner, repoName] = match;
+
+            // Push all stack branches
+            spinner.text = "Pushing branches...";
+            const pushedBranches: string[] = [];
+
+            for (const branch of stackBranches) {
+                try {
+                    await git.push(["-u", "origin", branch, "--force-with-lease"]);
+                    pushedBranches.push(branch);
+                } catch (e) {
+                    console.log(chalk.yellow(`\n  Warning: Could not push ${branch}`));
+                }
+            }
+
+            spinner.text = "Creating PRs...";
+
+            // Build branch metadata for PR creation
+            const branchData = stackBranches.map((branch, index) => {
+                const name = branch.replace("stack/", "");
+                const parentBranch = index === 0 ? "main" : stackBranches[index - 1];
+
+                return {
+                    name: branch,
+                    title: options.message ? `${options.message}: ${name}` : `[Stack] ${name}`,
+                    description: `Part of stacked PR workflow.\n\nBranch: \`${branch}\`\nBased on: \`${parentBranch}\``,
+                    parentBranch,
+                };
+            });
+
+            // Create PRs via API
+            try {
+                const response = await fetch(`${config.serverUrl}/api/stacks`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${config.token}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        owner,
+                        repo: repoName,
+                        baseBranch: "main",
+                        branches: branchData,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || "Failed to create PRs");
+                }
+
+                const result = await response.json();
+
+                spinner.succeed(`Stack submitted with ${pushedBranches.length} branches`);
+
+                if (result.data?.stack?.pullRequests) {
+                    console.log(chalk.bold("\n📋 Pull Requests Created:\n"));
+                    for (const pr of result.data.stack.pullRequests) {
+                        console.log(`  ${chalk.green("●")} #${pr.number}: ${pr.title}`);
+                        console.log(chalk.dim(`    ${pr.branch} → ${pr.baseBranch}`));
+                    }
+                }
+            } catch (apiError) {
+                // API might not be available, just show success for pushing
+                spinner.succeed(`Pushed ${pushedBranches.length} branches`);
+                console.log(chalk.yellow("\n  Note: Could not auto-create PRs (API unavailable)"));
+                console.log(chalk.dim("  Create PRs manually at your repository\n"));
+            }
+
+            console.log(chalk.dim("\nNext steps:"));
+            console.log(chalk.dim("  • Get reviews on your PRs"));
+            console.log(chalk.dim("  • Run ") + chalk.cyan("och stack sync") + chalk.dim(" to keep in sync"));
         } catch (error) {
             spinner.fail("Failed to submit stack");
             console.error(chalk.red(error instanceof Error ? error.message : "Unknown error"));
@@ -74,7 +172,8 @@ stackCommands
 stackCommands
     .command("view")
     .alias("ls")
-    .description("View current stack visualization")
+    .alias("log")
+    .description("View current stack visualization (like gt log)")
     .action(async () => {
         try {
             const currentBranch = await git.revparse(["--abbrev-ref", "HEAD"]);
