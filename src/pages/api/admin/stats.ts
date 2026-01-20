@@ -12,13 +12,13 @@ export const GET: APIRoute = withErrorHandler(async () => {
 
     // 1. Total Counts
     const repoCountResult = await db.select({ count: count() }).from(schema.repositories).limit(1);
-    const repoCount = repoCountResult[0]?.count || 0;
+    const repoCount = Number(repoCountResult[0]?.count) || 0;
 
     const userCountResult = await db.select({ count: count() }).from(schema.users).limit(1);
-    const userCount = userCountResult[0]?.count || 0;
+    const userCount = Number(userCountResult[0]?.count) || 0;
 
     const prCountResult = await db.select({ count: count() }).from(schema.pullRequests).limit(1);
-    const prCount = prCountResult[0]?.count || 0;
+    const prCount = Number(prCountResult[0]?.count) || 0;
 
     // 2. Trending Developers - Get users with most recent activity
     const topUsers = await db.query.users.findMany({
@@ -104,19 +104,19 @@ export const GET: APIRoute = withErrorHandler(async () => {
         .from(schema.commits)
         .where(gte(schema.commits.authorDate, oneDayAgo))
         .limit(1);
-    const commitsToday = commitsTodayResult[0]?.count || 0;
+    const commitsToday = Number(commitsTodayResult[0]?.count) || 0;
 
     const prsMergedResult = await db.select({ count: count() })
         .from(schema.pullRequests)
         .where(eq(schema.pullRequests.state, 'merged'))
         .limit(1);
-    const prsMerged = prsMergedResult[0]?.count || 0;
+    const prsMerged = Number(prsMergedResult[0]?.count) || 0;
 
     const issuesClosedResult = await db.select({ count: count() })
         .from(schema.issues)
         .where(eq(schema.issues.state, 'closed'))
         .limit(1);
-    const issuesClosed = issuesClosedResult[0]?.count || 0;
+    const issuesClosed = Number(issuesClosedResult[0]?.count) || 0;
 
     // Active users - users who have activity in last 24 hours
     const activeUsers = await db.selectDistinct({ userId: schema.activities.userId })
