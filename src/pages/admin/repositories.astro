@@ -48,7 +48,7 @@ const [repos, totalResult] = await Promise.all([
     .select({ count: sql<number>`count(*)` })
     .from(schema.repositories)
     .where(whereClause)
-    .get(),
+    ,
 ]);
 
 const total = (totalResult as { count: number } | undefined)?.count || 0;

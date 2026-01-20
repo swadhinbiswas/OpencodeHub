@@ -71,7 +71,7 @@ const issueCountResult = (await db
             eq(schema.issues.state, "open"),
         ),
     )
-    .get()) as { count: number } | undefined;
+    ) as { count: number }[];
 
 repo.openIssueCount = issueCountResult?.count || 0;
 
@@ -97,7 +97,7 @@ const [recentIssues] = await (db as any)
             gte(schema.issues.createdAt, thirtyDaysAgo.toISOString()),
         ),
     )
-    .get();
+    ;
 
 const [recentPRs] = await (db as any)
     .select({ count: count() })
@@ -108,7 +108,7 @@ const [recentPRs] = await (db as any)
             gte(schema.pullRequests.createdAt, thirtyDaysAgo.toISOString()),
         ),
     )
-    .get();
+    ;
 
 const [closedIssues] = await (db as any)
     .select({ count: count() })
@@ -120,7 +120,7 @@ const [closedIssues] = await (db as any)
             gte(schema.issues.updatedAt, thirtyDaysAgo.toISOString()),
         ),
     )
-    .get();
+    ;
 
 const [mergedPRs] = await (db as any)
     .select({ count: count() })
@@ -132,7 +132,7 @@ const [mergedPRs] = await (db as any)
             gte(schema.pullRequests.updatedAt, thirtyDaysAgo.toISOString()),
         ),
     )
-    .get();
+    ;
 ---
 
 <BaseLayout title={`Insights · ${repo.owner}/${repo.name}`}>
