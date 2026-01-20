@@ -47,7 +47,7 @@ const openIssueCount =
                     eq(schema.issues.state, "open"),
                 ),
             )
-            .get()) as { count: number } | undefined
+            ) as { count: number }[]
     )?.count || 0;
 
 const repoInfo = {

@@ -65,11 +65,10 @@ const issueCountResult = await db
       eq(schema.issues.repositoryId, repoData.id),
       eq(schema.issues.state, "open"),
     ),
-  )
-  .get();
+  );
 
 const openIssueCount =
-  (issueCountResult as { count: number } | undefined)?.count || 0;
+  (issueCountResult as { count: number }[])?.[0]?.count || 0;
 
 // 2. Git Operations
 // Extract branch and path from [...ref]

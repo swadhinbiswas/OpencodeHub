@@ -63,19 +63,19 @@ const [totalUsers, activeUsers, adminUsers] = await Promise.all([
     // @ts-expect-error: count argument mismatch
     .select({ count: sql<number>`count(*)` })
     .from(schema.users)
-    .get() as { count: number } | undefined,
+    ,
   db
     // @ts-expect-error: count argument mismatch
     .select({ count: sql<number>`count(*)` })
     .from(schema.users)
     .where(eq(schema.users.isActive, true))
-    .get() as { count: number } | undefined,
+    ,
   db
     // @ts-expect-error: count argument mismatch
     .select({ count: sql<number>`count(*)` })
     .from(schema.users)
     .where(eq(schema.users.isAdmin, true))
-    .get() as { count: number } | undefined,
+    ,
 ]);
 ---
 

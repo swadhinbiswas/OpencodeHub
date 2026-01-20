@@ -64,10 +64,9 @@ const issueCountResult = await (db as any)
       eq(schema.issues.repositoryId, repoData.id),
       eq(schema.issues.state, "open"),
     ),
-  )
-  .get();
+  );
 
-const openIssueCount = issueCountResult?.count || 0;
+const openIssueCount = issueCountResult?.[0]?.count || 0;
 
 // 2. Git Operations
 const currentBranch = repoData.defaultBranch;

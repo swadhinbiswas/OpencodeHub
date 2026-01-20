@@ -59,7 +59,7 @@ const issueCountResult = await db
       eq(schema.issues.state, "open"),
     ),
   )
-  .get();
+  ;
 
 const openIssueCount =
   (issueCountResult as { count: number } | undefined)?.count || 0;
