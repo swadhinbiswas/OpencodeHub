@@ -64,7 +64,7 @@ export async function analyzeRepository(repoId: string, userId: string | null = 
                 const deletions = diffs.reduce((sum, d) => sum + d.deletions, 0);
 
                 // Safely convert dates, falling back to current time if invalid
-                const safeDate = (d: Date) => (d && !isNaN(d.getTime())) ? d.toISOString() : new Date().toISOString();
+                const safeDate = (d: Date) => (d && !isNaN(d.getTime())) ? d : new Date();
 
                 await db.insert(schema.commits).values({
                     id: crypto.randomUUID(),
