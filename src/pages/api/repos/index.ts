@@ -22,7 +22,7 @@ import {
 } from '@/lib/api';
 import { generateId, now, slugify, isValidRepoName } from '@/lib/utils';
 import { initRepository } from '@/lib/git';
-import { getDiskPath } from '@/lib/git-storage';
+import { getDiskPath, initRepoInStorage, finalizeRepoInit, isCloudStorage } from '@/lib/git-storage';
 
 const createRepoSchema = z.object({
   name: z.string().min(1).max(100),
@@ -247,7 +247,10 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
 
   // Initialize git repository
   try {
-    await initRepository(diskPath, {
+    // Get local path for git operations (temp path for cloud storage, direct path for local)
+    const localGitPath = await initRepoInStorage(user.username, slug);
+
+    await initRepository(localGitPath, {
       defaultBranch,
       readme,
       gitignoreTemplate,
@@ -255,6 +258,12 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
       repoName: name,
       ownerName: user.displayName || user.username,
     });
+
+    // If using cloud storage, upload the initialized repo
+    if (await isCloudStorage()) {
+      await finalizeRepoInit(user.username, slug);
+      logger.info({ repoId, diskPath }, 'Repository synced to cloud storage');
+    }
   } catch (error) {
     // Rollback database entry if git init fails
     await db.delete(repositories).where(eq(repositories.id, repoId));
