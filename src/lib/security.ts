@@ -1,4 +1,5 @@
 import { getDatabase, schema } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { generateId } from "@/lib/utils";
 import Dockerode from "dockerode";
 import { eq } from "drizzle-orm";
@@ -14,7 +15,7 @@ export async function runSecurityScan(
     scanId: string,
     repositoryId: string
 ) {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
     const docker = new Dockerode({ socketPath: "/var/run/docker.sock" });
     const tempDir = join("/tmp", `scan-${scanId}`);
 

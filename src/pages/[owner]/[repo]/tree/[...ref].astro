@@ -38,7 +38,7 @@ if (!user) return Astro.redirect("/404");
 const repoData = await db.query.repositories.findFirst({
   where: and(
     eq(schema.repositories.ownerId, user.id),
-    eq(schema.repositories.name, repoName!)
+    eq(schema.repositories.name, repoName!),
   ),
   with: {
     owner: true,
@@ -57,17 +57,19 @@ if (!hasAccess) {
 
 // Fetch issue count
 const issueCountResult = await db
+  // @ts-expect-error: count argument mismatch
   .select({ count: sql<number>`count(*)` })
   .from(schema.issues)
   .where(
     and(
       eq(schema.issues.repositoryId, repoData.id),
-      eq(schema.issues.state, "open")
-    )
+      eq(schema.issues.state, "open"),
+    ),
   )
   .get();
 
-const openIssueCount = issueCountResult?.count || 0;
+const openIssueCount =
+  (issueCountResult as { count: number } | undefined)?.count || 0;
 
 // 2. Git Operations
 // Extract branch and path from [...ref]
@@ -75,10 +77,10 @@ const openIssueCount = issueCountResult?.count || 0;
 // We need to match against valid branches
 let branches: string[] = [repoData.defaultBranch];
 try {
-    const branchInfos = await getBranches(repoData.diskPath);
-    branches = branchInfos.map(b => b.name);
+  const branchInfos = await getBranches(repoData.diskPath);
+  branches = branchInfos.map((b) => b.name);
 } catch (e) {
-    console.error("Error fetching branches", e);
+  console.error("Error fetching branches", e);
 }
 
 const refParam = Astro.params.ref || "";
@@ -87,20 +89,20 @@ let currentPath = "";
 
 // Find the longest matching branch name
 const matchingBranch = branches
-    .filter(b => refParam === b || refParam.startsWith(b + "/"))
-    .sort((a, b) => b.length - a.length)[0];
+  .filter((b) => refParam === b || refParam.startsWith(b + "/"))
+  .sort((a, b) => b.length - a.length)[0];
 
 if (matchingBranch) {
-    currentBranch = matchingBranch;
-    currentPath = refParam.slice(matchingBranch.length).replace(/^\//, "");
+  currentBranch = matchingBranch;
+  currentPath = refParam.slice(matchingBranch.length).replace(/^\//, "");
 } else {
-    // If no match, maybe it's a commit hash or we default to main and treat Ref as path?
-    // For now, assume default branch if no match found (or 404)
-    // Actually, if we are in /tree/, we expect the first part to be a ref.
-    // If it's a valid commit SHA, we could use that.
-    // Let's assume it's a branch for now.
-    currentBranch = refParam.split("/")[0];
-    currentPath = refParam.split("/").slice(1).join("/");
+  // If no match, maybe it's a commit hash or we default to main and treat Ref as path?
+  // For now, assume default branch if no match found (or 404)
+  // Actually, if we are in /tree/, we expect the first part to be a ref.
+  // If it's a valid commit SHA, we could use that.
+  // Let's assume it's a branch for now.
+  currentBranch = refParam.split("/")[0];
+  currentPath = refParam.split("/").slice(1).join("/");
 }
 
 let files: any[] = [];
@@ -111,7 +113,7 @@ let readme = "";
 function timeAgo(date: Date | string | number) {
   if (!date) return "";
   const seconds = Math.floor(
-    (new Date().getTime() - new Date(date).getTime()) / 1000
+    (new Date().getTime() - new Date(date).getTime()) / 1000,
   );
   let interval = seconds / 31536000;
   if (interval > 1) return Math.floor(interval) + " years ago";
@@ -131,7 +133,7 @@ try {
   const gitFiles = await listFiles(
     repoData.diskPath,
     currentBranch,
-    currentPath
+    currentPath,
   );
 
   // Map to UI format with commits
@@ -140,7 +142,7 @@ try {
       const commit = await getLastCommit(
         repoData.diskPath,
         currentBranch,
-        f.path
+        f.path,
       );
 
       const lastCommit = commit
@@ -156,7 +158,7 @@ try {
         type: f.type,
         lastCommit,
       };
-    })
+    }),
   );
 
   // Sort: directories first
@@ -182,7 +184,7 @@ try {
     const content = await getFileContent(
       repoData.diskPath,
       readmeFile.name,
-      currentBranch
+      currentBranch,
     );
     if (content && !content.isBinary) {
       readme = await renderMarkdown(content.content);

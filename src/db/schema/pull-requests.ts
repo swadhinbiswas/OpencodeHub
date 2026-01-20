@@ -4,12 +4,12 @@
  */
 
 import { relations } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { labels, milestones } from "./issues";
 import { repositories } from "./repositories";
 import { users } from "./users";
 
-export const pullRequests = sqliteTable("pull_requests", {
+export const pullRequests = pgTable("pull_requests", {
   id: text("id").primaryKey(),
   repositoryId: text("repository_id")
     .notNull()
@@ -34,9 +34,9 @@ export const pullRequests = sqliteTable("pull_requests", {
   baseSha: text("base_sha").notNull(),
 
   // Merge info
-  isDraft: integer("is_draft", { mode: "boolean" }).default(false),
-  isMerged: integer("is_merged", { mode: "boolean" }).default(false),
-  mergedAt: text("merged_at"),
+  isDraft: boolean("is_draft").default(false),
+  isMerged: boolean("is_merged").default(false),
+  mergedAt: timestamp("merged_at"),
   mergedById: text("merged_by_id").references(() => users.id),
   mergeCommitSha: text("merge_commit_sha"),
   mergeSha: text("merge_sha"),
@@ -50,26 +50,22 @@ export const pullRequests = sqliteTable("pull_requests", {
   reviewCount: integer("review_count").default(0),
 
   // Status
-  mergeable: integer("mergeable", { mode: "boolean" }),
+  mergeable: boolean("mergeable"),
   mergeableState: text("mergeable_state"), // clean, dirty, blocked, unknown
-  rebaseable: integer("rebaseable", { mode: "boolean" }),
+  rebaseable: boolean("rebaseable"),
 
   // Settings
-  maintainerCanModify: integer("maintainer_can_modify", {
-    mode: "boolean",
-  }).default(true),
-  allowAutoMerge: integer("allow_auto_merge", { mode: "boolean" }).default(
-    false
-  ),
+  maintainerCanModify: boolean("maintainer_can_modify").default(true),
+  allowAutoMerge: boolean("allow_auto_merge").default(false),
   autoMergeMethod: text("auto_merge_method"),
 
-  closedAt: text("closed_at"),
+  closedAt: timestamp("closed_at"),
   closedById: text("closed_by_id").references(() => users.id),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const pullRequestReviews = sqliteTable("pull_request_reviews", {
+export const pullRequestReviews = pgTable("pull_request_reviews", {
   id: text("id").primaryKey(),
   pullRequestId: text("pull_request_id")
     .notNull()
@@ -80,15 +76,15 @@ export const pullRequestReviews = sqliteTable("pull_request_reviews", {
   state: text("state").notNull(), // pending, approved, changes_requested, commented, dismissed
   body: text("body"),
   commitSha: text("commit_sha"),
-  submittedAt: text("submitted_at"),
-  dismissedAt: text("dismissed_at"),
+  submittedAt: timestamp("submitted_at"),
+  dismissedAt: timestamp("dismissed_at"),
   dismissedById: text("dismissed_by_id").references(() => users.id),
   dismissalReason: text("dismissal_reason"),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const pullRequestComments = sqliteTable("pull_request_comments", {
+export const pullRequestComments = pgTable("pull_request_comments", {
   id: text("id").primaryKey(),
   pullRequestId: text("pull_request_id")
     .notNull()
@@ -108,16 +104,16 @@ export const pullRequestComments = sqliteTable("pull_request_comments", {
   originalLine: integer("original_line"),
   inReplyToId: text("in_reply_to_id").references((): any => pullRequestComments.id),
   reactions: text("reactions"), // JSON
-  isResolved: integer("is_resolved", { mode: "boolean" }).default(false),
+  isResolved: boolean("is_resolved").default(false),
   resolvedById: text("resolved_by_id").references(() => users.id),
-  resolvedAt: text("resolved_at"),
-  isEdited: integer("is_edited", { mode: "boolean" }).default(false),
-  editedAt: text("edited_at"),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+  resolvedAt: timestamp("resolved_at"),
+  isEdited: boolean("is_edited").default(false),
+  editedAt: timestamp("edited_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const pullRequestLabels = sqliteTable("pull_request_labels", {
+export const pullRequestLabels = pgTable("pull_request_labels", {
   id: text("id").primaryKey(),
   pullRequestId: text("pull_request_id")
     .notNull()
@@ -127,7 +123,7 @@ export const pullRequestLabels = sqliteTable("pull_request_labels", {
     .references(() => labels.id, { onDelete: "cascade" }),
 });
 
-export const pullRequestAssignees = sqliteTable("pull_request_assignees", {
+export const pullRequestAssignees = pgTable("pull_request_assignees", {
   id: text("id").primaryKey(),
   pullRequestId: text("pull_request_id")
     .notNull()
@@ -135,10 +131,10 @@ export const pullRequestAssignees = sqliteTable("pull_request_assignees", {
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  assignedAt: text("assigned_at").notNull().default("CURRENT_TIMESTAMP"),
+  assignedAt: timestamp("assigned_at").notNull().defaultNow(),
 });
 
-export const pullRequestReviewers = sqliteTable("pull_request_reviewers", {
+export const pullRequestReviewers = pgTable("pull_request_reviewers", {
   id: text("id").primaryKey(),
   pullRequestId: text("pull_request_id")
     .notNull()
@@ -146,11 +142,11 @@ export const pullRequestReviewers = sqliteTable("pull_request_reviewers", {
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  isRequired: integer("is_required", { mode: "boolean" }).default(false),
-  requestedAt: text("requested_at").notNull().default("CURRENT_TIMESTAMP"),
+  isRequired: boolean("is_required").default(false),
+  requestedAt: timestamp("requested_at").notNull().defaultNow(),
 });
 
-export const pullRequestChecks = sqliteTable("pull_request_checks", {
+export const pullRequestChecks = pgTable("pull_request_checks", {
   id: text("id").primaryKey(),
   pullRequestId: text("pull_request_id")
     .notNull()
@@ -162,7 +158,7 @@ export const pullRequestChecks = sqliteTable("pull_request_checks", {
   externalId: text("external_id"),
   detailsUrl: text("details_url"),
   output: text("output"), // JSON { title, summary, text }
-  startedAt: text("started_at"),
+  startedAt: timestamp("started_at"),
 });
 
 // Relations

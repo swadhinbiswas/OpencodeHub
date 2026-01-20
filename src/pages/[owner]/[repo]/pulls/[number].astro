@@ -3,9 +3,13 @@ import RepoHeader from "@/components/repo/RepoHeader.astro";
 import { Button } from "@/components/ui/button";
 import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-// ... imports
-import { compareBranches, type CommitInfo, type DiffInfo } from "@/lib/git";
-// ... other imports
+import { canWriteRepo } from "@/lib/permissions";
+import {
+  getRepoPath,
+  compareBranches,
+  type CommitInfo,
+  type DiffInfo,
+} from "@/lib/git";
 import { and, eq, sql, asc, count } from "drizzle-orm";
 import {
   GitPullRequest,
@@ -20,25 +24,81 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-// ... code ...
+const { owner: ownerName, repo: repoName, number } = Astro.params;
+const db = getDatabase();
 
-// Fetch Diff Data
-let diffData: { commits: CommitInfo[]; diffs: DiffInfo[] } = {
-  commits: [],
-  diffs: [],
-};
-let mergeError = "";
+const user = Astro.locals.user;
 
+// Fetch Repo & Owner
+const repoOwnerUser = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!repoOwnerUser) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, repoOwnerUser.id),
+    eq(schema.repositories.name, repoName!),
+  ),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const canWrite = await canWriteRepo(user?.id, repoData);
+
+// Fetch PR
+const pr = await db.query.pullRequests.findFirst({
+  where: and(
+    eq(schema.pullRequests.repositoryId, repoData.id),
+    eq(schema.pullRequests.number, parseInt(number!)),
+  ),
+  with: {
+    author: true,
+  },
+});
+
+if (!pr) return Astro.redirect("/404");
+
+// Fetch Stack Info
+let stackInfo = null;
 try {
-  const repoPath = getRepoPath(repoData.owner.username, repoData.name);
-  diffData = await compareBranches(repoPath, pr.baseBranch, pr.headBranch);
-} catch (error) {
-  console.error("Error fetching comparison:", error);
+  const stackEntry = await db.query.prStackEntries.findFirst({
+    where: eq(schema.prStackEntries.pullRequestId, pr.id),
+    with: {
+      stack: true,
+    },
+  });
+
+  if (stackEntry) {
+    const entries = await db.query.prStackEntries.findMany({
+      where: eq(schema.prStackEntries.stackId, stackEntry.stackId),
+      orderBy: asc(schema.prStackEntries.stackOrder),
+      with: {
+        pullRequest: true,
+      },
+    });
+
+    stackInfo = {
+      baseBranch: stackEntry.stack.baseBranch,
+      entries: entries.map((e) => ({
+        order: e.stackOrder,
+        pr: e.pullRequest,
+      })),
+    };
+  }
+} catch (e) {
+  console.error("Error fetching stack info:", e);
 }
 
 // Fetch open issue count (for header)
-const issueCountResult = await db
-  .select({ count: count() })
+const issueCountResult = (await db
+  // @ts-expect-error: count argument mismatch
+  .select({ count: sql<number>`count(*)` })
   .from(schema.issues)
   .where(
     and(
@@ -46,7 +106,7 @@ const issueCountResult = await db
       eq(schema.issues.state, "open"),
     ),
   )
-  .get();
+  .get()) as { count: number } | undefined;
 
 const openIssueCount = issueCountResult?.count || 0;
 
@@ -68,6 +128,19 @@ const repo = {
   openIssueCount: openIssueCount,
   openPrCount: repoData.openPrCount,
 };
+
+// Fetch Diff Data
+let diffData: { commits: CommitInfo[]; diffs: DiffInfo[] } = {
+  commits: [],
+  diffs: [],
+};
+
+try {
+  const repoPath = getRepoPath(repoData.owner.username, repoData.name);
+  diffData = await compareBranches(repoPath, pr.baseBranch, pr.headBranch);
+} catch (error) {
+  console.error("Error fetching comparison:", error);
+}
 ---
 
 <BaseLayout
@@ -140,7 +213,7 @@ const repo = {
                 href="#commits"
                 class="border-transparent text-muted-foreground hover:text-foreground hover:border-border whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2"
               >
-                <GitCommit className="h-4 w-4" />
+                <GitCommitIcon className="h-4 w-4" />
                 Commits
                 <span
                   class="bg-muted text-muted-foreground text-xs rounded-full px-2"
@@ -276,7 +349,8 @@ const repo = {
                   </span>
                 </div>
                 <div class="space-y-2">
-                  <div class="text-xs text-muted-foreground mb-2">
+                  <div class="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                    <GitCommitIcon className="h-4 w-4 text-muted-foreground mt-0.5" />
                     Base:{" "}
                     <code class="bg-muted px-1 py-0.5 rounded">
                       {stackInfo.baseBranch}

@@ -58,3 +58,18 @@ export * from "./branch-protection";
 
 // System Config
 export * from "./system-config";
+
+// === Enhanced Graphite Features ===
+
+// Custom Inbox Sections
+export * from "./inbox-sections";
+
+// Workflow Automations
+export * from "./automations";
+
+// AI Review Custom Rules
+export * from "./ai-review-rules";
+
+// Notification Preferences
+export * from "./notification-preferences";
+

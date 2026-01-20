@@ -4,6 +4,7 @@
  */
 
 import { eq, and } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDatabase, schema } from "@/db";
 import { logger } from "@/lib/logger";
 
@@ -50,7 +51,7 @@ export interface SlackConfig {
  * Get Slack config for an organization
  */
 export async function getSlackConfig(organizationId: string): Promise<SlackConfig | null> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     const workspace = await db.query.slackWorkspaces.findFirst({
         where: eq(schema.slackWorkspaces.teamId, organizationId),
@@ -117,7 +118,7 @@ export async function notifyPrEvent(
         comment?: string;
     }
 ): Promise<void> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
     const config = await getSlackConfig(organizationId);
 
     if (!config) {
@@ -258,7 +259,7 @@ export async function notifyUserDm(
     message: string,
     url?: string
 ): Promise<void> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // Get user's Slack mapping
     const userMapping = await db.query.slackUserMappings.findFirst({
@@ -328,7 +329,7 @@ export async function notifyMergeQueueStatus(
     const config = await getSlackConfig(organizationId);
     if (!config) return;
 
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
     const mappings = await db.query.slackChannelMappings.findMany({
         where: and(
             eq(schema.slackChannelMappings.repositoryId, repositoryId),

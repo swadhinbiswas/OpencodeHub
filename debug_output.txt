@@ -1,0 +1,39 @@
+Note: Unnecessary 
+Note: use of -X or 
+Note: --request, 
+Note: POST is 
+Note: already 
+Note: inferred.
+* Host localhost:3000 was resolved.
+* IPv6: ::1
+* IPv4: 127.0.0.1
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0*   Trying [::1]:3000...
+* Established connection to localhost (::1 port 3000) from ::1 port 56498 
+* using HTTP/1.x
+> POST /api/auth/register HTTP/1.1
+> Host: localhost:3000
+> User-Agent: curl/8.18.0
+> Accept: */*
+> Content-Type: application/json
+> Content-Length: 127
+> 
+} [127 bytes data]
+* upload completely sent off: 127 bytes
+< HTTP/1.1 429 Too Many Requests
+< Vary: Origin
+< content-type: application/json
+< retry-after: 815
+< x-ratelimit-limit: 5
+< x-ratelimit-remaining: 0
+< x-ratelimit-reset: 2026-01-20T18:28:40.319Z
+< Date: Tue, 20 Jan 2026 18:15:05 GMT
+< Connection: keep-alive
+< Keep-Alive: timeout=5
+< Transfer-Encoding: chunked
+< 
+{ [106 bytes data]
+100    222   0     95 100    127  11640  15561                              0100    222   0     95 100    127  11509  15386                              0100    222   0     95 100    127  11384  15218                              0
+* Connection #0 to host localhost:3000 left intact
+{"error":"Too many requests","message":"Rate limit exceeded. Please try again in 815 seconds."}

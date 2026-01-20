@@ -1,15 +1,19 @@
 import { getDatabase, schema } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { eq } from "drizzle-orm";
 import type { APIRoute } from "astro";
+import { withErrorHandler } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { forbidden, success, badRequest } from "@/lib/api";
 
 // GET /api/admin/config/general
-export const GET: APIRoute = async ({ locals }) => {
+export const GET: APIRoute = withErrorHandler(async ({ locals }) => {
     const user = locals.user;
     if (!user?.isAdmin) {
-        return new Response("Unauthorized", { status: 403 });
+        return forbidden();
     }
 
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // Fetch configs
     const configs = await db.query.systemConfig.findMany({
@@ -34,27 +38,25 @@ export const GET: APIRoute = async ({ locals }) => {
         config = { ...config, ...JSON.parse(configRow.value) };
     }
 
-    return new Response(JSON.stringify(config), {
-        headers: { "Content-Type": "application/json" }
-    });
-};
+    return success(config);
+});
 
 // POST /api/admin/config/general
-export const POST: APIRoute = async ({ request, locals }) => {
+export const POST: APIRoute = withErrorHandler(async ({ request, locals }) => {
     const user = locals.user;
     if (!user?.isAdmin) {
-        return new Response("Unauthorized", { status: 403 });
+        return forbidden();
     }
 
     let config;
     try {
         config = await request.json();
     } catch (e) {
-        return new Response("Invalid JSON", { status: 400 });
+        return badRequest("Invalid JSON");
     }
 
     // Save to DB
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
     const value = JSON.stringify(config);
 
     await db.insert(schema.systemConfig)
@@ -67,10 +69,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
             target: schema.systemConfig.key,
             set: {
                 value,
-                updatedAt: new Date().toISOString(),
+                updatedAt: new Date(),
                 updatedById: user.id
             }
         });
 
-    return new Response(JSON.stringify({ success: true }), { status: 200 });
-};
+    logger.info({ adminId: user.id }, "General config updated");
+
+    return success({ success: true });
+});

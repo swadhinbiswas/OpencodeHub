@@ -4,10 +4,12 @@
  */
 
 import { eq, and, asc, desc, lt, gt } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDatabase, schema } from "@/db";
 import { generateId } from "./utils";
 import { getStack, getStackForPr } from "./stacks";
 import { recordPrMetrics } from "./developer-metrics";
+import { emitQueueEvent } from "./realtime";
 
 // Types
 export interface MergeQueueItem {
@@ -36,7 +38,7 @@ export interface AddToQueueOptions {
  * Add a PR to the merge queue
  */
 export async function addToMergeQueue(options: AddToQueueOptions): Promise<typeof schema.mergeQueue.$inferSelect> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // Check if already in queue
     const existing = await db.query.mergeQueue.findFirst({
@@ -75,7 +77,7 @@ export async function addToMergeQueue(options: AddToQueueOptions): Promise<typeo
         position: maxPosition + 1,
         ciStatus: "pending",
         addedById: options.addedById,
-        addedAt: new Date().toISOString(),
+        addedAt: new Date(),
         mergeMethod: options.mergeMethod || "merge",
         deleteOnMerge: true,
     };
@@ -89,7 +91,7 @@ export async function addToMergeQueue(options: AddToQueueOptions): Promise<typeo
  * Remove a PR from the merge queue
  */
 export async function removeFromMergeQueue(pullRequestId: string): Promise<void> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     await db.delete(schema.mergeQueue)
         .where(eq(schema.mergeQueue.pullRequestId, pullRequestId));
@@ -99,7 +101,7 @@ export async function removeFromMergeQueue(pullRequestId: string): Promise<void>
  * Get the merge queue for a repository
  */
 export async function getMergeQueue(repositoryId: string): Promise<MergeQueueItem[]> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     const queueEntries = await db.query.mergeQueue.findMany({
         where: and(
@@ -144,7 +146,7 @@ export async function getMergeQueue(repositoryId: string): Promise<MergeQueueIte
  * Check if a PR can be merged (all parent PRs in stack must be merged first)
  */
 export async function canMerge(pullRequestId: string): Promise<{ canMerge: boolean; reason?: string }> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // Get the PR
     const pr = await db.query.pullRequests.findFirst({
@@ -263,7 +265,7 @@ export async function processNextInQueue(repositoryId: string): Promise<{
     entry?: typeof schema.mergeQueue.$inferSelect;
     reason?: string;
 }> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // Get next item to process
     const nextItem = await db.query.mergeQueue.findFirst({
@@ -310,7 +312,7 @@ export async function processNextInQueue(repositoryId: string): Promise<{
     await db.update(schema.mergeQueue)
         .set({
             status: "merging",
-            startedAt: new Date().toISOString()
+            startedAt: new Date()
         })
         .where(eq(schema.mergeQueue.id, nextItem.id));
 
@@ -332,7 +334,7 @@ export async function processNextInQueue(repositoryId: string): Promise<{
                 .set({
                     status: "failed",
                     failureReason: mergeResult.message,
-                    completedAt: new Date().toISOString()
+                    completedAt: new Date()
                 })
                 .where(eq(schema.mergeQueue.id, nextItem.id));
 
@@ -344,10 +346,10 @@ export async function processNextInQueue(repositoryId: string): Promise<{
             .set({
                 state: "merged",
                 isMerged: true, // Keep this as it's a separate flag
-                mergedAt: new Date().toISOString(),
+                mergedAt: new Date(),
                 mergedById: pr.authorId, // In non-queue, this is the merger. In queue, let's blame author or bot?
                 mergeCommitSha: mergeResult.sha, // Assuming mergeResult.sha contains the merge commit SHA
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date()
             })
             .where(eq(schema.pullRequests.id, pr.id));
 
@@ -387,7 +389,7 @@ export async function processNextInQueue(repositoryId: string): Promise<{
         await db.update(schema.mergeQueue)
             .set({
                 status: "merged",
-                completedAt: new Date().toISOString()
+                completedAt: new Date()
             })
             .where(eq(schema.mergeQueue.id, nextItem.id));
 
@@ -402,7 +404,7 @@ export async function processNextInQueue(repositoryId: string): Promise<{
             .set({
                 status: "failed",
                 failureReason: error.message || "Unexpected error",
-                completedAt: new Date().toISOString()
+                completedAt: new Date()
             })
             .where(eq(schema.mergeQueue.id, nextItem.id));
 
@@ -414,7 +416,7 @@ export async function processNextInQueue(repositoryId: string): Promise<{
  * Update queue positions after a merge
  */
 export async function updateQueuePositions(repositoryId: string): Promise<void> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     const items = await db.query.mergeQueue.findMany({
         where: and(
@@ -450,7 +452,7 @@ export async function updateQueuePriority(
     entryId: string,
     newPriority: number
 ): Promise<void> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     await db.update(schema.mergeQueue)
         .set({ priority: newPriority })

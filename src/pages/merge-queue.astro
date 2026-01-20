@@ -1,0 +1,627 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, desc, and, asc } from "drizzle-orm";
+import {
+    GitMerge,
+    Clock,
+    CheckCircle2,
+    XCircle,
+    Loader2,
+    Pause,
+    Play,
+    Layers,
+    AlertCircle,
+    Trash2,
+    ArrowUp,
+    ArrowDown,
+    RefreshCw,
+} from "lucide-react";
+
+const user = Astro.locals.user;
+if (!user) {
+    return Astro.redirect("/login");
+}
+
+const db = getDatabase();
+const repoFilter = Astro.url.searchParams.get("repo") || "";
+
+// Get all repositories user has access to
+let userRepos: { id: string; name: string; fullName?: string }[] = [];
+try {
+    const repos = await db.query.repositories.findMany({
+        where: eq(schema.repositories.ownerId, user.id),
+        columns: { id: true, name: true },
+        with: { owner: { columns: { username: true } } },
+    });
+    userRepos = repos.map((r) => ({
+        id: r.id,
+        name: r.name,
+        fullName: `${r.owner.username}/${r.name}`,
+    }));
+} catch (e) {}
+
+// Get merge queue items
+interface QueueItemWithDetails {
+    id: string;
+    position: number;
+    status: string;
+    priority: number;
+    mergeMethod: string;
+    addedAt: string;
+    pr: {
+        number: number;
+        title: string;
+        headBranch: string;
+        baseBranch: string;
+        additions?: number;
+        deletions?: number;
+        author?: { username: string; avatarUrl?: string };
+    } | null;
+    stackInfo?: {
+        id: string;
+        name: string;
+        position: number;
+        total: number;
+    };
+    ciStatus?: string;
+    estimatedMerge?: Date;
+}
+
+let queueItems: QueueItemWithDetails[] = [];
+let isPaused = false;
+let lastProcessedAt: string | null = null;
+
+try {
+    const query = repoFilter
+        ? and(
+              eq(schema.mergeQueue.repositoryId, repoFilter),
+              eq(schema.mergeQueue.status, "pending"),
+          )
+        : eq(schema.mergeQueue.status, "pending");
+
+    const items = await db.query.mergeQueue.findMany({
+        where: query,
+        orderBy: [
+            desc(schema.mergeQueue.priority),
+            asc(schema.mergeQueue.position),
+        ],
+        with: {
+            pullRequest: {
+                with: {
+                    author: true,
+                },
+            },
+        },
+    });
+
+    // Calculate estimated merge times and add stack info
+    let currentPosition = 1;
+    const avgCiTime = 10; // minutes
+
+    for (const item of items) {
+        const estimatedMerge = new Date(
+            Date.now() + currentPosition * avgCiTime * 60 * 1000,
+        );
+
+        // Check if PR is part of a stack
+        let stackInfo = undefined;
+        try {
+            const stackEntry = await db.query.prStackEntries.findFirst({
+                where: eq(
+                    schema.prStackEntries.pullRequestId,
+                    item.pullRequestId,
+                ),
+            });
+            if (stackEntry) {
+                const stack = await db.query.prStacks.findFirst({
+                    where: eq(schema.prStacks.id, stackEntry.stackId),
+                });
+                const entries = await db.query.prStackEntries.findMany({
+                    where: eq(
+                        schema.prStackEntries.stackId,
+                        stackEntry.stackId,
+                    ),
+                });
+                if (stack) {
+                    stackInfo = {
+                        id: stack.id,
+                        name: stack.name || "Unnamed Stack",
+                        position: stackEntry.stackOrder,
+                        total: entries.length,
+                    };
+                }
+            }
+        } catch (e) {}
+
+        queueItems.push({
+            id: item.id,
+            position: currentPosition,
+            status: item.status,
+            priority: item.priority,
+            mergeMethod: item.mergeMethod || "merge",
+            addedAt: item.addedAt,
+            pr: item.pullRequest
+                ? {
+                      number: item.pullRequest.number,
+                      title: item.pullRequest.title,
+                      headBranch: item.pullRequest.headBranch,
+                      baseBranch: item.pullRequest.baseBranch,
+                      additions: item.pullRequest.additions || 0,
+                      deletions: item.pullRequest.deletions || 0,
+                      author: item.pullRequest.author
+                          ? {
+                                username: item.pullRequest.author.username,
+                                avatarUrl:
+                                    item.pullRequest.author.avatarUrl ||
+                                    undefined,
+                            }
+                          : undefined,
+                  }
+                : null,
+            stackInfo,
+            ciStatus: "pending", // Would come from CI system
+            estimatedMerge,
+        });
+
+        currentPosition++;
+    }
+} catch (e) {
+    console.error("Failed to fetch merge queue:", e);
+}
+
+function getStatusIcon(status: string) {
+    switch (status) {
+        case "pending":
+            return {
+                icon: Clock,
+                color: "text-yellow-400",
+                bg: "bg-yellow-500/10",
+            };
+        case "running_ci":
+            return {
+                icon: Loader2,
+                color: "text-blue-400",
+                bg: "bg-blue-500/10",
+            };
+        case "ready":
+            return {
+                icon: CheckCircle2,
+                color: "text-green-400",
+                bg: "bg-green-500/10",
+            };
+        case "merging":
+            return {
+                icon: GitMerge,
+                color: "text-purple-400",
+                bg: "bg-purple-500/10",
+            };
+        case "failed":
+            return {
+                icon: XCircle,
+                color: "text-red-400",
+                bg: "bg-red-500/10",
+            };
+        default:
+            return {
+                icon: Clock,
+                color: "text-gray-400",
+                bg: "bg-gray-500/10",
+            };
+    }
+}
+
+function formatTime(date: Date | string) {
+    const d = date instanceof Date ? date : new Date(date);
+    return d.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+}
+
+function timeAgo(date: string) {
+    const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+    if (seconds < 60) return "just now";
+    if (seconds < 3600) return Math.floor(seconds / 60) + "m ago";
+    if (seconds < 86400) return Math.floor(seconds / 3600) + "h ago";
+    return Math.floor(seconds / 86400) + "d ago";
+}
+---
+
+<BaseLayout title="Merge Queue">
+    <div class="container py-8 max-w-5xl">
+        <div class="flex flex-col gap-6">
+            <!-- Header -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="p-2 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30"
+                    >
+                        <GitMerge className="h-6 w-6 text-purple-400" />
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-white">
+                            Merge Queue
+                        </h1>
+                        <p class="text-sm text-gray-400">
+                            {queueItems.length}
+                            {queueItems.length === 1 ? "PR" : "PRs"} in queue
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <!-- Repo Filter -->
+                    {
+                        userRepos.length > 1 && (
+                            <select
+                                id="repo-filter"
+                                class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300"
+                            >
+                                <option value="">All Repositories</option>
+                                {userRepos.map((repo) => (
+                                    <option
+                                        value={repo.id}
+                                        selected={repoFilter === repo.id}
+                                    >
+                                        {repo.fullName || repo.name}
+                                    </option>
+                                ))}
+                            </select>
+                        )
+                    }
+
+                    <!-- Pause/Resume -->
+                    <button
+                        id="toggle-queue-btn"
+                        class:list={[
+                            "flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors border",
+                            isPaused
+                                ? "bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20"
+                                : "bg-yellow-500/10 border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/20",
+                        ]}
+                    >
+                        {
+                            isPaused ? (
+                                <>
+                                    <Play className="h-4 w-4" />
+                                    Resume Queue
+                                </>
+                            ) : (
+                                <>
+                                    <Pause className="h-4 w-4" />
+                                    Pause Queue
+                                </>
+                            )
+                        }
+                    </button>
+
+                    <!-- Refresh -->
+                    <button
+                        onclick="window.location.reload()"
+                        class="p-2 rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 transition-colors"
+                    >
+                        <RefreshCw className="h-4 w-4" />
+                    </button>
+                </div>
+            </div>
+
+            <!-- Queue Status Banner -->
+            {
+                isPaused && (
+                    <div class="flex items-center gap-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                        <AlertCircle className="h-5 w-5 text-yellow-400" />
+                        <span class="text-sm text-yellow-300">
+                            Queue is paused. No PRs will be merged until
+                            resumed.
+                        </span>
+                    </div>
+                )
+            }
+
+            <!-- Queue Items -->
+            <div class="relative">
+                <div
+                    class="absolute -inset-[1px] bg-gradient-to-r from-purple-500/20 via-transparent to-pink-500/20 rounded-xl opacity-50"
+                >
+                </div>
+                <div
+                    class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm overflow-hidden"
+                >
+                    {
+                        queueItems.length === 0 ? (
+                            <div class="text-center py-16">
+                                <div class="relative inline-block mb-4">
+                                    <GitMerge className="h-16 w-16 text-purple-400" />
+                                    <div class="absolute inset-0 bg-purple-500 blur-2xl opacity-20" />
+                                </div>
+                                <h3 class="text-lg font-semibold text-white mb-2">
+                                    Queue is empty
+                                </h3>
+                                <p class="text-gray-500">
+                                    No PRs are waiting to be merged.
+                                </p>
+                                <p class="text-sm text-gray-600 mt-2">
+                                    Add PRs to the queue with{" "}
+                                    <code class="px-1.5 py-0.5 bg-white/10 rounded text-purple-300">
+                                        och queue add &lt;pr&gt;
+                                    </code>
+                                </p>
+                            </div>
+                        ) : (
+                            <div class="divide-y divide-white/5">
+                                {queueItems.map((item, index) => {
+                                    const StatusIcon = getStatusIcon(
+                                        item.status,
+                                    ).icon;
+                                    const statusColor = getStatusIcon(
+                                        item.status,
+                                    ).color;
+                                    const statusBg = getStatusIcon(
+                                        item.status,
+                                    ).bg;
+
+                                    return (
+                                        <div
+                                            class="group flex items-center gap-4 p-4 transition-all hover:bg-white/[0.02]"
+                                            data-queue-item={item.id}
+                                        >
+                                            {/* Position */}
+                                            <div class="flex-shrink-0 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-sm font-bold text-white">
+                                                {item.position}
+                                            </div>
+
+                                            {/* Status Icon */}
+                                            <div
+                                                class={`flex-shrink-0 p-2 rounded-lg ${statusBg}`}
+                                            >
+                                                <StatusIcon
+                                                    className={`h-5 w-5 ${statusColor} ${item.status === "running_ci" ? "animate-spin" : ""}`}
+                                                />
+                                            </div>
+
+                                            {/* PR Info */}
+                                            <div class="flex-1 min-w-0">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="font-medium text-white truncate">
+                                                        {item.pr?.title ||
+                                                            "Unknown PR"}
+                                                    </span>
+                                                    {item.stackInfo && (
+                                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-purple-500/10 text-purple-300 border border-purple-500/30">
+                                                            <Layers className="h-3 w-3" />
+                                                            {
+                                                                item.stackInfo
+                                                                    .position
+                                                            }
+                                                            /
+                                                            {
+                                                                item.stackInfo
+                                                                    .total
+                                                            }
+                                                        </span>
+                                                    )}
+                                                    <span class="px-1.5 py-0.5 rounded text-xs bg-white/10 text-gray-400">
+                                                        {item.mergeMethod}
+                                                    </span>
+                                                </div>
+                                                <div class="flex items-center gap-3 text-sm text-gray-500 mt-1">
+                                                    <span class="flex items-center gap-1">
+                                                        #{item.pr?.number}
+                                                    </span>
+                                                    <span>
+                                                        {item.pr?.headBranch} →{" "}
+                                                        {item.pr?.baseBranch}
+                                                    </span>
+                                                    {item.pr?.author && (
+                                                        <span class="flex items-center gap-1">
+                                                            {item.pr.author
+                                                                .avatarUrl ? (
+                                                                <img
+                                                                    src={
+                                                                        item.pr
+                                                                            .author
+                                                                            .avatarUrl
+                                                                    }
+                                                                    alt=""
+                                                                    class="h-4 w-4 rounded-full"
+                                                                />
+                                                            ) : (
+                                                                <div class="h-4 w-4 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-[8px] font-bold text-white">
+                                                                    {item.pr.author.username[0]?.toUpperCase()}
+                                                                </div>
+                                                            )}
+                                                            {
+                                                                item.pr.author
+                                                                    .username
+                                                            }
+                                                        </span>
+                                                    )}
+                                                    {item.pr?.additions !==
+                                                        undefined && (
+                                                        <span>
+                                                            <span class="text-green-400">
+                                                                +
+                                                                {
+                                                                    item.pr
+                                                                        .additions
+                                                                }
+                                                            </span>
+                                                            <span class="mx-1">
+                                                                /
+                                                            </span>
+                                                            <span class="text-red-400">
+                                                                -
+                                                                {
+                                                                    item.pr
+                                                                        .deletions
+                                                                }
+                                                            </span>
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Estimated Merge Time */}
+                                            <div class="flex-shrink-0 text-right">
+                                                <div class="text-sm text-gray-400">
+                                                    ETA
+                                                </div>
+                                                <div class="text-sm font-medium text-white">
+                                                    {item.estimatedMerge
+                                                        ? formatTime(
+                                                              item.estimatedMerge,
+                                                          )
+                                                        : "-"}
+                                                </div>
+                                            </div>
+
+                                            {/* Actions */}
+                                            <div class="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                {item.priority < 10 && (
+                                                    <button
+                                                        class="p-1.5 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                                                        title="Increase priority"
+                                                        data-action="priority-up"
+                                                    >
+                                                        <ArrowUp className="h-4 w-4" />
+                                                    </button>
+                                                )}
+                                                {item.priority > 0 && (
+                                                    <button
+                                                        class="p-1.5 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                                                        title="Decrease priority"
+                                                        data-action="priority-down"
+                                                    >
+                                                        <ArrowDown className="h-4 w-4" />
+                                                    </button>
+                                                )}
+                                                <button
+                                                    class="p-1.5 rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
+                                                    title="Remove from queue"
+                                                    data-action="remove"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )
+                    }
+                </div>
+            </div>
+
+            <!-- Queue Legend -->
+            <div
+                class="flex items-center justify-center gap-6 text-xs text-gray-500"
+            >
+                <div class="flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 text-yellow-400" />
+                    <span>Pending</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <Loader2 className="h-3.5 w-3.5 text-blue-400" />
+                    <span>Running CI</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />
+                    <span>Ready</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <GitMerge className="h-3.5 w-3.5 text-purple-400" />
+                    <span>Merging</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <XCircle className="h-3.5 w-3.5 text-red-400" />
+                    <span>Failed</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</BaseLayout>
+
+<script>
+    // Repo filter handler
+    const repoFilter = document.getElementById(
+        "repo-filter",
+    ) as HTMLSelectElement;
+    repoFilter?.addEventListener("change", (e) => {
+        const repo = (e.target as HTMLSelectElement).value;
+        const url = new URL(window.location.href);
+        if (repo) {
+            url.searchParams.set("repo", repo);
+        } else {
+            url.searchParams.delete("repo");
+        }
+        window.location.href = url.toString();
+    });
+
+    // Queue item actions
+    document.querySelectorAll("[data-queue-item]").forEach((item) => {
+        const itemId = item.getAttribute("data-queue-item");
+
+        item.querySelector('[data-action="remove"]')?.addEventListener(
+            "click",
+            async (e) => {
+                e.stopPropagation();
+                if (confirm("Remove this PR from the merge queue?")) {
+                    try {
+                        const res = await fetch(`/api/merge-queue/${itemId}`, {
+                            method: "DELETE",
+                        });
+                        if (res.ok) window.location.reload();
+                    } catch (e) {
+                        console.error("Failed to remove from queue");
+                    }
+                }
+            },
+        );
+
+        item.querySelector('[data-action="priority-up"]')?.addEventListener(
+            "click",
+            async (e) => {
+                e.stopPropagation();
+                try {
+                    const res = await fetch(
+                        `/api/merge-queue/${itemId}/priority`,
+                        {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ direction: "up" }),
+                        },
+                    );
+                    if (res.ok) window.location.reload();
+                } catch (e) {
+                    console.error("Failed to update priority");
+                }
+            },
+        );
+
+        item.querySelector('[data-action="priority-down"]')?.addEventListener(
+            "click",
+            async (e) => {
+                e.stopPropagation();
+                try {
+                    const res = await fetch(
+                        `/api/merge-queue/${itemId}/priority`,
+                        {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ direction: "down" }),
+                        },
+                    );
+                    if (res.ok) window.location.reload();
+                } catch (e) {
+                    console.error("Failed to update priority");
+                }
+            },
+        );
+    });
+
+    // Auto-refresh every 30 seconds
+    setInterval(() => {
+        window.location.reload();
+    }, 30000);
+</script>

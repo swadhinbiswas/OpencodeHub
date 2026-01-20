@@ -1,4 +1,5 @@
-import { getDatabase } from "@/db";
+import { getDatabase, schema } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { gpgKeys } from "@/db/schema";
 import {
     badRequest,
@@ -11,35 +12,35 @@ import { getUserFromRequest } from "@/lib/auth";
 import type { APIRoute } from "astro";
 import { and, eq } from "drizzle-orm";
 
-export const DELETE: APIRoute = async ({ request, params }) => {
-    try {
-        const { id } = params;
-        if (!id) return badRequest("Missing ID");
+import { withErrorHandler } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 
-        const tokenPayload = await getUserFromRequest(request);
-        if (!tokenPayload) {
-            return unauthorized();
-        }
+export const DELETE: APIRoute = withErrorHandler(async ({ request, params }) => {
+    const { id } = params;
+    if (!id) return badRequest("Missing ID");
 
-        const db = getDatabase();
-
-        // Verify ownership
-        const key = await db.query.gpgKeys.findFirst({
-            where: and(
-                eq(gpgKeys.id, id),
-                eq(gpgKeys.userId, tokenPayload.userId)
-            ),
-        });
-
-        if (!key) {
-            return notFound("Key not found");
-        }
-
-        await db.delete(gpgKeys).where(eq(gpgKeys.id, id));
-
-        return success({ message: "Key deleted" });
-    } catch (error) {
-        console.error("Delete GPG key error:", error);
-        return serverError("Failed to delete GPG key");
+    const tokenPayload = await getUserFromRequest(request);
+    if (!tokenPayload) {
+        return unauthorized();
     }
-};
+
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
+
+    // Verify ownership
+    const key = await db.query.gpgKeys.findFirst({
+        where: and(
+            eq(gpgKeys.id, id),
+            eq(gpgKeys.userId, tokenPayload.userId)
+        ),
+    });
+
+    if (!key) {
+        return notFound("Key not found");
+    }
+
+    await db.delete(gpgKeys).where(eq(gpgKeys.id, id));
+
+    logger.info({ userId: tokenPayload.userId, keyId: id }, "GPG key deleted");
+
+    return success({ message: "Key deleted" });
+});

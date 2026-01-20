@@ -4,13 +4,13 @@
  */
 
 import { relations } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 // import { organizations } from "./organizations";
 import { repositories } from "./repositories";
 import { users } from "./users";
 
 // Slack workspace connections
-export const slackWorkspaces = sqliteTable("slack_workspaces", {
+export const slackWorkspaces = pgTable("slack_workspaces", {
     id: text("id").primaryKey(),
     // organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }), // Removed as per instruction
 
@@ -31,15 +31,15 @@ export const slackWorkspaces = sqliteTable("slack_workspaces", {
     installedById: text("installed_by_id")
         .notNull()
         .references(() => users.id),
-    installedAt: text("installed_at").notNull().default("CURRENT_TIMESTAMP"),
+    installedAt: timestamp("installed_at").notNull().defaultNow(),
 
     // Status
-    isActive: integer("is_active", { mode: "boolean" }).default(true),
-    lastUsedAt: text("last_used_at"),
+    isActive: boolean("is_active").default(true),
+    lastUsedAt: timestamp("last_used_at"),
 });
 
 // Channel mappings - which repos notify which channels
-export const slackChannelMappings = sqliteTable("slack_channel_mappings", {
+export const slackChannelMappings = pgTable("slack_channel_mappings", {
     id: text("id").primaryKey(),
     workspaceId: text("workspace_id")
         .notNull()
@@ -60,13 +60,13 @@ export const slackChannelMappings = sqliteTable("slack_channel_mappings", {
     notifyBranches: text("notify_branches"), // JSON: branch patterns to notify on
     notifyAuthors: text("notify_authors"), // JSON: specific user IDs or "all"
 
-    isActive: integer("is_active", { mode: "boolean" }).default(true),
-    createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-    updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // User Slack mappings - for DMs
-export const slackUserMappings = sqliteTable("slack_user_mappings", {
+export const slackUserMappings = pgTable("slack_user_mappings", {
     id: text("id").primaryKey(),
     userId: text("user_id")
         .notNull()
@@ -84,13 +84,13 @@ export const slackUserMappings = sqliteTable("slack_user_mappings", {
     dmPreferences: text("dm_preferences").default('{"review_requested":true,"pr_approved":true,"ci_failed":true}'),
 
     // Do not disturb
-    dndEnabled: integer("dnd_enabled", { mode: "boolean" }).default(false),
+    dndEnabled: boolean("dnd_enabled").default(false),
     dndStart: text("dnd_start"), // HH:MM
     dndEnd: text("dnd_end"), // HH:MM
     dndTimezone: text("dnd_timezone"),
 
-    isActive: integer("is_active", { mode: "boolean" }).default(true),
-    createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Relations

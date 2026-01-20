@@ -1,30 +1,37 @@
 import { getDatabase, schema } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { mergeBranch } from "@/lib/git";
 import { canWriteRepo } from "@/lib/permissions";
 import type { APIRoute } from "astro";
 import { and, eq } from "drizzle-orm";
 
-export const POST: APIRoute = async ({ params, locals }) => {
+import { withErrorHandler } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { unauthorized, badRequest, notFound, serverError, forbidden, success, conflict } from "@/lib/api";
+
+// ... existing imports ...
+
+export const POST: APIRoute = withErrorHandler(async ({ params, locals }) => {
     const { owner: ownerName, repo: repoName, number } = params;
     const user = locals.user;
 
     if (!user) {
-        return new Response("Unauthorized", { status: 401 });
+        return unauthorized();
     }
 
     // Validate inputs
     if (!ownerName || !repoName || !number) {
-        return new Response("Missing parameters", { status: 400 });
+        return badRequest("Missing parameters");
     }
 
     // Check repo existence and permissions
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
     const repoOwner = await db.query.users.findFirst({
         where: eq(schema.users.username, ownerName),
     });
 
     if (!repoOwner) {
-        return new Response("Repository not found", { status: 404 });
+        return notFound("Repository not found");
     }
 
     const repo = await db.query.repositories.findFirst({
@@ -35,11 +42,11 @@ export const POST: APIRoute = async ({ params, locals }) => {
     });
 
     if (!repo) {
-        return new Response("Repository not found", { status: 404 });
+        return notFound("Repository not found");
     }
 
     if (!(await canWriteRepo(user.id, repo))) {
-        return new Response("Forbidden", { status: 403 });
+        return forbidden();
     }
 
     // Get PR
@@ -51,42 +58,33 @@ export const POST: APIRoute = async ({ params, locals }) => {
     });
 
     if (!pr) {
-        return new Response("Pull request not found", { status: 404 });
+        return notFound("Pull request not found");
     }
 
     if (pr.state !== "open") {
-        return new Response("Pull request is not open", { status: 400 });
+        return badRequest("Pull request is not open");
     }
 
     // Merge branch
-    try {
-        const result = await mergeBranch(repo.diskPath, pr.baseBranch, pr.headBranch);
+    const result = await mergeBranch(repo.diskPath, pr.baseBranch, pr.headBranch);
 
-        if (result.success) {
-            // Update PR state with all merge fields
-            const now = new Date().toISOString();
-            await db.update(schema.pullRequests)
-                .set({
-                    state: "merged",
-                    isMerged: true,
-                    mergedAt: now,
-                    mergedById: user.id,
-                    updatedAt: now,
-                })
-                .where(eq(schema.pullRequests.id, pr.id));
+    if (result.success) {
+        // Update PR state with all merge fields
+        const now = new Date();
+        await db.update(schema.pullRequests)
+            .set({
+                state: "merged",
+                isMerged: true,
+                mergedAt: now,
+                mergedById: user.id,
+                updatedAt: now,
+            })
+            .where(eq(schema.pullRequests.id, pr.id));
 
-            return new Response(JSON.stringify({ success: true }), {
-                status: 200,
-                headers: { "Content-Type": "application/json" },
-            });
-        } else {
-            return new Response(JSON.stringify({ success: false, message: result.message }), {
-                status: 409, // Conflict
-                headers: { "Content-Type": "application/json" },
-            });
-        }
+        logger.info({ userId: user.id, repoId: repo.id, prNumber: number }, "Pull request merged");
 
-    } catch (error) {
-        return new Response(`Failed to merge branch: ${error}`, { status: 500 });
+        return success({ success: true });
+    } else {
+        return conflict(result.message);
     }
-};
+});

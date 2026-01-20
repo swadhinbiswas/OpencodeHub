@@ -4,6 +4,7 @@
  */
 
 import { eq, and, desc, sql, gte, lte } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDatabase, schema } from "@/db";
 import { generateId } from "./utils";
 
@@ -25,7 +26,7 @@ export interface MetricsSummary {
 export async function recordPrMetrics(
     pullRequestId: string
 ): Promise<void> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     const pr = await db.query.pullRequests.findFirst({
         where: eq(schema.pullRequests.id, pullRequestId),
@@ -99,7 +100,7 @@ export async function recordPrMetrics(
         prCreatedAt: pr.createdAt,
         firstReviewAt: firstReview?.createdAt || null,
         mergedAt: pr.mergedAt,
-        updatedAt: new Date().toISOString(),
+        updatedAt: new Date(),
     };
 
     if (existingMetric) {
@@ -110,7 +111,7 @@ export async function recordPrMetrics(
         await db.insert(schema.prMetrics).values({
             id: generateId(),
             ...metricsData,
-            createdAt: new Date().toISOString(),
+            createdAt: new Date(),
         });
     }
 }
@@ -122,7 +123,7 @@ export async function updateUserWeeklyMetrics(
     userId: string,
     repositoryId?: string
 ): Promise<void> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // Get current ISO week
     const now = new Date();
@@ -175,7 +176,7 @@ export async function updateUserWeeklyMetrics(
         prsReviewed: thisWeekReviews.length,
         approvalsGiven: thisWeekReviews.filter(r => r.state === "approved").length,
         changesRequestedGiven: thisWeekReviews.filter(r => r.state === "changes_requested").length,
-        updatedAt: new Date().toISOString(),
+        updatedAt: new Date(),
     };
 
     if (existing) {
@@ -186,7 +187,7 @@ export async function updateUserWeeklyMetrics(
         await db.insert(schema.reviewMetrics).values({
             id: generateId(),
             ...metricsData,
-            createdAt: new Date().toISOString(),
+            createdAt: new Date(),
         });
     }
 }
@@ -198,7 +199,7 @@ export async function getRepositoryMetrics(
     repositoryId: string,
     weeks: number = 4
 ): Promise<MetricsSummary[]> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
     const summaries: MetricsSummary[] = [];
 
     for (let i = 0; i < weeks; i++) {
@@ -289,7 +290,7 @@ export async function getUserMetrics(
     reviewed: { total: number; approvals: number; changesRequested: number };
     trends: Array<{ week: string; authored: number; reviewed: number }>;
 }> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     const metrics = await db.query.reviewMetrics.findMany({
         where: eq(schema.reviewMetrics.userId, userId),

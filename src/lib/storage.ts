@@ -10,6 +10,7 @@
  */
 
 import crypto from "crypto";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { createReadStream, createWriteStream } from "fs";
 import fs from "fs/promises";
 import path from "path";
@@ -1149,7 +1150,7 @@ export async function getStorage(): Promise<StorageAdapter> {
   try {
     const { getDatabase, schema } = await import("@/db");
     const { eq } = await import("drizzle-orm");
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // We use a light check or cache here ideally. For now, let's fetch.
     // Optimization: In a real app, cache this for X seconds.
@@ -1194,7 +1195,7 @@ export async function getStorage(): Promise<StorageAdapter> {
 export async function updateStorageConfig(config: StorageConfig, userId?: string): Promise<void> {
   const { getDatabase, schema } = await import("@/db");
   const { eq } = await import("drizzle-orm");
-  const db = getDatabase();
+  const db = getDatabase() as NodePgDatabase<typeof schema>;
 
   // Validate config (basic)
   if (!config.type) throw new Error("Storage type required");
@@ -1212,7 +1213,7 @@ export async function updateStorageConfig(config: StorageConfig, userId?: string
       target: schema.systemConfig.key,
       set: {
         value,
-        updatedAt: new Date().toISOString(),
+        updatedAt: new Date(),
         updatedById: userId
       }
     });

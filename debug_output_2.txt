@@ -1,0 +1,35 @@
+Note: Unnecessary 
+Note: use of -X or 
+Note: --request, 
+Note: POST is 
+Note: already 
+Note: inferred.
+* Host localhost:3000 was resolved.
+* IPv6: ::1
+* IPv4: 127.0.0.1
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0*   Trying [::1]:3000...
+* Established connection to localhost (::1 port 3000) from ::1 port 51152 
+* using HTTP/1.x
+> POST /api/auth/register HTTP/1.1
+> Host: localhost:3000
+> User-Agent: curl/8.18.0
+> Accept: */*
+> Content-Type: application/json
+> Content-Length: 127
+> 
+} [127 bytes data]
+* upload completely sent off: 127 bytes
+< HTTP/1.1 400 Bad Request
+< Vary: Origin
+< content-type: application/json
+< Date: Tue, 20 Jan 2026 18:15:30 GMT
+< Connection: keep-alive
+< Keep-Alive: timeout=5
+< Transfer-Encoding: chunked
+< 
+{ [2132 bytes data]
+100   2247   0   2120 100    127   3006    180                              0100   2247   0   2120 100    127   3005    180                              0100   2247   0   2120 100    127   3004    179                              0
+* Connection #0 to host localhost:3000 left intact
+{"success":false,"error":{"code":"BAD_REQUEST","message":"DEBUG ERROR: Failed query: select \"id\", \"username\", \"email\", \"password_hash\", \"display_name\", \"bio\", \"avatar_url\", \"location\", \"website\", \"company\", \"is_admin\", \"is_active\", \"email_verified\", \"two_factor_enabled\", \"two_factor_secret\", \"last_login_at\", \"created_at\", \"updated_at\" from \"users\" \"users\" where (\"users\".\"username\" = $1 or \"users\".\"email\" = $2) limit $3\nparams: testuser4,testuser4@example.com,1 | Error: Failed query: select \"id\", \"username\", \"email\", \"password_hash\", \"display_name\", \"bio\", \"avatar_url\", \"location\", \"website\", \"company\", \"is_admin\", \"is_active\", \"email_verified\", \"two_factor_enabled\", \"two_factor_secret\", \"last_login_at\", \"created_at\", \"updated_at\" from \"users\" \"users\" where (\"users\".\"username\" = $1 or \"users\".\"email\" = $2) limit $3\nparams: testuser4,testuser4@example.com,1\n    at NodePgPreparedQuery.queryWithCache (file:///home/swadhin/owngit/OpenCodeHub/node_modules/drizzle-orm/pg-core/session.js:41:15)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async file:///home/swadhin/owngit/OpenCodeHub/node_modules/drizzle-orm/node-postgres/session.js:117:22\n    at async eval (/home/swadhin/owngit/OpenCodeHub/src/pages/api/auth/register.ts:55:26)\n    at async Module.eval (/home/swadhin/owngit/OpenCodeHub/src/lib/errors.ts:71:14)\n    at async renderEndpoint (file:///home/swadhin/owngit/OpenCodeHub/node_modules/astro/dist/runtime/server/endpoint.js:34:18)\n    at async lastNext (file:///home/swadhin/owngit/OpenCodeHub/node_modules/astro/dist/core/render-context.js:139:23)\n    at async callMiddleware (file:///home/swadhin/owngit/OpenCodeHub/node_modules/astro/dist/core/middleware/callMiddleware.js:11:10)\n    at async RenderContext.render (file:///home/swadhin/owngit/OpenCodeHub/node_modules/astro/dist/core/render-context.js:178:22)\n    at async handleRoute (file:///home/swadhin/owngit/OpenCodeHub/node_modules/astro/dist/vite-plugin-astro-server/route.js:135:16)"}}

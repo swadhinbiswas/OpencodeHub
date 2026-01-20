@@ -1,4 +1,5 @@
 import { getDatabase, schema } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { createSession } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import type { APIRoute } from "astro";
@@ -89,7 +90,7 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
             return redirect("/login?error=no_email");
         }
 
-        const db = getDatabase();
+        const db = getDatabase() as NodePgDatabase<typeof schema>;
 
         // Check if OAuth account already exists
         const existingOAuth = await db.query.oauthAccounts.findFirst({
@@ -118,7 +119,7 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
                 .update(schema.users)
                 .set({
                     avatarUrl: githubUser.avatar_url,
-                    updatedAt: new Date().toISOString(),
+                    updatedAt: new Date(),
                 })
                 .where(eq(schema.users.id, existingOAuth.userId));
 
@@ -137,7 +138,7 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
                     provider: "github",
                     providerAccountId: String(githubUser.id),
                     accessToken,
-                    createdAt: new Date().toISOString(),
+                    createdAt: new Date(),
                 });
 
                 // Update user avatar
@@ -145,7 +146,7 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
                     .update(schema.users)
                     .set({
                         avatarUrl: githubUser.avatar_url,
-                        updatedAt: new Date().toISOString(),
+                        updatedAt: new Date(),
                     })
                     .where(eq(schema.users.id, user.id));
 
@@ -173,8 +174,8 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
                     website: githubUser.blog,
                     avatarUrl: githubUser.avatar_url,
                     emailVerified: true, // GitHub verified the email
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
                 });
 
                 // Create OAuth link
@@ -184,7 +185,7 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
                     provider: "github",
                     providerAccountId: String(githubUser.id),
                     accessToken,
-                    createdAt: new Date().toISOString(),
+                    createdAt: new Date(),
                 });
 
                 userId = newUserId;

@@ -4,10 +4,10 @@
  */
 
 import { relations } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { users } from "./users";
 
-export const repositories = sqliteTable("repositories", {
+export const repositories = pgTable("repositories", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   slug: text("slug").notNull(),
@@ -28,39 +28,39 @@ export const repositories = sqliteTable("repositories", {
   openIssueCount: integer("open_issue_count").default(0).notNull(),
   openPrCount: integer("open_pr_count").default(0).notNull(),
   size: integer("size").default(0).notNull(), // Size in KB
-  isFork: integer("is_fork", { mode: "boolean" }).default(false),
+  isFork: boolean("is_fork").default(false),
   forkedFromId: text("forked_from_id").references((): any => repositories.id),
-  isArchived: integer("is_archived", { mode: "boolean" }).default(false),
-  isMirror: integer("is_mirror", { mode: "boolean" }).default(false),
+  isArchived: boolean("is_archived").default(false),
+  isMirror: boolean("is_mirror").default(false),
   mirrorUrl: text("mirror_url"),
-  hasIssues: integer("has_issues", { mode: "boolean" }).default(true),
-  hasWiki: integer("has_wiki", { mode: "boolean" }).default(true),
-  hasActions: integer("has_actions", { mode: "boolean" }).default(true),
-  allowForking: integer("allow_forking", { mode: "boolean" }).default(true),
+  hasIssues: boolean("has_issues").default(true),
+  hasWiki: boolean("has_wiki").default(true),
+  hasActions: boolean("has_actions").default(true),
+  allowForking: boolean("allow_forking").default(true),
   licenseType: text("license_type"),
   topics: text("topics"), // JSON array
   language: text("language"), // Primary language
   languages: text("languages"), // JSON object { lang: percentage }
-  lastActivityAt: text("last_activity_at"),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+  lastActivityAt: timestamp("last_activity_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const branches = sqliteTable("branches", {
+export const branches = pgTable("branches", {
   id: text("id").primaryKey(),
   repositoryId: text("repository_id")
     .notNull()
     .references(() => repositories.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   commitSha: text("commit_sha").notNull(),
-  isProtected: integer("is_protected", { mode: "boolean" }).default(false),
-  isDefault: integer("is_default", { mode: "boolean" }).default(false),
+  isProtected: boolean("is_protected").default(false),
+  isDefault: boolean("is_default").default(false),
   protectionRules: text("protection_rules"), // JSON
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const commits = sqliteTable("commits", {
+export const commits = pgTable("commits", {
   id: text("id").primaryKey(),
   repositoryId: text("repository_id")
     .notNull()
@@ -69,20 +69,20 @@ export const commits = sqliteTable("commits", {
   message: text("message").notNull(),
   authorName: text("author_name").notNull(),
   authorEmail: text("author_email").notNull(),
-  authorDate: text("author_date").notNull(),
+  authorDate: timestamp("author_date").notNull(),
   committerName: text("committer_name").notNull(),
   committerEmail: text("committer_email").notNull(),
-  committerDate: text("committer_date").notNull(),
+  committerDate: timestamp("committer_date").notNull(),
   parentShas: text("parent_shas"), // JSON array
   treesha: text("tree_sha"),
   userId: text("user_id").references(() => users.id),
   stats: text("stats"), // JSON { additions, deletions, files_changed }
   signature: text("signature"), // GPG signature
-  isVerified: integer("is_verified", { mode: "boolean" }).default(false),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  isVerified: boolean("is_verified").default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const tags = sqliteTable("tags", {
+export const tags = pgTable("tags", {
   id: text("id").primaryKey(),
   repositoryId: text("repository_id")
     .notNull()
@@ -92,13 +92,13 @@ export const tags = sqliteTable("tags", {
   message: text("message"),
   taggerName: text("tagger_name"),
   taggerEmail: text("tagger_email"),
-  taggedAt: text("tagged_at"),
-  isRelease: integer("is_release", { mode: "boolean" }).default(false),
+  taggedAt: timestamp("tagged_at"),
+  isRelease: boolean("is_release").default(false),
   releaseId: text("release_id"),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const releases = sqliteTable("releases", {
+export const releases = pgTable("releases", {
   id: text("id").primaryKey(),
   repositoryId: text("repository_id")
     .notNull()
@@ -106,17 +106,17 @@ export const releases = sqliteTable("releases", {
   tagId: text("tag_id").references(() => tags.id),
   name: text("name").notNull(),
   body: text("body"),
-  isDraft: integer("is_draft", { mode: "boolean" }).default(false),
-  isPrerelease: integer("is_prerelease", { mode: "boolean" }).default(false),
+  isDraft: boolean("is_draft").default(false),
+  isPrerelease: boolean("is_prerelease").default(false),
   authorId: text("author_id").references(() => users.id),
   assets: text("assets"), // JSON array of asset metadata
   downloadCount: integer("download_count").default(0),
-  publishedAt: text("published_at"),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+  publishedAt: timestamp("published_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const repositoryStars = sqliteTable("repository_stars", {
+export const repositoryStars = pgTable("repository_stars", {
   id: text("id").primaryKey(),
   repositoryId: text("repository_id")
     .notNull()
@@ -124,10 +124,10 @@ export const repositoryStars = sqliteTable("repository_stars", {
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const repositoryWatchers = sqliteTable("repository_watchers", {
+export const repositoryWatchers = pgTable("repository_watchers", {
   id: text("id").primaryKey(),
   repositoryId: text("repository_id")
     .notNull()
@@ -136,10 +136,10 @@ export const repositoryWatchers = sqliteTable("repository_watchers", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   watchLevel: text("watch_level").notNull().default("watching"), // watching, releases_only, ignoring
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const repositoryCollaborators = sqliteTable("repository_collaborators", {
+export const repositoryCollaborators = pgTable("repository_collaborators", {
   id: text("id").primaryKey(),
   repositoryId: text("repository_id")
     .notNull()
@@ -149,7 +149,18 @@ export const repositoryCollaborators = sqliteTable("repository_collaborators", {
     .references(() => users.id, { onDelete: "cascade" }),
   role: text("role").notNull().default("developer"), // owner, maintainer, developer, guest
   addedById: text("added_by_id").references(() => users.id),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const deployKeys = pgTable("deploy_keys", {
+  id: text("id").primaryKey(),
+  repositoryId: text("repository_id")
+    .notNull()
+    .references(() => repositories.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  key: text("key").notNull(),
+  readOnly: boolean("read_only").default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 
@@ -173,6 +184,7 @@ export const repositoriesRelations = relations(
     stars: many(repositoryStars),
     watchers: many(repositoryWatchers),
     collaborators: many(repositoryCollaborators),
+    deployKeys: many(deployKeys),
     // webhooks: many(webhooks), // Removing relation here to avoid circular dependency or import issues for now, or I need to import it.
   })
 );

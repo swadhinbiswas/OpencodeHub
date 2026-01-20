@@ -1,7 +1,8 @@
 /**
  * Auth API - Register new user
  */
-import { getDatabase } from "@/db";
+import { getDatabase, schema } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { sessions, users } from "@/db/schema";
 import {
   badRequest,
@@ -16,6 +17,8 @@ import { type APIRoute } from "astro";
 import { applyRateLimit } from "@/middleware/rate-limit";
 import { RegisterUserSchema } from "@/lib/validation";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
+import { withErrorHandler } from "@/lib/errors";
 
 const registerSchema = z.object({
   username: z.string().min(2).max(39),
@@ -24,8 +27,12 @@ const registerSchema = z.object({
   displayName: z.string().optional(),
 });
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = withErrorHandler(async ({ request, cookies }) => {
   try {
+    // ... existing logic ...
+    // (Note: Since I can't easily wrap the whole thing blindly, I'll just check specific confusing parts or wrap the whole body)
+
+    // Re-implementing the body to wrap in try-catch for debugging
     // Apply rate limiting
     const rateLimitResponse = await applyRateLimit(request, "auth");
     if (rateLimitResponse) {
@@ -62,7 +69,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       return badRequest("Invalid email format");
     }
 
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // Check if username or email already exists
     const existingUser = await db.query.users.findFirst({
@@ -82,7 +89,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     // Create user
     const userId = generateId("usr");
-    const timestamp = now();
+    const timestamp = new Date();
 
     await db.insert(users).values({
       id: userId,
@@ -107,8 +114,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       token: session.token,
       userAgent: session.userAgent,
       ipAddress: session.ipAddress,
-      expiresAt: session.expiresAt,
-      createdAt: session.createdAt,
+      expiresAt: new Date(session.expiresAt),
+      createdAt: new Date(session.createdAt),
     });
 
     // Create JWT token
@@ -128,6 +135,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       expires: new Date(session.expiresAt),
     });
 
+    logger.info({ userId, username }, "User registered and logged in");
+
     return created({
       user: {
         id: userId,
@@ -138,8 +147,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       token,
       expiresAt: session.expiresAt,
     });
-  } catch (error) {
-    console.error("Registration error:", error);
-    return serverError("Failed to create user");
+  } catch (err: any) {
+    if (err.code === "23505") {
+      return conflict("Username or email already exists");
+    }
+    logger.error({ err }, "Registration failed");
+    return serverError("Registration failed");
   }
-};
+});

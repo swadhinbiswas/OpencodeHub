@@ -1,0 +1,694 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, and, isNull } from "drizzle-orm";
+import {
+    Bell,
+    Mail,
+    MessageSquare,
+    Smartphone,
+    Clock,
+    Save,
+    AtSign,
+    Users,
+    GitPullRequest,
+    CheckCircle2,
+    XCircle,
+    Bot,
+    Star,
+    Eye,
+} from "lucide-react";
+
+const user = Astro.locals.user;
+if (!user) {
+    return Astro.redirect("/login");
+}
+
+const db = getDatabase();
+
+// Define all notification event types
+const eventTypes = [
+    {
+        id: "mention",
+        label: "Mentions",
+        description: "When someone @mentions you",
+        icon: AtSign,
+        category: "activity",
+    },
+    {
+        id: "assign",
+        label: "Assignments",
+        description: "When you're assigned to an issue or PR",
+        icon: Users,
+        category: "activity",
+    },
+    {
+        id: "review_request",
+        label: "Review Requests",
+        description: "When your review is requested",
+        icon: Eye,
+        category: "reviews",
+    },
+    {
+        id: "review_submitted",
+        label: "Review Submitted",
+        description: "When someone reviews your PR",
+        icon: GitPullRequest,
+        category: "reviews",
+    },
+    {
+        id: "pr_approved",
+        label: "PR Approved",
+        description: "When your PR is approved",
+        icon: CheckCircle2,
+        category: "reviews",
+    },
+    {
+        id: "pr_changes_requested",
+        label: "Changes Requested",
+        description: "When changes are requested on your PR",
+        icon: XCircle,
+        category: "reviews",
+    },
+    {
+        id: "pr_merged",
+        label: "PR Merged",
+        description: "When your PR is merged",
+        icon: GitPullRequest,
+        category: "prs",
+    },
+    {
+        id: "pr_closed",
+        label: "PR Closed",
+        description: "When your PR is closed",
+        icon: XCircle,
+        category: "prs",
+    },
+    {
+        id: "comment",
+        label: "Comments",
+        description: "New comments on your issues/PRs",
+        icon: MessageSquare,
+        category: "activity",
+    },
+    {
+        id: "ci_passed",
+        label: "CI Passed",
+        description: "When CI passes on your PR",
+        icon: CheckCircle2,
+        category: "ci",
+    },
+    {
+        id: "ci_failed",
+        label: "CI Failed",
+        description: "When CI fails on your PR",
+        icon: XCircle,
+        category: "ci",
+    },
+    {
+        id: "merge_queue",
+        label: "Merge Queue",
+        description: "Merge queue status updates",
+        icon: Clock,
+        category: "ci",
+    },
+    {
+        id: "ai_review",
+        label: "AI Review",
+        description: "When AI review is completed",
+        icon: Bot,
+        category: "reviews",
+    },
+    {
+        id: "star",
+        label: "Stars",
+        description: "When your repo is starred",
+        icon: Star,
+        category: "activity",
+    },
+];
+
+const categories = [
+    { id: "reviews", label: "Code Reviews" },
+    { id: "prs", label: "Pull Requests" },
+    { id: "ci", label: "CI/CD" },
+    { id: "activity", label: "Activity" },
+];
+
+// Get current preferences
+interface Preference {
+    eventType: string;
+    emailEnabled: boolean;
+    slackEnabled: boolean;
+    inAppEnabled: boolean;
+    browserPushEnabled: boolean;
+}
+
+let preferences: Record<string, Preference> = {};
+let quietHours = {
+    isEnabled: false,
+    startTime: "22:00",
+    endTime: "08:00",
+    allowUrgent: true,
+};
+let digestSettings = {
+    digestType: "none" as "none" | "daily" | "weekly",
+    digestTime: "09:00",
+};
+
+try {
+    const dbPrefs = await db.query.notificationPreferences.findMany({
+        where: and(
+            eq(schema.notificationPreferences.userId, user.id),
+            isNull(schema.notificationPreferences.repositoryId), // Global preferences
+        ),
+    });
+
+    for (const pref of dbPrefs) {
+        preferences[pref.eventType] = {
+            eventType: pref.eventType,
+            emailEnabled: pref.emailEnabled ?? true,
+            slackEnabled: pref.slackEnabled ?? false,
+            inAppEnabled: pref.inAppEnabled ?? true,
+            browserPushEnabled: pref.browserPushEnabled ?? false,
+        };
+    }
+
+    // Get quiet hours
+    const dbQuietHours = await db.query.notificationQuietHours.findFirst({
+        where: eq(schema.notificationQuietHours.userId, user.id),
+    });
+    if (dbQuietHours) {
+        quietHours = {
+            isEnabled: dbQuietHours.isEnabled ?? false,
+            startTime: dbQuietHours.startTime,
+            endTime: dbQuietHours.endTime,
+            allowUrgent: dbQuietHours.allowUrgent ?? true,
+        };
+    }
+
+    // Get digest settings
+    const dbDigest = await db.query.emailDigestSettings.findFirst({
+        where: eq(schema.emailDigestSettings.userId, user.id),
+    });
+    if (dbDigest) {
+        digestSettings = {
+            digestType: dbDigest.digestType as "none" | "daily" | "weekly",
+            digestTime: dbDigest.digestTime || "09:00",
+        };
+    }
+} catch (e) {
+    console.error("Failed to fetch notification preferences:", e);
+}
+
+// Fill in defaults for missing preferences
+for (const event of eventTypes) {
+    if (!preferences[event.id]) {
+        preferences[event.id] = {
+            eventType: event.id,
+            emailEnabled: true,
+            slackEnabled: false,
+            inAppEnabled: true,
+            browserPushEnabled: false,
+        };
+    }
+}
+---
+
+<BaseLayout title="Notification Preferences">
+    <div class="container py-8 max-w-4xl">
+        <div class="flex flex-col gap-8">
+            <!-- Header -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="p-2 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30"
+                    >
+                        <Bell className="h-6 w-6 text-cyan-400" />
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-white">
+                            Notification Preferences
+                        </h1>
+                        <p class="text-sm text-gray-400">
+                            Choose how you want to be notified
+                        </p>
+                    </div>
+                </div>
+
+                <button
+                    id="save-btn"
+                    class="flex items-center gap-2 px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded-lg text-sm hover:bg-cyan-500/20 transition-colors"
+                >
+                    <Save className="h-4 w-4" />
+                    Save Changes
+                </button>
+            </div>
+
+            <!-- Channel Legend -->
+            <div
+                class="flex items-center gap-6 p-4 rounded-lg bg-white/5 border border-white/10"
+            >
+                <div class="flex items-center gap-2">
+                    <div class="p-1.5 rounded bg-blue-500/10">
+                        <Mail className="h-4 w-4 text-blue-400" />
+                    </div>
+                    <span class="text-sm text-gray-300">Email</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="p-1.5 rounded bg-purple-500/10">
+                        <MessageSquare className="h-4 w-4 text-purple-400" />
+                    </div>
+                    <span class="text-sm text-gray-300">Slack</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="p-1.5 rounded bg-cyan-500/10">
+                        <Bell className="h-4 w-4 text-cyan-400" />
+                    </div>
+                    <span class="text-sm text-gray-300">In-App</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="p-1.5 rounded bg-orange-500/10">
+                        <Smartphone className="h-4 w-4 text-orange-400" />
+                    </div>
+                    <span class="text-sm text-gray-300">Browser Push</span>
+                </div>
+            </div>
+
+            <!-- Notification Settings by Category -->
+            <form id="preferences-form">
+                {
+                    categories.map((category) => {
+                        const categoryEvents = eventTypes.filter(
+                            (e) => e.category === category.id,
+                        );
+                        return (
+                            <div class="mb-8">
+                                <h2 class="text-lg font-semibold text-white mb-4">
+                                    {category.label}
+                                </h2>
+                                <div class="rounded-xl border border-white/10 bg-[#0d1117]/80 overflow-hidden divide-y divide-white/5">
+                                    {categoryEvents.map((event) => {
+                                        const pref = preferences[event.id];
+                                        const EventIcon = event.icon;
+                                        return (
+                                            <div class="flex items-center gap-4 p-4">
+                                                <div class="flex-shrink-0 p-2 rounded-lg bg-white/5">
+                                                    <EventIcon className="h-5 w-5 text-gray-400" />
+                                                </div>
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="font-medium text-white">
+                                                        {event.label}
+                                                    </div>
+                                                    <div class="text-sm text-gray-500">
+                                                        {event.description}
+                                                    </div>
+                                                </div>
+                                                <div class="flex items-center gap-4">
+                                                    {/* Email */}
+                                                    <label class="relative cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            name={`${event.id}_email`}
+                                                            checked={
+                                                                pref.emailEnabled
+                                                            }
+                                                            class="sr-only peer"
+                                                        />
+                                                        <div class="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center peer-checked:bg-blue-500/20 peer-checked:border-blue-500/30 transition-colors">
+                                                            <Mail className="h-4 w-4 text-gray-500 peer-checked:text-blue-400" />
+                                                        </div>
+                                                    </label>
+                                                    {/* Slack */}
+                                                    <label class="relative cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            name={`${event.id}_slack`}
+                                                            checked={
+                                                                pref.slackEnabled
+                                                            }
+                                                            class="sr-only peer"
+                                                        />
+                                                        <div class="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center peer-checked:bg-purple-500/20 peer-checked:border-purple-500/30 transition-colors">
+                                                            <MessageSquare className="h-4 w-4 text-gray-500 peer-checked:text-purple-400" />
+                                                        </div>
+                                                    </label>
+                                                    {/* In-App */}
+                                                    <label class="relative cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            name={`${event.id}_inapp`}
+                                                            checked={
+                                                                pref.inAppEnabled
+                                                            }
+                                                            class="sr-only peer"
+                                                        />
+                                                        <div class="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center peer-checked:bg-cyan-500/20 peer-checked:border-cyan-500/30 transition-colors">
+                                                            <Bell className="h-4 w-4 text-gray-500 peer-checked:text-cyan-400" />
+                                                        </div>
+                                                    </label>
+                                                    {/* Browser Push */}
+                                                    <label class="relative cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            name={`${event.id}_push`}
+                                                            checked={
+                                                                pref.browserPushEnabled
+                                                            }
+                                                            class="sr-only peer"
+                                                        />
+                                                        <div class="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center peer-checked:bg-orange-500/20 peer-checked:border-orange-500/30 transition-colors">
+                                                            <Smartphone className="h-4 w-4 text-gray-500 peer-checked:text-orange-400" />
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    })
+                }
+            </form>
+
+            <!-- Quiet Hours -->
+            <div class="rounded-xl border border-white/10 bg-[#0d1117]/80 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <Clock className="h-5 w-5 text-purple-400" />
+                        <h2 class="text-lg font-semibold text-white">
+                            Quiet Hours
+                        </h2>
+                    </div>
+                    <label class="relative cursor-pointer">
+                        <input
+                            type="checkbox"
+                            id="quiet-hours-enabled"
+                            checked={quietHours.isEnabled}
+                            class="sr-only peer"
+                        />
+                        <div
+                            class="w-11 h-6 rounded-full bg-white/10 peer-checked:bg-purple-500/50 transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-5"
+                        >
+                        </div>
+                    </label>
+                </div>
+
+                <div
+                    id="quiet-hours-settings"
+                    class:list={[
+                        "grid grid-cols-2 gap-4",
+                        !quietHours.isEnabled &&
+                            "opacity-50 pointer-events-none",
+                    ]}
+                >
+                    <div>
+                        <label
+                            class="block text-sm font-medium text-gray-300 mb-1"
+                            >Start Time</label
+                        >
+                        <input
+                            type="time"
+                            id="quiet-start"
+                            value={quietHours.startTime}
+                            class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            class="block text-sm font-medium text-gray-300 mb-1"
+                            >End Time</label
+                        >
+                        <input
+                            type="time"
+                            id="quiet-end"
+                            value={quietHours.endTime}
+                            class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white"
+                        />
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <label class="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            id="allow-urgent"
+                            checked={quietHours.allowUrgent}
+                            class="rounded bg-white/5 border-white/20 text-purple-500"
+                        />
+                        <span class="text-sm text-gray-300"
+                            >Allow urgent notifications during quiet hours</span
+                        >
+                    </label>
+                </div>
+            </div>
+
+            <!-- Email Digest -->
+            <div class="rounded-xl border border-white/10 bg-[#0d1117]/80 p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <Mail className="h-5 w-5 text-blue-400" />
+                    <h2 class="text-lg font-semibold text-white">
+                        Email Digest
+                    </h2>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <button
+                        type="button"
+                        class:list={[
+                            "p-3 rounded-lg border text-center transition-colors",
+                            digestSettings.digestType === "none"
+                                ? "bg-blue-500/10 border-blue-500/30 text-blue-400"
+                                : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10",
+                        ]}
+                        data-digest="none"
+                    >
+                        <div class="font-medium">Off</div>
+                        <div class="text-xs mt-1 opacity-70">
+                            Individual emails
+                        </div>
+                    </button>
+                    <button
+                        type="button"
+                        class:list={[
+                            "p-3 rounded-lg border text-center transition-colors",
+                            digestSettings.digestType === "daily"
+                                ? "bg-blue-500/10 border-blue-500/30 text-blue-400"
+                                : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10",
+                        ]}
+                        data-digest="daily"
+                    >
+                        <div class="font-medium">Daily</div>
+                        <div class="text-xs mt-1 opacity-70">
+                            One email per day
+                        </div>
+                    </button>
+                    <button
+                        type="button"
+                        class:list={[
+                            "p-3 rounded-lg border text-center transition-colors",
+                            digestSettings.digestType === "weekly"
+                                ? "bg-blue-500/10 border-blue-500/30 text-blue-400"
+                                : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10",
+                        ]}
+                        data-digest="weekly"
+                    >
+                        <div class="font-medium">Weekly</div>
+                        <div class="text-xs mt-1 opacity-70">
+                            One email per week
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</BaseLayout>
+
+<script>
+    // Toggle checkboxes
+    document
+        .querySelectorAll('label.cursor-pointer input[type="checkbox"]')
+        .forEach((input) => {
+            const wrapper = input.nextElementSibling;
+            if (wrapper) {
+                input.addEventListener("change", () => {
+                    // Toggle icon color - handled by peer styles
+                });
+            }
+        });
+
+    // Quiet hours toggle
+    const quietHoursEnabled = document.getElementById(
+        "quiet-hours-enabled",
+    ) as HTMLInputElement | null;
+    const quietHoursSettings = document.getElementById("quiet-hours-settings");
+    quietHoursEnabled?.addEventListener("change", (e) => {
+        const target = e.target as HTMLInputElement;
+        if (target.checked) {
+            quietHoursSettings?.classList.remove(
+                "opacity-50",
+                "pointer-events-none",
+            );
+        } else {
+            quietHoursSettings?.classList.add(
+                "opacity-50",
+                "pointer-events-none",
+            );
+        }
+    });
+
+    // Digest buttons
+    let selectedDigest =
+        document
+            .querySelector("[data-digest].bg-blue-500\\/10")
+            ?.getAttribute("data-digest") || "none";
+    document.querySelectorAll("[data-digest]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            document.querySelectorAll("[data-digest]").forEach((b) => {
+                b.classList.remove(
+                    "bg-blue-500/10",
+                    "border-blue-500/30",
+                    "text-blue-400",
+                );
+                b.classList.add(
+                    "bg-white/5",
+                    "border-white/10",
+                    "text-gray-400",
+                );
+            });
+            btn.classList.remove(
+                "bg-white/5",
+                "border-white/10",
+                "text-gray-400",
+            );
+            btn.classList.add(
+                "bg-blue-500/10",
+                "border-blue-500/30",
+                "text-blue-400",
+            );
+            const digest = btn.getAttribute("data-digest");
+            if (digest) selectedDigest = digest;
+        });
+    });
+
+    // Save button
+    document.getElementById("save-btn")?.addEventListener("click", async () => {
+        const form = document.getElementById(
+            "preferences-form",
+        ) as HTMLFormElement | null;
+        if (!form) return;
+
+        interface EventPreference {
+            emailEnabled: boolean;
+            slackEnabled: boolean;
+            inAppEnabled: boolean;
+            browserPushEnabled: boolean;
+        }
+
+        const preferences: Record<string, EventPreference> = {};
+
+        // Collect all preferences
+        const eventTypes = [
+            "mention",
+            "assign",
+            "review_request",
+            "review_submitted",
+            "pr_approved",
+            "pr_changes_requested",
+            "pr_merged",
+            "pr_closed",
+            "comment",
+            "ci_passed",
+            "ci_failed",
+            "merge_queue",
+            "ai_review",
+            "star",
+        ];
+
+        for (const event of eventTypes) {
+            preferences[event] = {
+                emailEnabled:
+                    (
+                        form.querySelector(
+                            `[name="${event}_email"]`,
+                        ) as HTMLInputElement
+                    )?.checked ?? true,
+                slackEnabled:
+                    (
+                        form.querySelector(
+                            `[name="${event}_slack"]`,
+                        ) as HTMLInputElement
+                    )?.checked ?? false,
+                inAppEnabled:
+                    (
+                        form.querySelector(
+                            `[name="${event}_inapp"]`,
+                        ) as HTMLInputElement
+                    )?.checked ?? true,
+                browserPushEnabled:
+                    (
+                        form.querySelector(
+                            `[name="${event}_push"]`,
+                        ) as HTMLInputElement
+                    )?.checked ?? false,
+            };
+        }
+
+        const quietStart = document.getElementById(
+            "quiet-start",
+        ) as HTMLInputElement | null;
+        const quietEnd = document.getElementById(
+            "quiet-end",
+        ) as HTMLInputElement | null;
+        const allowUrgent = document.getElementById(
+            "allow-urgent",
+        ) as HTMLInputElement | null;
+
+        const data = {
+            preferences,
+            quietHours: {
+                isEnabled: quietHoursEnabled?.checked ?? false,
+                startTime: quietStart?.value,
+                endTime: quietEnd?.value,
+                allowUrgent: allowUrgent?.checked,
+            },
+            digestSettings: {
+                digestType: selectedDigest,
+            },
+        };
+
+        try {
+            const res = await fetch("/api/user/notification-preferences", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            });
+
+            if (res.ok) {
+                // Show success feedback
+                const btn = document.getElementById("save-btn");
+                if (btn) {
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML =
+                        '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Saved!';
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                    }, 2000);
+                }
+            } else {
+                alert("Failed to save preferences");
+            }
+        } catch (e) {
+            console.error("Failed to save preferences:", e);
+            alert("Failed to save preferences");
+        }
+    });
+</script>
+
+<style>
+    /* Custom checkbox styles for channel toggles */
+    input[type="checkbox"]:checked + div > svg {
+        color: inherit !important;
+    }
+</style>

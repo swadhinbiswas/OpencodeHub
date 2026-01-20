@@ -1,5 +1,6 @@
 
-import { getDatabase } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { getDatabase, schema } from "@/db";
 import { repositories, users, pullRequests, pullRequestReviews, pullRequestComments } from "@/db/schema";
 import { generateId, now } from "@/lib/utils";
 import { faker } from "@faker-js/faker";
@@ -7,7 +8,7 @@ import { eq } from "drizzle-orm";
 
 async function seedActivity() {
     console.log("🌱 Seeding activity (PRs, Reviews)...");
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     const allUsers = await db.query.users.findMany();
     const allRepos = await db.query.repositories.findMany();
@@ -45,8 +46,8 @@ async function seedActivity() {
             headSha: faker.git.commitSha(),
             baseBranch,
             baseSha: faker.git.commitSha(),
-            createdAt: faker.date.recent({ days: 30 }).toISOString(),
-            updatedAt: now(),
+            createdAt: faker.date.recent({ days: 30 }),
+            updatedAt: new Date(),
         });
 
         createdPrs.push({ id: prId, repoId: repo.id });
@@ -70,7 +71,7 @@ async function seedActivity() {
             reviewerId: reviewer.id,
             state,
             body: faker.lorem.sentence(),
-            submittedAt: faker.date.recent({ days: 10 }).toISOString(),
+            submittedAt: faker.date.recent({ days: 10 }),
         });
 
         // Random comment on review
@@ -83,7 +84,7 @@ async function seedActivity() {
                 body: faker.hacker.phrase(),
                 path: "src/main.ts",
                 line: faker.number.int({ min: 1, max: 100 }),
-                createdAt: faker.date.recent({ days: 5 }).toISOString(),
+                createdAt: faker.date.recent({ days: 5 }),
             });
         }
     }

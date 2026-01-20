@@ -22,17 +22,14 @@ const db = getDatabase();
 const q = Astro.url.searchParams.get("q") || "";
 
 // Fetch user's repositories with search
-const repos = await db
-   .select()
-   .from(schema.repositories)
-   .where(
-      and(
-         eq(schema.repositories.ownerId, user.id),
-         q ? like(schema.repositories.name, `%${q}%`) : undefined,
-      ),
-   )
-   .orderBy(desc(schema.repositories.updatedAt))
-   .all();
+// Fetch user's repositories with search
+const repos = await db.query.repositories.findMany({
+   where: and(
+      eq(schema.repositories.ownerId, user.id),
+      q ? like(schema.repositories.name, `%${q}%`) : undefined,
+   ),
+   orderBy: [desc(schema.repositories.updatedAt)],
+});
 
 function timeAgo(date: Date) {
    const seconds = Math.floor(

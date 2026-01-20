@@ -4,12 +4,12 @@
  */
 
 import { relations } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { pullRequests } from "./pull-requests";
 import { repositories } from "./repositories";
 import { users } from "./users";
 
-export const workflows = sqliteTable("workflows", {
+export const workflows = pgTable("workflows", {
   id: text("id").primaryKey(),
   repositoryId: text("repository_id")
     .notNull()
@@ -18,11 +18,11 @@ export const workflows = sqliteTable("workflows", {
   path: text("path").notNull(), // .github/workflows/ci.yml
   state: text("state").notNull().default("active"), // active, disabled, deleted
   badgeUrl: text("badge_url"),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const workflowRuns = sqliteTable("workflow_runs", {
+export const workflowRuns = pgTable("workflow_runs", {
   id: text("id").primaryKey(),
   workflowId: text("workflow_id")
     .notNull()
@@ -49,17 +49,17 @@ export const workflowRuns = sqliteTable("workflow_runs", {
   triggeredById: text("triggered_by_id").references(() => users.id),
 
   // Timing
-  startedAt: text("started_at"),
-  completedAt: text("completed_at"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
 
   // Config from YAML
   workflowConfig: text("workflow_config"), // JSON - parsed workflow YAML
 
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const workflowJobs = sqliteTable("workflow_jobs", {
+export const workflowJobs = pgTable("workflow_jobs", {
   id: text("id").primaryKey(),
   runId: text("run_id")
     .notNull()
@@ -89,14 +89,14 @@ export const workflowJobs = sqliteTable("workflow_jobs", {
   matrix: text("matrix"), // JSON - matrix configuration for this job instance
 
   // Timing
-  startedAt: text("started_at"),
-  completedAt: text("completed_at"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
 
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const workflowSteps = sqliteTable("workflow_steps", {
+export const workflowSteps = pgTable("workflow_steps", {
   id: text("id").primaryKey(),
   jobId: text("job_id")
     .notNull()
@@ -116,19 +116,19 @@ export const workflowSteps = sqliteTable("workflow_steps", {
 
   // Conditionals
   if: text("if"),
-  continueOnError: integer("continue_on_error", { mode: "boolean" }).default(
+  continueOnError: boolean("continue_on_error").default(
     false
   ),
   timeoutMinutes: integer("timeout_minutes"),
 
   // Timing
-  startedAt: text("started_at"),
-  completedAt: text("completed_at"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
 
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const workflowLogs = sqliteTable("workflow_logs", {
+export const workflowLogs = pgTable("workflow_logs", {
   id: text("id").primaryKey(),
   jobId: text("job_id")
     .notNull()
@@ -138,10 +138,10 @@ export const workflowLogs = sqliteTable("workflow_logs", {
   message: text("message").notNull(),
   timestamp: text("timestamp").notNull(),
   lineNumber: integer("line_number"),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const workflowArtifacts = sqliteTable("workflow_artifacts", {
+export const workflowArtifacts = pgTable("workflow_artifacts", {
   id: text("id").primaryKey(),
   runId: text("run_id")
     .notNull()
@@ -152,11 +152,11 @@ export const workflowArtifacts = sqliteTable("workflow_artifacts", {
   storagePath: text("storage_path").notNull(),
   mimeType: text("mime_type"),
   downloadCount: integer("download_count").default(0),
-  expiresAt: text("expires_at"),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const workflowSecrets = sqliteTable("workflow_secrets", {
+export const workflowSecrets = pgTable("workflow_secrets", {
   id: text("id").primaryKey(),
   repositoryId: text("repository_id")
     .notNull()
@@ -165,11 +165,11 @@ export const workflowSecrets = sqliteTable("workflow_secrets", {
   encryptedValue: text("encrypted_value").notNull(),
   environment: text("environment"), // null for repo-level, or environment name
   createdById: text("created_by_id").references(() => users.id),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const workflowVariables = sqliteTable("workflow_variables", {
+export const workflowVariables = pgTable("workflow_variables", {
   id: text("id").primaryKey(),
   repositoryId: text("repository_id")
     .notNull()
@@ -178,21 +178,21 @@ export const workflowVariables = sqliteTable("workflow_variables", {
   value: text("value").notNull(),
   environment: text("environment"),
   createdById: text("created_by_id").references(() => users.id),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const scheduledWorkflows = sqliteTable("scheduled_workflows", {
+export const scheduledWorkflows = pgTable("scheduled_workflows", {
   id: text("id").primaryKey(),
   workflowId: text("workflow_id")
     .notNull()
     .references(() => workflows.id, { onDelete: "cascade" }),
   cronExpression: text("cron_expression").notNull(),
   timezone: text("timezone").default("UTC"),
-  isEnabled: integer("is_enabled", { mode: "boolean" }).default(true),
-  lastRunAt: text("last_run_at"),
-  nextRunAt: text("next_run_at"),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  isEnabled: boolean("is_enabled").default(true),
+  lastRunAt: timestamp("last_run_at"),
+  nextRunAt: timestamp("next_run_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Relations

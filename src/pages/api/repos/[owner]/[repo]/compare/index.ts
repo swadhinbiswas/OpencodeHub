@@ -1,10 +1,16 @@
 import { getDatabase, schema } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { compareBranches, getMergeBase } from "@/lib/git";
 import { canReadRepo } from "@/lib/permissions";
 import type { APIRoute } from "astro";
 import { and, eq } from "drizzle-orm";
 
-export const GET: APIRoute = async ({ params, request, locals }) => {
+import { withErrorHandler } from "@/lib/errors";
+import { unauthorized, badRequest, notFound, serverError, success } from "@/lib/api";
+
+// ... existing imports ...
+
+export const GET: APIRoute = withErrorHandler(async ({ params, request, locals }) => {
     const { owner: ownerName, repo: repoName } = params;
     const url = new URL(request.url);
     const base = url.searchParams.get("base");
@@ -13,17 +19,17 @@ export const GET: APIRoute = async ({ params, request, locals }) => {
 
     // Validate inputs
     if (!ownerName || !repoName || !base || !head) {
-        return new Response("Missing parameters", { status: 400 });
+        return badRequest("Missing parameters");
     }
 
     // Check repo existence and permissions
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
     const repoOwner = await db.query.users.findFirst({
         where: eq(schema.users.username, ownerName),
     });
 
     if (!repoOwner) {
-        return new Response("Repository not found", { status: 404 });
+        return notFound("Repository not found");
     }
 
     const repo = await db.query.repositories.findFirst({
@@ -34,23 +40,16 @@ export const GET: APIRoute = async ({ params, request, locals }) => {
     });
 
     if (!repo) {
-        return new Response("Repository not found", { status: 404 });
+        return notFound("Repository not found");
     }
 
     if (!(await canReadRepo(user?.id, repo))) {
-        return new Response("Unauthorized", { status: 401 });
+        return unauthorized();
     }
 
     // Compare branches
-    try {
-        const { commits, diffs } = await compareBranches(repo.diskPath, base, head);
-        const mergeBase = await getMergeBase(repo.diskPath, base, head);
+    const { commits, diffs } = await compareBranches(repo.diskPath, base, head);
+    const mergeBase = await getMergeBase(repo.diskPath, base, head);
 
-        return new Response(JSON.stringify({ commits, diffs, mergeBase }), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-        });
-    } catch (error) {
-        return new Response(`Failed to compare branches: ${error}`, { status: 500 });
-    }
-};
+    return success({ commits, diffs, mergeBase });
+});

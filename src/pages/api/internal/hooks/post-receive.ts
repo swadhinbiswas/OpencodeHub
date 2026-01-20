@@ -1,4 +1,5 @@
 import { getDatabase, schema } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { logger } from "@/lib/logger";
 import { triggerRepoWorkflows } from "@/lib/workflows";
 import type { APIRoute } from "astro";
@@ -27,7 +28,7 @@ export const POST: APIRoute = async ({ request, url }) => {
 
   logger.info({ repoPath, ref: body.refname, oldrev: body.oldrev, newrev: body.newrev }, "Post-receive hook");
 
-  const db = getDatabase();
+  const db = getDatabase() as NodePgDatabase<typeof schema>;
 
   // Find repo by diskPath
   const repo = await db.query.repositories.findFirst({
@@ -45,7 +46,7 @@ export const POST: APIRoute = async ({ request, url }) => {
   // Update repo updatedAt
   await db
     .update(schema.repositories)
-    .set({ updatedAt: new Date().toISOString() })
+    .set({ updatedAt: new Date() })
     .where(eq(schema.repositories.id, repo.id));
 
   // Trigger CI/CD Workflows (fire and forget)

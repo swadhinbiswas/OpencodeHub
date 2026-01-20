@@ -1,5 +1,6 @@
 
 import { getDatabase, schema } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { logger } from "@/lib/logger";
 import { getCommits, getRepoSize, listFiles, getCommitDiff } from "./git";
 import { eq } from "drizzle-orm";
@@ -33,7 +34,7 @@ const EXT_MAP: Record<string, string> = {
 };
 
 export async function analyzeRepository(repoId: string, userId: string | null = null, force = false) {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // 1. Get Repo Info
     const repo = await db.query.repositories.findFirst({
@@ -62,6 +63,9 @@ export async function analyzeRepository(repoId: string, userId: string | null = 
                 const additions = diffs.reduce((sum, d) => sum + d.additions, 0);
                 const deletions = diffs.reduce((sum, d) => sum + d.deletions, 0);
 
+                // Safely convert dates, falling back to current time if invalid
+                const safeDate = (d: Date) => (d && !isNaN(d.getTime())) ? d.toISOString() : new Date().toISOString();
+
                 await db.insert(schema.commits).values({
                     id: crypto.randomUUID(),
                     repositoryId: repo.id,
@@ -69,14 +73,14 @@ export async function analyzeRepository(repoId: string, userId: string | null = 
                     message: c.message,
                     authorName: c.authorName,
                     authorEmail: c.authorEmail,
-                    authorDate: c.authorDate.toISOString(),
+                    authorDate: safeDate(c.authorDate),
                     committerName: c.committerName,
                     committerEmail: c.committerEmail,
-                    committerDate: c.committerDate.toISOString(),
+                    committerDate: safeDate(c.committerDate),
                     parentShas: c.parentShas.join(" "),
                     stats: JSON.stringify({ additions, deletions, files_changed: diffs.length }),
                     userId: userId // Link to user if passed (pusher)
-                });
+                } as any);
                 newCommitsCount++;
             }
         }
@@ -98,7 +102,7 @@ export async function analyzeRepository(repoId: string, userId: string | null = 
         await db.update(schema.repositories)
             .set({
                 languages: JSON.stringify(langCounts),
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date()
             })
             .where(eq(schema.repositories.id, repoId));
 
@@ -119,7 +123,7 @@ export async function analyzeRepository(repoId: string, userId: string | null = 
                     head_commit: commits[0]?.sha,
                     message: commits[0]?.message
                 }),
-                createdAt: new Date().toISOString()
+                createdAt: new Date()
             });
         }
 

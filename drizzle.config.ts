@@ -20,7 +20,7 @@ function getCredentials() {
   switch (driver) {
     case "postgres":
     case "mysql":
-      return { url };
+      return { url, ssl: { rejectUnauthorized: false } };
     case "libsql":
     case "turso":
       return { url, authToken: process.env.DATABASE_AUTH_TOKEN };

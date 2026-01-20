@@ -1,0 +1,36 @@
+Note: Unnecessary 
+Note: use of -X or 
+Note: --request, 
+Note: POST is 
+Note: already 
+Note: inferred.
+* Host localhost:3000 was resolved.
+* IPv6: ::1
+* IPv4: 127.0.0.1
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0*   Trying [::1]:3000...
+* Established connection to localhost (::1 port 3000) from ::1 port 58654 
+* using HTTP/1.x
+> POST /api/repos HTTP/1.1
+> Host: localhost:3000
+> User-Agent: curl/8.18.0
+> Accept: */*
+> Cookie: och_session=eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOiJ1c3JfR3h4M1pCMk41eThpVXVyWjJEQVRsIiwidXNlcm5hbWUiOiJ0ZXN0dXNlcjUiLCJlbWFpbCI6InRlc3R1c2VyNUBleGFtcGxlLmNvbSIsInNlc3Npb25JZCI6InNlc3NfS3VFUHlNQmFsZ0s0RjgwZTVWZENMIiwiaWF0IjoxNzY4OTMzMDIyLCJpc3MiOiJvcGVuY29kZWh1YiIsImF1ZCI6Im9wZW5jb2RlaHViLWFwaSIsImV4cCI6MTc2OTUzNzgyMn0.QiHu30cZVUMaWabicMoWL9QIuy0FQ0fE4tEPkpUF3Sw
+> Content-Type: application/json
+> Content-Length: 113
+> 
+} [113 bytes data]
+* upload completely sent off: 113 bytes
+100    113   0      0 100    113      0     94   00:01   00:01             94100    113   0      0 100    113      0     51   00:02   00:02             51100    113   0      0 100    113      0     35   00:03   00:03             35< HTTP/1.1 201 Created
+< Vary: Origin
+< content-type: application/json
+< Date: Tue, 20 Jan 2026 18:19:30 GMT
+< Connection: keep-alive
+< Keep-Alive: timeout=5
+< Transfer-Encoding: chunked
+< 
+{ [513 bytes data]
+100    614   0    501 100    113    128     29   00:03   00:03             35100    614   0    501 100    113    128     28   00:04   00:03   00:01     35100    614   0    501 100    113    128     28   00:04   00:03   00:01     35
+* Connection #0 to host localhost:3000 left intact
+{"success":true,"data":{"id":"repo_w-EIXfinHhyGRl1r7eIiB","name":"test-repo-3","slug":"test-repo-3","fullName":"testuser5/test-repo-3","description":"Third test repository","visibility":"public","defaultBranch":"main","sshCloneUrl":"ssh://git@localhost:2222/testuser5/test-repo-3.git","httpCloneUrl":"http://localhost:3000/testuser5/test-repo-3.git","owner":{"id":"usr_Gxx3ZB2N5y8iUurZ2DATl","username":"testuser5","displayName":"Test User 5","avatarUrl":null},"createdAt":"2026-01-20T18:19:28.138Z"}}

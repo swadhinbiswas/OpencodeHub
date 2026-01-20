@@ -4,12 +4,12 @@
  */
 
 import { relations } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { pullRequests } from "./pull-requests";
 import { users } from "./users";
 
 // AI Reviews - one per PR run
-export const aiReviews = sqliteTable("ai_reviews", {
+export const aiReviews = pgTable("ai_reviews", {
     id: text("id").primaryKey(),
     pullRequestId: text("pull_request_id")
         .notNull()
@@ -24,7 +24,7 @@ export const aiReviews = sqliteTable("ai_reviews", {
 
     // Stack context
     stackContext: text("stack_context"), // JSON: context from parent PRs
-    includesStackContext: integer("includes_stack_context", { mode: "boolean" }).default(false),
+    includesStackContext: boolean("includes_stack_context").default(false),
 
     // Results
     summary: text("summary"), // Overall review summary
@@ -42,16 +42,16 @@ export const aiReviews = sqliteTable("ai_reviews", {
 
     // Timing
     triggeredById: text("triggered_by_id").references(() => users.id),
-    createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-    startedAt: text("started_at"),
-    completedAt: text("completed_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    startedAt: timestamp("started_at"),
+    completedAt: timestamp("completed_at"),
 
     // Error
     errorMessage: text("error_message"),
 });
 
 // AI Review Suggestions - individual findings
-export const aiReviewSuggestions = sqliteTable("ai_review_suggestions", {
+export const aiReviewSuggestions = pgTable("ai_review_suggestions", {
     id: text("id").primaryKey(),
     aiReviewId: text("ai_review_id")
         .notNull()
@@ -74,15 +74,15 @@ export const aiReviewSuggestions = sqliteTable("ai_review_suggestions", {
     explanation: text("explanation"), // Why this matters
 
     // Actions
-    isApplied: integer("is_applied", { mode: "boolean" }).default(false),
-    isDismissed: integer("is_dismissed", { mode: "boolean" }).default(false),
-    appliedAt: text("applied_at"),
+    isApplied: boolean("is_applied").default(false),
+    isDismissed: boolean("is_dismissed").default(false),
+    appliedAt: timestamp("applied_at"),
     appliedById: text("applied_by_id").references(() => users.id),
-    dismissedAt: text("dismissed_at"),
+    dismissedAt: timestamp("dismissed_at"),
     dismissedById: text("dismissed_by_id").references(() => users.id),
     dismissReason: text("dismiss_reason"),
 
-    createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Relations

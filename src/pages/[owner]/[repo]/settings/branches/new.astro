@@ -1,5 +1,5 @@
 ---
-import SettingsLayout from "@/layouts/SettingsLayout.astro";
+import Layout from "@/layouts/SettingsLayout.astro";
 import { getDatabase, schema } from "@/db";
 import { eq } from "drizzle-orm";
 
@@ -23,9 +23,14 @@ if (!repository || repository.owner.username !== owner) {
     <div class="mx-auto max-w-2xl">
       <h1 class="mb-6 text-2xl font-bold">Add Branch Protection Rule</h1>
 
-      <form id="new-rule-form" class="space-y-6 rounded-lg border border-gray-700 bg-gray-800 p-6">
+      <form
+        id="new-rule-form"
+        class="space-y-6 rounded-lg border border-gray-700 bg-gray-800 p-6"
+      >
         <div>
-          <label class="mb-2 block font-medium text-gray-300">Branch Pattern</label>
+          <label class="mb-2 block font-medium text-gray-300"
+            >Branch Pattern</label
+          >
           <input
             type="text"
             name="pattern"
@@ -33,46 +38,94 @@ if (!repository || repository.owner.username !== owner) {
             required
             class="w-full rounded border border-gray-600 bg-gray-900 px-4 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
           />
-          <p class="mt-1 text-sm text-gray-500">Glob patterns supported (e.g., release/*)</p>
+          <p class="mt-1 text-sm text-gray-500">
+            Glob patterns supported (e.g., release/*)
+          </p>
         </div>
 
         <div class="space-y-4">
-          <label class="block font-medium text-gray-300">Protect matching branches</label>
-          
+          <label class="block font-medium text-gray-300"
+            >Protect matching branches</label
+          >
+
           <div class="flex items-start gap-3">
-            <input type="checkbox" name="requiresPr" id="requiresPr" class="mt-1" />
+            <input
+              type="checkbox"
+              name="requiresPr"
+              id="requiresPr"
+              class="mt-1"
+            />
             <div>
-              <label for="requiresPr" class="font-medium text-white">Require a pull request before merging</label>
-              <p class="text-sm text-gray-500">All commits must be made to a non-protected branch and submitted via a pull request.</p>
+              <label for="requiresPr" class="font-medium text-white"
+                >Require a pull request before merging</label
+              >
+              <p class="text-sm text-gray-500">
+                All commits must be made to a non-protected branch and submitted
+                via a pull request.
+              </p>
             </div>
           </div>
 
           <div class="ml-7">
-             <label class="block text-sm text-gray-400">Required approvals</label>
-             <input type="number" name="requiredApprovals" min="0" max="10" value="1" class="mt-1 w-20 rounded border border-gray-600 bg-gray-900 px-2 py-1 text-white" />
+            <label class="block text-sm text-gray-400">Required approvals</label
+            >
+            <input
+              type="number"
+              name="requiredApprovals"
+              min="0"
+              max="10"
+              value="1"
+              class="mt-1 w-20 rounded border border-gray-600 bg-gray-900 px-2 py-1 text-white"
+            />
           </div>
 
           <div class="flex items-start gap-3">
-            <input type="checkbox" name="dismissStaleReviews" id="dismissStaleReviews" class="mt-1" />
+            <input
+              type="checkbox"
+              name="dismissStaleReviews"
+              id="dismissStaleReviews"
+              class="mt-1"
+            />
             <div>
-              <label for="dismissStaleReviews" class="font-medium text-white">Dismiss stale pull request approvals when new commits are pushed</label>
+              <label for="dismissStaleReviews" class="font-medium text-white"
+                >Dismiss stale pull request approvals when new commits are
+                pushed</label
+              >
             </div>
           </div>
 
           <div class="flex items-start gap-3">
-            <input type="checkbox" name="requireCodeOwnerReviews" id="requireCodeOwnerReviews" class="mt-1" />
+            <input
+              type="checkbox"
+              name="requireCodeOwnerReviews"
+              id="requireCodeOwnerReviews"
+              class="mt-1"
+            />
             <div>
-              <label for="requireCodeOwnerReviews" class="font-medium text-white">Require review from Code Owners</label>
+              <label
+                for="requireCodeOwnerReviews"
+                class="font-medium text-white"
+                >Require review from Code Owners</label
+              >
             </div>
           </div>
-          
+
           <hr class="border-gray-700 my-4" />
 
           <div class="flex items-start gap-3">
-            <input type="checkbox" name="allowForcePushes" id="allowForcePushes" class="mt-1" />
+            <input
+              type="checkbox"
+              name="allowForcePushes"
+              id="allowForcePushes"
+              class="mt-1"
+            />
             <div>
-              <label for="allowForcePushes" class="font-medium text-white">Allow force pushes</label>
-              <p class="text-sm text-gray-500">Permit force pushes for all users with write access.</p>
+              <label for="allowForcePushes" class="font-medium text-white"
+                >Allow force pushes</label
+              >
+              <p class="text-sm text-gray-500">
+                Permit force pushes for all users with write access.
+              </p>
             </div>
           </div>
         </div>
@@ -98,11 +151,11 @@ if (!repository || repository.owner.username !== owner) {
 
 <script define:vars={{ repoId: repository.id, owner, repo }}>
   const form = document.getElementById("new-rule-form");
-  
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const formData = new FormData(form);
-    
+
     const payload = {
       pattern: formData.get("pattern"),
       requiresPr: formData.get("requiresPr") === "on",
@@ -110,7 +163,7 @@ if (!repository || repository.owner.username !== owner) {
       dismissStaleReviews: formData.get("dismissStaleReviews") === "on",
       requireCodeOwnerReviews: formData.get("requireCodeOwnerReviews") === "on",
       allowForcePushes: formData.get("allowForcePushes") === "on",
-      active: true
+      active: true,
     };
 
     try {

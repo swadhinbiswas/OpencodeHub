@@ -4,13 +4,13 @@
  */
 
 import { relations } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { pullRequests } from "./pull-requests";
 import { repositories } from "./repositories";
 import { users } from "./users";
 
 // PR Stacks - groups of related stacked PRs
-export const prStacks = sqliteTable("pr_stacks", {
+export const prStacks = pgTable("pr_stacks", {
     id: text("id").primaryKey(),
     repositoryId: text("repository_id")
         .notNull()
@@ -21,12 +21,12 @@ export const prStacks = sqliteTable("pr_stacks", {
     createdById: text("created_by_id")
         .notNull()
         .references(() => users.id),
-    createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-    updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // Stack entries - individual PRs in a stack with ordering
-export const prStackEntries = sqliteTable("pr_stack_entries", {
+export const prStackEntries = pgTable("pr_stack_entries", {
     id: text("id").primaryKey(),
     stackId: text("stack_id")
         .notNull()
@@ -36,7 +36,7 @@ export const prStackEntries = sqliteTable("pr_stack_entries", {
         .references(() => pullRequests.id, { onDelete: "cascade" }),
     stackOrder: integer("stack_order").notNull(), // Position in stack (1 = base)
     parentPrId: text("parent_pr_id").references(() => pullRequests.id),
-    createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Relations

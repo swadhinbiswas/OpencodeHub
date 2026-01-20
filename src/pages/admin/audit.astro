@@ -5,30 +5,30 @@ import { desc, sql, like, eq, or } from "drizzle-orm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  FileText, 
-  User, 
-  Trash2, 
-  Shield, 
-  GitBranch, 
-  Settings, 
+import {
+  FileText,
+  User,
+  Trash2,
+  Shield,
+  GitBranch,
+  Settings,
   Search,
   ChevronLeft,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
 } from "lucide-react";
 
 const user = Astro.locals.user;
 
 // Only admins can access
 if (!user?.isAdmin) {
-  return Astro.redirect('/');
+  return Astro.redirect("/");
 }
 
 const db = getDatabase();
-const searchQuery = Astro.url.searchParams.get('q') || '';
-const actionFilter = Astro.url.searchParams.get('action') || '';
-const page = parseInt(Astro.url.searchParams.get('page') || '1');
+const searchQuery = Astro.url.searchParams.get("q") || "";
+const actionFilter = Astro.url.searchParams.get("action") || "";
+const page = parseInt(Astro.url.searchParams.get("page") || "1");
 const limit = 50;
 const offset = (page - 1) * limit;
 
@@ -39,17 +39,18 @@ if (searchQuery) {
     or(
       like(schema.auditLogs.action, `%${searchQuery}%`),
       like(schema.auditLogs.targetName, `%${searchQuery}%`),
-      like(schema.auditLogs.actorId, `%${searchQuery}%`)
-    )
+      like(schema.auditLogs.actorId, `%${searchQuery}%`),
+    ),
   );
 }
 if (actionFilter) {
   whereConditions.push(like(schema.auditLogs.action, `%${actionFilter}%`));
 }
 
-const whereClause = whereConditions.length > 0 
-  ? whereConditions.reduce((acc, curr) => acc && curr)
-  : undefined;
+const whereClause =
+  whereConditions.length > 0
+    ? whereConditions.reduce((acc, curr) => acc && curr)
+    : undefined;
 
 // Fetch audit logs
 const [logs, totalResult] = await Promise.all([
@@ -60,39 +61,42 @@ const [logs, totalResult] = await Promise.all([
     offset,
     with: {
       user: {
-        columns: { id: true, username: true, avatarUrl: true }
+        columns: { id: true, username: true, avatarUrl: true },
       },
       repository: {
-        columns: { id: true, name: true }
-      }
-    }
+        columns: { id: true, name: true },
+      },
+    },
   }),
-  db.select({ count: sql<number>`count(*)` })
+  db
+    // @ts-expect-error: count argument mismatch
+    .select({ count: sql<number>`count(*)` })
     .from(schema.auditLogs)
     .where(whereClause)
     .get(),
 ]);
 
-const total = totalResult?.count || 0;
+const total = (totalResult as { count: number } | undefined)?.count || 0;
 const totalPages = Math.ceil(total / limit);
 
 // Action categories for icons
 function getActionIcon(action: string) {
-  if (action.includes('delete')) return Trash2;
-  if (action.includes('user') || action.includes('login')) return User;
-  if (action.includes('admin') || action.includes('ban')) return Shield;
-  if (action.includes('repo') || action.includes('push')) return GitBranch;
-  if (action.includes('setting')) return Settings;
+  if (action.includes("delete")) return Trash2;
+  if (action.includes("user") || action.includes("login")) return User;
+  if (action.includes("admin") || action.includes("ban")) return Shield;
+  if (action.includes("repo") || action.includes("push")) return GitBranch;
+  if (action.includes("setting")) return Settings;
   return FileText;
 }
 
 function getActionColor(action: string) {
-  if (action.includes('delete')) return 'text-red-500 bg-red-500/10';
-  if (action.includes('create')) return 'text-green-500 bg-green-500/10';
-  if (action.includes('update') || action.includes('change')) return 'text-blue-500 bg-blue-500/10';
-  if (action.includes('ban')) return 'text-orange-500 bg-orange-500/10';
-  if (action.includes('admin')) return 'text-purple-500 bg-purple-500/10';
-  return 'text-muted-foreground bg-muted';
+  if (action.includes("delete")) return "text-red-500 bg-red-500/10";
+  if (action.includes("create")) return "text-green-500 bg-green-500/10";
+  if (action.includes("update") || action.includes("change"))
+    return "text-blue-500 bg-blue-500/10";
+  if (action.includes("ban")) return "text-orange-500 bg-orange-500/10";
+  if (action.includes("admin")) return "text-purple-500 bg-purple-500/10";
+  return "text-muted-foreground bg-muted";
 }
 
 function timeAgo(date: string) {
@@ -134,7 +138,13 @@ function timeAgo(date: string) {
           <CardContent className="p-4">
             <p class="text-sm text-muted-foreground">Today</p>
             <p class="text-2xl font-bold">
-              {logs.filter(l => new Date(l.createdAt).toDateString() === new Date().toDateString()).length}
+              {
+                logs.filter(
+                  (l) =>
+                    new Date(l.createdAt).toDateString() ===
+                    new Date().toDateString(),
+                ).length
+              }
             </p>
           </CardContent>
         </Card>
@@ -144,24 +154,34 @@ function timeAgo(date: string) {
       <div class="flex flex-wrap gap-4">
         <form action="/admin/audit" method="GET" class="flex gap-2 flex-1">
           <div class="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              name="q" 
+            <Search
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground"
+            />
+            <Input
+              name="q"
               value={searchQuery}
               placeholder="Search actions, targets..."
               className="pl-10"
             />
           </div>
-          <select 
-            name="action" 
+          <select
+            name="action"
             class="h-10 rounded-md border border-input bg-background px-3 text-sm"
           >
             <option value="">All Actions</option>
-            <option value="create" selected={actionFilter === 'create'}>Create</option>
-            <option value="update" selected={actionFilter === 'update'}>Update</option>
-            <option value="delete" selected={actionFilter === 'delete'}>Delete</option>
-            <option value="login" selected={actionFilter === 'login'}>Login</option>
-            <option value="ban" selected={actionFilter === 'ban'}>Ban</option>
+            <option value="create" selected={actionFilter === "create"}
+              >Create</option
+            >
+            <option value="update" selected={actionFilter === "update"}
+              >Update</option
+            >
+            <option value="delete" selected={actionFilter === "delete"}
+              >Delete</option
+            >
+            <option value="login" selected={actionFilter === "login"}
+              >Login</option
+            >
+            <option value="ban" selected={actionFilter === "ban"}>Ban</option>
           </select>
           <Button type="submit">Filter</Button>
         </form>
@@ -173,102 +193,114 @@ function timeAgo(date: string) {
           <CardTitle>Events</CardTitle>
         </CardHeader>
         <CardContent>
-          {logs.length === 0 ? (
-            <div class="text-center py-12 text-muted-foreground">
-              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No audit events found</p>
-            </div>
-          ) : (
-            <div class="space-y-2">
-              {logs.map((log) => {
-                const ActionIcon = getActionIcon(log.action);
-                const colorClass = getActionColor(log.action);
-                const data = log.data ? JSON.parse(log.data) : null;
-                
-                return (
-                  <div class="flex items-start gap-4 p-4 rounded-lg border hover:bg-muted/30 transition-colors">
-                    <div class={`p-2 rounded-lg ${colorClass}`}>
-                      <ActionIcon className="h-4 w-4" />
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-2">
-                        <span class="font-medium">{log.action}</span>
-                        {log.targetName && (
-                          <span class="text-muted-foreground">on</span>
-                        )}
-                        {log.targetName && (
-                          <span class="font-mono text-sm bg-muted px-2 py-0.5 rounded">
-                            {log.targetName}
-                          </span>
+          {
+            logs.length === 0 ? (
+              <div class="text-center py-12 text-muted-foreground">
+                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No audit events found</p>
+              </div>
+            ) : (
+              <div class="space-y-2">
+                {logs.map((log) => {
+                  const ActionIcon = getActionIcon(log.action);
+                  const colorClass = getActionColor(log.action);
+                  const data = log.data ? JSON.parse(log.data) : null;
+
+                  return (
+                    <div class="flex items-start gap-4 p-4 rounded-lg border hover:bg-muted/30 transition-colors">
+                      <div class={`p-2 rounded-lg ${colorClass}`}>
+                        <ActionIcon className="h-4 w-4" />
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                          <span class="font-medium">{log.action}</span>
+                          {log.targetName && (
+                            <span class="text-muted-foreground">on</span>
+                          )}
+                          {log.targetName && (
+                            <span class="font-mono text-sm bg-muted px-2 py-0.5 rounded">
+                              {log.targetName}
+                            </span>
+                          )}
+                        </div>
+                        <div class="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+                          {log.user && (
+                            <div class="flex items-center gap-1">
+                              {log.user.avatarUrl ? (
+                                <img
+                                  src={log.user.avatarUrl}
+                                  class="h-4 w-4 rounded-full"
+                                />
+                              ) : (
+                                <User className="h-3 w-3" />
+                              )}
+                              <span>@{log.user.username}</span>
+                            </div>
+                          )}
+                          {log.actorIp && <span>IP: {log.actorIp}</span>}
+                          <span>{timeAgo(log.createdAt)}</span>
+                        </div>
+                        {data && (
+                          <details class="mt-2">
+                            <summary class="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                              View Details
+                            </summary>
+                            <pre class="mt-2 p-2 bg-muted rounded text-xs overflow-x-auto">
+                              {JSON.stringify(data, null, 2)}
+                            </pre>
+                          </details>
                         )}
                       </div>
-                      <div class="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                        {log.user && (
-                          <div class="flex items-center gap-1">
-                            {log.user.avatarUrl ? (
-                              <img src={log.user.avatarUrl} class="h-4 w-4 rounded-full" />
-                            ) : (
-                              <User className="h-3 w-3" />
-                            )}
-                            <span>@{log.user.username}</span>
-                          </div>
-                        )}
-                        {log.actorIp && (
-                          <span>IP: {log.actorIp}</span>
-                        )}
-                        <span>{timeAgo(log.createdAt)}</span>
-                      </div>
-                      {data && (
-                        <details class="mt-2">
-                          <summary class="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-                            View Details
-                          </summary>
-                          <pre class="mt-2 p-2 bg-muted rounded text-xs overflow-x-auto">
-                            {JSON.stringify(data, null, 2)}
-                          </pre>
-                        </details>
+                      {log.repository && (
+                        <a
+                          href={`/${log.repository.name}`}
+                          class="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                        >
+                          <GitBranch className="h-3 w-3" />
+                          {log.repository.name}
+                        </a>
                       )}
                     </div>
-                    {log.repository && (
-                      <a 
-                        href={`/${log.repository.name}`}
-                        class="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-                      >
-                        <GitBranch className="h-3 w-3" />
-                        {log.repository.name}
-                      </a>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )
+          }
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div class="flex items-center justify-between mt-6 pt-4 border-t">
-              <div class="text-sm text-muted-foreground">
-                Showing {offset + 1} - {Math.min(offset + limit, total)} of {total}
+          {
+            totalPages > 1 && (
+              <div class="flex items-center justify-between mt-6 pt-4 border-t">
+                <div class="text-sm text-muted-foreground">
+                  Showing {offset + 1} - {Math.min(offset + limit, total)} of{" "}
+                  {total}
+                </div>
+                <div class="flex items-center gap-2">
+                  {page > 1 && (
+                    <a
+                      href={`/admin/audit?page=${page - 1}${searchQuery ? `&q=${searchQuery}` : ""}${actionFilter ? `&action=${actionFilter}` : ""}`}
+                    >
+                      <Button variant="outline" size="sm">
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                    </a>
+                  )}
+                  <span class="text-sm">
+                    Page {page} of {totalPages}
+                  </span>
+                  {page < totalPages && (
+                    <a
+                      href={`/admin/audit?page=${page + 1}${searchQuery ? `&q=${searchQuery}` : ""}${actionFilter ? `&action=${actionFilter}` : ""}`}
+                    >
+                      <Button variant="outline" size="sm">
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </a>
+                  )}
+                </div>
               </div>
-              <div class="flex items-center gap-2">
-                {page > 1 && (
-                  <a href={`/admin/audit?page=${page - 1}${searchQuery ? `&q=${searchQuery}` : ''}${actionFilter ? `&action=${actionFilter}` : ''}`}>
-                    <Button variant="outline" size="sm">
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                  </a>
-                )}
-                <span class="text-sm">Page {page} of {totalPages}</span>
-                {page < totalPages && (
-                  <a href={`/admin/audit?page=${page + 1}${searchQuery ? `&q=${searchQuery}` : ''}${actionFilter ? `&action=${actionFilter}` : ''}`}>
-                    <Button variant="outline" size="sm">
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </a>
-                )}
-              </div>
-            </div>
-          )}
+            )
+          }
         </CardContent>
       </Card>
     </div>

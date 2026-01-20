@@ -4,6 +4,7 @@
  */
 
 import { eq, and, desc } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDatabase, schema } from "@/db";
 import { simpleGit, SimpleGit } from "simple-git";
 import { getStack, getStackForPr, addToStack, createStack } from "./stacks";
@@ -17,7 +18,7 @@ export interface SyncStatus {
     behind: number;
     hasUnpushedChanges: boolean;
     hasRemoteChanges: boolean;
-    lastSyncedAt: string | null;
+    lastSyncedAt: Date | null;
 }
 
 export interface StackSyncResult {
@@ -91,7 +92,7 @@ export async function getBranchSyncStatus(
             behind: behind || 0,
             hasUnpushedChanges: (ahead || 0) > 0,
             hasRemoteChanges: (behind || 0) > 0,
-            lastSyncedAt: new Date().toISOString(),
+            lastSyncedAt: new Date(),
         };
     } catch (error) {
         console.error("Error getting sync status:", error);
@@ -267,7 +268,7 @@ export async function syncCIStatus(
     repositoryId: string,
     pullRequestId: string
 ): Promise<RemoteCIStatus | null> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // Get PR
     const pr = await db.query.pullRequests.findFirst({
@@ -406,7 +407,7 @@ export async function createStackFromBranches(
     createdById: string,
     stackName?: string
 ): Promise<{ stackId: string; prIds: string[] }> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // Create the stack
     const stack = await createStack({

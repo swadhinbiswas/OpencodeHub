@@ -4,11 +4,11 @@
  */
 
 import { relations } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { repositories } from "./repositories";
 import { users } from "./users";
 
-export const wikiPages = sqliteTable("wiki_pages", {
+export const wikiPages = pgTable("wiki_pages", {
   id: text("id").primaryKey(),
   repositoryId: text("repository_id")
     .notNull()
@@ -21,11 +21,11 @@ export const wikiPages = sqliteTable("wiki_pages", {
   order: integer("order").default(0),
   lastEditorId: text("last_editor_id").references(() => users.id),
   viewCount: integer("view_count").default(0),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const wikiRevisions = sqliteTable("wiki_revisions", {
+export const wikiRevisions = pgTable("wiki_revisions", {
   id: text("id").primaryKey(),
   pageId: text("page_id")
     .notNull()
@@ -35,7 +35,7 @@ export const wikiRevisions = sqliteTable("wiki_revisions", {
   authorId: text("author_id")
     .notNull()
     .references(() => users.id),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Relations

@@ -4,6 +4,7 @@
  */
 
 import { eq, and, asc, desc } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDatabase, schema } from "@/db";
 import { generateId } from "./utils";
 
@@ -33,7 +34,7 @@ export interface AddToStackOptions {
  * Create a new PR stack
  */
 export async function createStack(options: CreateStackOptions): Promise<typeof schema.prStacks.$inferSelect> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
     const id = generateId();
 
     const stack = {
@@ -43,8 +44,8 @@ export async function createStack(options: CreateStackOptions): Promise<typeof s
         name: options.name || null,
         status: "active",
         createdById: options.createdById,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
     };
 
     await db.insert(schema.prStacks).values(stack);
@@ -55,7 +56,7 @@ export async function createStack(options: CreateStackOptions): Promise<typeof s
  * Get stack by ID with all entries and PRs
  */
 export async function getStack(stackId: string): Promise<StackInfo | null> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     const stack = await db.query.prStacks.findFirst({
         where: eq(schema.prStacks.id, stackId),
@@ -84,7 +85,7 @@ export async function getStack(stackId: string): Promise<StackInfo | null> {
  * Get stack for a specific PR
  */
 export async function getStackForPr(pullRequestId: string): Promise<StackInfo | null> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     const entry = await db.query.prStackEntries.findFirst({
         where: eq(schema.prStackEntries.pullRequestId, pullRequestId),
@@ -99,7 +100,7 @@ export async function getStackForPr(pullRequestId: string): Promise<StackInfo | 
  * Add a PR to an existing stack
  */
 export async function addToStack(options: AddToStackOptions): Promise<typeof schema.prStackEntries.$inferSelect> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // Get current max order in stack
     const existingEntries = await db.query.prStackEntries.findMany({
@@ -115,14 +116,14 @@ export async function addToStack(options: AddToStackOptions): Promise<typeof sch
         pullRequestId: options.pullRequestId,
         stackOrder: maxOrder + 1,
         parentPrId: options.parentPrId || (existingEntries[0]?.pullRequestId || null),
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(),
     };
 
     await db.insert(schema.prStackEntries).values(entry);
 
     // Update stack timestamp
     await db.update(schema.prStacks)
-        .set({ updatedAt: new Date().toISOString() })
+        .set({ updatedAt: new Date() })
         .where(eq(schema.prStacks.id, options.stackId));
 
     return entry as typeof schema.prStackEntries.$inferSelect;
@@ -132,7 +133,7 @@ export async function addToStack(options: AddToStackOptions): Promise<typeof sch
  * Remove a PR from its stack
  */
 export async function removeFromStack(pullRequestId: string): Promise<void> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     const entry = await db.query.prStackEntries.findFirst({
         where: eq(schema.prStackEntries.pullRequestId, pullRequestId),
@@ -161,7 +162,7 @@ export async function removeFromStack(pullRequestId: string): Promise<void> {
     // If stack is now empty, mark it as closed
     if (remainingEntries.length === 0) {
         await db.update(schema.prStacks)
-            .set({ status: "closed", updatedAt: new Date().toISOString() })
+            .set({ status: "closed", updatedAt: new Date() })
             .where(eq(schema.prStacks.id, entry.stackId));
     }
 }
@@ -170,7 +171,7 @@ export async function removeFromStack(pullRequestId: string): Promise<void> {
  * Reorder PRs within a stack
  */
 export async function reorderStack(stackId: string, newOrder: string[]): Promise<void> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     for (let i = 0; i < newOrder.length; i++) {
         const parentPrId = i > 0 ? newOrder[i - 1] : null;
@@ -186,7 +187,7 @@ export async function reorderStack(stackId: string, newOrder: string[]): Promise
     }
 
     await db.update(schema.prStacks)
-        .set({ updatedAt: new Date().toISOString() })
+        .set({ updatedAt: new Date() })
         .where(eq(schema.prStacks.id, stackId));
 }
 
@@ -194,7 +195,7 @@ export async function reorderStack(stackId: string, newOrder: string[]): Promise
  * Get all active stacks for a repository
  */
 export async function getRepositoryStacks(repositoryId: string): Promise<Array<StackInfo>> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     const stacks = await db.query.prStacks.findMany({
         where: and(
@@ -218,7 +219,7 @@ export async function getRepositoryStacks(repositoryId: string): Promise<Array<S
  * Check if a PR can be stacked on another PR
  */
 export async function canStackOn(prId: string, targetPrId: string): Promise<boolean> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     const targetPr = await db.query.pullRequests.findFirst({
         where: eq(schema.pullRequests.id, targetPrId),
@@ -274,7 +275,7 @@ export async function getStackVisualization(stackId: string) {
  * Mark a stack as merged when all PRs are merged
  */
 export async function updateStackStatus(stackId: string): Promise<void> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
     const stackInfo = await getStack(stackId);
 
     if (!stackInfo) return;
@@ -291,7 +292,7 @@ export async function updateStackStatus(stackId: string): Promise<void> {
 
     if (newStatus !== stackInfo.stack.status) {
         await db.update(schema.prStacks)
-            .set({ status: newStatus, updatedAt: new Date().toISOString() })
+            .set({ status: newStatus, updatedAt: new Date() })
             .where(eq(schema.prStacks.id, stackId));
     }
 }

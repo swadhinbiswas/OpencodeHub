@@ -1,0 +1,1308 @@
+
+> opencodehub@1.0.0 lint
+> astro check
+
+14:18:14 [types] Generated 33ms
+14:18:14 [check] Getting diagnostics for Astro files in /home/swadhin/owngit/OpenCodeHub...
+[96msrc/components/admin/AdminDashboard.tsx[0m:[93m141[0m:[93m30[0m - [93mwarning[0m[90m ts(6385): [0m'Github' is deprecated.
+
+[7m141[0m                             <Github className="h-8 w-8 text-white opacity-30 hover:opacity-70 transition-opacity cursor-pointer" />
+[7m   [0m [93m                             ~~~~~~[0m
+[96msrc/components/admin/AdminDashboard.tsx[0m:[93m10[0m:[93m10[0m - [93mwarning[0m[90m ts(6385): [0m'Github' is deprecated.
+
+[7m10[0m import { Github } from "lucide-react";
+[7m  [0m [93m         ~~~~~~[0m
+
+[96msrc/components/admin/AlertBanner.tsx[0m:[93m2[0m:[93m44[0m - [93mwarning[0m[90m ts(6133): [0m'Bell' is declared but its value is never read.
+
+[7m2[0m import { AlertTriangle, CheckCircle, Info, Bell, X } from "lucide-react";
+[7m [0m [93m                                           ~~~~[0m
+
+[96msrc/components/admin/DashboardStats.tsx[0m:[93m1[0m:[93m45[0m - [93mwarning[0m[90m ts(6133): [0m'useTransform' is declared but its value is never read.
+
+[7m1[0m import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+[7m [0m [93m                                            ~~~~~~~~~~~~[0m
+[96msrc/components/admin/DashboardStats.tsx[0m:[93m1[0m:[93m34[0m - [93mwarning[0m[90m ts(6133): [0m'useSpring' is declared but its value is never read.
+
+[7m1[0m import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+[7m [0m [93m                                 ~~~~~~~~~[0m
+[96msrc/components/admin/DashboardStats.tsx[0m:[93m1[0m:[93m18[0m - [93mwarning[0m[90m ts(6133): [0m'useMotionValue' is declared but its value is never read.
+
+[7m1[0m import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+[7m [0m [93m                 ~~~~~~~~~~~~~~[0m
+
+[96msrc/components/admin/GlobeViz.tsx[0m:[93m199[0m:[93m27[0m - [93mwarning[0m[90m ts(6133): [0m'activities' is declared but its value is never read.
+
+[7m199[0m function CSSGlobeFallback({ activities = [] }: Props) {
+[7m   [0m [93m                          ~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/components/admin/GlobeViz.tsx[0m:[93m89[0m:[93m54[0m - [93mwarning[0m[90m ts(6133): [0m'i' is declared but its value is never read.
+
+[7m89[0m             markers: activities.slice(0, 20).map((_, i) => ({
+[7m  [0m [93m                                                     ~[0m
+
+[96msrc/components/admin/QuickStatsRow.tsx[0m:[93m2[0m:[93m78[0m - [93mwarning[0m[90m ts(6133): [0m'Zap' is declared but its value is never read.
+
+[7m2[0m import { GitCommit, GitMerge, CircleDot, Users, Clock, TrendingUp, Activity, Zap } from "lucide-react";
+[7m [0m [93m                                                                             ~~~[0m
+[96msrc/components/admin/QuickStatsRow.tsx[0m:[93m2[0m:[93m68[0m - [93mwarning[0m[90m ts(6133): [0m'Activity' is declared but its value is never read.
+
+[7m2[0m import { GitCommit, GitMerge, CircleDot, Users, Clock, TrendingUp, Activity, Zap } from "lucide-react";
+[7m [0m [93m                                                                   ~~~~~~~~[0m
+[96msrc/components/admin/QuickStatsRow.tsx[0m:[93m2[0m:[93m49[0m - [93mwarning[0m[90m ts(6133): [0m'Clock' is declared but its value is never read.
+
+[7m2[0m import { GitCommit, GitMerge, CircleDot, Users, Clock, TrendingUp, Activity, Zap } from "lucide-react";
+[7m [0m [93m                                                ~~~~~[0m
+
+[96msrc/components/admin/SystemStatus.tsx[0m:[93m18[0m:[93m5[0m - [93mwarning[0m[90m ts(6133): [0m'color' is declared but its value is never read.
+
+[7m18[0m     color,
+[7m  [0m [93m    ~~~~~[0m
+[96msrc/components/admin/SystemStatus.tsx[0m:[93m1[0m:[93m47[0m - [93mwarning[0m[90m ts(6133): [0m'Server' is declared but its value is never read.
+
+[7m1[0m import { HardDrive, Cpu, Zap, Activity, Wifi, Server } from "lucide-react";
+[7m [0m [93m                                              ~~~~~~[0m
+[96msrc/components/admin/SystemStatus.tsx[0m:[93m1[0m:[93m41[0m - [93mwarning[0m[90m ts(6133): [0m'Wifi' is declared but its value is never read.
+
+[7m1[0m import { HardDrive, Cpu, Zap, Activity, Wifi, Server } from "lucide-react";
+[7m [0m [93m                                        ~~~~[0m
+
+[96msrc/components/dashboard/ActivityStream.tsx[0m:[93m80[0m:[93m55[0m - [93mwarning[0m[90m ts(6133): [0m'i' is declared but its value is never read.
+
+[7m80[0m                         {users.slice(0, 5).map((user, i) => (
+[7m  [0m [93m                                                      ~[0m
+[96msrc/components/dashboard/ActivityStream.tsx[0m:[93m2[0m:[93m1[0m - [93mwarning[0m[90m ts(6133): [0m'React' is declared but its value is never read.
+
+[7m2[0m import * as React from "react";
+[7m [0m [93m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/components/git/CommitGraph.tsx[0m:[93m209[0m:[93m35[0m - [93mwarning[0m[90m ts(6133): [0m'index' is declared but its value is never read.
+
+[7m209[0m             {commits.map((commit, index) => {
+[7m   [0m [93m                                  ~~~~~[0m
+[96msrc/components/git/CommitGraph.tsx[0m:[93m51[0m:[93m11[0m - [93mwarning[0m[90m ts(6133): [0m'branchHeads' is declared but its value is never read.
+
+[7m51[0m     const branchHeads: Map<string, string> = new Map()
+[7m  [0m [93m          ~~~~~~~~~~~[0m
+
+[96msrc/components/home/HeroSection.tsx[0m:[93m87[0m:[93m26[0m - [93mwarning[0m[90m ts(6385): [0m'Github' is deprecated.
+
+[7m87[0m                         <Github className="h-4 w-4" />
+[7m  [0m [93m                         ~~~~~~[0m
+[96msrc/components/home/HeroSection.tsx[0m:[93m6[0m:[93m22[0m - [93mwarning[0m[90m ts(6385): [0m'Github' is deprecated.
+
+[7m6[0m import { ArrowRight, Github, Star, GitBranch, Zap } from "lucide-react";
+[7m [0m [93m                     ~~~~~~[0m
+[96msrc/components/home/HeroSection.tsx[0m:[93m4[0m:[93m1[0m - [93mwarning[0m[90m ts(6133): [0m'ColourfulText' is declared but its value is never read.
+
+[7m4[0m import { ColourfulText } from "@/components/ui/colourful-text";
+[7m [0m [93m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/components/issues/IssueDetail.tsx[0m:[93m68[0m:[93m67[0m - [93mwarning[0m[90m ts(6133): [0m'repoName' is declared but its value is never read.
+
+[7m68[0m export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName }: Props) {
+[7m  [0m [93m                                                                  ~~~~~~~~[0m
+[96msrc/components/issues/IssueDetail.tsx[0m:[93m68[0m:[93m56[0m - [93mwarning[0m[90m ts(6133): [0m'repoOwner' is declared but its value is never read.
+
+[7m68[0m export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName }: Props) {
+[7m  [0m [93m                                                       ~~~~~~~~~[0m
+
+[96msrc/components/issues/IssuesList.tsx[0m:[93m14[0m:[93m5[0m - [93mwarning[0m[90m ts(6133): [0m'Filter' is declared but its value is never read.
+
+[7m14[0m     Filter
+[7m  [0m [93m    ~~~~~~[0m
+
+[96msrc/components/layout/Header.astro[0m:[93m2[0m:[93m10[0m - [93mwarning[0m[90m ts(6133): [0m'GitBranch' is declared but its value is never read.
+
+[7m2[0m import { GitBranch, Search, Bell, Plus, Menu } from "lucide-react"
+[7m [0m [93m         ~~~~~~~~~[0m
+
+[96msrc/components/pr/AIReviewPanel.tsx[0m:[93m76[0m:[93m5[0m - [93mwarning[0m[90m ts(6133): [0m'reviewId' is declared but its value is never read.
+
+[7m76[0m     reviewId,
+[7m  [0m [93m    ~~~~~~~~[0m
+[96msrc/components/pr/AIReviewPanel.tsx[0m:[93m6[0m:[93m8[0m - [93mwarning[0m[90m ts(6133): [0m'React' is declared but its value is never read.
+
+[7m6[0m import React, { useState } from "react";
+[7m [0m [93m       ~~~~~[0m
+
+[96msrc/components/pr/StackVisualization.tsx[0m:[93m52[0m:[93m5[0m - [93mwarning[0m[90m ts(6133): [0m'onReorder' is declared but its value is never read.
+
+[7m52[0m     onReorder,
+[7m  [0m [93m    ~~~~~~~~~[0m
+[96msrc/components/pr/StackVisualization.tsx[0m:[93m45[0m:[93m5[0m - [93mwarning[0m[90m ts(6133): [0m'stackId' is declared but its value is never read.
+
+[7m45[0m     stackId,
+[7m  [0m [93m    ~~~~~~~[0m
+
+[96msrc/components/pulls/PullRequestsList.tsx[0m:[93m14[0m:[93m5[0m - [93mwarning[0m[90m ts(6133): [0m'Sparkles' is declared but its value is never read.
+
+[7m14[0m     Sparkles,
+[7m  [0m [93m    ~~~~~~~~[0m
+
+[96msrc/components/repo/FileExplorer.astro[0m:[93m2[0m:[93m20[0m - [93mwarning[0m[90m ts(6133): [0m'Folder' is declared but its value is never read.
+
+[7m2[0m import { FileText, Folder } from "lucide-react";
+[7m [0m [93m                   ~~~~~~[0m
+
+[96msrc/components/repo/RepoHeader.astro[0m:[93m3[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'GitBranch' is declared but its value is never read.
+
+[7m3[0m   GitBranch,
+[7m [0m [93m  ~~~~~~~~~[0m
+
+[96msrc/components/search/GlobalSearch.tsx[0m:[93m17[0m:[93m12[0m - [93mwarning[0m[90m ts(6133): [0m'loading' is declared but its value is never read.
+
+[7m17[0m     const [loading, setLoading] = React.useState(false);
+[7m  [0m [93m           ~~~~~~~[0m
+[96msrc/components/search/GlobalSearch.tsx[0m:[93m11[0m:[93m18[0m - [93mwarning[0m[90m ts(6133): [0m'FileText' is declared but its value is never read.
+
+[7m11[0m import { Search, FileText, User, GitBranch, GitPullRequest, CircleDot, Workflow } from "lucide-react";
+[7m  [0m [93m                 ~~~~~~~~[0m
+
+[96msrc/components/ui/animated-tooltip.tsx[0m:[93m4[0m:[93m8[0m - [93mwarning[0m[90m ts(6133): [0m'React' is declared but its value is never read.
+
+[7m4[0m import React, { useState } from "react";
+[7m [0m [93m       ~~~~~[0m
+[96msrc/components/ui/animated-tooltip.tsx[0m:[93m2[0m:[93m1[0m - [93mwarning[0m[90m ts(6133): [0m'cn' is declared but its value is never read.
+
+[7m2[0m import { cn } from "@/lib/cn";
+[7m [0m [93m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/components/ui/text-generate-effect.tsx[0m:[93m2[0m:[93m29[0m - [93mwarning[0m[90m ts(6133): [0m'useState' is declared but its value is never read.
+
+[7m2[0m import { useEffect, useRef, useState } from "react";
+[7m [0m [93m                            ~~~~~~~~[0m
+[96msrc/components/ui/text-generate-effect.tsx[0m:[93m2[0m:[93m21[0m - [93mwarning[0m[90m ts(6133): [0m'useRef' is declared but its value is never read.
+
+[7m2[0m import { useEffect, useRef, useState } from "react";
+[7m [0m [93m                    ~~~~~~[0m
+
+[96msrc/components/ui/text-reveal-card.tsx[0m:[93m3[0m:[93m29[0m - [93mwarning[0m[90m ts(6133): [0m'useTransform' is declared but its value is never read.
+
+[7m3[0m import { motion, useScroll, useTransform } from "framer-motion";
+[7m [0m [93m                            ~~~~~~~~~~~~[0m
+[96msrc/components/ui/text-reveal-card.tsx[0m:[93m3[0m:[93m18[0m - [93mwarning[0m[90m ts(6133): [0m'useScroll' is declared but its value is never read.
+
+[7m3[0m import { motion, useScroll, useTransform } from "framer-motion";
+[7m [0m [93m                 ~~~~~~~~~[0m
+
+[96msrc/db/seed-activity.ts[0m:[93m6[0m:[93m1[0m - [93mwarning[0m[90m ts(6133): [0m'eq' is declared but its value is never read.
+
+[7m6[0m import { eq } from "drizzle-orm";
+[7m [0m [93m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/db/seed-activity.ts[0m:[93m3[0m:[93m24[0m - [93mwarning[0m[90m ts(6133): [0m'users' is declared but its value is never read.
+
+[7m3[0m import { repositories, users, pullRequests, pullRequestReviews, pullRequestComments } from "@/db/schema";
+[7m [0m [93m                       ~~~~~[0m
+[96msrc/db/seed-activity.ts[0m:[93m3[0m:[93m10[0m - [93mwarning[0m[90m ts(6133): [0m'repositories' is declared but its value is never read.
+
+[7m3[0m import { repositories, users, pullRequests, pullRequestReviews, pullRequestComments } from "@/db/schema";
+[7m [0m [93m         ~~~~~~~~~~~~[0m
+
+[96msrc/db/seed-notifications.ts[0m:[93m5[0m:[93m32[0m - [93mwarning[0m[90m ts(6133): [0m'repositories' is declared but its value is never read.
+
+[7m5[0m import { notifications, users, repositories } from "@/db/schema";
+[7m [0m [93m                               ~~~~~~~~~~~~[0m
+[96msrc/db/seed-notifications.ts[0m:[93m5[0m:[93m25[0m - [93mwarning[0m[90m ts(6133): [0m'users' is declared but its value is never read.
+
+[7m5[0m import { notifications, users, repositories } from "@/db/schema";
+[7m [0m [93m                        ~~~~~[0m
+
+[96msrc/db/seed-scale.ts[0m:[93m25[0m:[93m11[0m - [93mwarning[0m[90m ts(6133): [0m'reposPath' is declared but its value is never read.
+
+[7m25[0m     const reposPath = process.env.GIT_REPOS_PATH || "./data/repos";
+[7m  [0m [93m          ~~~~~~~~~[0m
+[96msrc/db/seed-scale.ts[0m:[93m9[0m:[93m1[0m - [93mwarning[0m[90m ts(6133): [0m'fs' is declared but its value is never read.
+
+[7m9[0m import fs from "fs/promises";
+[7m [0m [93m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/db/seed-scale.ts[0m:[93m7[0m:[93m1[0m - [93mwarning[0m[90m ts(6133): [0m'eq' is declared but its value is never read.
+
+[7m7[0m import { eq } from "drizzle-orm";
+[7m [0m [93m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/db/seed-scale.ts[0m:[93m3[0m:[93m24[0m - [93mwarning[0m[90m ts(6133): [0m'users' is declared but its value is never read.
+
+[7m3[0m import { repositories, users } from "@/db/schema";
+[7m [0m [93m                       ~~~~~[0m
+
+[96msrc/db/schema/developer-metrics.ts[0m:[93m7[0m:[93m19[0m - [93mwarning[0m[90m ts(6133): [0m'real' is declared but its value is never read.
+
+[7m7[0m import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+[7m [0m [93m                  ~~~~[0m
+
+[96msrc/db/schema/pipeline-runners.ts[0m:[93m3[0m:[93m10[0m - [93mwarning[0m[90m ts(6133): [0m'integer' is declared but its value is never read.
+
+[7m3[0m import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+[7m [0m [93m         ~~~~~~~[0m
+
+[96msrc/db/schema/pull-requests.ts[0m:[93m8[0m:[93m18[0m - [93mwarning[0m[90m ts(6133): [0m'milestones' is declared but its value is never read.
+
+[7m8[0m import { labels, milestones } from "./issues";
+[7m [0m [93m                 ~~~~~~~~~~[0m
+
+[96msrc/db/schema/security.ts[0m:[93m3[0m:[93m1[0m - [93mwarning[0m[90m ts(6133): [0m'users' is declared but its value is never read.
+
+[7m3[0m import { users } from "./users";
+[7m [0m [93m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/ai-review.ts[0m:[93m6[0m:[93m14[0m - [93mwarning[0m[90m ts(6133): [0m'and' is declared but its value is never read.
+
+[7m6[0m import { eq, and, desc } from "drizzle-orm";
+[7m [0m [93m             ~~~[0m
+
+[96msrc/lib/analysis.ts[0m:[93m35[0m:[93m87[0m - [93mwarning[0m[90m ts(6133): [0m'force' is declared but its value is never read.
+
+[7m35[0m export async function analyzeRepository(repoId: string, userId: string | null = null, force = false) {
+[7m  [0m [93m                                                                                      ~~~~~[0m
+[96msrc/lib/analysis.ts[0m:[93m4[0m:[93m22[0m - [93mwarning[0m[90m ts(6133): [0m'getRepoSize' is declared but its value is never read.
+
+[7m4[0m import { getCommits, getRepoSize, listFiles, getCommitDiff } from "./git";
+[7m [0m [93m                     ~~~~~~~~~~~[0m
+
+[96msrc/lib/auth.ts[0m:[93m281[0m:[93m22[0m - [93mwarning[0m[90m ts(6133): [0m'gt' is declared but its value is never read.
+
+[7m281[0m     const { eq, and, gt } = await import("drizzle-orm");
+[7m   [0m [93m                     ~~[0m
+[96msrc/lib/auth.ts[0m:[93m281[0m:[93m17[0m - [93mwarning[0m[90m ts(6133): [0m'and' is declared but its value is never read.
+
+[7m281[0m     const { eq, and, gt } = await import("drizzle-orm");
+[7m   [0m [93m                ~~~[0m
+[96msrc/lib/auth.ts[0m:[93m280[0m:[93m35[0m - [93mwarning[0m[90m ts(6133): [0m'users' is declared but its value is never read.
+
+[7m280[0m     const { personalAccessTokens, users } = await import("@/db/schema/users");
+[7m   [0m [93m                                  ~~~~~[0m
+
+[96msrc/lib/automations.ts[0m:[93m320[0m:[93m23[0m - [93mwarning[0m[90m ts(6133): [0m'notifyPrEvent' is declared but its value is never read.
+
+[7m320[0m                 const { notifyPrEvent } = await import("./slack-notifications");
+[7m   [0m [93m                      ~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/lib/conflict-automation.ts[0m:[93m11[0m:[93m1[0m - [93mwarning[0m[90m ts(6192): [0mAll imports in import declaration are unused.
+
+[7m11[0m import { notifyPrEvent, notifyUserDm } from "./slack-notifications";
+[7m  [0m [93m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/lib/conflict-automation.ts[0m:[93m6[0m:[93m14[0m - [93mwarning[0m[90m ts(6133): [0m'and' is declared but its value is never read.
+
+[7m6[0m import { eq, and } from "drizzle-orm";
+[7m [0m [93m             ~~~[0m
+
+[96msrc/lib/developer-metrics.ts[0m:[93m6[0m:[93m35[0m - [93mwarning[0m[90m ts(6133): [0m'lte' is declared but its value is never read.
+
+[7m6[0m import { eq, and, desc, sql, gte, lte } from "drizzle-orm";
+[7m [0m [93m                                  ~~~[0m
+[96msrc/lib/developer-metrics.ts[0m:[93m6[0m:[93m30[0m - [93mwarning[0m[90m ts(6133): [0m'gte' is declared but its value is never read.
+
+[7m6[0m import { eq, and, desc, sql, gte, lte } from "drizzle-orm";
+[7m [0m [93m                             ~~~[0m
+[96msrc/lib/developer-metrics.ts[0m:[93m6[0m:[93m25[0m - [93mwarning[0m[90m ts(6133): [0m'sql' is declared but its value is never read.
+
+[7m6[0m import { eq, and, desc, sql, gte, lte } from "drizzle-orm";
+[7m [0m [93m                        ~~~[0m
+
+[96msrc/lib/git-storage.ts[0m:[93m15[0m:[93m27[0m - [93mwarning[0m[90m ts(6133): [0m'StorageAdapter' is declared but its value is never read.
+
+[7m15[0m import { getStorage, type StorageAdapter } from "./storage";
+[7m  [0m [93m                          ~~~~~~~~~~~~~~[0m
+[96msrc/lib/git-storage.ts[0m:[93m14[0m:[93m1[0m - [93mwarning[0m[90m ts(6133): [0m'Readable' is declared but its value is never read.
+
+[7m14[0m import { Readable } from "stream";
+[7m  [0m [93m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/lib/git-storage.ts[0m:[93m10[0m:[93m54[0m - [93mwarning[0m[90m ts(6133): [0m'statSync' is declared but its value is never read.
+
+[7m10[0m import { existsSync, mkdirSync, rmSync, readdirSync, statSync } from "fs";
+[7m  [0m [93m                                                     ~~~~~~~~[0m
+
+[96msrc/lib/git.ts[0m:[93m1171[0m:[93m32[0m - [93mwarning[0m[90m ts(6133): [0m'reject' is declared but its value is never read.
+
+[7m1171[0m   return new Promise((resolve, reject) => {
+[7m    [0m [93m                               ~~~~~~[0m
+[96msrc/lib/git.ts[0m:[93m14[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'releaseRepo' is declared but its value is never read.
+
+[7m14[0m   releaseRepo,
+[7m  [0m [93m  ~~~~~~~~~~~[0m
+[96msrc/lib/git.ts[0m:[93m13[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'acquireRepo' is declared but its value is never read.
+
+[7m13[0m   acquireRepo,
+[7m  [0m [93m  ~~~~~~~~~~~[0m
+
+[96msrc/lib/lfs.ts[0m:[93m64[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'repoDiskPath' is declared but its value is never read.
+
+[7m64[0m   repoDiskPath: string,
+[7m  [0m [93m  ~~~~~~~~~~~~[0m
+
+[96msrc/lib/merge-queue.ts[0m:[93m11[0m:[93m1[0m - [93mwarning[0m[90m ts(6133): [0m'emitQueueEvent' is declared but its value is never read.
+
+[7m11[0m import { emitQueueEvent } from "./realtime";
+[7m  [0m [93m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/lib/merge-queue.ts[0m:[93m6[0m:[93m34[0m - [93mwarning[0m[90m ts(6133): [0m'gt' is declared but its value is never read.
+
+[7m6[0m import { eq, and, asc, desc, lt, gt } from "drizzle-orm";
+[7m [0m [93m                                 ~~[0m
+[96msrc/lib/merge-queue.ts[0m:[93m6[0m:[93m30[0m - [93mwarning[0m[90m ts(6133): [0m'lt' is declared but its value is never read.
+
+[7m6[0m import { eq, and, asc, desc, lt, gt } from "drizzle-orm";
+[7m [0m [93m                             ~~[0m
+
+[96msrc/lib/pipeline.ts[0m:[93m292[0m:[93m15[0m - [93mwarning[0m[90m ts(6133): [0m'tag' is declared but its value is never read.
+
+[7m292[0m         const tag = payload.ref.replace("refs/tags/", "");
+[7m   [0m [93m              ~~~[0m
+[96msrc/lib/pipeline.ts[0m:[93m238[0m:[93m11[0m - [93mwarning[0m[90m ts(6133): [0m'artifactsDir' is declared but its value is never read.
+
+[7m238[0m   private artifactsDir: string;
+[7m   [0m [93m          ~~~~~~~~~~~~[0m
+[96msrc/lib/pipeline.ts[0m:[93m237[0m:[93m11[0m - [93mwarning[0m[90m ts(6133): [0m'workDir' is declared but its value is never read.
+
+[7m237[0m   private workDir: string;
+[7m   [0m [93m          ~~~~~~~[0m
+
+[96msrc/lib/realtime.ts[0m:[93m49[0m:[93m61[0m - [93mwarning[0m[90m ts(6385): [0m'(from: number, length?: number | undefined): string' is deprecated.
+
+[7m49[0m     return `conn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+[7m  [0m [93m                                                            ~~~~~~[0m
+
+[96msrc/lib/security.ts[0m:[93m116[0m:[93m15[0m - [93mwarning[0m[90m ts(6133): [0m'rawOutput' is declared but its value is never read.
+
+[7m116[0m         const rawOutput = logsBuffer.toString("utf-8");
+[7m   [0m [93m              ~~~~~~~~~[0m
+[96msrc/lib/security.ts[0m:[93m76[0m:[93m15[0m - [93mwarning[0m[90m ts(6133): [0m'stream' is declared but its value is never read.
+
+[7m76[0m         const stream = await container.logs({ follow: true, stdout: true, stderr: true });
+[7m  [0m [93m              ~~~~~~[0m
+[96msrc/lib/security.ts[0m:[93m56[0m:[93m15[0m - [93mwarning[0m[90m ts(6133): [0m'chunks' is declared but its value is never read.
+
+[7m56[0m         const chunks: Buffer[] = [];
+[7m  [0m [93m              ~~~~~~[0m
+[96msrc/lib/security.ts[0m:[93m48[0m:[93m41[0m - [93mwarning[0m[90m ts(6133): [0m'event' is declared but its value is never read.
+
+[7m48[0m                     function onProgress(event: any) { }
+[7m  [0m [93m                                        ~~~~~[0m
+[96msrc/lib/security.ts[0m:[93m44[0m:[93m51[0m - [93mwarning[0m[90m ts(6133): [0m'output' is declared but its value is never read.
+
+[7m44[0m                     function onFinished(err: any, output: any) {
+[7m  [0m [93m                                                  ~~~~~~[0m
+[96msrc/lib/security.ts[0m:[93m40[0m:[93m41[0m - [93mwarning[0m[90m ts(6133): [0m'reject' is declared but its value is never read.
+
+[7m40[0m             await new Promise((resolve, reject) => {
+[7m  [0m [93m                                        ~~~~~~[0m
+[96msrc/lib/security.ts[0m:[93m15[0m:[93m5[0m - [93mwarning[0m[90m ts(6133): [0m'repositoryId' is declared but its value is never read.
+
+[7m15[0m     repositoryId: string
+[7m  [0m [93m    ~~~~~~~~~~~~[0m
+[96msrc/lib/security.ts[0m:[93m5[0m:[93m21[0m - [93mwarning[0m[90m ts(6133): [0m'writeFile' is declared but its value is never read.
+
+[7m5[0m import { mkdir, rm, writeFile } from "fs/promises";
+[7m [0m [93m                    ~~~~~~~~~[0m
+
+[96msrc/lib/slack-notifications.ts[0m:[93m257[0m:[93m5[0m - [93mwarning[0m[90m ts(6133): [0m'event' is declared but its value is never read.
+
+[7m257[0m     event: string,
+[7m   [0m [93m    ~~~~~[0m
+
+[96msrc/lib/ssh.ts[0m:[93m190[0m:[93m32[0m - [93mwarning[0m[90m ts(6133): [0m'accept' is declared but its value is never read.
+
+[7m190[0m           session.on("shell", (accept, reject) => {
+[7m   [0m [93m                               ~~~~~~[0m
+[96msrc/lib/ssh.ts[0m:[93m78[0m:[93m39[0m - [93mwarning[0m[90m ts(6133): [0m'reject' is declared but its value is never read.
+
+[7m78[0m         client.on("session", (accept, reject) => {
+[7m  [0m [93m                                      ~~~~~~[0m
+[96msrc/lib/ssh.ts[0m:[93m37[0m:[93m5[0m - [93mwarning[0m[90m ts(6133): [0m'port' is declared but its value is never read.
+
+[7m37[0m     port,
+[7m  [0m [93m    ~~~~[0m
+
+[96msrc/lib/storage.ts[0m:[93m1196[0m:[93m9[0m - [93mwarning[0m[90m ts(6133): [0m'eq' is declared but its value is never read.
+
+[7m1196[0m   const { eq } = await import("drizzle-orm");
+[7m    [0m [93m        ~~~~~~[0m
+[96msrc/lib/storage.ts[0m:[93m1098[0m:[93m41[0m - [93mwarning[0m[90m ts(6133): [0m'expiresIn' is declared but its value is never read.
+
+[7m1098[0m   async getSignedUploadUrl(key: string, expiresIn?: number): Promise<string> {
+[7m    [0m [93m                                        ~~~~~~~~~[0m
+[96msrc/lib/storage.ts[0m:[93m1084[0m:[93m35[0m - [93mwarning[0m[90m ts(6133): [0m'expiresIn' is declared but its value is never read.
+
+[7m1084[0m   async getSignedUrl(key: string, expiresIn?: number): Promise<string> {
+[7m    [0m [93m                                  ~~~~~~~~~[0m
+[96msrc/lib/storage.ts[0m:[93m971[0m:[93m30[0m - [93mwarning[0m[90m ts(6387): [0mThe signature '(start?: number | undefined, end?: number | undefined): Buffer<ArrayBuffer>' of 'buffer.slice' is deprecated.
+
+[7m971[0m         const chunk = buffer.slice(i, Math.min(i + chunkSize, buffer.length));
+[7m   [0m [93m                             ~~~~~[0m
+[96msrc/lib/storage.ts[0m:[93m875[0m:[93m41[0m - [93mwarning[0m[90m ts(6133): [0m'expiresIn' is declared but its value is never read.
+
+[7m875[0m   async getSignedUploadUrl(key: string, expiresIn?: number): Promise<string> {
+[7m   [0m [93m                                        ~~~~~~~~~[0m
+[96msrc/lib/storage.ts[0m:[93m868[0m:[93m35[0m - [93mwarning[0m[90m ts(6133): [0m'expiresIn' is declared but its value is never read.
+
+[7m868[0m   async getSignedUrl(key: string, expiresIn?: number): Promise<string> {
+[7m   [0m [93m                                  ~~~~~~~~~[0m
+[96msrc/lib/storage.ts[0m:[93m798[0m:[93m21[0m - [93mwarning[0m[90m ts(6387): [0mThe signature '(start?: number | undefined, end?: number | undefined): Buffer<ArrayBuffer>' of 'buffer.slice' is deprecated.
+
+[7m798[0m       return buffer.slice(options.range.start, options.range.end + 1);
+[7m   [0m [93m                    ~~~~~[0m
+[96msrc/lib/storage.ts[0m:[93m660[0m:[93m41[0m - [93mwarning[0m[90m ts(6133): [0m'expiresIn' is declared but its value is never read.
+
+[7m660[0m   async getSignedUploadUrl(key: string, expiresIn?: number): Promise<string> {
+[7m   [0m [93m                                        ~~~~~~~~~[0m
+[96msrc/lib/storage.ts[0m:[93m649[0m:[93m35[0m - [93mwarning[0m[90m ts(6133): [0m'expiresIn' is declared but its value is never read.
+
+[7m649[0m   async getSignedUrl(key: string, expiresIn?: number): Promise<string> {
+[7m   [0m [93m                                  ~~~~~~~~~[0m
+[96msrc/lib/storage.ts[0m:[93m539[0m:[93m51[0m - [93mwarning[0m[90m ts(6133): [0m'options' is declared but its value is never read.
+
+[7m539[0m   async put(key: string, data: Buffer | Readable, options?: PutOptions): Promise<void> {
+[7m   [0m [93m                                                  ~~~~~~~[0m
+[96msrc/lib/storage.ts[0m:[93m274[0m:[93m5[0m - [93mwarning[0m[90m ts(6133): [0m'expiresIn' is declared but its value is never read.
+
+[7m274[0m     expiresIn: number = 3600
+[7m   [0m [93m    ~~~~~~~~~[0m
+
+[96msrc/lib/sync.ts[0m:[93m361[0m:[93m23[0m - [93mwarning[0m[90m ts(6133): [0m'baseHead' is declared but its value is never read.
+
+[7m361[0m                 const baseHead = await git.revparse([baseBranch]);
+[7m   [0m [93m                      ~~~~~~~~[0m
+[96msrc/lib/sync.ts[0m:[93m360[0m:[93m23[0m - [93mwarning[0m[90m ts(6133): [0m'mergeBase' is declared but its value is never read.
+
+[7m360[0m                 const mergeBase = await git.raw(["merge-base", baseBranch, branchName]);
+[7m   [0m [93m                      ~~~~~~~~~[0m
+[96msrc/lib/sync.ts[0m:[93m267[0m:[93m5[0m - [93mwarning[0m[90m ts(6133): [0m'repositoryId' is declared but its value is never read.
+
+[7m267[0m     repositoryId: string,
+[7m   [0m [93m    ~~~~~~~~~~~~[0m
+[96msrc/lib/sync.ts[0m:[93m57[0m:[93m15[0m - [93mwarning[0m[90m ts(6133): [0m'currentBranch' is declared but its value is never read.
+
+[7m57[0m         const currentBranch = status.current;
+[7m  [0m [93m              ~~~~~~~~~~~~~[0m
+[96msrc/lib/sync.ts[0m:[93m10[0m:[93m1[0m - [93mwarning[0m[90m ts(6133): [0m'generateId' is declared but its value is never read.
+
+[7m10[0m import { generateId } from "./utils";
+[7m  [0m [93m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/lib/sync.ts[0m:[93m9[0m:[93m20[0m - [93mwarning[0m[90m ts(6133): [0m'getStackForPr' is declared but its value is never read.
+
+[7m9[0m import { getStack, getStackForPr, addToStack, createStack } from "./stacks";
+[7m [0m [93m                   ~~~~~~~~~~~~~[0m
+[96msrc/lib/sync.ts[0m:[93m6[0m:[93m19[0m - [93mwarning[0m[90m ts(6133): [0m'desc' is declared but its value is never read.
+
+[7m6[0m import { eq, and, desc } from "drizzle-orm";
+[7m [0m [93m                  ~~~~[0m
+
+[96msrc/lib/workflows.ts[0m:[93m26[0m:[93m92[0m - [93mwarning[0m[90m ts(6133): [0m'pusherId' is declared but its value is never read.
+
+[7m26[0m export async function triggerRepoWorkflows(repoId: string, commitSha: string, ref: string, pusherId: string) {
+[7m  [0m [93m                                                                                           ~~~~~~~~[0m
+[96msrc/lib/workflows.ts[0m:[93m8[0m:[93m1[0m - [93mwarning[0m[90m ts(6133): [0m'existsSync' is declared but its value is never read.
+
+[7m8[0m import { existsSync } from "fs";
+[7m [0m [93m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/pages/cli.astro[0m:[93m5[0m:[93m5[0m - [93mwarning[0m[90m ts(6133): [0m'Cpu' is declared but its value is never read.
+
+[7m5[0m     Cpu,
+[7m [0m [93m    ~~~[0m
+
+[96msrc/pages/explore.astro[0m:[93m4[0m:[93m20[0m - [93mwarning[0m[90m ts(6133): [0m'sql' is declared but its value is never read.
+
+[7m4[0m import { desc, eq, sql, count } from "drizzle-orm";
+[7m [0m [93m                   ~~~[0m
+
+[96msrc/pages/inbox.astro[0m:[93m28[0m:[93m5[0m - [93mwarning[0m[90m ts(6133): [0m'title' is declared but its value is never read.
+
+[7m28[0m let title = "Inbox";
+[7m  [0m [93m    ~~~~~[0m
+[96msrc/pages/inbox.astro[0m:[93m15[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'Bot' is declared but its value is never read.
+
+[7m15[0m   Bot,
+[7m  [0m [93m  ~~~[0m
+[96msrc/pages/inbox.astro[0m:[93m13[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'Search' is declared but its value is never read.
+
+[7m13[0m   Search,
+[7m  [0m [93m  ~~~~~~[0m
+[96msrc/pages/inbox.astro[0m:[93m5[0m:[93m29[0m - [93mwarning[0m[90m ts(6133): [0m'ne' is declared but its value is never read.
+
+[7m5[0m import { eq, desc, and, or, ne } from "drizzle-orm";
+[7m [0m [93m                            ~~[0m
+[96msrc/pages/inbox.astro[0m:[93m5[0m:[93m25[0m - [93mwarning[0m[90m ts(6133): [0m'or' is declared but its value is never read.
+
+[7m5[0m import { eq, desc, and, or, ne } from "drizzle-orm";
+[7m [0m [93m                        ~~[0m
+
+[96msrc/pages/insights.astro[0m:[93m11[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'Calendar' is declared but its value is never read.
+
+[7m11[0m   Calendar,
+[7m  [0m [93m  ~~~~~~~~[0m
+[96msrc/pages/insights.astro[0m:[93m4[0m:[93m30[0m - [93mwarning[0m[90m ts(6133): [0m'sql' is declared but its value is never read.
+
+[7m4[0m import { eq, desc, and, gte, sql } from "drizzle-orm";
+[7m [0m [93m                             ~~~[0m
+[96msrc/pages/insights.astro[0m:[93m4[0m:[93m14[0m - [93mwarning[0m[90m ts(6133): [0m'desc' is declared but its value is never read.
+
+[7m4[0m import { eq, desc, and, gte, sql } from "drizzle-orm";
+[7m [0m [93m             ~~~~[0m
+
+[96msrc/pages/issues.astro[0m:[93m7[0m:[93m7[0m - [93mwarning[0m[90m ts(6133): [0m'currentUser' is declared but its value is never read.
+
+[7m7[0m const currentUser = Astro.locals.user;
+[7m [0m [93m      ~~~~~~~~~~~[0m
+[96msrc/pages/issues.astro[0m:[93m4[0m:[93m25[0m - [93mwarning[0m[90m ts(6133): [0m'sql' is declared but its value is never read.
+
+[7m4[0m import { desc, eq, and, sql } from "drizzle-orm";
+[7m [0m [93m                        ~~~[0m
+[96msrc/pages/issues.astro[0m:[93m4[0m:[93m20[0m - [93mwarning[0m[90m ts(6133): [0m'and' is declared but its value is never read.
+
+[7m4[0m import { desc, eq, and, sql } from "drizzle-orm";
+[7m [0m [93m                   ~~~[0m
+
+[96msrc/pages/merge-queue.astro[0m:[93m353[0m:[93m56[0m - [93mwarning[0m[90m ts(6133): [0m'index' is declared but its value is never read.
+
+[7m353[0m                                 {queueItems.map((item, index) => {
+[7m   [0m [93m                                                       ~~~~~[0m
+[96msrc/pages/merge-queue.astro[0m:[93m222[0m:[93m10[0m - [93mwarning[0m[90m ts(6133): [0m'timeAgo' is declared but its value is never read.
+
+[7m222[0m function timeAgo(date: string) {
+[7m   [0m [93m         ~~~~~~~[0m
+[96msrc/pages/merge-queue.astro[0m:[93m73[0m:[93m5[0m - [93mwarning[0m[90m ts(6133): [0m'lastProcessedAt' is declared but its value is never read.
+
+[7m73[0m let lastProcessedAt: string | null = null;
+[7m  [0m [93m    ~~~~~~~~~~~~~~~[0m
+
+[96msrc/pages/password-reset.astro[0m:[93m95[0m:[93m13[0m - [93mwarning[0m[90m ts(6133): [0m'response' is declared but its value is never read.
+
+[7m95[0m       const response = await fetch("/api/auth/password-reset", {
+[7m  [0m [93m            ~~~~~~~~[0m
+
+[96msrc/pages/repositories.astro[0m:[93m14[0m:[93m53[0m - [93mwarning[0m[90m ts(6133): [0m'Globe' is declared but its value is never read.
+
+[7m14[0m import { Book, Star, GitBranch, Plus, Search, Lock, Globe } from "lucide-react";
+[7m  [0m [93m                                                    ~~~~~[0m
+[96msrc/pages/repositories.astro[0m:[93m14[0m:[93m47[0m - [93mwarning[0m[90m ts(6133): [0m'Lock' is declared but its value is never read.
+
+[7m14[0m import { Book, Star, GitBranch, Plus, Search, Lock, Globe } from "lucide-react";
+[7m  [0m [93m                                              ~~~~[0m
+[96msrc/pages/repositories.astro[0m:[93m5[0m:[93m1[0m - [93mwarning[0m[90m ts(6192): [0mAll imports in import declaration are unused.
+
+[7m  5[0m import {
+[7m   [0m [93m~~~~~~~~[0m
+[7m  6[0m    Card,
+[7m   [0m [93m~~~~~~~~[0m
+[7m...[0m 
+[7m 10[0m    CardContent,
+[7m   [0m [93m~~~~~~~~~~~~~~~[0m
+[7m 11[0m } from "@/components/ui/card";
+[7m   [0m [93m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/pages/stars.astro[0m:[93m152[0m:[93m54[0m - [93mwarning[0m[90m ts(6385): [0m'event' is deprecated.
+
+[7m152[0m                     onclick="event.preventDefault(); event.stopPropagation();"
+[7m   [0m [93m                                                     ~~~~~[0m
+[96msrc/pages/stars.astro[0m:[93m152[0m:[93m30[0m - [93mwarning[0m[90m ts(6385): [0m'event' is deprecated.
+
+[7m152[0m                     onclick="event.preventDefault(); event.stopPropagation();"
+[7m   [0m [93m                             ~~~~~[0m
+
+[96msrc/pages/[owner]/[repo]/index.astro[0m:[93m15[0m:[93m19[0m - [93mwarning[0m[90m ts(6133): [0m'sql' is declared but its value is never read.
+
+[7m15[0m import { eq, and, sql, count } from "drizzle-orm";
+[7m  [0m [93m                  ~~~[0m
+[96msrc/pages/[owner]/[repo]/index.astro[0m:[93m12[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'Clock' is declared but its value is never read.
+
+[7m12[0m   Clock,
+[7m  [0m [93m  ~~~~~[0m
+[96msrc/pages/[owner]/[repo]/index.astro[0m:[93m6[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'Tag' is declared but its value is never read.
+
+[7m6[0m   Tag,
+[7m [0m [93m  ~~~[0m
+
+[96msrc/pages/[owner]/[repo]/labels.astro[0m:[93m245[0m:[93m9[0m - [93mwarning[0m[90m astro(4000): [0mThis script will be treated as if it has the `is:inline` directive because it contains an attribute. Therefore, features that require processing (e.g. using TypeScript or npm packages in the script) are unavailable.
+
+See docs for more details: https://docs.astro.build/en/guides/client-side-scripts/#script-processing.
+
+Add the `is:inline` directive explicitly to silence this hint.
+
+[7m245[0m <script define:vars={{ owner: repo.owner, repo: repo.name }}>
+[7m   [0m [93m        ~~~~~~~~~~~[0m
+
+[96msrc/pages/[owner]/[repo]/merge-queue.astro[0m:[93m248[0m:[93m57[0m - [93mwarning[0m[90m ts(6133): [0m'i' is declared but its value is never read.
+
+[7m248[0m                         {item.stack.entries.map((entry, i) => (
+[7m   [0m [93m                                                        ~[0m
+[96msrc/pages/[owner]/[repo]/merge-queue.astro[0m:[93m13[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'Play' is declared but its value is never read.
+
+[7m13[0m   Play,
+[7m  [0m [93m  ~~~~[0m
+[96msrc/pages/[owner]/[repo]/merge-queue.astro[0m:[93m8[0m:[93m19[0m - [93mwarning[0m[90m ts(6133): [0m'sql' is declared but its value is never read.
+
+[7m8[0m import { and, eq, sql, count } from "drizzle-orm";
+[7m [0m [93m                  ~~~[0m
+
+[96msrc/pages/[owner]/[repo]/blob/[branch]/[...path].astro[0m:[93m18[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'Monitor' is declared but its value is never read.
+
+[7m18[0m   Monitor,
+[7m  [0m [93m  ~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/blob/[branch]/[...path].astro[0m:[93m13[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'FileText' is declared but its value is never read.
+
+[7m13[0m   FileText,
+[7m  [0m [93m  ~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/blob/[branch]/[...path].astro[0m:[93m337[0m:[93m9[0m - [93mwarning[0m[90m astro(4000): [0mThis script will be treated as if it has the `is:inline` directive because it contains an attribute. Therefore, features that require processing (e.g. using TypeScript or npm packages in the script) are unavailable.
+
+See docs for more details: https://docs.astro.build/en/guides/client-side-scripts/#script-processing.
+
+Add the `is:inline` directive explicitly to silence this hint.
+
+[7m337[0m <script define:vars={{ initialContent: !fileData.isBinary ? fileData.content : "" }}>
+[7m   [0m [93m        ~~~~~~~~~~~[0m
+
+[96msrc/pages/[owner]/[repo]/branches/index.astro[0m:[93m16[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'AlertCircle' is declared but its value is never read.
+
+[7m16[0m   AlertCircle,
+[7m  [0m [93m  ~~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/branches/index.astro[0m:[93m15[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'Search' is declared but its value is never read.
+
+[7m15[0m   Search,
+[7m  [0m [93m  ~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/branches/index.astro[0m:[93m13[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'MoreHorizontal' is declared but its value is never read.
+
+[7m13[0m   MoreHorizontal,
+[7m  [0m [93m  ~~~~~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/branches/index.astro[0m:[93m9[0m:[93m19[0m - [93mwarning[0m[90m ts(6133): [0m'sql' is declared but its value is never read.
+
+[7m9[0m import { and, eq, sql, count } from "drizzle-orm";
+[7m [0m [93m                  ~~~[0m
+[96msrc/pages/[owner]/[repo]/branches/index.astro[0m:[93m8[0m:[93m1[0m - [93mwarning[0m[90m ts(6133): [0m'getRepoPath' is declared but its value is never read.
+
+[7m8[0m import { getRepoPath } from "@/lib/utils";
+[7m [0m [93m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/branches/index.astro[0m:[93m351[0m:[93m42[0m - [93mwarning[0m[90m ts(6133): [0m'e' is declared but its value is never read.
+
+[7m351[0m     btn.addEventListener("click", async (e: any) => {
+[7m   [0m [93m                                         ~[0m
+
+[96msrc/pages/[owner]/[repo]/commits/[...ref].astro[0m:[93m9[0m:[93m1[0m - [93mwarning[0m[90m ts(6133): [0m'Button' is declared but its value is never read.
+
+[7m9[0m import { Button } from "@/components/ui/button";
+[7m [0m [93m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/pages/[owner]/[repo]/edit/[...ref].astro[0m:[93m108[0m:[93m9[0m - [93mwarning[0m[90m astro(4000): [0mThis script will be treated as if it has the `is:inline` directive because it contains an attribute. Therefore, features that require processing (e.g. using TypeScript or npm packages in the script) are unavailable.
+
+See docs for more details: https://docs.astro.build/en/guides/client-side-scripts/#script-processing.
+
+Add the `is:inline` directive explicitly to silence this hint.
+
+[7m108[0m <script define:vars={{ initialContent: fileContent, repoId: repo.id, branch: currentBranch, path: filePath, owner: repo.owner, repoName: repo.name }}>
+[7m   [0m [93m        ~~~~~~~~~~~[0m
+
+[96msrc/pages/[owner]/[repo]/insights/index.astro[0m:[93m75[0m:[93m41[0m - [91merror[0m[90m ts(2339): [0mProperty 'count' does not exist on type '{ id: string; repositoryId: string; number: number; title: string; body: string | null; state: string; authorId: string; assigneeId: string | null; milestoneId: string | null; isPinned: boolean | null; ... 7 more ...; updatedAt: string; }'.
+
+[7m75[0m repo.openIssueCount = issueCountResult?.count || 0;
+[7m  [0m [91m                                        ~~~~~[0m
+[96msrc/pages/[owner]/[repo]/insights/index.astro[0m:[93m65[0m:[93m13[0m - [91merror[0m[90m ts(2554): [0mExpected 0 arguments, but got 1.
+
+[7m65[0m     .select({ count: sql<number>`count(*)` })
+[7m  [0m [91m            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/insights/index.astro[0m:[93m276[0m:[93m69[0m - [93mwarning[0m[90m ts(6133): [0m'i' is declared but its value is never read.
+
+[7m276[0m                                     {contributors.map((contributor, i) => (
+[7m   [0m [93m                                                                    ~[0m
+[96msrc/pages/[owner]/[repo]/insights/index.astro[0m:[93m84[0m:[93m7[0m - [93mwarning[0m[90m ts(6133): [0m'recentCommits' is declared but its value is never read.
+
+[7m84[0m const recentCommits = await getCommits(repoData.diskPath, { limit: 20 });
+[7m  [0m [93m      ~~~~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/insights/index.astro[0m:[93m9[0m:[93m5[0m - [93mwarning[0m[90m ts(6133): [0m'GitCommit' is declared but its value is never read.
+
+[7m9[0m     GitCommit,
+[7m [0m [93m    ~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/insights/index.astro[0m:[93m5[0m:[93m24[0m - [93mwarning[0m[90m ts(6133): [0m'desc' is declared but its value is never read.
+
+[7m5[0m import { eq, and, sql, desc, gte, count } from "drizzle-orm";
+[7m [0m [93m                       ~~~~[0m
+
+[96msrc/pages/[owner]/[repo]/pulls/[number].astro[0m:[93m100[0m:[93m11[0m - [91merror[0m[90m ts(2554): [0mExpected 0 arguments, but got 1.
+
+[7m100[0m   .select({ count: sql<number>`count(*)` })
+[7m   [0m [91m          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/pulls/[number].astro[0m:[93m359[0m:[93m50[0m - [93mwarning[0m[90m ts(6133): [0m'i' is declared but its value is never read.
+
+[7m359[0m                   {stackInfo.entries.map((entry, i) => {
+[7m   [0m [93m                                                 ~[0m
+[96msrc/pages/[owner]/[repo]/pulls/[number].astro[0m:[93m136[0m:[93m5[0m - [93mwarning[0m[90m ts(6133): [0m'mergeError' is declared but its value is never read.
+
+[7m136[0m let mergeError = "";
+[7m   [0m [93m    ~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/pulls/[number].astro[0m:[93m24[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'ChevronRight' is declared but its value is never read.
+
+[7m24[0m   ChevronRight,
+[7m  [0m [93m  ~~~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/pulls/[number].astro[0m:[93m16[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'CheckCircle2' is declared but its value is never read.
+
+[7m16[0m   CheckCircle2,
+[7m  [0m [93m  ~~~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/pulls/[number].astro[0m:[93m13[0m:[93m29[0m - [93mwarning[0m[90m ts(6133): [0m'count' is declared but its value is never read.
+
+[7m13[0m import { and, eq, sql, asc, count } from "drizzle-orm";
+[7m  [0m [93m                            ~~~~~[0m
+[96msrc/pages/[owner]/[repo]/pulls/[number].astro[0m:[93m419[0m:[93m3[0m - [93mwarning[0m[90m astro(4000): [0mThis script will be treated as if it has the `is:inline` directive because it contains an attribute. Therefore, features that require processing (e.g. using TypeScript or npm packages in the script) are unavailable.
+
+See docs for more details: https://docs.astro.build/en/guides/client-side-scripts/#script-processing.
+
+Add the `is:inline` directive explicitly to silence this hint.
+
+[7m419[0m   define:vars={{
+[7m   [0m [93m  ~~~~~~~~~~~[0m
+
+[96msrc/pages/[owner]/[repo]/pulls/index.astro[0m:[93m41[0m:[93m11[0m - [91merror[0m[90m ts(2554): [0mExpected 0 arguments, but got 1.
+
+[7m41[0m   .select({ count: sql<number>`count(*)` })
+[7m  [0m [91m          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/pulls/index.astro[0m:[93m7[0m:[93m30[0m - [93mwarning[0m[90m ts(6133): [0m'count' is declared but its value is never read.
+
+[7m7[0m import { and, desc, eq, sql, count } from "drizzle-orm";
+[7m [0m [93m                             ~~~~~[0m
+
+[96msrc/pages/[owner]/[repo]/pulls/new.astro[0m:[93m99[0m:[93m11[0m - [91merror[0m[90m ts(2554): [0mExpected 0 arguments, but got 1.
+
+[7m99[0m   .select({ count: sql<number>`count(*)` })
+[7m  [0m [91m          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/pulls/new.astro[0m:[93m84[0m:[93m5[0m - [93mwarning[0m[90m ts(6133): [0m'canMerge' is declared but its value is never read.
+
+[7m84[0m let canMerge = false;
+[7m  [0m [93m    ~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/pulls/new.astro[0m:[93m83[0m:[93m5[0m - [93mwarning[0m[90m ts(6133): [0m'error' is declared but its value is never read.
+
+[7m83[0m let error = "";
+[7m  [0m [93m    ~~~~~[0m
+[96msrc/pages/[owner]/[repo]/pulls/new.astro[0m:[93m25[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'ArrowRight' is declared but its value is never read.
+
+[7m25[0m   ArrowRight,
+[7m  [0m [93m  ~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/pulls/new.astro[0m:[93m22[0m:[93m24[0m - [93mwarning[0m[90m ts(6133): [0m'count' is declared but its value is never read.
+
+[7m22[0m import { and, eq, sql, count } from "drizzle-orm";
+[7m  [0m [93m                       ~~~~~[0m
+[96msrc/pages/[owner]/[repo]/pulls/new.astro[0m:[93m336[0m:[93m3[0m - [93mwarning[0m[90m astro(4000): [0mThis script will be treated as if it has the `is:inline` directive because it contains an attribute. Therefore, features that require processing (e.g. using TypeScript or npm packages in the script) are unavailable.
+
+See docs for more details: https://docs.astro.build/en/guides/client-side-scripts/#script-processing.
+
+Add the `is:inline` directive explicitly to silence this hint.
+
+[7m336[0m   define:vars={{
+[7m   [0m [93m  ~~~~~~~~~~~[0m
+
+[96msrc/pages/[owner]/[repo]/security/index.astro[0m:[93m47[0m:[93m12[0m - [91merror[0m[90m ts(2339): [0mProperty 'count' does not exist on type '{ id: string; repositoryId: string; number: number; title: string; body: string | null; state: string; authorId: string; assigneeId: string | null; milestoneId: string | null; isPinned: boolean | null; ... 7 more ...; updatedAt: string; }'.
+
+[7m47[0m   .get())?.count || 0;
+[7m  [0m [91m           ~~~~~[0m
+[96msrc/pages/[owner]/[repo]/security/index.astro[0m:[93m39[0m:[93m11[0m - [91merror[0m[90m ts(2554): [0mExpected 0 arguments, but got 1.
+
+[7m39[0m   .select({ count: sql<number>`count(*)` })
+[7m  [0m [91m          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/security/index.astro[0m:[93m8[0m:[93m10[0m - [93mwarning[0m[90m ts(6133): [0m'AlertCircle' is declared but its value is never read.
+
+[7m8[0m import { AlertCircle, CheckCircle, Shield, Play, Loader2 } from "lucide-react";
+[7m [0m [93m         ~~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/security/index.astro[0m:[93m202[0m:[93m9[0m - [93mwarning[0m[90m astro(4000): [0mThis script will be treated as if it has the `is:inline` directive because it contains an attribute. Therefore, features that require processing (e.g. using TypeScript or npm packages in the script) are unavailable.
+
+See docs for more details: https://docs.astro.build/en/guides/client-side-scripts/#script-processing.
+
+Add the `is:inline` directive explicitly to silence this hint.
+
+[7m202[0m <script define:vars={{ repoOwner: repoInfo.owner, repoName: repoInfo.name }}>
+[7m   [0m [93m        ~~~~~~~~~~~[0m
+
+[96msrc/pages/[owner]/[repo]/settings/collaborators.astro[0m:[93m83[0m:[93m10[0m - [93mwarning[0m[90m ts(6133): [0m'getRoleDescription' is declared but its value is never read.
+
+[7m83[0m function getRoleDescription(role: string) {
+[7m  [0m [93m         ~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/settings/collaborators.astro[0m:[93m297[0m:[93m9[0m - [93mwarning[0m[90m astro(4000): [0mThis script will be treated as if it has the `is:inline` directive because it contains an attribute. Therefore, features that require processing (e.g. using TypeScript or npm packages in the script) are unavailable.
+
+See docs for more details: https://docs.astro.build/en/guides/client-side-scripts/#script-processing.
+
+Add the `is:inline` directive explicitly to silence this hint.
+
+[7m297[0m <script define:vars={{ owner: repo.owner, repo: repo.name }}>
+[7m   [0m [93m        ~~~~~~~~~~~[0m
+
+[96msrc/pages/[owner]/[repo]/settings/index.astro[0m:[93m240[0m:[93m32[0m - [91merror[0m[90m ts(18047): [0m'repo.isArchived' is possibly 'null'.
+
+[7m240[0m                 data-archived={repo.isArchived.toString()}
+[7m   [0m [91m                               ~~~~~~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/settings/index.astro[0m:[93m267[0m:[93m9[0m - [93mwarning[0m[90m astro(4000): [0mThis script will be treated as if it has the `is:inline` directive because it contains an attribute. Therefore, features that require processing (e.g. using TypeScript or npm packages in the script) are unavailable.
+
+See docs for more details: https://docs.astro.build/en/guides/client-side-scripts/#script-processing.
+
+Add the `is:inline` directive explicitly to silence this hint.
+
+[7m267[0m <script define:vars={{ owner: repo.owner, repo: repo.name }}>
+[7m   [0m [93m        ~~~~~~~~~~~[0m
+
+[96msrc/pages/[owner]/[repo]/settings/webhooks.astro[0m:[93m326[0m:[93m9[0m - [93mwarning[0m[90m astro(4000): [0mThis script will be treated as if it has the `is:inline` directive because it contains an attribute. Therefore, features that require processing (e.g. using TypeScript or npm packages in the script) are unavailable.
+
+See docs for more details: https://docs.astro.build/en/guides/client-side-scripts/#script-processing.
+
+Add the `is:inline` directive explicitly to silence this hint.
+
+[7m326[0m <script define:vars={{ owner: repo.owner, repo: repo.name }}>
+[7m   [0m [93m        ~~~~~~~~~~~[0m
+
+[96msrc/pages/[owner]/[repo]/settings/actions/runners.astro[0m:[93m15[0m:[93m18[0m - [93mwarning[0m[90m ts(6133): [0m'Terminal' is declared but its value is never read.
+
+[7m15[0m import { Server, Terminal, Copy } from "lucide-react";
+[7m  [0m [93m                 ~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/settings/actions/runners.astro[0m:[93m210[0m:[93m9[0m - [93mwarning[0m[90m astro(4000): [0mThis script will be treated as if it has the `is:inline` directive because it contains an attribute. Therefore, features that require processing (e.g. using TypeScript or npm packages in the script) are unavailable.
+
+See docs for more details: https://docs.astro.build/en/guides/client-side-scripts/#script-processing.
+
+Add the `is:inline` directive explicitly to silence this hint.
+
+[7m210[0m <script define:vars={{ repoId: repoData.id }}>
+[7m   [0m [93m        ~~~~~~~~~~~[0m
+
+[96msrc/pages/[owner]/[repo]/settings/branches/[id].astro[0m:[93m117[0m:[93m9[0m - [93mwarning[0m[90m astro(4000): [0mThis script will be treated as if it has the `is:inline` directive because it contains an attribute. Therefore, features that require processing (e.g. using TypeScript or npm packages in the script) are unavailable.
+
+See docs for more details: https://docs.astro.build/en/guides/client-side-scripts/#script-processing.
+
+Add the `is:inline` directive explicitly to silence this hint.
+
+[7m117[0m <script define:vars={{ repoId: repository.id, ruleId: rule.id, owner, repo }}>
+[7m   [0m [93m        ~~~~~~~~~~~[0m
+
+[96msrc/pages/[owner]/[repo]/settings/branches/index.astro[0m:[93m59[0m:[93m20[0m - [91merror[0m[90m ts(18047): [0m'rule.requiredApprovals' is possibly 'null'.
+
+[7m59[0m                   {rule.requiredApprovals > 0 && <span>• {rule.requiredApprovals} Approval(s)</span>}
+[7m  [0m [91m                   ~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/settings/branches/index.astro[0m:[93m2[0m:[93m20[0m - [91merror[0m[90m ts(2307): [0mCannot find module '@/layouts/RepositoryLayout.astro' or its corresponding type declarations.
+
+[7m2[0m import Layout from "@/layouts/RepositoryLayout.astro";
+[7m [0m [91m                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/settings/branches/index.astro[0m:[93m4[0m:[93m14[0m - [93mwarning[0m[90m ts(6133): [0m'and' is declared but its value is never read.
+
+[7m4[0m import { eq, and } from "drizzle-orm";
+[7m [0m [93m             ~~~[0m
+
+[96msrc/pages/[owner]/[repo]/settings/branches/new.astro[0m:[93m152[0m:[93m9[0m - [93mwarning[0m[90m astro(4000): [0mThis script will be treated as if it has the `is:inline` directive because it contains an attribute. Therefore, features that require processing (e.g. using TypeScript or npm packages in the script) are unavailable.
+
+See docs for more details: https://docs.astro.build/en/guides/client-side-scripts/#script-processing.
+
+Add the `is:inline` directive explicitly to silence this hint.
+
+[7m152[0m <script define:vars={{ repoId: repository.id, owner, repo }}>
+[7m   [0m [93m        ~~~~~~~~~~~[0m
+
+[96msrc/pages/[owner]/[repo]/settings/webhooks/[id].astro[0m:[93m5[0m:[93m19[0m - [93mwarning[0m[90m ts(6133): [0m'desc' is declared but its value is never read.
+
+[7m5[0m import { eq, and, desc } from "drizzle-orm";
+[7m [0m [93m                  ~~~~[0m
+[96msrc/pages/[owner]/[repo]/settings/webhooks/[id].astro[0m:[93m176[0m:[93m9[0m - [93mwarning[0m[90m astro(4000): [0mThis script will be treated as if it has the `is:inline` directive because it contains an attribute. Therefore, features that require processing (e.g. using TypeScript or npm packages in the script) are unavailable.
+
+See docs for more details: https://docs.astro.build/en/guides/client-side-scripts/#script-processing.
+
+Add the `is:inline` directive explicitly to silence this hint.
+
+[7m176[0m <script define:vars={{ repoId: repo.id, owner: repo.owner, repoName: repo.name, webhookId: webhook.id }}>
+[7m   [0m [93m        ~~~~~~~~~~~[0m
+
+[96msrc/pages/[owner]/[repo]/settings/webhooks/index.astro[0m:[93m120[0m:[93m52[0m - [91merror[0m[90m ts(2551): [0mProperty 'isActive' does not exist on type '{ id: string; createdAt: string; updatedAt: string; repositoryId: string; active: boolean; createdById: string | null; url: string; secret: string | null; events: unknown; contentType: string; deliveryCount: number | null; lastDeliveryStatus: string | null; lastDeliveryAt: string | null; }'. Did you mean 'active'?
+
+[7m120[0m                                             {!hook.isActive && (
+[7m   [0m [91m                                                   ~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/settings/webhooks/index.astro[0m:[93m7[0m:[93m52[0m - [93mwarning[0m[90m ts(6133): [0m'MoreVertical' is declared but its value is never read.
+
+[7m7[0m import { Plus, CheckCircle2, XCircle, AlertCircle, MoreVertical } from "lucide-react";
+[7m [0m [93m                                                   ~~~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/settings/webhooks/index.astro[0m:[93m7[0m:[93m39[0m - [93mwarning[0m[90m ts(6133): [0m'AlertCircle' is declared but its value is never read.
+
+[7m7[0m import { Plus, CheckCircle2, XCircle, AlertCircle, MoreVertical } from "lucide-react";
+[7m [0m [93m                                      ~~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/settings/webhooks/index.astro[0m:[93m161[0m:[93m9[0m - [93mwarning[0m[90m astro(4000): [0mThis script will be treated as if it has the `is:inline` directive because it contains an attribute. Therefore, features that require processing (e.g. using TypeScript or npm packages in the script) are unavailable.
+
+See docs for more details: https://docs.astro.build/en/guides/client-side-scripts/#script-processing.
+
+Add the `is:inline` directive explicitly to silence this hint.
+
+[7m161[0m <script define:vars={{ repoId: repo.id }}>
+[7m   [0m [93m        ~~~~~~~~~~~[0m
+
+[96msrc/pages/[owner]/[repo]/settings/webhooks/new.astro[0m:[93m187[0m:[93m9[0m - [93mwarning[0m[90m astro(4000): [0mThis script will be treated as if it has the `is:inline` directive because it contains an attribute. Therefore, features that require processing (e.g. using TypeScript or npm packages in the script) are unavailable.
+
+See docs for more details: https://docs.astro.build/en/guides/client-side-scripts/#script-processing.
+
+Add the `is:inline` directive explicitly to silence this hint.
+
+[7m187[0m <script define:vars={{ repoId: repo.id, owner: repo.owner, repoName: repo.name }}>
+[7m   [0m [93m        ~~~~~~~~~~~[0m
+
+[96msrc/pages/[owner]/[repo]/tree/[...ref].astro[0m:[93m70[0m:[93m42[0m - [91merror[0m[90m ts(2339): [0mProperty 'count' does not exist on type '{ id: string; repositoryId: string; number: number; title: string; body: string | null; state: string; authorId: string; assigneeId: string | null; milestoneId: string | null; isPinned: boolean | null; ... 7 more ...; updatedAt: string; }'.
+
+[7m70[0m const openIssueCount = issueCountResult?.count || 0;
+[7m  [0m [91m                                         ~~~~~[0m
+[96msrc/pages/[owner]/[repo]/tree/[...ref].astro[0m:[93m60[0m:[93m11[0m - [91merror[0m[90m ts(2554): [0mExpected 0 arguments, but got 1.
+
+[7m60[0m   .select({ count: sql<number>`count(*)` })
+[7m  [0m [91m          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/tree/[...ref].astro[0m:[93m6[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'Tag' is declared but its value is never read.
+
+[7m6[0m   Tag,
+[7m [0m [93m  ~~~[0m
+
+[96msrc/pages/[owner]/[repo]/tree/[branch]/[...path].astro[0m:[93m63[0m:[93m42[0m - [91merror[0m[90m ts(2339): [0mProperty 'count' does not exist on type '{ id: string; repositoryId: string; number: number; title: string; body: string | null; state: string; authorId: string; assigneeId: string | null; milestoneId: string | null; isPinned: boolean | null; ... 7 more ...; updatedAt: string; }'.
+
+[7m63[0m const openIssueCount = issueCountResult?.count || 0;
+[7m  [0m [91m                                         ~~~~~[0m
+[96msrc/pages/[owner]/[repo]/tree/[branch]/[...path].astro[0m:[93m53[0m:[93m11[0m - [91merror[0m[90m ts(2554): [0mExpected 0 arguments, but got 1.
+
+[7m53[0m   .select({ count: sql<number>`count(*)` })
+[7m  [0m [91m          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/tree/[branch]/[...path].astro[0m:[93m11[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'FileText' is declared but its value is never read.
+
+[7m11[0m   FileText,
+[7m  [0m [93m  ~~~~~~~~[0m
+[96msrc/pages/[owner]/[repo]/tree/[branch]/[...path].astro[0m:[93m6[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'Tag' is declared but its value is never read.
+
+[7m6[0m   Tag,
+[7m [0m [93m  ~~~[0m
+
+[96msrc/pages/admin/audit.astro[0m:[93m76[0m:[93m28[0m - [91merror[0m[90m ts(2339): [0mProperty 'count' does not exist on type '{ id: string; userId: string | null; repositoryId: string | null; action: string; actorType: string; actorId: string | null; actorIp: string | null; actorUserAgent: string | null; targetType: string | null; targetId: string | null; targetName: string | null; data: string | null; createdAt: string; }'.
+
+[7m76[0m const total = totalResult?.count || 0;
+[7m  [0m [91m                           ~~~~~[0m
+[96msrc/pages/admin/audit.astro[0m:[93m70[0m:[93m13[0m - [91merror[0m[90m ts(2554): [0mExpected 0 arguments, but got 1.
+
+[7m70[0m   db.select({ count: sql<number>`count(*)` })
+[7m  [0m [91m            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/admin/audit.astro[0m:[93m18[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'ExternalLink' is declared but its value is never read.
+
+[7m18[0m   ExternalLink
+[7m  [0m [93m  ~~~~~~~~~~~~[0m
+[96msrc/pages/admin/audit.astro[0m:[93m4[0m:[93m27[0m - [93mwarning[0m[90m ts(6133): [0m'eq' is declared but its value is never read.
+
+[7m4[0m import { desc, sql, like, eq, or } from "drizzle-orm";
+[7m [0m [93m                          ~~[0m
+
+[96msrc/pages/admin/repositories.astro[0m:[93m45[0m:[93m28[0m - [91merror[0m[90m ts(2339): [0mProperty 'count' does not exist on type '{ id: string; name: string; slug: string; description: string | null; ownerId: string; ownerType: string; visibility: string; defaultBranch: string; diskPath: string; sshCloneUrl: string | null; ... 23 more ...; updatedAt: string; }'.
+
+[7m45[0m const total = totalResult?.count || 0;
+[7m  [0m [91m                           ~~~~~[0m
+[96msrc/pages/admin/repositories.astro[0m:[93m39[0m:[93m15[0m - [91merror[0m[90m ts(2554): [0mExpected 0 arguments, but got 1.
+
+[7m39[0m     db.select({ count: sql<number>`count(*)` })
+[7m  [0m [91m              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/admin/repositories.astro[0m:[93m4[0m:[93m16[0m - [93mwarning[0m[90m ts(6133): [0m'eq' is declared but its value is never read.
+
+[7m4[0m import { desc, eq, like, or, sql } from "drizzle-orm";
+[7m [0m [93m               ~~[0m
+
+[96msrc/pages/admin/settings.astro[0m:[93m7[0m:[93m10[0m - [91merror[0m[90m ts(2440): [0mImport declaration conflicts with local declaration of 'Settings'.
+
+[7m7[0m import { Settings, Save, Mail, Globe, Lock } from "lucide-react";
+[7m [0m [91m         ~~~~~~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m169[0m:[93m17[0m - [91merror[0m[90m ts(2339): [0mProperty 'disabled' does not exist on type 'HTMLElement'.
+
+[7m169[0m             btn.disabled = false;
+[7m   [0m [91m                ~~~~~~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m169[0m:[93m13[0m - [91merror[0m[90m ts(18047): [0m'btn' is possibly 'null'.
+
+[7m169[0m             btn.disabled = false;
+[7m   [0m [91m            ~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m168[0m:[93m13[0m - [91merror[0m[90m ts(18047): [0m'btn' is possibly 'null'.
+
+[7m168[0m             btn.textContent = original;
+[7m   [0m [91m            ~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m152[0m:[93m69[0m - [91merror[0m[90m ts(2339): [0mProperty 'checked' does not exist on type 'HTMLElement'.
+
+[7m152[0m         data.allowSignups = document.getElementById('allowSignups').checked;
+[7m   [0m [91m                                                                    ~~~~~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m152[0m:[93m29[0m - [91merror[0m[90m ts(2531): [0mObject is possibly 'null'.
+
+[7m152[0m         data.allowSignups = document.getElementById('allowSignups').checked;
+[7m   [0m [91m                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m148[0m:[93m39[0m - [91merror[0m[90m ts(2345): [0mArgument of type 'EventTarget | null' is not assignable to parameter of type 'HTMLFormElement | undefined'.
+  Type 'null' is not assignable to type 'HTMLFormElement | undefined'.
+
+[7m148[0m         const formData = new FormData(e.target);
+[7m   [0m [91m                                      ~~~~~~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m146[0m:[93m13[0m - [91merror[0m[90m ts(2339): [0mProperty 'disabled' does not exist on type 'HTMLElement'.
+
+[7m146[0m         btn.disabled = true;
+[7m   [0m [91m            ~~~~~~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m146[0m:[93m9[0m - [91merror[0m[90m ts(18047): [0m'btn' is possibly 'null'.
+
+[7m146[0m         btn.disabled = true;
+[7m   [0m [91m        ~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m145[0m:[93m9[0m - [91merror[0m[90m ts(18047): [0m'btn' is possibly 'null'.
+
+[7m145[0m         btn.textContent = "Saving...";
+[7m   [0m [91m        ~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m144[0m:[93m26[0m - [91merror[0m[90m ts(18047): [0m'btn' is possibly 'null'.
+
+[7m144[0m         const original = btn.textContent;
+[7m   [0m [91m                         ~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m133[0m:[93m53[0m - [91merror[0m[90m ts(2339): [0mProperty 'value' does not exist on type 'HTMLElement'.
+
+[7m133[0m                 document.getElementById('smtpFrom').value = config.smtpFrom || '';
+[7m   [0m [91m                                                    ~~~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m133[0m:[93m17[0m - [91merror[0m[90m ts(2531): [0mObject is possibly 'null'.
+
+[7m133[0m                 document.getElementById('smtpFrom').value = config.smtpFrom || '';
+[7m   [0m [91m                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m132[0m:[93m53[0m - [91merror[0m[90m ts(2339): [0mProperty 'value' does not exist on type 'HTMLElement'.
+
+[7m132[0m                 document.getElementById('smtpUser').value = config.smtpUser || '';
+[7m   [0m [91m                                                    ~~~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m132[0m:[93m17[0m - [91merror[0m[90m ts(2531): [0mObject is possibly 'null'.
+
+[7m132[0m                 document.getElementById('smtpUser').value = config.smtpUser || '';
+[7m   [0m [91m                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m131[0m:[93m53[0m - [91merror[0m[90m ts(2339): [0mProperty 'value' does not exist on type 'HTMLElement'.
+
+[7m131[0m                 document.getElementById('smtpPort').value = config.smtpPort || '';
+[7m   [0m [91m                                                    ~~~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m131[0m:[93m17[0m - [91merror[0m[90m ts(2531): [0mObject is possibly 'null'.
+
+[7m131[0m                 document.getElementById('smtpPort').value = config.smtpPort || '';
+[7m   [0m [91m                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m130[0m:[93m53[0m - [91merror[0m[90m ts(2339): [0mProperty 'value' does not exist on type 'HTMLElement'.
+
+[7m130[0m                 document.getElementById('smtpHost').value = config.smtpHost || '';
+[7m   [0m [91m                                                    ~~~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m130[0m:[93m17[0m - [91merror[0m[90m ts(2531): [0mObject is possibly 'null'.
+
+[7m130[0m                 document.getElementById('smtpHost').value = config.smtpHost || '';
+[7m   [0m [91m                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m128[0m:[93m57[0m - [91merror[0m[90m ts(2339): [0mProperty 'checked' does not exist on type 'HTMLElement'.
+
+[7m128[0m                 document.getElementById('allowSignups').checked = !!config.allowSignups;
+[7m   [0m [91m                                                        ~~~~~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m128[0m:[93m17[0m - [91merror[0m[90m ts(2531): [0mObject is possibly 'null'.
+
+[7m128[0m                 document.getElementById('allowSignups').checked = !!config.allowSignups;
+[7m   [0m [91m                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m127[0m:[93m60[0m - [91merror[0m[90m ts(2339): [0mProperty 'value' does not exist on type 'HTMLElement'.
+
+[7m127[0m                 document.getElementById('siteDescription').value = config.siteDescription || '';
+[7m   [0m [91m                                                           ~~~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m127[0m:[93m17[0m - [91merror[0m[90m ts(2531): [0mObject is possibly 'null'.
+
+[7m127[0m                 document.getElementById('siteDescription').value = config.siteDescription || '';
+[7m   [0m [91m                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m126[0m:[93m53[0m - [91merror[0m[90m ts(2339): [0mProperty 'value' does not exist on type 'HTMLElement'.
+
+[7m126[0m                 document.getElementById('siteName').value = config.siteName || '';
+[7m   [0m [91m                                                    ~~~~~[0m
+[96msrc/pages/admin/settings.astro[0m:[93m126[0m:[93m17[0m - [91merror[0m[90m ts(2531): [0mObject is possibly 'null'.
+
+[7m126[0m                 document.getElementById('siteName').value = config.siteName || '';
+[7m   [0m [91m                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/pages/admin/users.astro[0m:[93m106[0m:[93m58[0m - [91merror[0m[90m ts(2339): [0mProperty 'count' does not exist on type '{ id: string; username: string; email: string; passwordHash: string | null; displayName: string | null; bio: string | null; avatarUrl: string | null; location: string | null; website: string | null; ... 8 more ...; updatedAt: string; }'.
+
+[7m106[0m               <p class="text-2xl font-bold">{adminUsers?.count || 0}</p>
+[7m   [0m [91m                                                         ~~~~~[0m
+[96msrc/pages/admin/users.astro[0m:[93m95[0m:[93m59[0m - [91merror[0m[90m ts(2339): [0mProperty 'count' does not exist on type '{ id: string; username: string; email: string; passwordHash: string | null; displayName: string | null; bio: string | null; avatarUrl: string | null; location: string | null; website: string | null; ... 8 more ...; updatedAt: string; }'.
+
+[7m95[0m               <p class="text-2xl font-bold">{activeUsers?.count || 0}</p>
+[7m  [0m [91m                                                          ~~~~~[0m
+[96msrc/pages/admin/users.astro[0m:[93m84[0m:[93m58[0m - [91merror[0m[90m ts(2339): [0mProperty 'count' does not exist on type '{ id: string; username: string; email: string; passwordHash: string | null; displayName: string | null; bio: string | null; avatarUrl: string | null; location: string | null; website: string | null; ... 8 more ...; updatedAt: string; }'.
+
+[7m84[0m               <p class="text-2xl font-bold">{totalUsers?.count || 0}</p>
+[7m  [0m [91m                                                         ~~~~~[0m
+[96msrc/pages/admin/users.astro[0m:[93m54[0m:[93m13[0m - [91merror[0m[90m ts(2554): [0mExpected 0 arguments, but got 1.
+
+[7m54[0m   db.select({ count: sql<number>`count(*)` }).from(schema.users).where(eq(schema.users.isAdmin, true)).get(),
+[7m  [0m [91m            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/admin/users.astro[0m:[93m53[0m:[93m13[0m - [91merror[0m[90m ts(2554): [0mExpected 0 arguments, but got 1.
+
+[7m53[0m   db.select({ count: sql<number>`count(*)` }).from(schema.users).where(eq(schema.users.isActive, true)).get(),
+[7m  [0m [91m            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/admin/users.astro[0m:[93m52[0m:[93m13[0m - [91merror[0m[90m ts(2554): [0mExpected 0 arguments, but got 1.
+
+[7m52[0m   db.select({ count: sql<number>`count(*)` }).from(schema.users).get(),
+[7m  [0m [91m            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/admin/users.astro[0m:[93m47[0m:[93m28[0m - [91merror[0m[90m ts(2339): [0mProperty 'count' does not exist on type '{ id: string; username: string; email: string; passwordHash: string | null; displayName: string | null; bio: string | null; avatarUrl: string | null; location: string | null; website: string | null; ... 8 more ...; updatedAt: string; }'.
+
+[7m47[0m const total = totalResult?.count || 0;
+[7m  [0m [91m                           ~~~~~[0m
+[96msrc/pages/admin/users.astro[0m:[93m41[0m:[93m13[0m - [91merror[0m[90m ts(2554): [0mExpected 0 arguments, but got 1.
+
+[7m41[0m   db.select({ count: sql<number>`count(*)` })
+[7m  [0m [91m            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/admin/users.astro[0m:[93m8[0m:[93m10[0m - [91merror[0m[90m ts(2440): [0mImport declaration conflicts with local declaration of 'Users'.
+
+[7m8[0m import { Users, Shield, Ban, CheckCircle, Search, ChevronLeft, ChevronRight } from "lucide-react";
+[7m [0m [91m         ~~~~~[0m
+[96msrc/pages/admin/users.astro[0m:[93m277[0m:[93m28[0m - [91merror[0m[90m ts(2339): [0mProperty 'dataset' does not exist on type 'Element'.
+
+[7m277[0m       const isActive = btn.dataset.isActive === 'true';
+[7m   [0m [91m                           ~~~~~~~[0m
+[96msrc/pages/admin/users.astro[0m:[93m276[0m:[93m26[0m - [91merror[0m[90m ts(2339): [0mProperty 'dataset' does not exist on type 'Element'.
+
+[7m276[0m       const userId = btn.dataset.userId;
+[7m   [0m [91m                         ~~~~~~~[0m
+[96msrc/pages/admin/users.astro[0m:[93m254[0m:[93m27[0m - [91merror[0m[90m ts(2339): [0mProperty 'dataset' does not exist on type 'Element'.
+
+[7m254[0m       const isAdmin = btn.dataset.isAdmin === 'true';
+[7m   [0m [91m                          ~~~~~~~[0m
+[96msrc/pages/admin/users.astro[0m:[93m253[0m:[93m26[0m - [91merror[0m[90m ts(2339): [0mProperty 'dataset' does not exist on type 'Element'.
+
+[7m253[0m       const userId = btn.dataset.userId;
+[7m   [0m [91m                         ~~~~~~~[0m
+
+[96msrc/pages/api/ai-review-rules.ts[0m:[93m11[0m:[93m56[0m - [93mwarning[0m[90m ts(6385): [0m'(from: number, length?: number | undefined): string' is deprecated.
+
+[7m11[0m     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+[7m  [0m [93m                                                       ~~~~~~[0m
+
+[96msrc/pages/api/automation-rules.ts[0m:[93m11[0m:[93m56[0m - [93mwarning[0m[90m ts(6385): [0m'(from: number, length?: number | undefined): string' is deprecated.
+
+[7m11[0m     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+[7m  [0m [93m                                                       ~~~~~~[0m
+[96msrc/pages/api/automation-rules.ts[0m:[93m7[0m:[93m14[0m - [93mwarning[0m[90m ts(6133): [0m'and' is declared but its value is never read.
+
+[7m7[0m import { eq, and } from "drizzle-orm";
+[7m [0m [93m             ~~~[0m
+
+[96msrc/pages/api/inbox-sections.ts[0m:[93m11[0m:[93m56[0m - [93mwarning[0m[90m ts(6385): [0m'(from: number, length?: number | undefined): string' is deprecated.
+
+[7m11[0m     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+[7m  [0m [93m                                                       ~~~~~~[0m
+
+[96msrc/pages/api/search.ts[0m:[93m3[0m:[93m20[0m - [93mwarning[0m[90m ts(6133): [0m'eq' is declared but its value is never read.
+
+[7m3[0m import { like, or, eq, desc } from 'drizzle-orm';
+[7m [0m [93m                   ~~[0m
+
+[96msrc/pages/api/actions/trigger-test.ts[0m:[93m10[0m:[93m1[0m - [93mwarning[0m[90m ts(6133): [0m'eq' is declared but its value is never read.
+
+[7m10[0m import { eq } from "drizzle-orm";
+[7m  [0m [93m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/api/actions/trigger-test.ts[0m:[93m8[0m:[93m57[0m - [93mwarning[0m[90m ts(6133): [0m'notFound' is declared but its value is never read.
+
+[7m8[0m import { success, unauthorized, serverError, parseBody, notFound } from '@/lib/api';
+[7m [0m [93m                                                        ~~~~~~~~[0m
+
+[96msrc/pages/api/realtime/events.ts[0m:[93m28[0m:[93m48[0m - [93mwarning[0m[90m ts(6133): [0m'request' is declared but its value is never read.
+
+[7m28[0m export const POST: APIRoute = async ({ locals, request }) => {
+[7m  [0m [93m                                               ~~~~~~~[0m
+
+[96msrc/pages/api/repos/[owner]/[repo]/protection.ts[0m:[93m10[0m:[93m35[0m - [93mwarning[0m[90m ts(6133): [0m'badRequest' is declared but its value is never read.
+
+[7m10[0m import { parseBody, unauthorized, badRequest, notFound, success, serverError } from "@/lib/api";
+[7m  [0m [93m                                  ~~~~~~~~~~[0m
+
+[96msrc/pages/api/repos/[owner]/[repo]/git/push.ts[0m:[93m142[0m:[93m26[0m - [93mwarning[0m[90m ts(6133): [0m'sha' is declared but its value is never read.
+
+[7m142[0m             for (const { sha, ref } of bundleRefs) {
+[7m   [0m [93m                         ~~~[0m
+[96msrc/pages/api/repos/[owner]/[repo]/git/push.ts[0m:[93m22[0m:[93m22[0m - [93mwarning[0m[90m ts(6133): [0m'mkdirSync' is declared but its value is never read.
+
+[7m22[0m import { existsSync, mkdirSync, writeFileSync, unlinkSync } from "fs";
+[7m  [0m [93m                     ~~~~~~~~~[0m
+[96msrc/pages/api/repos/[owner]/[repo]/git/push.ts[0m:[93m18[0m:[93m5[0m - [93mwarning[0m[90m ts(6133): [0m'getDiskPath' is declared but its value is never read.
+
+[7m18[0m     getDiskPath,
+[7m  [0m [93m    ~~~~~~~~~~~[0m
+[96msrc/pages/api/repos/[owner]/[repo]/git/push.ts[0m:[93m13[0m:[93m1[0m - [93mwarning[0m[90m ts(6133): [0m'getRepoPath' is declared but its value is never read.
+
+[7m13[0m import { getRepoPath } from "@/lib/utils";
+[7m  [0m [93m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/pages/api/repos/[owner]/[repo]/pulls/[number]/comments.ts[0m:[93m210[0m:[93m30[0m - [93mwarning[0m[90m ts(6133): [0m'number' is declared but its value is never read.
+
+[7m210[0m         const { owner, repo, number, commentId } = params;
+[7m   [0m [93m                             ~~~~~~[0m
+[96msrc/pages/api/repos/[owner]/[repo]/pulls/[number]/comments.ts[0m:[93m210[0m:[93m24[0m - [93mwarning[0m[90m ts(6133): [0m'repo' is declared but its value is never read.
+
+[7m210[0m         const { owner, repo, number, commentId } = params;
+[7m   [0m [93m                       ~~~~[0m
+[96msrc/pages/api/repos/[owner]/[repo]/pulls/[number]/comments.ts[0m:[93m163[0m:[93m30[0m - [93mwarning[0m[90m ts(6133): [0m'number' is declared but its value is never read.
+
+[7m163[0m         const { owner, repo, number, commentId } = params;
+[7m   [0m [93m                             ~~~~~~[0m
+[96msrc/pages/api/repos/[owner]/[repo]/pulls/[number]/comments.ts[0m:[93m163[0m:[93m24[0m - [93mwarning[0m[90m ts(6133): [0m'repo' is declared but its value is never read.
+
+[7m163[0m         const { owner, repo, number, commentId } = params;
+[7m   [0m [93m                       ~~~~[0m
+[96msrc/pages/api/repos/[owner]/[repo]/pulls/[number]/comments.ts[0m:[93m99[0m:[93m24[0m - [93mwarning[0m[90m ts(6133): [0m'repo' is declared but its value is never read.
+
+[7m99[0m         const { owner, repo, number } = params;
+[7m  [0m [93m                       ~~~~[0m
+[96msrc/pages/api/repos/[owner]/[repo]/pulls/[number]/comments.ts[0m:[93m37[0m:[93m24[0m - [93mwarning[0m[90m ts(6133): [0m'repo' is declared but its value is never read.
+
+[7m37[0m         const { owner, repo, number } = params;
+[7m  [0m [93m                       ~~~~[0m
+[96msrc/pages/api/repos/[owner]/[repo]/pulls/[number]/comments.ts[0m:[93m10[0m:[93m35[0m - [93mwarning[0m[90m ts(6133): [0m'badRequest' is declared but its value is never read.
+
+[7m10[0m import { parseBody, unauthorized, badRequest, notFound, success, serverError } from "@/lib/api";
+[7m  [0m [93m                                  ~~~~~~~~~~[0m
+[96msrc/pages/api/repos/[owner]/[repo]/pulls/[number]/comments.ts[0m:[93m7[0m:[93m25[0m - [93mwarning[0m[90m ts(6133): [0m'isNull' is declared but its value is never read.
+
+[7m7[0m import { eq, and, desc, isNull } from "drizzle-orm";
+[7m [0m [93m                        ~~~~~~[0m
+
+[96msrc/pages/api/stacks/index.ts[0m:[93m26[0m:[93m6[0m - [93mwarning[0m[90m ts(6196): [0m'CreateStackInput' is declared but never used.
+
+[7m26[0m type CreateStackInput = z.infer<typeof createStackSchema>;
+[7m  [0m [93m     ~~~~~~~~~~~~~~~~[0m
+[96msrc/pages/api/stacks/index.ts[0m:[93m10[0m:[93m35[0m - [93mwarning[0m[90m ts(6133): [0m'badRequest' is declared but its value is never read.
+
+[7m10[0m import { parseBody, unauthorized, badRequest, notFound, success, serverError } from "@/lib/api";
+[7m  [0m [93m                                  ~~~~~~~~~~[0m
+
+[96msrc/pages/api/user/notification-preferences.ts[0m:[93m12[0m:[93m56[0m - [93mwarning[0m[90m ts(6385): [0m'(from: number, length?: number | undefined): string' is deprecated.
+
+[7m12[0m     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+[7m  [0m [93m                                                       ~~~~~~[0m
+
+[96msrc/pages/api/user/tokens.ts[0m:[93m103[0m:[93m24[0m - [93mwarning[0m[90m ts(6133): [0m'prefix' is declared but its value is never read.
+
+[7m103[0m         const { token, prefix } = generateToken();
+[7m   [0m [93m                       ~~~~~~[0m
+[96msrc/pages/api/user/tokens.ts[0m:[93m79[0m:[93m34[0m - [93mwarning[0m[90m ts(6133): [0m'scopes' is declared but its value is never read.
+
+[7m79[0m         const { name, expiresIn, scopes } = parsed.data;
+[7m  [0m [93m                                 ~~~~~~[0m
+[96msrc/pages/api/user/tokens.ts[0m:[93m26[0m:[93m10[0m - [93mwarning[0m[90m ts(6133): [0m'hashToken' is declared but its value is never read.
+
+[7m26[0m function hashToken(token: string): string {
+[7m  [0m [93m         ~~~~~~~~~[0m
+[96msrc/pages/api/user/tokens.ts[0m:[93m8[0m:[93m23[0m - [93mwarning[0m[90m ts(6133): [0m'schema' is declared but its value is never read.
+
+[7m8[0m import { getDatabase, schema } from "@/db";
+[7m [0m [93m                      ~~~~~~[0m
+
+[96msrc/pages/settings/ai-review-rules.astro[0m:[93m35[0m:[93m38[0m - [91merror[0m[90m ts(2353): [0mObject literal may only specify known properties, and 'fullName' does not exist in type '{ id?: boolean | undefined; name?: boolean | undefined; slug?: boolean | undefined; description?: boolean | undefined; ownerId?: boolean | undefined; ownerType?: boolean | undefined; ... 27 more ...; updatedAt?: boolean | undefined; }'.
+
+[7m35[0m     columns: { id: true, name: true, fullName: true },
+[7m  [0m [91m                                     ~~~~~~~~[0m
+[96msrc/pages/settings/ai-review-rules.astro[0m:[93m19[0m:[93m3[0m - [93mwarning[0m[90m ts(6133): [0m'CheckCircle2' is declared but its value is never read.
+
+[7m19[0m   CheckCircle2,
+[7m  [0m [93m  ~~~~~~~~~~~~[0m
+[96msrc/pages/settings/ai-review-rules.astro[0m:[93m4[0m:[93m14[0m - [93mwarning[0m[90m ts(6133): [0m'and' is declared but its value is never read.
+
+[7m4[0m import { eq, and, desc } from "drizzle-orm";
+[7m [0m [93m             ~~~[0m
+[96msrc/pages/settings/ai-review-rules.astro[0m:[93m469[0m:[93m9[0m - [93mwarning[0m[90m astro(4000): [0mThis script will be treated as if it has the `is:inline` directive because it contains an attribute. Therefore, features that require processing (e.g. using TypeScript or npm packages in the script) are unavailable.
+
+See docs for more details: https://docs.astro.build/en/guides/client-side-scripts/#script-processing.
+
+Add the `is:inline` directive explicitly to silence this hint.
+
+[7m469[0m <script define:vars={{ repoId }}>
+[7m   [0m [93m        ~~~~~~~~~~~[0m
+
+[96msrc/pages/settings/automations.astro[0m:[93m301[0m:[93m61[0m - [93mwarning[0m[90m ts(6133): [0m'i' is declared but its value is never read.
+
+[7m301[0m                           {actions.slice(0, 3).map((action, i) => (
+[7m   [0m [93m                                                            ~[0m
+[96msrc/pages/settings/automations.astro[0m:[93m437[0m:[93m9[0m - [93mwarning[0m[90m astro(4000): [0mThis script will be treated as if it has the `is:inline` directive because it contains an attribute. Therefore, features that require processing (e.g. using TypeScript or npm packages in the script) are unavailable.
+
+See docs for more details: https://docs.astro.build/en/guides/client-side-scripts/#script-processing.
+
+Add the `is:inline` directive explicitly to silence this hint.
+
+[7m437[0m <script define:vars={{ repoId }}>
+[7m   [0m [93m        ~~~~~~~~~~~[0m
+
+Result (300 files): 
+- 58 errors
+- 0 warnings
+- 223 hints
+

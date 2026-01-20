@@ -4,6 +4,7 @@
  */
 
 import type { APIRoute } from "astro";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { eq, and } from "drizzle-orm";
 import { getDatabase, schema } from "@/db";
 import { getUserFromRequest } from "@/lib/auth";
@@ -20,119 +21,113 @@ const protectionRuleSchema = z.object({
     allowForcePushes: z.boolean().default(false),
 });
 
+import { withErrorHandler } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+
+// ... existing imports ...
+
 // GET /api/repos/:owner/:repo/protection - Get protection rules
-export const GET: APIRoute = async ({ params, request }) => {
-    try {
-        const tokenPayload = await getUserFromRequest(request);
-        if (!tokenPayload) {
-            return unauthorized();
-        }
-
-        const { owner, repo } = params;
-        const db = getDatabase();
-
-        // Find repository
-        const repository = await db.query.repositories.findFirst({
-            where: and(
-                eq(schema.repositories.ownerId, owner as string),
-                eq(schema.repositories.name, repo as string)
-            ),
-        });
-
-        if (!repository) {
-            return notFound("Repository not found");
-        }
-
-        // Get protection rules
-        const rules = await db.query.branchProtection.findMany({
-            where: eq(schema.branchProtection.repositoryId, repository.id),
-        });
-
-        return success({ rules });
-    } catch (error) {
-        console.error("Get protection rules error:", error);
-        return serverError("Failed to get protection rules");
+export const GET: APIRoute = withErrorHandler(async ({ params, request }) => {
+    const tokenPayload = await getUserFromRequest(request);
+    if (!tokenPayload) {
+        return unauthorized();
     }
-};
+
+    const { owner, repo } = params;
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
+
+    // Find repository
+    const repository = await db.query.repositories.findFirst({
+        where: and(
+            eq(schema.repositories.ownerId, owner as string),
+            eq(schema.repositories.name, repo as string)
+        ),
+    });
+
+    if (!repository) {
+        return notFound("Repository not found");
+    }
+
+    // Get protection rules
+    const rules = await db.query.branchProtection.findMany({
+        where: eq(schema.branchProtection.repositoryId, repository.id),
+    });
+
+    return success({ rules });
+});
 
 // POST /api/repos/:owner/:repo/protection - Create protection rule
-export const POST: APIRoute = async ({ params, request }) => {
-    try {
-        const tokenPayload = await getUserFromRequest(request);
-        if (!tokenPayload) {
-            return unauthorized();
-        }
-
-        const parsed = await parseBody(request, protectionRuleSchema);
-        if ("error" in parsed) return parsed.error;
-
-        const { owner, repo } = params;
-        const db = getDatabase();
-
-        // Find repository
-        const repository = await db.query.repositories.findFirst({
-            where: and(
-                eq(schema.repositories.ownerId, owner as string),
-                eq(schema.repositories.name, repo as string)
-            ),
-        });
-
-        if (!repository) {
-            return notFound("Repository not found");
-        }
-
-        const now = new Date().toISOString();
-        const ruleId = `bp_${crypto.randomBytes(8).toString("hex")}`;
-
-        // Create rule
-        await db.insert(schema.branchProtection).values({
-            id: ruleId,
-            repositoryId: repository.id,
-            ...parsed.data,
-            createdById: tokenPayload.userId,
-            createdAt: now,
-            updatedAt: now,
-        });
-
-        return success({
-            message: "Protection rule created",
-            rule: { id: ruleId, ...parsed.data },
-        });
-    } catch (error) {
-        console.error("Create protection rule error:", error);
-        return serverError("Failed to create protection rule");
+export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
+    const tokenPayload = await getUserFromRequest(request);
+    if (!tokenPayload) {
+        return unauthorized();
     }
-};
+
+    const parsed = await parseBody(request, protectionRuleSchema);
+    if ("error" in parsed) return parsed.error;
+
+    const { owner, repo } = params;
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
+
+    // Find repository
+    const repository = await db.query.repositories.findFirst({
+        where: and(
+            eq(schema.repositories.ownerId, owner as string),
+            eq(schema.repositories.name, repo as string)
+        ),
+    });
+
+    if (!repository) {
+        return notFound("Repository not found");
+    }
+
+    const now = new Date();
+    const ruleId = `bp_${crypto.randomBytes(8).toString("hex")}`;
+
+    // Create rule
+    await db.insert(schema.branchProtection).values({
+        id: ruleId,
+        repositoryId: repository.id,
+        ...parsed.data,
+        createdById: tokenPayload.userId,
+        createdAt: now,
+        updatedAt: now,
+    });
+
+    logger.info({ userId: tokenPayload.userId, repoId: repository.id, ruleId }, "Branch protection rule created");
+
+    return success({
+        message: "Protection rule created",
+        rule: { id: ruleId, ...parsed.data },
+    });
+});
 
 // DELETE /api/repos/:owner/:repo/protection/:ruleId - Delete protection rule
-export const DELETE: APIRoute = async ({ params, request }) => {
-    try {
-        const tokenPayload = await getUserFromRequest(request);
-        if (!tokenPayload) {
-            return unauthorized();
-        }
-
-        const { owner, repo, ruleId } = params;
-        const db = getDatabase();
-
-        // Find repository
-        const repository = await db.query.repositories.findFirst({
-            where: and(
-                eq(schema.repositories.ownerId, owner as string),
-                eq(schema.repositories.name, repo as string)
-            ),
-        });
-
-        if (!repository) {
-            return notFound("Repository not found");
-        }
-
-        // Delete rule
-        await db.delete(schema.branchProtection).where(eq(schema.branchProtection.id, ruleId as string));
-
-        return success({ message: "Protection rule deleted" });
-    } catch (error) {
-        console.error("Delete protection rule error:", error);
-        return serverError("Failed to delete protection rule");
+export const DELETE: APIRoute = withErrorHandler(async ({ params, request }) => {
+    const tokenPayload = await getUserFromRequest(request);
+    if (!tokenPayload) {
+        return unauthorized();
     }
-};
+
+    const { owner, repo, ruleId } = params;
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
+
+    // Find repository
+    const repository = await db.query.repositories.findFirst({
+        where: and(
+            eq(schema.repositories.ownerId, owner as string),
+            eq(schema.repositories.name, repo as string)
+        ),
+    });
+
+    if (!repository) {
+        return notFound("Repository not found");
+    }
+
+    // Delete rule
+    await db.delete(schema.branchProtection).where(eq(schema.branchProtection.id, ruleId as string));
+
+    logger.info({ userId: tokenPayload.userId, repoId: repository.id, ruleId }, "Branch protection rule deleted");
+
+    return success({ message: "Protection rule deleted" });
+});

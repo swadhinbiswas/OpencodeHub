@@ -1,0 +1,502 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, desc } from "drizzle-orm";
+import {
+  Zap,
+  Plus,
+  Trash2,
+  Edit2,
+  Play,
+  Pause,
+  GitPullRequest,
+  Tag,
+  Users,
+  MessageSquare,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  ArrowRight,
+  Settings2,
+  History,
+} from "lucide-react";
+
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+const db = getDatabase();
+const repoId = Astro.url.searchParams.get("repo") || "";
+const view = Astro.url.searchParams.get("view") || "rules";
+
+// Get user's repositories
+let repositories: { id: string; name: string; fullName?: string }[] = [];
+try {
+  const repos = await db.query.repositories.findMany({
+    where: eq(schema.repositories.ownerId, user.id),
+    columns: { id: true, name: true },
+    with: { owner: { columns: { username: true } } },
+  });
+  repositories = repos.map((r) => ({
+    id: r.id,
+    name: r.name,
+    fullName: `${r.owner.username}/${r.name}`,
+  }));
+} catch (e) {}
+
+// Get automation rules for selected repo
+interface AutomationRule {
+  id: string;
+  name: string;
+  description?: string;
+  trigger: string;
+  conditions?: string;
+  actions: string;
+  isEnabled: boolean;
+  runCount: number;
+  lastRunAt?: string;
+}
+
+interface AutomationExecution {
+  id: string;
+  ruleName: string;
+  triggerEvent: string;
+  status: string;
+  createdAt: string;
+  durationMs?: number;
+}
+
+let rules: AutomationRule[] = [];
+let executions: AutomationExecution[] = [];
+
+try {
+  if (repoId) {
+    const dbRules = await db.query.automationRules.findMany({
+      where: eq(schema.automationRules.repositoryId, repoId),
+      orderBy: [desc(schema.automationRules.createdAt)],
+    });
+    rules = dbRules.map(r => ({
+      id: r.id,
+      name: r.name,
+      description: r.description || undefined,
+      trigger: r.trigger,
+      conditions: r.conditions || undefined,
+      actions: r.actions,
+      isEnabled: r.isEnabled ?? true,
+      runCount: r.runCount || 0,
+      lastRunAt: r.lastRunAt || undefined,
+    }));
+
+    // Get recent executions
+    if (view === "history") {
+      const ruleIds = rules.map(r => r.id);
+      if (ruleIds.length > 0) {
+        const dbExecutions = await db.query.automationExecutions.findMany({
+          orderBy: [desc(schema.automationExecutions.createdAt)],
+          limit: 50,
+          with: {
+            rule: true,
+          },
+        });
+        executions = dbExecutions
+          .filter(e => ruleIds.includes(e.ruleId))
+          .map(e => ({
+            id: e.id,
+            ruleName: e.rule?.name || "Unknown",
+            triggerEvent: e.triggerEvent,
+            status: e.status,
+            createdAt: e.createdAt,
+            durationMs: e.durationMs || undefined,
+          }));
+      }
+    }
+  }
+} catch (e) {
+  console.error("Failed to fetch automation rules:", e);
+}
+
+const triggerLabels: Record<string, { label: string; icon: any; color: string }> = {
+  pr_opened: { label: "PR Opened", icon: GitPullRequest, color: "text-green-400" },
+  pr_merged: { label: "PR Merged", icon: GitPullRequest, color: "text-purple-400" },
+  pr_approved: { label: "PR Approved", icon: CheckCircle2, color: "text-green-400" },
+  ci_passed: { label: "CI Passed", icon: CheckCircle2, color: "text-green-400" },
+  ci_failed: { label: "CI Failed", icon: XCircle, color: "text-red-400" },
+  label_added: { label: "Label Added", icon: Tag, color: "text-blue-400" },
+  review_requested: { label: "Review Requested", icon: Users, color: "text-orange-400" },
+  comment_added: { label: "Comment Added", icon: MessageSquare, color: "text-cyan-400" },
+};
+
+const actionLabels: Record<string, string> = {
+  add_label: "Add Label",
+  remove_label: "Remove Label",
+  assign_reviewer: "Assign Reviewer",
+  add_to_merge_queue: "Add to Merge Queue",
+  add_comment: "Add Comment",
+  trigger_ai_review: "Trigger AI Review",
+  notify_slack: "Notify Slack",
+  close_pr: "Close PR",
+};
+
+function timeAgo(date: string) {
+  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  if (seconds < 3600) return Math.floor(seconds / 60) + "m ago";
+  if (seconds < 86400) return Math.floor(seconds / 3600) + "h ago";
+  return Math.floor(seconds / 86400) + "d ago";
+}
+
+function parseActions(actionsJson: string): { type: string; label: string }[] {
+  try {
+    const parsed = JSON.parse(actionsJson);
+    return parsed.map((a: { type: string }) => ({
+      type: a.type,
+      label: actionLabels[a.type] || a.type,
+    }));
+  } catch {
+    return [];
+  }
+}
+---
+
+<BaseLayout title="Automations">
+  <div class="container py-8 max-w-5xl">
+    <div class="flex flex-col gap-6">
+      <!-- Header -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="p-2 rounded-lg bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border border-yellow-500/30">
+            <Zap className="h-6 w-6 text-yellow-400" />
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold text-white">Automations</h1>
+            <p class="text-sm text-gray-400">Automate your workflow with custom rules</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <!-- Repo Selector -->
+          <select
+            id="repo-select"
+            class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300"
+          >
+            <option value="">Select Repository</option>
+            {repositories.map((repo) => (
+              <option value={repo.id} selected={repoId === repo.id}>
+                {repo.fullName || repo.name}
+              </option>
+            ))}
+          </select>
+
+          {repoId && (
+            <button
+              id="add-rule-btn"
+              class="flex items-center gap-2 px-3 py-2 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 rounded-lg text-sm hover:bg-yellow-500/20 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              Add Automation
+            </button>
+          )}
+        </div>
+      </div>
+
+      {repoId && (
+        <!-- View Toggle -->
+        <div class="flex items-center gap-2">
+          <a
+            href={`/settings/automations?repo=${repoId}&view=rules`}
+            class:list={[
+              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors",
+              view === "rules"
+                ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/30"
+                : "text-gray-400 hover:text-white hover:bg-white/5"
+            ]}
+          >
+            <Settings2 className="h-4 w-4" />
+            Rules
+          </a>
+          <a
+            href={`/settings/automations?repo=${repoId}&view=history`}
+            class:list={[
+              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors",
+              view === "history"
+                ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/30"
+                : "text-gray-400 hover:text-white hover:bg-white/5"
+            ]}
+          >
+            <History className="h-4 w-4" />
+            History
+          </a>
+        </div>
+      )}
+
+      {!repoId ? (
+        <!-- No repo selected -->
+        <div class="text-center py-16 bg-white/5 rounded-xl border border-white/10">
+          <Zap className="h-16 w-16 text-yellow-400 mx-auto mb-4" />
+          <h3 class="text-lg font-semibold text-white mb-2">Select a Repository</h3>
+          <p class="text-gray-500">Choose a repository to configure automations</p>
+        </div>
+      ) : view === "rules" ? (
+        <!-- Rules List -->
+        <div class="relative">
+          <div class="absolute -inset-[1px] bg-gradient-to-r from-yellow-500/20 via-transparent to-orange-500/20 rounded-xl opacity-50"></div>
+          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm overflow-hidden">
+            {rules.length === 0 ? (
+              <div class="text-center py-16">
+                <Zap className="h-12 w-12 text-yellow-400 mx-auto mb-4" />
+                <h3 class="text-lg font-semibold text-white mb-2">No Automations Yet</h3>
+                <p class="text-gray-500 mb-4">Create rules to automate your workflow</p>
+                <button
+                  id="add-first-rule-btn"
+                  class="inline-flex items-center gap-2 px-4 py-2 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 rounded-lg text-sm hover:bg-yellow-500/20 transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create First Automation
+                </button>
+              </div>
+            ) : (
+              <div class="divide-y divide-white/5">
+                {rules.map((rule) => {
+                  const trigger = triggerLabels[rule.trigger] || { label: rule.trigger, icon: Zap, color: "text-gray-400" };
+                  const TriggerIcon = trigger.icon;
+                  const actions = parseActions(rule.actions);
+
+                  return (
+                    <div
+                      class="group flex items-start gap-4 p-4 transition-all hover:bg-white/[0.02]"
+                      data-rule-id={rule.id}
+                    >
+                      {/* Trigger Icon */}
+                      <div class="flex-shrink-0 p-2 rounded-lg bg-white/5">
+                        <TriggerIcon className={`h-5 w-5 ${trigger.color}`} />
+                      </div>
+
+                      {/* Rule Info */}
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                          <span class:list={[
+                            "font-medium transition-colors",
+                            rule.isEnabled ? "text-white" : "text-gray-500"
+                          ]}>
+                            {rule.name}
+                          </span>
+                          {!rule.isEnabled && (
+                            <span class="px-1.5 py-0.5 text-xs bg-gray-500/10 text-gray-400 rounded border border-gray-500/30">
+                              Disabled
+                            </span>
+                          )}
+                        </div>
+                        
+                        {rule.description && (
+                          <p class="text-sm text-gray-500 mt-1">{rule.description}</p>
+                        )}
+                        
+                        {/* Trigger → Actions flow */}
+                        <div class="flex items-center gap-2 mt-2 text-sm">
+                          <span class="px-2 py-1 rounded bg-white/5 text-gray-300">
+                            {trigger.label}
+                          </span>
+                          <ArrowRight className="h-4 w-4 text-gray-500" />
+                          {actions.slice(0, 3).map((action, i) => (
+                            <span class="px-2 py-1 rounded bg-yellow-500/10 text-yellow-300 text-xs">
+                              {action.label}
+                            </span>
+                          ))}
+                          {actions.length > 3 && (
+                            <span class="text-xs text-gray-500">+{actions.length - 3} more</span>
+                          )}
+                        </div>
+                        
+                        <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                          <span>{rule.runCount} runs</span>
+                          {rule.lastRunAt && (
+                            <span>Last run {timeAgo(rule.lastRunAt)}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div class="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          class="p-1.5 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                          title={rule.isEnabled ? "Disable" : "Enable"}
+                          data-action="toggle"
+                        >
+                          {rule.isEnabled ? (
+                            <Pause className="h-4 w-4" />
+                          ) : (
+                            <Play className="h-4 w-4" />
+                          )}
+                        </button>
+                        <button
+                          class="p-1.5 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                          title="Edit"
+                          data-action="edit"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                        <button
+                          class="p-1.5 rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
+                          title="Delete"
+                          data-action="delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <!-- Execution History -->
+        <div class="relative">
+          <div class="absolute -inset-[1px] bg-gradient-to-r from-yellow-500/20 via-transparent to-orange-500/20 rounded-xl opacity-50"></div>
+          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm overflow-hidden">
+            {executions.length === 0 ? (
+              <div class="text-center py-16">
+                <History className="h-12 w-12 text-gray-500 mx-auto mb-4" />
+                <h3 class="text-lg font-semibold text-white mb-2">No Execution History</h3>
+                <p class="text-gray-500">Automation runs will appear here</p>
+              </div>
+            ) : (
+              <div class="divide-y divide-white/5">
+                {executions.map((exec) => (
+                  <div class="flex items-center gap-4 p-4">
+                    <div class:list={[
+                      "flex-shrink-0 p-2 rounded-lg",
+                      exec.status === "success" ? "bg-green-500/10" :
+                      exec.status === "failed" ? "bg-red-500/10" : "bg-gray-500/10"
+                    ]}>
+                      {exec.status === "success" ? (
+                        <CheckCircle2 className="h-5 w-5 text-green-400" />
+                      ) : exec.status === "failed" ? (
+                        <XCircle className="h-5 w-5 text-red-400" />
+                      ) : (
+                        <Clock className="h-5 w-5 text-gray-400" />
+                      )}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="font-medium text-white">{exec.ruleName}</div>
+                      <div class="text-sm text-gray-500">
+                        Triggered by: {triggerLabels[exec.triggerEvent]?.label || exec.triggerEvent}
+                      </div>
+                    </div>
+                    <div class="text-right text-sm">
+                      <div class="text-gray-400">{timeAgo(exec.createdAt)}</div>
+                      {exec.durationMs && (
+                        <div class="text-gray-500 text-xs">{exec.durationMs}ms</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <!-- Common Automation Patterns -->
+      {repoId && view === "rules" && (
+        <div>
+          <h2 class="text-lg font-semibold text-white mb-4">Quick Templates</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button class="text-left p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group" data-template="auto-assign">
+              <div class="flex items-center gap-2 mb-2">
+                <Users className="h-5 w-5 text-orange-400" />
+                <span class="font-medium text-white">Auto-assign Reviewer</span>
+              </div>
+              <p class="text-sm text-gray-500">Automatically assign reviewers when PRs are opened</p>
+            </button>
+            
+            <button class="text-left p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group" data-template="auto-merge">
+              <div class="flex items-center gap-2 mb-2">
+                <GitPullRequest className="h-5 w-5 text-green-400" />
+                <span class="font-medium text-white">Auto-queue on Approve</span>
+              </div>
+              <p class="text-sm text-gray-500">Add to merge queue when PR is approved</p>
+            </button>
+            
+            <button class="text-left p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group" data-template="ai-review">
+              <div class="flex items-center gap-2 mb-2">
+                <Zap className="h-5 w-5 text-cyan-400" />
+                <span class="font-medium text-white">AI Review on PR</span>
+              </div>
+              <p class="text-sm text-gray-500">Trigger AI review when PRs are opened</p>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+</BaseLayout>
+
+<script define:vars={{ repoId }}>
+  // Repo selector
+  const repoSelect = document.getElementById("repo-select");
+  repoSelect?.addEventListener("change", (e) => {
+    const repo = e.target.value;
+    const url = new URL(window.location.href);
+    if (repo) {
+      url.searchParams.set("repo", repo);
+    } else {
+      url.searchParams.delete("repo");
+    }
+    window.location.href = url.toString();
+  });
+
+  // Add rule button
+  document.getElementById("add-rule-btn")?.addEventListener("click", () => {
+    // For now, show a placeholder - full modal would be implemented
+    alert("Automation builder coming soon! Use templates below to get started.");
+  });
+
+  document.getElementById("add-first-rule-btn")?.addEventListener("click", () => {
+    alert("Automation builder coming soon! Use templates below to get started.");
+  });
+
+  // Template buttons
+  document.querySelectorAll("[data-template]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const template = btn.getAttribute("data-template");
+      const templates = {
+        "auto-assign": {
+          name: "Auto-assign Reviewer",
+          trigger: "pr_opened",
+          actions: JSON.stringify([{ type: "assign_reviewer", params: { assignee: "@codeowners" } }]),
+        },
+        "auto-merge": {
+          name: "Auto-queue on Approve",
+          trigger: "pr_approved",
+          actions: JSON.stringify([{ type: "add_to_merge_queue", params: { method: "squash" } }]),
+        },
+        "ai-review": {
+          name: "AI Review on PR",
+          trigger: "pr_opened",
+          actions: JSON.stringify([{ type: "trigger_ai_review", params: {} }]),
+        },
+      };
+
+      const data = templates[template];
+      if (!data) return;
+
+      try {
+        const res = await fetch("/api/automation-rules", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...data, repositoryId: repoId }),
+        });
+        if (res.ok) {
+          window.location.reload();
+        } else {
+          alert("Failed to create automation");
+        }
+      } catch (e) {
+        console.error("Failed to create automation:", e);
+      }
+    });
+  });
+</script>

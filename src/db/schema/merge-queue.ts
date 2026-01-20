@@ -4,14 +4,14 @@
  */
 
 import { relations } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { pullRequests } from "./pull-requests";
 import { repositories } from "./repositories";
 import { users } from "./users";
 import { prStacks } from "./stacked-prs";
 
 // Merge queue entries
-export const mergeQueue = sqliteTable("merge_queue", {
+export const mergeQueue = pgTable("merge_queue", {
     id: text("id").primaryKey(),
     repositoryId: text("repository_id")
         .notNull()
@@ -34,10 +34,10 @@ export const mergeQueue = sqliteTable("merge_queue", {
     addedById: text("added_by_id")
         .notNull()
         .references(() => users.id),
-    addedAt: text("added_at").notNull().default("CURRENT_TIMESTAMP"),
-    estimatedMergeAt: text("estimated_merge_at"),
-    startedAt: text("started_at"),
-    completedAt: text("completed_at"),
+    addedAt: timestamp("added_at").notNull().defaultNow(),
+    estimatedMergeAt: timestamp("estimated_merge_at"),
+    startedAt: timestamp("started_at"),
+    completedAt: timestamp("completed_at"),
 
     // Error handling
     failureReason: text("failure_reason"),
@@ -45,7 +45,7 @@ export const mergeQueue = sqliteTable("merge_queue", {
 
     // Merge options
     mergeMethod: text("merge_method").default("merge"), // merge, squash, rebase
-    deleteOnMerge: integer("delete_on_merge", { mode: "boolean" }).default(true),
+    deleteOnMerge: boolean("delete_on_merge").default(true),
 });
 
 // Relations

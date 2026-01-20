@@ -3,21 +3,32 @@ import AdminLayout from "@/layouts/AdminLayout.astro";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Settings, Save, Mail, Globe, Lock } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import {
+  Settings as SettingsIcon,
+  Save,
+  Mail,
+  Globe,
+  Lock,
+} from "lucide-react";
 
 const user = Astro.locals.user;
-if (!user?.isAdmin) return Astro.redirect('/');
+if (!user?.isAdmin) return Astro.redirect("/");
 ---
 
 <AdminLayout title="Global Settings">
   <div class="min-h-screen bg-background p-6">
     <div class="max-w-4xl mx-auto space-y-6">
-      
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-bold flex items-center gap-2">
-            <Settings className="h-6 w-6" />
+            <SettingsIcon className="h-6 w-6" />
             Global Settings
           </h1>
           <p class="text-muted-foreground">Configure general system behavior</p>
@@ -28,7 +39,6 @@ if (!user?.isAdmin) return Astro.redirect('/');
       </div>
 
       <form id="settings-form" class="space-y-6">
-        
         {/* General Settings */}
         <Card>
           <CardHeader>
@@ -44,7 +54,11 @@ if (!user?.isAdmin) return Astro.redirect('/');
             </div>
             <div class="grid gap-2">
               <Label htmlFor="siteDescription">Site Description</Label>
-              <Input id="siteDescription" name="siteDescription" placeholder="Open Source Git Hosting" />
+              <Input
+                id="siteDescription"
+                name="siteDescription"
+                placeholder="Open Source Git Hosting"
+              />
             </div>
           </CardContent>
         </Card>
@@ -58,10 +72,17 @@ if (!user?.isAdmin) return Astro.redirect('/');
           </CardHeader>
           <CardContent className="space-y-4">
             <div class="flex items-center gap-2">
-              <input type="checkbox" id="allowSignups" name="allowSignups" class="h-4 w-4 rounded border-gray-300" />
+              <input
+                type="checkbox"
+                id="allowSignups"
+                name="allowSignups"
+                class="h-4 w-4 rounded border-gray-300"
+              />
               <Label htmlFor="allowSignups">Allow Public Signups</Label>
             </div>
-            <p class="text-xs text-muted-foreground">If disabled, only admins can invite users (implied)</p>
+            <p class="text-xs text-muted-foreground">
+              If disabled, only admins can invite users (implied)
+            </p>
           </CardContent>
         </Card>
 
@@ -71,13 +92,19 @@ if (!user?.isAdmin) return Astro.redirect('/');
             <CardTitle className="flex items-center gap-2">
               <Mail className="h-5 w-5" /> Email (SMTP)
             </CardTitle>
-            <CardDescription>Configure outgoing email for notifications</CardDescription>
+            <CardDescription
+              >Configure outgoing email for notifications</CardDescription
+            >
           </CardHeader>
           <CardContent className="space-y-4">
             <div class="grid gap-4 md:grid-cols-2">
               <div class="grid gap-2">
                 <Label htmlFor="smtpHost">SMTP Host</Label>
-                <Input id="smtpHost" name="smtpHost" placeholder="smtp.example.com" />
+                <Input
+                  id="smtpHost"
+                  name="smtpHost"
+                  placeholder="smtp.example.com"
+                />
               </div>
               <div class="grid gap-2">
                 <Label htmlFor="smtpPort">SMTP Port</Label>
@@ -87,86 +114,137 @@ if (!user?.isAdmin) return Astro.redirect('/');
             <div class="grid gap-4 md:grid-cols-2">
               <div class="grid gap-2">
                 <Label htmlFor="smtpUser">Username</Label>
-                <Input id="smtpUser" name="smtpUser" placeholder="user@example.com" />
+                <Input
+                  id="smtpUser"
+                  name="smtpUser"
+                  placeholder="user@example.com"
+                />
               </div>
               <div class="grid gap-2">
                 <Label htmlFor="smtpPass">Password</Label>
-                <Input id="smtpPass" name="smtpPass" type="password" placeholder="••••••" />
+                <Input
+                  id="smtpPass"
+                  name="smtpPass"
+                  type="password"
+                  placeholder="••••••"
+                />
               </div>
             </div>
             <div class="grid gap-2">
-                <Label htmlFor="smtpFrom">From Address</Label>
-                <Input id="smtpFrom" name="smtpFrom" placeholder="noreply@opencodehub.com" />
+              <Label htmlFor="smtpFrom">From Address</Label>
+              <Input
+                id="smtpFrom"
+                name="smtpFrom"
+                placeholder="noreply@opencodehub.com"
+              />
             </div>
           </CardContent>
         </Card>
 
         <div class="flex justify-end">
-            <Button type="submit" id="save-btn" size="lg">
-                <Save className="w-4 h-4 mr-2" />
-                Save Changes
-            </Button>
+          <Button type="submit" id="save-btn" size="lg">
+            <Save className="w-4 h-4 mr-2" />
+            Save Changes
+          </Button>
         </div>
-
       </form>
-
     </div>
   </div>
 </AdminLayout>
 
 <script>
-    // Load config
-    async function load() {
-        try {
-            const res = await fetch('/api/admin/config/general');
-            if(res.ok) {
-                const config = await res.json();
-                
-                // Populate fields
-                document.getElementById('siteName').value = config.siteName || '';
-                document.getElementById('siteDescription').value = config.siteDescription || '';
-                document.getElementById('allowSignups').checked = !!config.allowSignups;
-                
-                document.getElementById('smtpHost').value = config.smtpHost || '';
-                document.getElementById('smtpPort').value = config.smtpPort || '';
-                document.getElementById('smtpUser').value = config.smtpUser || '';
-                document.getElementById('smtpFrom').value = config.smtpFrom || '';
-                // Pass left empty usually
-            }
-        } catch(e) { console.error(e); }
+  // Load config
+  async function load() {
+    try {
+      const res = await fetch("/api/admin/config/general");
+      if (res.ok) {
+        const config = await res.json();
+
+        // Populate fields
+        const siteName = document.getElementById(
+          "siteName",
+        ) as HTMLInputElement;
+        if (siteName) siteName.value = config.siteName || "";
+
+        const siteDesc = document.getElementById(
+          "siteDescription",
+        ) as HTMLInputElement;
+        if (siteDesc) siteDesc.value = config.siteDescription || "";
+
+        const allowSignups = document.getElementById(
+          "allowSignups",
+        ) as HTMLInputElement;
+        if (allowSignups) allowSignups.checked = !!config.allowSignups;
+
+        const smtpHost = document.getElementById(
+          "smtpHost",
+        ) as HTMLInputElement;
+        if (smtpHost) smtpHost.value = config.smtpHost || "";
+
+        const smtpPort = document.getElementById(
+          "smtpPort",
+        ) as HTMLInputElement;
+        if (smtpPort) smtpPort.value = config.smtpPort || "";
+
+        const smtpUser = document.getElementById(
+          "smtpUser",
+        ) as HTMLInputElement;
+        if (smtpUser) smtpUser.value = config.smtpUser || "";
+
+        const smtpFrom = document.getElementById(
+          "smtpFrom",
+        ) as HTMLInputElement;
+        if (smtpFrom) smtpFrom.value = config.smtpFrom || "";
+      }
+    } catch (e) {
+      console.error(e);
     }
-    load();
+  }
+  load();
 
-    // Save
-    document.getElementById('settings-form')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const btn = document.getElementById('save-btn');
-        const original = btn.textContent;
-        btn.textContent = "Saving...";
-        btn.disabled = true;
+  // Save
+  document
+    .getElementById("settings-form")
+    ?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("save-btn") as HTMLButtonElement;
+      if (!btn) return;
 
-        const formData = new FormData(e.target);
-        const data = Object.fromEntries(formData.entries());
-        
-        // Checkbox handling
-        data.allowSignups = document.getElementById('allowSignups').checked;
+      const original = btn.textContent;
+      btn.textContent = "Saving...";
+      btn.disabled = true;
 
-        try {
-            const res = await fetch('/api/admin/config/general', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            if(res.ok) {
-                alert("Settings saved!");
-            } else {
-                alert("Failed to save.");
-            }
-        } catch(e) {
-            alert("Error saving settings.");
-        } finally {
-            btn.textContent = original;
-            btn.disabled = false;
+      const formData = new FormData(e.target as HTMLFormElement);
+      const data = Object.fromEntries(formData.entries());
+
+      // Checkbox handling
+      const allowSignups = document.getElementById(
+        "allowSignups",
+      ) as HTMLInputElement;
+
+      // Fix for Object.fromEntries typings if needed, but manual handling of checkbox is safer
+      // We'll construct the object explicitly for safety or just use simple casting
+      const payload = {
+        ...data,
+        allowSignups: allowSignups ? allowSignups.checked : false,
+      };
+
+      try {
+        const res = await fetch("/api/admin/config/general", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          alert("Settings saved!");
+        } else {
+          alert("Failed to save.");
         }
+      } catch (e) {
+        alert("Error saving settings.");
+      } finally {
+        btn.textContent = original;
+        btn.disabled = false;
+      }
     });
 </script>

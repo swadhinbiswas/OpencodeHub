@@ -1,0 +1,567 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, and, desc } from "drizzle-orm";
+import {
+  Bot,
+  Plus,
+  Trash2,
+  Edit2,
+  AlertCircle,
+  AlertTriangle,
+  Info,
+  XOctagon,
+  Code,
+  FileCode,
+  Play,
+  Save,
+  X,
+  CheckCircle2,
+} from "lucide-react";
+
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+const db = getDatabase();
+const repoId = Astro.url.searchParams.get("repo") || "";
+
+// Get user's repositories
+let repositories: { id: string; name: string; fullName?: string }[] = [];
+try {
+  const repos = await db.query.repositories.findMany({
+    where: eq(schema.repositories.ownerId, user.id),
+    columns: { id: true, name: true },
+    with: { owner: { columns: { username: true } } },
+  });
+  repositories = repos.map((r) => ({
+    id: r.id,
+    name: r.name,
+    fullName: `${r.owner.username}/${r.name}`,
+  }));
+} catch (e) {}
+
+// Get AI review rules for selected repo
+interface AIRule {
+  id: string;
+  name: string;
+  description?: string;
+  ruleType: string;
+  aiPrompt?: string;
+  regexPattern?: string;
+  severity: string;
+  category?: string;
+  fileGlobs?: string;
+  isEnabled: boolean;
+  matchCount: number;
+}
+
+let rules: AIRule[] = [];
+let templates: { id: string; name: string; description?: string; category?: string; severity: string }[] = [];
+
+try {
+  if (repoId) {
+    const dbRules = await db.query.aiReviewRules.findMany({
+      where: eq(schema.aiReviewRules.repositoryId, repoId),
+      orderBy: [desc(schema.aiReviewRules.createdAt)],
+    });
+    rules = dbRules.map(r => ({
+      id: r.id,
+      name: r.name,
+      description: r.description || undefined,
+      ruleType: r.ruleType,
+      aiPrompt: r.aiPrompt || undefined,
+      regexPattern: r.regexPattern || undefined,
+      severity: r.severity,
+      category: r.category || undefined,
+      fileGlobs: r.fileGlobs || undefined,
+      isEnabled: r.isEnabled ?? true,
+      matchCount: r.matchCount || 0,
+    }));
+  }
+  
+  // Get built-in templates
+  const dbTemplates = await db.query.aiReviewRuleTemplates.findMany({
+    where: eq(schema.aiReviewRuleTemplates.isBuiltIn, true),
+  });
+  templates = dbTemplates.map(t => ({
+    id: t.id,
+    name: t.name,
+    description: t.description || undefined,
+    category: t.category || undefined,
+    severity: t.severity,
+  }));
+} catch (e) {
+  console.error("Failed to fetch AI rules:", e);
+}
+
+function getSeverityIcon(severity: string) {
+  switch (severity) {
+    case "critical":
+      return { icon: XOctagon, color: "text-red-400", bg: "bg-red-500/10" };
+    case "error":
+      return { icon: AlertCircle, color: "text-orange-400", bg: "bg-orange-500/10" };
+    case "warning":
+      return { icon: AlertTriangle, color: "text-yellow-400", bg: "bg-yellow-500/10" };
+    default:
+      return { icon: Info, color: "text-blue-400", bg: "bg-blue-500/10" };
+  }
+}
+
+function getCategoryLabel(category?: string) {
+  const labels: Record<string, { label: string; color: string }> = {
+    security: { label: "Security", color: "text-red-300 bg-red-500/10 border-red-500/30" },
+    performance: { label: "Performance", color: "text-yellow-300 bg-yellow-500/10 border-yellow-500/30" },
+    style: { label: "Style", color: "text-purple-300 bg-purple-500/10 border-purple-500/30" },
+    bug: { label: "Bug", color: "text-orange-300 bg-orange-500/10 border-orange-500/30" },
+    documentation: { label: "Docs", color: "text-blue-300 bg-blue-500/10 border-blue-500/30" },
+  };
+  return labels[category || ""] || { label: category || "General", color: "text-gray-300 bg-gray-500/10 border-gray-500/30" };
+}
+---
+
+<BaseLayout title="AI Review Rules">
+  <div class="container py-8 max-w-5xl">
+    <div class="flex flex-col gap-6">
+      <!-- Header -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="p-2 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30">
+            <Bot className="h-6 w-6 text-cyan-400" />
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold text-white">AI Review Rules</h1>
+            <p class="text-sm text-gray-400">Configure custom rules for AI-powered code reviews</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <!-- Repo Selector -->
+          <select
+            id="repo-select"
+            class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300"
+          >
+            <option value="">Select Repository</option>
+            {repositories.map((repo) => (
+              <option value={repo.id} selected={repoId === repo.id}>
+                {repo.fullName || repo.name}
+              </option>
+            ))}
+          </select>
+
+          {repoId && (
+            <button
+              id="add-rule-btn"
+              class="flex items-center gap-2 px-3 py-2 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded-lg text-sm hover:bg-cyan-500/20 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              Add Rule
+            </button>
+          )}
+        </div>
+      </div>
+
+      {!repoId ? (
+        <!-- No repo selected -->
+        <div class="text-center py-16 bg-white/5 rounded-xl border border-white/10">
+          <Bot className="h-16 w-16 text-cyan-400 mx-auto mb-4" />
+          <h3 class="text-lg font-semibold text-white mb-2">Select a Repository</h3>
+          <p class="text-gray-500">Choose a repository to configure AI review rules</p>
+        </div>
+      ) : (
+        <>
+          <!-- Rules List -->
+          <div class="relative">
+            <div class="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/20 via-transparent to-blue-500/20 rounded-xl opacity-50"></div>
+            <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm overflow-hidden">
+              {rules.length === 0 ? (
+                <div class="text-center py-16">
+                  <Code className="h-12 w-12 text-cyan-400 mx-auto mb-4" />
+                  <h3 class="text-lg font-semibold text-white mb-2">No Rules Yet</h3>
+                  <p class="text-gray-500 mb-4">Create custom rules for AI-powered code review</p>
+                  <button
+                    id="add-first-rule-btn"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded-lg text-sm hover:bg-cyan-500/20 transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create First Rule
+                  </button>
+                </div>
+              ) : (
+                <div class="divide-y divide-white/5">
+                  {rules.map((rule) => {
+                    const SeverityIcon = getSeverityIcon(rule.severity).icon;
+                    const severityColor = getSeverityIcon(rule.severity).color;
+                    const severityBg = getSeverityIcon(rule.severity).bg;
+                    const categoryStyle = getCategoryLabel(rule.category);
+
+                    return (
+                      <div
+                        class="group flex items-start gap-4 p-4 transition-all hover:bg-white/[0.02]"
+                        data-rule-id={rule.id}
+                      >
+                        {/* Severity Icon */}
+                        <div class={`flex-shrink-0 p-2 rounded-lg ${severityBg}`}>
+                          <SeverityIcon className={`h-5 w-5 ${severityColor}`} />
+                        </div>
+
+                        {/* Rule Info */}
+                        <div class="flex-1 min-w-0">
+                          <div class="flex items-center gap-2">
+                            <span class:list={[
+                              "font-medium transition-colors",
+                              rule.isEnabled ? "text-white" : "text-gray-500"
+                            ]}>
+                              {rule.name}
+                            </span>
+                            {!rule.isEnabled && (
+                              <span class="px-1.5 py-0.5 text-xs bg-gray-500/10 text-gray-400 rounded border border-gray-500/30">
+                                Disabled
+                              </span>
+                            )}
+                            <span class={`px-1.5 py-0.5 text-xs rounded border ${categoryStyle.color}`}>
+                              {categoryStyle.label}
+                            </span>
+                            <span class="px-1.5 py-0.5 text-xs bg-white/5 text-gray-400 rounded">
+                              {rule.ruleType === "ai_prompt" ? "AI Prompt" : 
+                               rule.ruleType === "regex" ? "Regex" : "AI + Regex"}
+                            </span>
+                          </div>
+                          
+                          {rule.description && (
+                            <p class="text-sm text-gray-500 mt-1">{rule.description}</p>
+                          )}
+                          
+                          <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                            {rule.fileGlobs && (
+                              <span class="flex items-center gap-1">
+                                <FileCode className="h-3 w-3" />
+                                {JSON.parse(rule.fileGlobs).slice(0, 2).join(", ")}
+                                {JSON.parse(rule.fileGlobs).length > 2 && "..."}
+                              </span>
+                            )}
+                            <span>{rule.matchCount} matches</span>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div class="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            class="p-1.5 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                            title="Test rule"
+                            data-action="test"
+                          >
+                            <Play className="h-4 w-4" />
+                          </button>
+                          <button
+                            class="p-1.5 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                            title="Edit rule"
+                            data-action="edit"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            class="p-1.5 rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
+                            title="Delete rule"
+                            data-action="delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <!-- Templates Section -->
+          {templates.length > 0 && (
+            <div>
+              <h2 class="text-lg font-semibold text-white mb-4">Rule Templates</h2>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {templates.map((template) => {
+                  const categoryStyle = getCategoryLabel(template.category);
+                  return (
+                    <button
+                      class="text-left p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group"
+                      data-template-id={template.id}
+                    >
+                      <div class="flex items-center gap-2 mb-2">
+                        <span class="font-medium text-white group-hover:text-cyan-400 transition-colors">
+                          {template.name}
+                        </span>
+                        <span class={`px-1.5 py-0.5 text-xs rounded border ${categoryStyle.color}`}>
+                          {categoryStyle.label}
+                        </span>
+                      </div>
+                      {template.description && (
+                        <p class="text-sm text-gray-500 line-clamp-2">{template.description}</p>
+                      )}
+                      <div class="mt-3 text-xs text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                        Click to use this template →
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  </div>
+
+  <!-- Add/Edit Rule Modal -->
+  <div
+    id="rule-modal"
+    class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+  >
+    <div class="bg-[#0d1117] border border-white/10 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+      <div class="flex items-center justify-between p-4 border-b border-white/10">
+        <h3 class="text-lg font-semibold text-white" id="modal-title">Add Rule</h3>
+        <button
+          id="close-modal-btn"
+          class="p-1.5 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+      
+      <form id="rule-form" class="p-4 space-y-4 overflow-y-auto max-h-[calc(90vh-8rem)]">
+        <input type="hidden" name="id" />
+        
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-1">Name</label>
+            <input
+              type="text"
+              name="name"
+              required
+              class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              placeholder="e.g., Check for console.log"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-1">Severity</label>
+            <select
+              name="severity"
+              required
+              class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white"
+            >
+              <option value="info">Info</option>
+              <option value="warning">Warning</option>
+              <option value="error">Error</option>
+              <option value="critical">Critical</option>
+            </select>
+          </div>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-1">Description</label>
+          <input
+            type="text"
+            name="description"
+            class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+            placeholder="Brief description of what this rule checks"
+          />
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-1">Rule Type</label>
+            <select
+              name="ruleType"
+              required
+              class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white"
+            >
+              <option value="ai_prompt">AI Prompt</option>
+              <option value="regex">Regex Pattern</option>
+              <option value="both">AI + Regex</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-1">Category</label>
+            <select
+              name="category"
+              class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white"
+            >
+              <option value="">General</option>
+              <option value="security">Security</option>
+              <option value="performance">Performance</option>
+              <option value="style">Style</option>
+              <option value="bug">Bug</option>
+              <option value="documentation">Documentation</option>
+            </select>
+          </div>
+        </div>
+        
+        <div id="ai-prompt-field">
+          <label class="block text-sm font-medium text-gray-300 mb-1">AI Prompt</label>
+          <textarea
+            name="aiPrompt"
+            rows={4}
+            class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-mono text-sm"
+            placeholder="Describe what the AI should look for...&#10;e.g., Check for potential security vulnerabilities in this code, focusing on SQL injection, XSS, and authentication issues."
+          ></textarea>
+        </div>
+        
+        <div id="regex-field">
+          <label class="block text-sm font-medium text-gray-300 mb-1">Regex Pattern</label>
+          <input
+            type="text"
+            name="regexPattern"
+            class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white font-mono placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+            placeholder="e.g., console\.(log|debug|info)\("
+          />
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-1">File Patterns (one per line)</label>
+          <textarea
+            name="fileGlobs"
+            rows={2}
+            class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white font-mono text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+            placeholder="**/*.ts&#10;**/*.tsx"
+          ></textarea>
+          <p class="text-xs text-gray-500 mt-1">Leave empty to apply to all files</p>
+        </div>
+        
+        <div class="flex items-center gap-2">
+          <input
+            type="checkbox"
+            name="isEnabled"
+            id="isEnabled"
+            checked
+            class="rounded bg-white/5 border-white/20 text-cyan-500 focus:ring-cyan-500/50"
+          />
+          <label for="isEnabled" class="text-sm text-gray-300">Enable this rule</label>
+        </div>
+      </form>
+      
+      <div class="flex items-center justify-between p-4 border-t border-white/10 bg-white/[0.02]">
+        <button
+          type="button"
+          id="test-rule-btn"
+          class="flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/10 text-gray-300 rounded-lg text-sm hover:bg-white/10 transition-colors"
+        >
+          <Play className="h-4 w-4" />
+          Test Rule
+        </button>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            id="cancel-btn"
+            class="px-4 py-2 bg-white/5 border border-white/10 text-gray-300 rounded-lg text-sm hover:bg-white/10 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="rule-form"
+            class="flex items-center gap-2 px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded-lg text-sm hover:bg-cyan-500/20 transition-colors"
+          >
+            <Save className="h-4 w-4" />
+            Save Rule
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script define:vars={{ repoId }}>
+  // Repo selector
+  const repoSelect = document.getElementById("repo-select");
+  repoSelect?.addEventListener("change", (e) => {
+    const repo = e.target.value;
+    const url = new URL(window.location.href);
+    if (repo) {
+      url.searchParams.set("repo", repo);
+    } else {
+      url.searchParams.delete("repo");
+    }
+    window.location.href = url.toString();
+  });
+
+  // Modal controls
+  const modal = document.getElementById("rule-modal");
+  const form = document.getElementById("rule-form");
+  const modalTitle = document.getElementById("modal-title");
+
+  function showModal(mode = "add", rule = null) {
+    modalTitle.textContent = mode === "add" ? "Add Rule" : "Edit Rule";
+    if (rule) {
+      form.elements.id.value = rule.id;
+      form.elements.name.value = rule.name;
+      form.elements.description.value = rule.description || "";
+      form.elements.severity.value = rule.severity;
+      form.elements.ruleType.value = rule.ruleType;
+      form.elements.category.value = rule.category || "";
+      form.elements.aiPrompt.value = rule.aiPrompt || "";
+      form.elements.regexPattern.value = rule.regexPattern || "";
+      form.elements.fileGlobs.value = rule.fileGlobs ? JSON.parse(rule.fileGlobs).join("\n") : "";
+      form.elements.isEnabled.checked = rule.isEnabled;
+    } else {
+      form.reset();
+    }
+    modal?.classList.remove("hidden");
+  }
+
+  function hideModal() {
+    modal?.classList.add("hidden");
+  }
+
+  document.getElementById("add-rule-btn")?.addEventListener("click", () => showModal("add"));
+  document.getElementById("add-first-rule-btn")?.addEventListener("click", () => showModal("add"));
+  document.getElementById("close-modal-btn")?.addEventListener("click", hideModal);
+  document.getElementById("cancel-btn")?.addEventListener("click", hideModal);
+
+  // Form submission
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+    const data = {
+      id: formData.get("id") || undefined,
+      repositoryId: repoId,
+      name: formData.get("name"),
+      description: formData.get("description") || undefined,
+      severity: formData.get("severity"),
+      ruleType: formData.get("ruleType"),
+      category: formData.get("category") || undefined,
+      aiPrompt: formData.get("aiPrompt") || undefined,
+      regexPattern: formData.get("regexPattern") || undefined,
+      fileGlobs: formData.get("fileGlobs")
+        ? JSON.stringify(formData.get("fileGlobs").split("\n").filter(Boolean))
+        : undefined,
+      isEnabled: form.elements.isEnabled.checked,
+    };
+
+    try {
+      const method = data.id ? "PATCH" : "POST";
+      const url = data.id ? `/api/ai-review-rules/${data.id}` : "/api/ai-review-rules";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        alert("Failed to save rule");
+      }
+    } catch (e) {
+      console.error("Failed to save rule:", e);
+    }
+  });
+
+  // Rule type toggle
+  const ruleTypeSelect = form?.elements.ruleType;
+  ruleTypeSelect?.addEventListener("change", (e) => {
+    const type = e.target.value;
+    document.getElementById("ai-prompt-field").style.display = type === "regex" ? "none" : "block";
+    document.getElementById("regex-field").style.display = type === "ai_prompt" ? "none" : "block";
+  });
+</script>

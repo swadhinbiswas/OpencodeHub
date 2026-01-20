@@ -1,22 +1,28 @@
 import { getDatabase, schema } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { canReadRepo } from "@/lib/permissions";
 import type { APIRoute } from "astro";
 import { and, desc, eq } from "drizzle-orm";
 
-export const GET: APIRoute = async ({ params, locals }) => {
+import { withErrorHandler } from "@/lib/errors";
+import { unauthorized, notFound, forbidden, success } from "@/lib/api";
+
+// ... existing imports ...
+
+export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
     const { owner: ownerName, repo: repoName } = params;
     const user = locals.user;
 
     if (!user) {
-        return new Response("Unauthorized", { status: 401 });
+        return unauthorized();
     }
 
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
     const repoOwner = await db.query.users.findFirst({
         where: eq(schema.users.username, ownerName!),
     });
 
-    if (!repoOwner) return new Response("Not Found", { status: 404 });
+    if (!repoOwner) return notFound("Not Found");
 
     const repo = await db.query.repositories.findFirst({
         where: and(
@@ -25,10 +31,10 @@ export const GET: APIRoute = async ({ params, locals }) => {
         ),
     });
 
-    if (!repo) return new Response("Not Found", { status: 404 });
+    if (!repo) return notFound("Not Found");
 
     if (!(await canReadRepo(user.id, repo))) {
-        return new Response("Forbidden", { status: 403 });
+        return forbidden();
     }
 
     // Get latest scans
@@ -42,8 +48,5 @@ export const GET: APIRoute = async ({ params, locals }) => {
         }
     });
 
-    return new Response(JSON.stringify(scans), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-    });
-};
+    return success(scans);
+});

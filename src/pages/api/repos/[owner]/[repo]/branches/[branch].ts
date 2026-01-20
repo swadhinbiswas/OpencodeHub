@@ -1,30 +1,37 @@
 import { getDatabase, schema } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { deleteBranch } from "@/lib/git";
 import { canWriteRepo } from "@/lib/permissions";
 import type { APIRoute } from "astro";
 import { and, eq } from "drizzle-orm";
 
-export const DELETE: APIRoute = async ({ params, locals }) => {
+import { withErrorHandler } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { unauthorized, badRequest, notFound, serverError, forbidden, success } from "@/lib/api";
+
+// ... existing imports ...
+
+export const DELETE: APIRoute = withErrorHandler(async ({ params, locals }) => {
     const { owner: ownerName, repo: repoName, branch } = params;
     const user = locals.user;
 
     if (!user) {
-        return new Response("Unauthorized", { status: 401 });
+        return unauthorized();
     }
 
     // Validate inputs
     if (!ownerName || !repoName || !branch) {
-        return new Response("Missing parameters", { status: 400 });
+        return badRequest("Missing parameters");
     }
 
     // Check repo existence and permissions
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
     const repoOwner = await db.query.users.findFirst({
         where: eq(schema.users.username, ownerName),
     });
 
     if (!repoOwner) {
-        return new Response("Repository not found", { status: 404 });
+        return notFound("Repository not found");
     }
 
     const repo = await db.query.repositories.findFirst({
@@ -35,26 +42,22 @@ export const DELETE: APIRoute = async ({ params, locals }) => {
     });
 
     if (!repo) {
-        return new Response("Repository not found", { status: 404 });
+        return notFound("Repository not found");
     }
 
     if (!(await canWriteRepo(user.id, repo))) {
-        return new Response("Forbidden", { status: 403 });
+        return forbidden();
     }
 
     // Prevent deleting default branch
     if (branch === repo.defaultBranch) {
-        return new Response("Cannot delete default branch", { status: 400 });
+        return badRequest("Cannot delete default branch");
     }
 
     // Delete branch
-    try {
-        await deleteBranch(repo.diskPath, branch);
-        return new Response(JSON.stringify({ success: true }), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-        });
-    } catch (error) {
-        return new Response(`Failed to delete branch: ${error}`, { status: 500 });
-    }
-};
+    await deleteBranch(repo.diskPath, branch);
+
+    logger.info({ userId: user.id, repoId: repo.id, branch }, "Branch deleted");
+
+    return success({ success: true });
+});

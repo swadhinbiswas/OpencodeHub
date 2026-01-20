@@ -1,14 +1,15 @@
 /**
  * Seed demo notifications for testing
  */
-import { getDatabase } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { getDatabase, schema } from "@/db";
 import { notifications, users, repositories } from "@/db/schema";
 import { generateId, now } from "@/lib/utils";
 import { faker } from "@faker-js/faker";
 
 async function seedNotifications() {
     console.log("🔔 Seeding notifications...");
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     const allUsers = await db.query.users.findMany();
     const allRepos = await db.query.repositories.findMany({ limit: 50 });
@@ -59,8 +60,8 @@ async function seedNotifications() {
             reason: notifType.reason,
             isRead: faker.datatype.boolean({ probability: 0.3 }),
             isArchived: faker.datatype.boolean({ probability: 0.1 }),
-            createdAt: faker.date.recent({ days: 14 }).toISOString(),
-            updatedAt: now(),
+            createdAt: faker.date.recent({ days: 14 }),
+            updatedAt: new Date(),
         });
     }
 

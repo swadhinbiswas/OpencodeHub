@@ -46,3 +46,14 @@ export async function postWithAuth<T = any>(endpoint: string, body: any): Promis
     const config = getConfig();
     return apiCall<T>(config.serverUrl, endpoint, "POST", body);
 }
+
+export async function patchWithAuth<T = any>(endpoint: string, body: any): Promise<T> {
+    const config = getConfig();
+    return apiCall<T>(config.serverUrl, endpoint, "PATCH", body);
+}
+
+export async function deleteWithAuth<T = any>(endpoint: string): Promise<T> {
+    const config = getConfig();
+    return apiCall<T>(config.serverUrl, endpoint, "DELETE");
+}
+

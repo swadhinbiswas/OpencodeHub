@@ -1,4 +1,5 @@
 import { getDatabase, schema } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { logger } from "@/lib/logger";
 import type { APIRoute } from "astro";
 import { eq, and } from "drizzle-orm";
@@ -27,7 +28,7 @@ export const POST: APIRoute = async ({ request, url }) => {
         return new Response("OK", { status: 200 }); // Not a branch push (e.g. tag), or ignore for now
     }
 
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // Find repo
     const repo = await db.query.repositories.findFirst({

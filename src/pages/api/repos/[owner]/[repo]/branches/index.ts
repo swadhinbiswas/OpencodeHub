@@ -1,26 +1,33 @@
 import { getDatabase, schema } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { createBranch, getBranches } from "@/lib/git";
 import { canReadRepo, canWriteRepo } from "@/lib/permissions";
 import type { APIRoute } from "astro";
 import { and, eq } from "drizzle-orm";
 
-export const GET: APIRoute = async ({ params, locals }) => {
+import { withErrorHandler } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { unauthorized, badRequest, notFound, serverError, forbidden, success, created } from "@/lib/api";
+
+// ... existing imports ...
+
+export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
     const { owner: ownerName, repo: repoName } = params;
     const user = locals.user;
 
     // Validate inputs
     if (!ownerName || !repoName) {
-        return new Response("Missing parameters", { status: 400 });
+        return badRequest("Missing parameters");
     }
 
     // Check repo existence and permissions
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
     const repoOwner = await db.query.users.findFirst({
         where: eq(schema.users.username, ownerName),
     });
 
     if (!repoOwner) {
-        return new Response("Repository not found", { status: 404 });
+        return notFound("Repository not found");
     }
 
     const repo = await db.query.repositories.findFirst({
@@ -31,46 +38,39 @@ export const GET: APIRoute = async ({ params, locals }) => {
     });
 
     if (!repo) {
-        return new Response("Repository not found", { status: 404 });
+        return notFound("Repository not found");
     }
 
     if (!(await canReadRepo(user?.id, repo, { isAdmin: user?.isAdmin ?? undefined }))) {
-        return new Response("Unauthorized", { status: 401 });
+        return unauthorized();
     }
 
     // Get branches
-    try {
-        const branches = await getBranches(repo.diskPath);
-        return new Response(JSON.stringify(branches), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-        });
-    } catch (error) {
-        return new Response(`Failed to list branches: ${error}`, { status: 500 });
-    }
-};
+    const branches = await getBranches(repo.diskPath);
+    return success(branches);
+});
 
-export const POST: APIRoute = async ({ params, request, locals }) => {
+export const POST: APIRoute = withErrorHandler(async ({ params, request, locals }) => {
     const { owner: ownerName, repo: repoName } = params;
     const user = locals.user;
 
     if (!user) {
-        return new Response("Unauthorized", { status: 401 });
+        return unauthorized();
     }
 
     // Validate inputs
     if (!ownerName || !repoName) {
-        return new Response("Missing parameters", { status: 400 });
+        return badRequest("Missing parameters");
     }
 
     // Check repo existence and permissions
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
     const repoOwner = await db.query.users.findFirst({
         where: eq(schema.users.username, ownerName),
     });
 
     if (!repoOwner) {
-        return new Response("Repository not found", { status: 404 });
+        return notFound("Repository not found");
     }
 
     const repo = await db.query.repositories.findFirst({
@@ -81,11 +81,11 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
     });
 
     if (!repo) {
-        return new Response("Repository not found", { status: 404 });
+        return notFound("Repository not found");
     }
 
     if (!(await canWriteRepo(user.id, repo, { isAdmin: user.isAdmin ?? undefined }))) {
-        return new Response("Forbidden", { status: 403 });
+        return forbidden();
     }
 
     // Parse body
@@ -93,17 +93,13 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
     const { name, startPoint } = body;
 
     if (!name) {
-        return new Response("Branch name is required", { status: 400 });
+        return badRequest("Branch name is required");
     }
 
     // Create branch
-    try {
-        await createBranch(repo.diskPath, name, startPoint || "HEAD");
-        return new Response(JSON.stringify({ success: true }), {
-            status: 201,
-            headers: { "Content-Type": "application/json" },
-        });
-    } catch (error) {
-        return new Response(`Failed to create branch: ${error}`, { status: 500 });
-    }
-};
+    await createBranch(repo.diskPath, name, startPoint || "HEAD");
+
+    logger.info({ userId: user.id, repoId: repo.id, branch: name }, "Branch created");
+
+    return created({ success: true });
+});

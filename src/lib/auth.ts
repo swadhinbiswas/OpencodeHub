@@ -6,6 +6,9 @@
 import bcrypt from "bcryptjs";
 import { JWTPayload, SignJWT, jwtVerify } from "jose";
 import { authenticator } from "otplib";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { getDatabase, schema } from "@/db";
+import { eq } from "drizzle-orm";
 import { generateId, now } from "./utils";
 
 // Types
@@ -23,8 +26,8 @@ export interface SessionData {
   token: string;
   userAgent?: string;
   ipAddress?: string;
-  expiresAt: string;
-  createdAt: string;
+  expiresAt: Date;
+  createdAt: Date;
 }
 
 // JWT configuration
@@ -121,8 +124,8 @@ export async function createSession(
     token: generateId(), // Session token for reference
     userAgent,
     ipAddress,
-    expiresAt: expirationDate.toISOString(),
-    createdAt: now(),
+    expiresAt: expirationDate,
+    createdAt: new Date(),
   };
 
   return session;
@@ -276,11 +279,8 @@ export async function getUserFromRequest(
  */
 async function verifyPersonalAccessToken(token: string): Promise<TokenPayload | null> {
   try {
-    const { getDatabase } = await import("@/db");
-    const { personalAccessTokens, users } = await import("@/db/schema/users");
-    const { eq, and, gt } = await import("drizzle-orm");
-
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
+    const { personalAccessTokens } = schema;
 
     // Find the token
     const pat = await db.query.personalAccessTokens.findFirst({
@@ -302,7 +302,7 @@ async function verifyPersonalAccessToken(token: string): Promise<TokenPayload | 
     // Update last used
     await db
       .update(personalAccessTokens)
-      .set({ lastUsedAt: new Date().toISOString() })
+      .set({ lastUsedAt: new Date() })
       .where(eq(personalAccessTokens.id, pat.id));
 
     // Return user info as TokenPayload

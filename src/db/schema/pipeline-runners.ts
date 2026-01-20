@@ -1,9 +1,9 @@
 
 import { relations } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { repositories } from "./repositories";
 
-export const pipelineRunners = sqliteTable("pipeline_runners", {
+export const pipelineRunners = pgTable("pipeline_runners", {
     id: text("id").primaryKey(),
     repositoryId: text("repository_id").references(() => repositories.id, { onDelete: "cascade" }), // If null, global runner (future)
     token: text("token").notNull(), // Authentication token (hashed or raw? raw for MVP simplicity, highly secured in real)
@@ -12,8 +12,8 @@ export const pipelineRunners = sqliteTable("pipeline_runners", {
     arch: text("arch"),
     version: text("version"),
     status: text("status").notNull().default("offline"), // online, offline, busy
-    lastSeenAt: text("last_seen_at"),
-    createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+    lastSeenAt: timestamp("last_seen_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const pipelineRunnersRelations = relations(pipelineRunners, ({ one }) => ({

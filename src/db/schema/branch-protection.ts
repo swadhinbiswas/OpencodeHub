@@ -4,11 +4,11 @@
  */
 
 import { relations } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { repositories } from "./repositories";
 import { users } from "./users";
 
-export const branchProtection = sqliteTable("branch_protection", {
+export const branchProtection = pgTable("branch_protection", {
     id: text("id").primaryKey(),
     repositoryId: text("repository_id")
         .notNull()
@@ -16,18 +16,18 @@ export const branchProtection = sqliteTable("branch_protection", {
 
     // Rule definition
     pattern: text("pattern").notNull(), // Glob pattern like 'main', 'release/*', '*'
-    active: integer("active", { mode: "boolean" }).default(true),
+    active: boolean("active").default(true),
 
     // Constraints
-    requiresPr: integer("requires_pr", { mode: "boolean" }).default(false),
+    requiresPr: boolean("requires_pr").default(false),
     requiredApprovals: integer("required_approvals").default(1),
-    dismissStaleReviews: integer("dismiss_stale_reviews", { mode: "boolean" }).default(false),
-    requireCodeOwnerReviews: integer("require_code_owner_reviews", { mode: "boolean" }).default(false),
+    dismissStaleReviews: boolean("dismiss_stale_reviews").default(false),
+    requireCodeOwnerReviews: boolean("require_code_owner_reviews").default(false),
 
-    allowForcePushes: integer("allow_force_pushes", { mode: "boolean" }).default(false),
+    allowForcePushes: boolean("allow_force_pushes").default(false),
 
-    createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-    updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
     createdById: text("created_by_id").references(() => users.id),
 });
 
