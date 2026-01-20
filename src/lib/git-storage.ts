@@ -33,8 +33,7 @@ function getTempBase(): string {
  * Check if we're using cloud storage that requires sync
  */
 export async function isCloudStorage(): Promise<boolean> {
-    const storage = await getStorage();
-    const type = (storage as any).config?.type || process.env.STORAGE_TYPE;
+    const type = process.env.STORAGE_TYPE || "local";
     return ["gdrive", "s3", "gcs", "azure", "rclone", "onedrive"].includes(type);
 }
 
