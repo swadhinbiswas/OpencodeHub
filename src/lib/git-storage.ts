@@ -156,7 +156,9 @@ export async function acquireRepo(owner: string, repoName: string): Promise<stri
     // Check if we're using local storage
     if (!(await isCloudStorage())) {
         // Local storage: return the direct path
-        const reposPath = process.env.GIT_REPOS_PATH || "./data/repos";
+        const reposPath = process.env.GIT_REPOS_PATH
+            ? (path.isAbsolute(process.env.GIT_REPOS_PATH) ? process.env.GIT_REPOS_PATH : join(process.cwd(), process.env.GIT_REPOS_PATH))
+            : join(process.cwd(), "data", "repos");
         return join(reposPath, owner, `${repoName}.git`);
     }
 
@@ -244,7 +246,9 @@ export async function initRepoInStorage(
 ): Promise<string> {
     if (!(await isCloudStorage())) {
         // Local storage: return the direct path
-        const reposPath = process.env.GIT_REPOS_PATH || "./data/repos";
+        const reposPath = process.env.GIT_REPOS_PATH
+            ? (path.isAbsolute(process.env.GIT_REPOS_PATH) ? process.env.GIT_REPOS_PATH : join(process.cwd(), process.env.GIT_REPOS_PATH))
+            : join(process.cwd(), "data", "repos");
         return join(reposPath, owner, `${repoName}.git`);
     }
 
@@ -325,7 +329,9 @@ export async function getDiskPath(owner: string, repoName: string): Promise<stri
     if (await isCloudStorage()) {
         return getStorageRepoPath(owner, repoName);
     }
-    const reposPath = process.env.GIT_REPOS_PATH || "./data/repos";
+    const reposPath = process.env.GIT_REPOS_PATH
+        ? (path.isAbsolute(process.env.GIT_REPOS_PATH) ? process.env.GIT_REPOS_PATH : join(process.cwd(), process.env.GIT_REPOS_PATH))
+        : join(process.cwd(), "data", "repos");
     return join(reposPath, owner, `${repoName}.git`);
 }
 

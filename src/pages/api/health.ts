@@ -1,7 +1,8 @@
 import { getDb } from "@/db/adapter";
 import type { APIRoute } from "astro";
+import { withErrorHandler } from "@/lib/errors";
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = withErrorHandler(async () => {
   const checks: Record<
     string,
     { status: "ok" | "error"; message?: string; latency?: number }
@@ -56,7 +57,7 @@ export const GET: APIRoute = async () => {
   return new Response(
     JSON.stringify({
       status: isHealthy ? "healthy" : "unhealthy",
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(),
       version: process.env.npm_package_version || "1.0.0",
       uptime: process.uptime(),
       checks,
@@ -68,4 +69,4 @@ export const GET: APIRoute = async () => {
       },
     }
   );
-};
+});

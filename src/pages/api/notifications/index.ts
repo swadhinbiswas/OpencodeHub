@@ -2,8 +2,9 @@
  * Notifications API - List, read, archive notifications
  */
 import { type APIRoute } from 'astro';
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { eq, desc, and } from 'drizzle-orm';
-import { getDatabase } from '@/db';
+import {  getDatabase , schema } from "@/db";
 import { notifications } from '@/db/schema';
 import { getUserFromRequest } from '@/lib/auth';
 import { success, unauthorized, serverError } from '@/lib/api';
@@ -15,7 +16,7 @@ export const GET: APIRoute = async ({ request, url }) => {
             return unauthorized();
         }
 
-        const db = getDatabase();
+        const db = getDatabase() as NodePgDatabase<typeof schema>;
         const filter = url.searchParams.get('filter') || 'unread';
 
         let conditions = [eq(notifications.userId, tokenPayload.userId)];

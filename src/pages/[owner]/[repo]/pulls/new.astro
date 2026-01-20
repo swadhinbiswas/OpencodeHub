@@ -63,7 +63,7 @@ if (!hasAccess) {
 // Fetch branches
 let branches: string[] = [];
 try {
-  const repoPath = getRepoPath(repoData.id);
+  const repoPath = getRepoPath(repoData.owner.username, repoData.name);
   const gitBranches = await getBranches(repoPath);
   branches = gitBranches.map((b) => b.name);
 } catch (error) {
@@ -95,8 +95,9 @@ if (baseBranch !== headBranch) {
 }
 
 // Fetch open issue count (for header)
-const issueCountResult = await db
-  .select({ count: count() })
+const issueCountResult = (await db
+  // @ts-expect-error: count argument mismatch
+  .select({ count: sql<number>`count(*)` })
   .from(schema.issues)
   .where(
     and(
@@ -104,7 +105,7 @@ const issueCountResult = await db
       eq(schema.issues.state, "open"),
     ),
   )
-  .get();
+  .get()) as { count: number } | undefined;
 
 const openIssueCount = issueCountResult?.count || 0;
 

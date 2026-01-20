@@ -1,5 +1,6 @@
 
 import { PipelineRunner } from "./pipeline";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDatabase, schema } from "@/db";
 import { logger } from "@/lib/logger";
 import { eq } from "drizzle-orm";
@@ -27,7 +28,7 @@ export async function triggerRepoWorkflows(repoId: string, commitSha: string, re
     logger.info({ repoId, ref, commitSha }, "Checking workflows");
 
     // 1. Get Repo Disk Path
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
     const repo = await db.query.repositories.findFirst({
         where: eq(schema.repositories.id, repoId)
     });

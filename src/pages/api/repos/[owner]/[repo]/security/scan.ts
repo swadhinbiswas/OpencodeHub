@@ -1,24 +1,31 @@
 import { getDatabase, schema } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { canWriteRepo } from "@/lib/permissions";
 import { runSecurityScan } from "@/lib/security";
 import { generateId } from "@/lib/utils";
 import type { APIRoute } from "astro";
 import { and, eq } from "drizzle-orm";
 
-export const POST: APIRoute = async ({ params, locals }) => {
+import { withErrorHandler } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { unauthorized, notFound, forbidden } from "@/lib/api";
+
+// ... existing imports ...
+
+export const POST: APIRoute = withErrorHandler(async ({ params, locals }) => {
     const { owner: ownerName, repo: repoName } = params;
     const user = locals.user;
 
     if (!user) {
-        return new Response("Unauthorized", { status: 401 });
+        return unauthorized();
     }
 
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
     const repoOwner = await db.query.users.findFirst({
         where: eq(schema.users.username, ownerName!),
     });
 
-    if (!repoOwner) return new Response("Not Found", { status: 404 });
+    if (!repoOwner) return notFound("Not Found");
 
     const repo = await db.query.repositories.findFirst({
         where: and(
@@ -27,10 +34,10 @@ export const POST: APIRoute = async ({ params, locals }) => {
         ),
     });
 
-    if (!repo) return new Response("Not Found", { status: 404 });
+    if (!repo) return notFound("Not Found");
 
     if (!(await canWriteRepo(user.id, repo))) {
-        return new Response("Forbidden", { status: 403 });
+        return forbidden();
     }
 
     // Create scan record
@@ -44,11 +51,13 @@ export const POST: APIRoute = async ({ params, locals }) => {
 
     // Start scan asynchronously
     runSecurityScan(repo.diskPath, scanId, repo.id).catch(err => {
-        console.error("Background scan failed to start properly", err);
+        logger.error({ err, repoId: repo.id, scanId }, "Background scan failed to start properly");
     });
+
+    logger.info({ userId: user.id, repoId: repo.id, scanId }, "Security scan queued");
 
     return new Response(JSON.stringify({ scanId, status: "queued" }), {
         status: 202,
         headers: { "Content-Type": "application/json" },
     });
-};
+});

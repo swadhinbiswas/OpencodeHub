@@ -4,6 +4,7 @@
  */
 
 import { eq, and } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDatabase, schema } from "@/db";
 import { logger } from "@/lib/logger";
 import { simpleGit, SimpleGit } from "simple-git";
@@ -114,7 +115,7 @@ export async function rebaseStack(
     stackId: string,
     baseBranch: string = "main"
 ): Promise<RebaseResult> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
     const git: SimpleGit = simpleGit(repoPath);
 
     try {
@@ -164,7 +165,7 @@ export async function rebaseStack(
             await db.update(schema.pullRequests)
                 .set({
                     headSha: newHeadSha.trim(),
-                    updatedAt: new Date().toISOString(),
+                    updatedAt: new Date(),
                 })
                 .where(eq(schema.pullRequests.id, entry.pr.id));
         }
@@ -192,7 +193,7 @@ export async function autoRebaseAfterMerge(
     repositoryId: string,
     mergedPrId: string
 ): Promise<void> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // Check if the merged PR was part of a stack
     const stackEntry = await db.query.prStackEntries.findFirst({

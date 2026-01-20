@@ -1,0 +1,36 @@
+Note: Unnecessary 
+Note: use of -X or 
+Note: --request, 
+Note: POST is 
+Note: already 
+Note: inferred.
+* Host localhost:3000 was resolved.
+* IPv6: ::1
+* IPv4: 127.0.0.1
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0*   Trying [::1]:3000...
+* Established connection to localhost (::1 port 3000) from ::1 port 42012 
+* using HTTP/1.x
+> POST /api/repos HTTP/1.1
+> Host: localhost:3000
+> User-Agent: curl/8.18.0
+> Accept: */*
+> Cookie: och_session=eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOiJ1c3JfR3h4M1pCMk41eThpVXVyWjJEQVRsIiwidXNlcm5hbWUiOiJ0ZXN0dXNlcjUiLCJlbWFpbCI6InRlc3R1c2VyNUBleGFtcGxlLmNvbSIsInNlc3Npb25JZCI6InNlc3NfS3VFUHlNQmFsZ0s0RjgwZTVWZENMIiwiaWF0IjoxNzY4OTMzMDIyLCJpc3MiOiJvcGVuY29kZWh1YiIsImF1ZCI6Im9wZW5jb2RlaHViLWFwaSIsImV4cCI6MTc2OTUzNzgyMn0.QiHu30cZVUMaWabicMoWL9QIuy0FQ0fE4tEPkpUF3Sw
+> Content-Type: application/json
+> Content-Length: 114
+> 
+} [114 bytes data]
+* upload completely sent off: 114 bytes
+100    114   0      0 100    114      0     94   00:01   00:01             95100    114   0      0 100    114      0     51   00:02   00:02             51< HTTP/1.1 500 Internal Server Error
+< Vary: Origin
+< content-type: application/json
+< Date: Tue, 20 Jan 2026 18:17:56 GMT
+< Connection: keep-alive
+< Keep-Alive: timeout=5
+< Transfer-Encoding: chunked
+< 
+{ [1473 bytes data]
+100   1575   0   1461 100    114    611     47   00:02   00:02             51100   1575   0   1461 100    114    611     47   00:02   00:02             51100   1575   0   1461 100    114    611     47   00:02   00:02             51
+* Connection #0 to host localhost:3000 left intact
+{"success":false,"error":{"code":"SERVER_ERROR","message":"Failed to initialize repository: {\"stack\":\"Error: Pushing to data/repos/testuser5/test-repo-2.git\\nfatal: 'data/repos/testuser5/test-repo-2.git' does not appear to be a git repository\\nfatal: Could not read from remote repository.\\n\\nPlease make sure you have the correct access rights\\nand the repository exists.\\n\\n    at Object.action (file:///home/swadhin/owngit/OpenCodeHub/node_modules/simple-git/dist/esm/index.js:4462:25)\\n    at PluginStore.exec (file:///home/swadhin/owngit/OpenCodeHub/node_modules/simple-git/dist/esm/index.js:4501:25)\\n    at file:///home/swadhin/owngit/OpenCodeHub/node_modules/simple-git/dist/esm/index.js:1345:43\\n    at new Promise (<anonymous>)\\n    at GitExecutorChain.handleTaskData (file:///home/swadhin/owngit/OpenCodeHub/node_modules/simple-git/dist/esm/index.js:1343:16)\\n    at GitExecutorChain.attemptRemoteTask (file:///home/swadhin/owngit/OpenCodeHub/node_modules/simple-git/dist/esm/index.js:1330:42)\\n    at async GitExecutorChain.attemptTask (file:///home/swadhin/owngit/OpenCodeHub/node_modules/simple-git/dist/esm/index.js:1302:18)\",\"message\":\"Pushing to data/repos/testuser5/test-repo-2.git\\nfatal: 'data/repos/testuser5/test-repo-2.git' does not appear to be a git repository\\nfatal: Could not read from remote repository.\\n\\nPlease make sure you have the correct access rights\\nand the repository exists.\\n\",\"task\":{}}"}}

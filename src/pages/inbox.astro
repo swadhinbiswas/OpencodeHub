@@ -383,7 +383,7 @@ function timeAgo(date: string) {
       if (prItems.length === 0) return;
 
       // Highlight the first item
-      const highlightPR = (index) => {
+      const highlightPR = (index: number) => {
         prItems.forEach((item, i) => {
           if (i === index) {
             item.classList.add("ring-2", "ring-primary", "bg-primary/5");
@@ -399,8 +399,9 @@ function timeAgo(date: string) {
 
       // Add keyboard listener
       document.addEventListener("keydown", (e) => {
+        const target = e.target as HTMLElement;
         // Don't trigger if user is typing in an input
-        if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") {
+        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
           return;
         }
 
@@ -414,13 +415,16 @@ function timeAgo(date: string) {
           case "k": // Previous PR
             e.preventDefault();
             selectedIndex = Math.max(selectedIndex - 1, 0);
-            highlightPR(selectedIndex);
-            break;
-
           case "o": // Open PR
           case "enter":
             e.preventDefault();
-            prItems[selectedIndex]?.click();
+            (prItems[selectedIndex] as HTMLElement)?.click();
+            break;
+
+          case "k": // Previous PR
+            e.preventDefault();
+            selectedIndex = Math.max(selectedIndex - 1, 0);
+            highlightPR(selectedIndex);
             break;
 
           case "r": // Refresh

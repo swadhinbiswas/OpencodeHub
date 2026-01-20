@@ -1,12 +1,19 @@
 import { getDatabase, schema } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { APIRoute } from "astro";
 import { eq, and } from "drizzle-orm";
 
-export const DELETE: APIRoute = async ({ params }) => {
-    const { repoId, id } = params;
-    if (!repoId || !id) return new Response("IDs required", { status: 400 });
+import { withErrorHandler } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { badRequest, noContent, success } from "@/lib/api";
 
-    const db = getDatabase();
+// ... existing imports ...
+
+export const DELETE: APIRoute = withErrorHandler(async ({ params }) => {
+    const { repoId, id } = params;
+    if (!repoId || !id) return badRequest("IDs required");
+
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     await db.delete(schema.branchProtection)
         .where(and(
@@ -14,31 +21,35 @@ export const DELETE: APIRoute = async ({ params }) => {
             eq(schema.branchProtection.repositoryId, repoId)
         ));
 
-    return new Response(null, { status: 204 });
-};
+    logger.info({ repoId, ruleId: id }, "Branch protection rule deleted");
 
-export const PUT: APIRoute = async ({ params, request }) => {
+    return noContent();
+});
+
+export const PUT: APIRoute = withErrorHandler(async ({ params, request }) => {
     const { repoId, id } = params;
-    if (!repoId || !id) return new Response("IDs required", { status: 400 });
+    if (!repoId || !id) return badRequest("IDs required");
 
     let body;
     try {
         body = await request.json();
     } catch (e) {
-        return new Response("Invalid JSON", { status: 400 });
+        return badRequest("Invalid JSON");
     }
 
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     await db.update(schema.branchProtection)
         .set({
             ...body,
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date()
         })
         .where(and(
             eq(schema.branchProtection.id, id),
             eq(schema.branchProtection.repositoryId, repoId)
         ));
 
-    return new Response(JSON.stringify({ success: true }), { status: 200 });
-};
+    logger.info({ repoId, ruleId: id }, "Branch protection rule updated");
+
+    return success({ success: true });
+});

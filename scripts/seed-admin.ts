@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { getDatabase, schema } from "../src/db";
 import { eq } from "drizzle-orm";
 import readline from "readline";

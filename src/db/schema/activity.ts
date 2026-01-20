@@ -4,12 +4,12 @@
  */
 
 import { relations } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 // import { organizations } from "./organizations"; // Removed to prevent circular dependency
 import { repositories } from "./repositories";
 import { users } from "./users";
 
-export const activities = sqliteTable("activities", {
+export const activities = pgTable("activities", {
   id: text("id").primaryKey(),
   userId: text("user_id")
     .notNull()
@@ -24,11 +24,11 @@ export const activities = sqliteTable("activities", {
   targetType: text("target_type"), // repository, issue, pull_request, comment, etc.
   targetId: text("target_id"),
   payload: text("payload"), // JSON - additional data
-  isPublic: integer("is_public", { mode: "boolean" }).default(true),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  isPublic: boolean("is_public").default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const notifications = sqliteTable("notifications", {
+export const notifications = pgTable("notifications", {
   id: text("id").primaryKey(),
   userId: text("user_id")
     .notNull()
@@ -42,15 +42,15 @@ export const notifications = sqliteTable("notifications", {
   subjectType: text("subject_type"), // issue, pull_request, commit, etc.
   subjectId: text("subject_id"),
   reason: text("reason").notNull(), // mention, assign, subscribed, review_requested, etc.
-  isRead: integer("is_read", { mode: "boolean" }).default(false),
-  readAt: text("read_at"),
-  isArchived: integer("is_archived", { mode: "boolean" }).default(false),
-  archivedAt: text("archived_at"),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+  isRead: boolean("is_read").default(false),
+  readAt: timestamp("read_at"),
+  isArchived: boolean("is_archived").default(false),
+  archivedAt: timestamp("archived_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const auditLogs = sqliteTable("audit_logs", {
+export const auditLogs = pgTable("audit_logs", {
   id: text("id").primaryKey(),
   userId: text("user_id").references(() => users.id),
   repositoryId: text("repository_id").references(() => repositories.id),
@@ -63,7 +63,7 @@ export const auditLogs = sqliteTable("audit_logs", {
   targetId: text("target_id"),
   targetName: text("target_name"),
   data: text("data"), // JSON - before/after data
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Relations

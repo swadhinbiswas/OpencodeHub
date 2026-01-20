@@ -5,18 +5,26 @@ import { desc, eq, sql, like, or } from "drizzle-orm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Shield, Ban, CheckCircle, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Users as UsersIcon,
+  Shield,
+  Ban,
+  CheckCircle,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 const user = Astro.locals.user;
 
 // Only admins can access
 if (!user?.isAdmin) {
-  return Astro.redirect('/');
+  return Astro.redirect("/");
 }
 
 const db = getDatabase();
-const searchQuery = Astro.url.searchParams.get('q') || '';
-const page = parseInt(Astro.url.searchParams.get('page') || '1');
+const searchQuery = Astro.url.searchParams.get("q") || "";
+const page = parseInt(Astro.url.searchParams.get("page") || "1");
 const limit = 20;
 const offset = (page - 1) * limit;
 
@@ -26,7 +34,7 @@ if (searchQuery) {
   whereCondition = or(
     like(schema.users.username, `%${searchQuery}%`),
     like(schema.users.email, `%${searchQuery}%`),
-    like(schema.users.displayName, `%${searchQuery}%`)
+    like(schema.users.displayName, `%${searchQuery}%`),
   );
 }
 
@@ -38,20 +46,36 @@ const [users, totalResult] = await Promise.all([
     limit,
     offset,
   }),
-  db.select({ count: sql<number>`count(*)` })
+  db
+    // @ts-expect-error: count argument mismatch
+    .select({ count: sql<number>`count(*)` })
     .from(schema.users)
     .where(whereCondition)
     .get(),
 ]);
 
-const total = totalResult?.count || 0;
+const total = (totalResult as { count: number } | undefined)?.count || 0;
 const totalPages = Math.ceil(total / limit);
 
 // Stats
 const [totalUsers, activeUsers, adminUsers] = await Promise.all([
-  db.select({ count: sql<number>`count(*)` }).from(schema.users).get(),
-  db.select({ count: sql<number>`count(*)` }).from(schema.users).where(eq(schema.users.isActive, true)).get(),
-  db.select({ count: sql<number>`count(*)` }).from(schema.users).where(eq(schema.users.isAdmin, true)).get(),
+  db
+    // @ts-expect-error: count argument mismatch
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.users)
+    .get() as { count: number } | undefined,
+  db
+    // @ts-expect-error: count argument mismatch
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.users)
+    .where(eq(schema.users.isActive, true))
+    .get() as { count: number } | undefined,
+  db
+    // @ts-expect-error: count argument mismatch
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.users)
+    .where(eq(schema.users.isAdmin, true))
+    .get() as { count: number } | undefined,
 ]);
 ---
 
@@ -112,9 +136,11 @@ const [totalUsers, activeUsers, adminUsers] = await Promise.all([
       <!-- Search -->
       <form action="/admin/users" method="GET" class="flex gap-2">
         <div class="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            name="q" 
+          <Search
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground"
+          />
+          <Input
+            name="q"
             value={searchQuery}
             placeholder="Search by username, email, or name..."
             className="pl-10"
@@ -133,113 +159,155 @@ const [totalUsers, activeUsers, adminUsers] = await Promise.all([
             <table class="w-full">
               <thead>
                 <tr class="border-b">
-                  <th class="text-left p-3 text-sm font-medium text-muted-foreground">User</th>
-                  <th class="text-left p-3 text-sm font-medium text-muted-foreground">Email</th>
-                  <th class="text-left p-3 text-sm font-medium text-muted-foreground">Status</th>
-                  <th class="text-left p-3 text-sm font-medium text-muted-foreground">Role</th>
-                  <th class="text-left p-3 text-sm font-medium text-muted-foreground">Joined</th>
-                  <th class="text-right p-3 text-sm font-medium text-muted-foreground">Actions</th>
+                  <th
+                    class="text-left p-3 text-sm font-medium text-muted-foreground"
+                    >User</th
+                  >
+                  <th
+                    class="text-left p-3 text-sm font-medium text-muted-foreground"
+                    >Email</th
+                  >
+                  <th
+                    class="text-left p-3 text-sm font-medium text-muted-foreground"
+                    >Status</th
+                  >
+                  <th
+                    class="text-left p-3 text-sm font-medium text-muted-foreground"
+                    >Role</th
+                  >
+                  <th
+                    class="text-left p-3 text-sm font-medium text-muted-foreground"
+                    >Joined</th
+                  >
+                  <th
+                    class="text-right p-3 text-sm font-medium text-muted-foreground"
+                    >Actions</th
+                  >
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
-                  <tr class="border-b hover:bg-muted/50" data-user-id={u.id}>
-                    <td class="p-3">
-                      <div class="flex items-center gap-3">
-                        {u.avatarUrl ? (
-                          <img src={u.avatarUrl} alt={u.username} class="h-8 w-8 rounded-full" />
-                        ) : (
-                          <div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center font-medium">
-                            {u.username.charAt(0).toUpperCase()}
+                {
+                  users.map((u) => (
+                    <tr class="border-b hover:bg-muted/50" data-user-id={u.id}>
+                      <td class="p-3">
+                        <div class="flex items-center gap-3">
+                          {u.avatarUrl ? (
+                            <img
+                              src={u.avatarUrl}
+                              alt={u.username}
+                              class="h-8 w-8 rounded-full"
+                            />
+                          ) : (
+                            <div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center font-medium">
+                              {u.username.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <a
+                              href={`/${u.username}`}
+                              class="font-medium hover:text-primary"
+                            >
+                              {u.displayName || u.username}
+                            </a>
+                            <div class="text-sm text-muted-foreground">
+                              @{u.username}
+                            </div>
                           </div>
-                        )}
-                        <div>
-                          <a href={`/${u.username}`} class="font-medium hover:text-primary">
-                            {u.displayName || u.username}
-                          </a>
-                          <div class="text-sm text-muted-foreground">@{u.username}</div>
                         </div>
-                      </div>
-                    </td>
-                    <td class="p-3 text-sm">{u.email}</td>
-                    <td class="p-3">
-                      {u.isActive ? (
-                        <span class="inline-flex items-center gap-1 text-xs bg-green-500/10 text-green-500 px-2 py-1 rounded">
-                          <CheckCircle className="h-3 w-3" /> Active
-                        </span>
-                      ) : (
-                        <span class="inline-flex items-center gap-1 text-xs bg-red-500/10 text-red-500 px-2 py-1 rounded">
-                          <Ban className="h-3 w-3" /> Banned
-                        </span>
-                      )}
-                    </td>
-                    <td class="p-3">
-                      {u.isAdmin ? (
-                        <span class="inline-flex items-center gap-1 text-xs bg-orange-500/10 text-orange-500 px-2 py-1 rounded">
-                          <Shield className="h-3 w-3" /> Admin
-                        </span>
-                      ) : (
-                        <span class="text-sm text-muted-foreground">User</span>
-                      )}
-                    </td>
-                    <td class="p-3 text-sm text-muted-foreground">
-                      {new Date(u.createdAt).toLocaleDateString()}
-                    </td>
-                    <td class="p-3 text-right">
-                      <div class="flex items-center justify-end gap-2">
-                        {u.id !== user.id && (
-                          <>
-                            <button
-                              class="toggle-admin-btn p-1.5 text-xs rounded hover:bg-muted"
-                              data-user-id={u.id}
-                              data-is-admin={u.isAdmin}
-                              title={u.isAdmin ? "Remove admin" : "Make admin"}
-                            >
-                              <Shield className="h-4 w-4" />
-                            </button>
-                            <button
-                              class="toggle-ban-btn p-1.5 text-xs rounded hover:bg-muted"
-                              data-user-id={u.id}
-                              data-is-active={u.isActive}
-                              title={u.isActive ? "Ban user" : "Unban user"}
-                            >
-                              <Ban className="h-4 w-4" />
-                            </button>
-                          </>
+                      </td>
+                      <td class="p-3 text-sm">{u.email}</td>
+                      <td class="p-3">
+                        {u.isActive ? (
+                          <span class="inline-flex items-center gap-1 text-xs bg-green-500/10 text-green-500 px-2 py-1 rounded">
+                            <CheckCircle className="h-3 w-3" /> Active
+                          </span>
+                        ) : (
+                          <span class="inline-flex items-center gap-1 text-xs bg-red-500/10 text-red-500 px-2 py-1 rounded">
+                            <Ban className="h-3 w-3" /> Banned
+                          </span>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td class="p-3">
+                        {u.isAdmin ? (
+                          <span class="inline-flex items-center gap-1 text-xs bg-orange-500/10 text-orange-500 px-2 py-1 rounded">
+                            <Shield className="h-3 w-3" /> Admin
+                          </span>
+                        ) : (
+                          <span class="text-sm text-muted-foreground">
+                            User
+                          </span>
+                        )}
+                      </td>
+                      <td class="p-3 text-sm text-muted-foreground">
+                        {new Date(u.createdAt).toLocaleDateString()}
+                      </td>
+                      <td class="p-3 text-right">
+                        <div class="flex items-center justify-end gap-2">
+                          {u.id !== user.id && (
+                            <>
+                              <button
+                                class="toggle-admin-btn p-1.5 text-xs rounded hover:bg-muted"
+                                data-user-id={u.id}
+                                data-is-admin={u.isAdmin}
+                                title={
+                                  u.isAdmin ? "Remove admin" : "Make admin"
+                                }
+                              >
+                                <Shield className="h-4 w-4" />
+                              </button>
+                              <button
+                                class="toggle-ban-btn p-1.5 text-xs rounded hover:bg-muted"
+                                data-user-id={u.id}
+                                data-is-active={u.isActive}
+                                title={u.isActive ? "Ban user" : "Unban user"}
+                              >
+                                <Ban className="h-4 w-4" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                }
               </tbody>
             </table>
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div class="flex items-center justify-between mt-4 pt-4 border-t">
-              <div class="text-sm text-muted-foreground">
-                Showing {offset + 1} - {Math.min(offset + limit, total)} of {total}
+          {
+            totalPages > 1 && (
+              <div class="flex items-center justify-between mt-4 pt-4 border-t">
+                <div class="text-sm text-muted-foreground">
+                  Showing {offset + 1} - {Math.min(offset + limit, total)} of{" "}
+                  {total}
+                </div>
+                <div class="flex items-center gap-2">
+                  {page > 1 && (
+                    <a
+                      href={`/admin/users?page=${page - 1}${searchQuery ? `&q=${searchQuery}` : ""}`}
+                    >
+                      <Button variant="outline" size="sm">
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                    </a>
+                  )}
+                  <span class="text-sm">
+                    Page {page} of {totalPages}
+                  </span>
+                  {page < totalPages && (
+                    <a
+                      href={`/admin/users?page=${page + 1}${searchQuery ? `&q=${searchQuery}` : ""}`}
+                    >
+                      <Button variant="outline" size="sm">
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </a>
+                  )}
+                </div>
               </div>
-              <div class="flex items-center gap-2">
-                {page > 1 && (
-                  <a href={`/admin/users?page=${page - 1}${searchQuery ? `&q=${searchQuery}` : ''}`}>
-                    <Button variant="outline" size="sm">
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                  </a>
-                )}
-                <span class="text-sm">Page {page} of {totalPages}</span>
-                {page < totalPages && (
-                  <a href={`/admin/users?page=${page + 1}${searchQuery ? `&q=${searchQuery}` : ''}`}>
-                    <Button variant="outline" size="sm">
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </a>
-                )}
-              </div>
-            </div>
-          )}
+            )
+          }
         </CardContent>
       </Card>
     </div>
@@ -248,47 +316,49 @@ const [totalUsers, activeUsers, adminUsers] = await Promise.all([
 
 <script>
   // Toggle admin
-  document.querySelectorAll('.toggle-admin-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
+  document.querySelectorAll(".toggle-admin-btn").forEach((element) => {
+    const btn = element as HTMLButtonElement;
+    btn.addEventListener("click", async () => {
       const userId = btn.dataset.userId;
-      const isAdmin = btn.dataset.isAdmin === 'true';
-      const action = isAdmin ? 'Remove admin role?' : 'Grant admin role?';
-      
+      const isAdmin = btn.dataset.isAdmin === "true";
+      const action = isAdmin ? "Remove admin role?" : "Grant admin role?";
+
       if (!confirm(action)) return;
 
       try {
         const response = await fetch(`/api/admin/users/${userId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isAdmin: !isAdmin }),
         });
-        if (!response.ok) throw new Error('Failed');
+        if (!response.ok) throw new Error("Failed");
         window.location.reload();
       } catch (e) {
-        alert('Failed to update user');
+        alert("Failed to update user");
       }
     });
   });
 
   // Toggle ban
-  document.querySelectorAll('.toggle-ban-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
+  document.querySelectorAll(".toggle-ban-btn").forEach((element) => {
+    const btn = element as HTMLButtonElement;
+    btn.addEventListener("click", async () => {
       const userId = btn.dataset.userId;
-      const isActive = btn.dataset.isActive === 'true';
-      const action = isActive ? 'Ban this user?' : 'Unban this user?';
-      
+      const isActive = btn.dataset.isActive === "true";
+      const action = isActive ? "Ban this user?" : "Unban this user?";
+
       if (!confirm(action)) return;
 
       try {
         const response = await fetch(`/api/admin/users/${userId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isActive: !isActive }),
         });
-        if (!response.ok) throw new Error('Failed');
+        if (!response.ok) throw new Error("Failed");
         window.location.reload();
       } catch (e) {
-        alert('Failed to update user');
+        alert("Failed to update user");
       }
     });
   });

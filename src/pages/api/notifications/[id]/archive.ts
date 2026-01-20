@@ -3,51 +3,50 @@
  */
 import { type APIRoute } from 'astro';
 import { eq, and } from 'drizzle-orm';
-import { getDatabase } from '@/db';
+import { getDatabase, schema } from '@/db';
 import { notifications } from '@/db/schema';
 import { getUserFromRequest } from '@/lib/auth';
-import { unauthorized, notFound, serverError } from '@/lib/api';
+import { withErrorHandler, Errors } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
-export const POST: APIRoute = async ({ params, request, redirect }) => {
-    try {
-        const tokenPayload = await getUserFromRequest(request);
-        if (!tokenPayload) {
-            return unauthorized();
-        }
-
-        const { id } = params;
-        if (!id) {
-            return notFound('Notification not found');
-        }
-
-        const db = getDatabase();
-        const timestamp = new Date().toISOString();
-
-        // Verify ownership and update
-        const notification = await db.query.notifications.findFirst({
-            where: and(
-                eq(notifications.id, id),
-                eq(notifications.userId, tokenPayload.userId)
-            ),
-        });
-
-        if (!notification) {
-            return notFound('Notification not found');
-        }
-
-        await db
-            .update(notifications)
-            .set({
-                isArchived: true,
-                archivedAt: timestamp,
-                updatedAt: timestamp
-            })
-            .where(eq(notifications.id, id));
-
-        // Redirect back
-        return redirect('/notifications', 302);
-    } catch (e) {
-        console.error('Error archiving notification:', e);
-        return serverError('Failed to archive notification');
+export const POST: APIRoute = withErrorHandler(async ({ params, request, redirect }) => {
+    const tokenPayload = await getUserFromRequest(request);
+    if (!tokenPayload) {
+        throw Errors.unauthorized();
     }
-};
+
+    const { id } = params;
+    if (!id) {
+        throw Errors.notFound('Notification not found');
+    }
+
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
+    const timestamp = new Date();
+
+    // Verify ownership and update
+    const notification = await db.query.notifications.findFirst({
+        where: and(
+            eq(notifications.id, id),
+            eq(notifications.userId, tokenPayload.userId)
+        ),
+    });
+
+    if (!notification) {
+        throw Errors.notFound('Notification not found');
+    }
+
+    await db
+        .update(notifications)
+        .set({
+            isArchived: true,
+            archivedAt: timestamp,
+            updatedAt: timestamp
+        })
+        .where(eq(notifications.id, id));
+
+    logger.info({ notificationId: id, userId: tokenPayload.userId }, "Archived notification");
+
+    // Redirect back
+    return redirect('/notifications', 302);
+});

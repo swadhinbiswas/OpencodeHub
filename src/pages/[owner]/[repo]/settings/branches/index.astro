@@ -1,13 +1,14 @@
 ---
-import RepositoryLayout from "@/layouts/RepositoryLayout.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
 import { getDatabase, schema } from "@/db";
 import { eq, and } from "drizzle-orm";
 
-const { owner, repo } = Astro.params;
+const { owner, repo: repoName } = Astro.params;
 const db = getDatabase();
 
 const repository = await db.query.repositories.findFirst({
-  where: eq(schema.repositories.slug, repo!),
+  where: eq(schema.repositories.slug, repoName!),
   with: {
     owner: true,
   },
@@ -21,81 +22,127 @@ const rules = await db.query.branchProtection.findMany({
   where: eq(schema.branchProtection.repositoryId, repository.id),
   orderBy: (rules, { desc }) => [desc(rules.createdAt)],
 });
+
+const repoHeaderData = {
+  owner: repository.owner.username,
+  name: repository.name,
+  visibility: repository.visibility,
+  defaultBranch: repository.defaultBranch,
+  stars: repository.starCount,
+  forks: repository.forkCount,
+  watchers: repository.watchCount,
+  language: repository.language || "Unknown",
+  license: repository.licenseType || "None",
+  description: repository.description,
+  openIssueCount: 0, // Simplified for now
+  openPrCount: repository.openPrCount,
+  updatedAt: repository.updatedAt,
+  topics: repository.topics ? JSON.parse(repository.topics) : [],
+  httpCloneUrl: repository.httpCloneUrl,
+  sshCloneUrl: repository.sshCloneUrl,
+};
 ---
 
-<Layout title={`Branch Protection - ${owner}/${repo}`}>
-  <div class="container mx-auto px-4 py-8">
-    <div class="mb-6 flex items-center justify-between">
-      <div>
-        <h1 class="text-2xl font-bold">Branch Protection Rules</h1>
-        <p class="text-gray-400">Define rules to enforce workflows on specific branches.</p>
-      </div>
-      <a
-        href={`/${owner}/${repo}/settings/branches/new`}
-        class="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700"
-      >
-        Add Rule
-      </a>
-    </div>
+<BaseLayout title={`Branch Protection - ${owner}/${repoName}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repoHeaderData} activeTab="settings" />
 
-    <div class="rounded-lg border border-gray-700 bg-gray-800">
-      {rules.length === 0 ? (
-        <div class="p-8 text-center text-gray-400">
-          <p>No branch protection rules defined.</p>
+    <div class="container mx-auto px-4 py-8">
+      <div class="mb-6 flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-bold">Branch Protection Rules</h1>
+          <p class="text-gray-400">
+            Define rules to enforce workflows on specific branches.
+          </p>
         </div>
-      ) : (
-        <div class="divide-y divide-gray-700">
-          {rules.map((rule) => (
-            <div class="flex items-center justify-between p-4">
-              <div>
-                <div class="flex items-center gap-2">
-                  <h3 class="font-bold text-white">{rule.pattern}</h3>
-                  {!rule.active && (
-                    <span class="rounded bg-gray-600 px-2 py-0.5 text-xs text-white">Disabled</span>
-                  )}
-                </div>
-                <div class="mt-1 flex gap-4 text-sm text-gray-400">
-                  {rule.requiresPr && <span>• Requires PR</span>}
-                  {rule.requiredApprovals > 0 && <span>• {rule.requiredApprovals} Approval(s)</span>}
-                  {!rule.allowForcePushes && <span>• No Force Push</span>}
-                </div>
-              </div>
-              <div class="flex items-center gap-2">
-                <a
-                  href={`/${owner}/${repo}/settings/branches/${rule.id}`}
-                  class="text-blue-400 hover:underline"
-                >
-                  Edit
-                </a>
-                <button
-                  class="text-red-400 hover:underline delete-rule-btn"
-                  data-id={rule.id}
-                  data-repo-id={repository.id}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+        <a
+          href={`/${owner}/${repoName}/settings/branches/new`}
+          class="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+        >
+          Add Rule
+        </a>
+      </div>
+
+      {
+        rules.length === 0 ? (
+          <div class="rounded-lg border border-gray-700 bg-gray-800 p-8 text-center">
+            <p class="text-gray-400">No branch protection rules defined yet.</p>
+            <a
+              href={`/${owner}/${repoName}/settings/branches/new`}
+              class="mt-4 inline-block text-blue-400 hover:underline"
+            >
+              Create your first rule
+            </a>
+          </div>
+        ) : (
+          <div class="overflow-hidden rounded-lg border border-gray-700 bg-gray-800">
+            <table class="w-full text-left text-sm text-gray-400">
+              <thead class="bg-gray-900 text-xs uppercase text-gray-400">
+                <tr>
+                  <th class="px-6 py-3">Branch Pattern</th>
+                  <th class="px-6 py-3">Required Approvals</th>
+                  <th class="px-6 py-3">Requires PR</th>
+                  <th class="px-6 py-3">Last Updated</th>
+                  <th class="px-6 py-3" />
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-700">
+                {rules.map((rule) => (
+                  <tr class="hover:bg-gray-750">
+                    <td class="px-6 py-4 font-medium text-white">
+                      {rule.pattern}
+                    </td>
+                    <td class="px-6 py-4">
+                      {rule.requiredApprovals
+                        ? `${rule.requiredApprovals} reviews`
+                        : "None"}
+                    </td>
+                    <td class="px-6 py-4">{rule.requiresPr ? "Yes" : "No"}</td>
+                    <td class="px-6 py-4">
+                      {new Date(rule.updatedAt).toLocaleDateString()}
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                      <a
+                        href={`/${owner}/${repoName}/settings/branches/${rule.id}`}
+                        class="font-medium text-blue-400 hover:underline"
+                      >
+                        Edit
+                      </a>
+                      <button
+                        class="text-red-400 hover:underline delete-rule-btn ml-2"
+                        data-id={rule.id}
+                        data-repo-id={repository.id}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      }
     </div>
   </div>
-</Layout>
+</BaseLayout>
 
 <script>
   document.querySelectorAll(".delete-rule-btn").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       if (!confirm("Are you sure you want to delete this rule?")) return;
-      
+
       const target = e.target as HTMLButtonElement;
       const id = target.dataset.id;
       const repoId = target.dataset.repoId;
 
       try {
-        const res = await fetch(`/api/repos/${repoId}/branch-protection/${id}`, {
-          method: "DELETE",
-        });
+        const res = await fetch(
+          `/api/repos/${repoId}/branch-protection/${id}`,
+          {
+            method: "DELETE",
+          },
+        );
 
         if (res.ok) {
           window.location.reload();

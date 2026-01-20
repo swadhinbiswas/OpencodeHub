@@ -1298,6 +1298,7 @@ export async function commitFile(
   // We need to use plumbing commands because it's a bare repo
   const tempIndexFile = join(repoPath, `temp_index_${Date.now()}_${Math.random().toString(36).substring(7)}`);
 
+
   try {
     // 1. Read the tree of the branch into a temporary index
     // We set GIT_INDEX_FILE environment variable for these commands
@@ -1362,4 +1363,11 @@ export async function commitFile(
       // Ignore cleanup error
     }
   }
+}
+
+/**
+ * Get the physical path for a repository
+ */
+export function getRepoPath(owner: string, name: string): string {
+  return join(process.cwd(), "repos", owner, `${name}.git`);
 }

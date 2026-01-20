@@ -1,17 +1,21 @@
 import { updateStorageConfig } from "@/lib/storage";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { APIRoute } from "astro";
+import { withErrorHandler } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { forbidden, success, badRequest, serverError } from "@/lib/api";
 
 // GET /api/admin/config/storage
-export const GET: APIRoute = async ({ locals }) => {
+export const GET: APIRoute = withErrorHandler(async ({ locals }) => {
     // Check admin permissions
     const user = locals.user;
     if (!user?.isAdmin) {
-        return new Response("Unauthorized", { status: 403 });
+        return forbidden();
     }
 
     const { getDatabase, schema } = await import("@/db");
     const { eq } = await import("drizzle-orm");
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // Fetch from DB
     const configRow = await db.query.systemConfig.findFirst({
@@ -35,24 +39,22 @@ export const GET: APIRoute = async ({ locals }) => {
         };
     }
 
-    return new Response(JSON.stringify(config), {
-        headers: { "Content-Type": "application/json" }
-    });
-};
+    return success(config);
+});
 
 // POST /api/admin/config/storage
-export const POST: APIRoute = async ({ request, locals }) => {
+export const POST: APIRoute = withErrorHandler(async ({ request, locals }) => {
     // Check admin permissions
     const user = locals.user;
     if (!user?.isAdmin) {
-        return new Response("Unauthorized", { status: 403 });
+        return forbidden();
     }
 
     let config;
     try {
         config = await request.json();
     } catch (e) {
-        return new Response("Invalid JSON", { status: 400 });
+        return badRequest("Invalid JSON");
     }
 
     // Mask secrets if they are placeholder values (e.g. "*****")
@@ -64,10 +66,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
     // TODO: Implement test logic here or separately.
     // For now, simple save.
 
-    try {
-        await updateStorageConfig(config, user.id);
-        return new Response(JSON.stringify({ success: true }), { status: 200 });
-    } catch (err: any) {
-        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
-    }
-};
+    await updateStorageConfig(config, user.id);
+
+    logger.info({ adminId: user.id }, "Storage config updated");
+
+    return success({ success: true });
+});

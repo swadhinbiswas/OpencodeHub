@@ -1,4 +1,5 @@
-import { getDatabase } from "@/db";
+import { getDatabase, schema } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { logger } from "@/lib/logger";
 import type { APIRoute } from "astro";
 import { spawn } from "child_process";
@@ -14,7 +15,7 @@ export const GET: APIRoute = async ({ request }) => {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const db = getDatabase();
+  const db = getDatabase() as NodePgDatabase<typeof schema>;
   const repos = await db.query.repositories.findMany();
 
   logger.info({ count: repos.length }, "Starting garbage collection");

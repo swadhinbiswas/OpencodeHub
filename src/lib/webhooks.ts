@@ -4,6 +4,7 @@
  */
 
 import crypto from "crypto";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDatabase, schema } from "@/db";
 import { generateId } from "./utils";
 import { eq, and } from "drizzle-orm";
@@ -21,7 +22,7 @@ export async function triggerWebhooks(
     event: string,
     payload: WebhookPayload
 ): Promise<void> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // Find active webhooks for this repo
     const webhooks = await db.query.webhooks.findMany({
@@ -62,7 +63,7 @@ async function dispatchWebhook(
     event: string,
     payload: WebhookPayload
 ): Promise<void> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
     const deliveryId = generateId();
     const startTime = Date.now();
 
@@ -94,13 +95,13 @@ async function dispatchWebhook(
             id: deliveryId,
             webhookId: webhook.id,
             event,
-            payload,
+            payload: JSON.stringify(payload),
             status: response.ok ? "success" : "failure",
             responseCode: response.status,
             responseBody: responseBody.slice(0, 1000), // Truncate
             durationMs,
-            requestHeaders: headers,
-            responseHeaders: Object.fromEntries(response.headers.entries()),
+            requestHeaders: JSON.stringify(headers),
+            responseHeaders: JSON.stringify(Object.fromEntries(response.headers.entries())),
         });
 
         // Update webhook stats
@@ -109,7 +110,7 @@ async function dispatchWebhook(
             .set({
                 deliveryCount: (webhook.deliveryCount || 0) + 1,
                 lastDeliveryStatus: response.ok ? "success" : "failure",
-                lastDeliveryAt: new Date().toISOString(),
+                lastDeliveryAt: new Date(),
             })
             .where(eq(schema.webhooks.id, webhook.id));
 
@@ -121,7 +122,7 @@ async function dispatchWebhook(
             id: deliveryId,
             webhookId: webhook.id,
             event,
-            payload,
+            payload: JSON.stringify(payload),
             status: "failure",
             responseCode: 0,
             error: error.message,
@@ -134,7 +135,7 @@ async function dispatchWebhook(
             .set({
                 deliveryCount: (webhook.deliveryCount || 0) + 1,
                 lastDeliveryStatus: "failure",
-                lastDeliveryAt: new Date().toISOString(),
+                lastDeliveryAt: new Date(),
             })
             .where(eq(schema.webhooks.id, webhook.id));
     }

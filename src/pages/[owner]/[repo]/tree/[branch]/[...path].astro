@@ -31,7 +31,7 @@ if (!user) return Astro.redirect("/404");
 const repoData = await db.query.repositories.findFirst({
   where: and(
     eq(schema.repositories.ownerId, user.id),
-    eq(schema.repositories.name, repoName!)
+    eq(schema.repositories.name, repoName!),
   ),
   with: {
     owner: true,
@@ -50,17 +50,19 @@ if (!hasAccess) {
 
 // Fetch issue count
 const issueCountResult = await db
+  // @ts-expect-error: count argument mismatch
   .select({ count: sql<number>`count(*)` })
   .from(schema.issues)
   .where(
     and(
       eq(schema.issues.repositoryId, repoData.id),
-      eq(schema.issues.state, "open")
-    )
+      eq(schema.issues.state, "open"),
+    ),
   )
   .get();
 
-const openIssueCount = issueCountResult?.count || 0;
+const openIssueCount =
+  (issueCountResult as { count: number } | undefined)?.count || 0;
 
 // 2. Git Operations
 const currentBranch = branch || repoData.defaultBranch;
@@ -72,7 +74,7 @@ let latestCommit: any = null;
 function timeAgo(date: Date | string | number) {
   if (!date) return "";
   const seconds = Math.floor(
-    (new Date().getTime() - new Date(date).getTime()) / 1000
+    (new Date().getTime() - new Date(date).getTime()) / 1000,
   );
   let interval = seconds / 31536000;
   if (interval > 1) return Math.floor(interval) + " years ago";
@@ -92,7 +94,7 @@ try {
   const gitFiles = await listFiles(
     repoData.diskPath,
     currentBranch,
-    currentPath
+    currentPath,
   );
 
   // Map to UI format with commits
@@ -103,7 +105,7 @@ try {
       const commit = await getLastCommit(
         repoData.diskPath,
         currentBranch,
-        f.path
+        f.path,
       );
 
       const lastCommit = commit
@@ -119,7 +121,7 @@ try {
         type: f.type,
         lastCommit,
       };
-    })
+    }),
   );
 
   // Sort: directories first
@@ -166,9 +168,12 @@ const repo = {
 let branches: string[] = [repoData.defaultBranch];
 try {
   const branchInfos = await getBranches(repoData.diskPath);
-  branches = branchInfos.map(b => b.name);
+  branches = branchInfos.map((b) => b.name);
   // Ensure default branch is first
-  branches = [repoData.defaultBranch, ...branches.filter(b => b !== repoData.defaultBranch)];
+  branches = [
+    repoData.defaultBranch,
+    ...branches.filter((b) => b !== repoData.defaultBranch),
+  ];
 } catch (e) {
   console.error("Error fetching branches:", e);
 }

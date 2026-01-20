@@ -14,7 +14,15 @@ import { getDatabase, schema } from "@/db";
 import { eq, and } from "drizzle-orm";
 import { canAdminRepo } from "@/lib/permissions";
 import RepoHeader from "@/components/repo/RepoHeader.astro";
-import { Webhook, Plus, Trash2, Check, X, RefreshCw, Users } from "lucide-react";
+import {
+  Webhook,
+  Plus,
+  Trash2,
+  Check,
+  X,
+  RefreshCw,
+  Users,
+} from "lucide-react";
 
 const { owner: ownerName, repo: repoName } = Astro.params;
 const db = getDatabase();
@@ -29,7 +37,7 @@ if (!user) return Astro.redirect("/404");
 const repoData = await db.query.repositories.findFirst({
   where: and(
     eq(schema.repositories.ownerId, user.id),
-    eq(schema.repositories.name, repoName!)
+    eq(schema.repositories.name, repoName!),
   ),
   with: {
     owner: true,
@@ -70,9 +78,21 @@ const repo = {
 
 const availableEvents = [
   { value: "push", label: "Push", description: "Branch or tag pushed" },
-  { value: "pull_request", label: "Pull Request", description: "PR opened, closed, merged" },
-  { value: "issues", label: "Issues", description: "Issue opened, closed, etc." },
-  { value: "issue_comment", label: "Issue Comment", description: "Comment on issue or PR" },
+  {
+    value: "pull_request",
+    label: "Pull Request",
+    description: "PR opened, closed, merged",
+  },
+  {
+    value: "issues",
+    label: "Issues",
+    description: "Issue opened, closed, etc.",
+  },
+  {
+    value: "issue_comment",
+    label: "Issue Comment",
+    description: "Comment on issue or PR",
+  },
   { value: "release", label: "Release", description: "Release published" },
   { value: "star", label: "Star", description: "Repository starred" },
   { value: "fork", label: "Fork", description: "Repository forked" },
@@ -124,7 +144,8 @@ const availableEvents = [
               Add Webhook
             </CardTitle>
             <CardDescription>
-              Webhooks allow external services to be notified when events happen.
+              Webhooks allow external services to be notified when events
+              happen.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -151,21 +172,25 @@ const availableEvents = [
               <div class="space-y-2">
                 <Label>Events</Label>
                 <div class="grid gap-2 sm:grid-cols-2">
-                  {availableEvents.map((event) => (
-                    <label class="flex items-start gap-2 p-2 rounded border hover:bg-muted cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        name="events" 
-                        value={event.value}
-                        class="mt-0.5 accent-primary"
-                        checked={event.value === "push"}
-                      />
-                      <div>
-                        <div class="font-medium text-sm">{event.label}</div>
-                        <div class="text-xs text-muted-foreground">{event.description}</div>
-                      </div>
-                    </label>
-                  ))}
+                  {
+                    availableEvents.map((event) => (
+                      <label class="flex items-start gap-2 p-2 rounded border hover:bg-muted cursor-pointer">
+                        <input
+                          type="checkbox"
+                          name="events"
+                          value={event.value}
+                          class="mt-0.5 accent-primary"
+                          checked={event.value === "push"}
+                        />
+                        <div>
+                          <div class="font-medium text-sm">{event.label}</div>
+                          <div class="text-xs text-muted-foreground">
+                            {event.description}
+                          </div>
+                        </div>
+                      </label>
+                    ))
+                  }
                 </div>
               </div>
               <Button type="submit">
@@ -187,76 +212,110 @@ const availableEvents = [
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {webhooks.length === 0 ? (
-              <div class="text-center py-8 text-muted-foreground">
-                <Webhook className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No webhooks configured</p>
-                <p class="text-sm">Add a webhook to get started!</p>
-              </div>
-            ) : (
-              <div class="space-y-4">
-                {webhooks.map((webhook) => {
-                  const events = JSON.parse(webhook.events || "[]");
-                  return (
-                    <div class="p-4 rounded-lg border" data-webhook-id={webhook.id}>
-                      <div class="flex items-center justify-between">
-                        <div class="flex-1 min-w-0">
-                          <div class="flex items-center gap-2">
-                            {webhook.isActive ? (
-                              <span class="h-2 w-2 rounded-full bg-green-500" title="Active"></span>
-                            ) : (
-                              <span class="h-2 w-2 rounded-full bg-muted-foreground" title="Inactive"></span>
-                            )}
-                            <span class="font-medium truncate">{webhook.url}</span>
-                          </div>
-                          <div class="flex flex-wrap gap-1 mt-2">
-                            {events.map((event: string) => (
-                              <span class="text-xs bg-muted px-2 py-0.5 rounded">{event}</span>
-                            ))}
-                          </div>
-                          {webhook.lastDeliveryAt && (
-                            <div class="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                              <span>Last delivery: {new Date(webhook.lastDeliveryAt).toLocaleString()}</span>
-                              {webhook.lastDeliveryStatus && (
-                                webhook.lastDeliveryStatus >= 200 && webhook.lastDeliveryStatus < 300 ? (
-                                  <span class="text-green-600">✓ {webhook.lastDeliveryStatus}</span>
-                                ) : (
-                                  <span class="text-destructive">✗ {webhook.lastDeliveryStatus}</span>
-                                )
+            {
+              webhooks.length === 0 ? (
+                <div class="text-center py-8 text-muted-foreground">
+                  <Webhook className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No webhooks configured</p>
+                  <p class="text-sm">Add a webhook to get started!</p>
+                </div>
+              ) : (
+                <div class="space-y-4">
+                  {webhooks.map((webhook) => {
+                    const events = Array.isArray(webhook.events)
+                      ? webhook.events
+                      : typeof webhook.events === "string"
+                        ? JSON.parse(webhook.events || "[]")
+                        : [];
+
+                    const status = parseInt(webhook.lastDeliveryStatus || "0");
+
+                    return (
+                      <div
+                        class="p-4 rounded-lg border"
+                        data-webhook-id={webhook.id}
+                      >
+                        <div class="flex items-center justify-between">
+                          <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                              {webhook.active ? (
+                                <span
+                                  class="h-2 w-2 rounded-full bg-green-500"
+                                  title="Active"
+                                />
+                              ) : (
+                                <span
+                                  class="h-2 w-2 rounded-full bg-muted-foreground"
+                                  title="Inactive"
+                                />
                               )}
+                              <span class="font-medium truncate">
+                                {webhook.url}
+                              </span>
                             </div>
-                          )}
-                        </div>
-                        <div class="flex items-center gap-2">
-                          <button
-                            class="toggle-webhook-btn p-2 hover:bg-muted rounded"
-                            data-webhook-id={webhook.id}
-                            data-active={webhook.isActive}
-                            title={webhook.isActive ? "Disable" : "Enable"}
-                          >
-                            {webhook.isActive ? <X class="h-4 w-4" /> : <Check className="h-4 w-4" />}
-                          </button>
-                          <button
-                            class="test-webhook-btn p-2 hover:bg-muted rounded"
-                            data-webhook-id={webhook.id}
-                            title="Test webhook"
-                          >
-                            <RefreshCw className="h-4 w-4" />
-                          </button>
-                          <button
-                            class="delete-webhook-btn p-2 hover:bg-destructive/10 rounded text-destructive"
-                            data-webhook-id={webhook.id}
-                            title="Delete webhook"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                            <div class="flex flex-wrap gap-1 mt-2">
+                              {events.map((event: string) => (
+                                <span class="text-xs bg-muted px-2 py-0.5 rounded">
+                                  {event}
+                                </span>
+                              ))}
+                            </div>
+                            {webhook.lastDeliveryAt && (
+                              <div class="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                                <span>
+                                  Last delivery:{" "}
+                                  {new Date(
+                                    webhook.lastDeliveryAt,
+                                  ).toLocaleString()}
+                                </span>
+                                {webhook.lastDeliveryStatus &&
+                                  (status >= 200 && status < 300 ? (
+                                    <span class="text-green-600">
+                                      ✓ {status}
+                                    </span>
+                                  ) : (
+                                    <span class="text-destructive">
+                                      ✗ {status}
+                                    </span>
+                                  ))}
+                              </div>
+                            )}
+                          </div>
+                          <div class="flex items-center gap-2">
+                            <button
+                              class="toggle-webhook-btn p-2 hover:bg-muted rounded"
+                              data-webhook-id={webhook.id}
+                              data-active={webhook.active}
+                              title={webhook.active ? "Disable" : "Enable"}
+                            >
+                              {webhook.active ? (
+                                <X className="h-4 w-4" />
+                              ) : (
+                                <Check className="h-4 w-4" />
+                              )}
+                            </button>
+                            <button
+                              class="test-webhook-btn p-2 hover:bg-muted rounded"
+                              data-webhook-id={webhook.id}
+                              title="Test webhook"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                            </button>
+                            <button
+                              class="delete-webhook-btn p-2 hover:bg-destructive/10 rounded text-destructive"
+                              data-webhook-id={webhook.id}
+                              title="Delete webhook"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              )
+            }
           </CardContent>
         </Card>
       </div>
@@ -294,7 +353,7 @@ const availableEvents = [
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || data.error || "Failed to add webhook");
       }
@@ -316,11 +375,14 @@ const availableEvents = [
       const currentActive = btn.dataset.active === "true";
 
       try {
-        const response = await fetch(`/api/repos/${owner}/${repo}/webhooks/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ isActive: !currentActive }),
-        });
+        const response = await fetch(
+          `/api/repos/${owner}/${repo}/webhooks/${id}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ active: !currentActive }),
+          },
+        );
 
         if (!response.ok) throw new Error("Failed to toggle webhook");
         window.location.reload();
@@ -337,9 +399,12 @@ const availableEvents = [
       if (!confirm("Delete this webhook?")) return;
 
       try {
-        const response = await fetch(`/api/repos/${owner}/${repo}/webhooks/${id}`, {
-          method: "DELETE",
-        });
+        const response = await fetch(
+          `/api/repos/${owner}/${repo}/webhooks/${id}`,
+          {
+            method: "DELETE",
+          },
+        );
 
         if (!response.ok) throw new Error("Failed to delete webhook");
         btn.closest("[data-webhook-id]").remove();
@@ -355,9 +420,12 @@ const availableEvents = [
       const id = btn.dataset.webhookId;
 
       try {
-        const response = await fetch(`/api/repos/${owner}/${repo}/webhooks/${id}/test`, {
-          method: "POST",
-        });
+        const response = await fetch(
+          `/api/repos/${owner}/${repo}/webhooks/${id}/test`,
+          {
+            method: "POST",
+          },
+        );
 
         const data = await response.json();
         alert(data.success ? "Test ping sent!" : `Error: ${data.message}`);

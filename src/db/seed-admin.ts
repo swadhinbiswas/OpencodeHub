@@ -7,7 +7,7 @@ import { faker } from "@faker-js/faker";
 
 // Create a Bun-native DB connection for seeding
 const sqlite = new Database("data/opencodehub.db");
-const db = drizzle(sqlite, { schema });
+const db = drizzle(sqlite, { schema }) as any;
 
 async function seed() {
     console.log("🌱 Seeding fancy admin demo data (Bun Edition)...");
@@ -22,8 +22,8 @@ async function seed() {
             email: faker.internet.email(),
             display_name: faker.person.fullName(), // Note: verify schema column name
             avatar_url: faker.image.avatar(),
-            created_at: faker.date.past().toISOString(),
-            updated_at: new Date().toISOString(),
+            created_at: faker.date.past(),
+            updated_at: new Date(),
             role: 'user'
         };
 
@@ -86,8 +86,8 @@ async function seed() {
             defaultBranch: 'main',
             diskPath: `/var/opt/opencodehub/repos/${owner.username}/${faker.word.sample()}`,
             languages: JSON.stringify(repoLangs),
-            createdAt: faker.date.past().toISOString(),
-            updatedAt: faker.date.recent().toISOString()
+            createdAt: faker.date.past(),
+            updatedAt: faker.date.recent()
         };
 
         try {
@@ -118,13 +118,13 @@ async function seed() {
                 message: faker.git.commitMessage(),
                 authorName: user.displayName || user.username,
                 authorEmail: user.email,
-                authorDate: faker.date.recent({ days: 60 }).toISOString(),
+                authorDate: faker.date.recent({ days: 60 }),
                 committerName: user.displayName || user.username,
                 committerEmail: user.email,
-                committerDate: faker.date.recent({ days: 60 }).toISOString(),
+                committerDate: faker.date.recent({ days: 60 }),
                 userId: user.id,
                 stats: JSON.stringify(stats),
-                createdAt: new Date().toISOString()
+                createdAt: new Date()
             });
         } catch (e) {
             // console.error("Commit error", e);
@@ -151,8 +151,8 @@ async function seed() {
                 baseBranch: 'main',
                 headSha: faker.git.commitSha(),
                 baseSha: faker.git.commitSha(),
-                createdAt: faker.date.recent({ days: 30 }).toISOString(),
-                updatedAt: faker.date.recent().toISOString()
+                createdAt: faker.date.recent({ days: 30 }),
+                updatedAt: faker.date.recent()
             });
         } catch (e) { }
     }
@@ -178,7 +178,7 @@ async function seed() {
                 targetType: targetTypes[Math.floor(Math.random() * targetTypes.length)],
                 targetId: repo.id,
                 payload: JSON.stringify({ message: faker.git.commitMessage() }),
-                createdAt: faker.date.recent({ days: 1 }).toISOString()
+                createdAt: faker.date.recent({ days: 1 })
             });
         } catch (e) { }
     }

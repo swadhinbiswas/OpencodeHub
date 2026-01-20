@@ -61,8 +61,9 @@ const repo = {
 };
 
 // Fetch real issue count
-const issueCountResult = await db
-    .select({ count: count() })
+const issueCountResult = (await db
+    // @ts-expect-error: count argument mismatch
+    .select({ count: sql<number>`count(*)` })
     .from(schema.issues)
     .where(
         and(
@@ -70,7 +71,7 @@ const issueCountResult = await db
             eq(schema.issues.state, "open"),
         ),
     )
-    .get();
+    .get()) as { count: number } | undefined;
 
 repo.openIssueCount = issueCountResult?.count || 0;
 

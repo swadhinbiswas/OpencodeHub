@@ -1,5 +1,6 @@
 
-import { getDatabase } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { getDatabase, schema } from "@/db";
 import { repositories, users } from "@/db/schema";
 import { generateId, slugify, now } from "@/lib/utils";
 import { faker } from "@faker-js/faker";
@@ -10,7 +11,7 @@ import fs from "fs/promises";
 
 async function seed() {
     console.log("🌱 Starting large-scale seeding...");
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // Get all users
     const allUsers = await db.query.users.findMany();
@@ -64,8 +65,8 @@ async function seed() {
             forkCount: faker.number.int({ min: 0, max: 50 }),
             watchCount: faker.number.int({ min: 0, max: 100 }),
             language: faker.helpers.arrayElement(["TypeScript", "JavaScript", "Python", "Go", "Rust", "Java"]),
-            createdAt: now(),
-            updatedAt: now(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
         });
 
         // 2. Initialize Git Repo on Disk

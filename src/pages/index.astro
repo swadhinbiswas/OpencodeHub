@@ -29,9 +29,9 @@ try {
   });
 
   // Get basic stats
-  const repositories = await db.select().from(schema.repositories).all();
+  const repositories = await db.query.repositories.findMany();
   const repoCount = repositories.length;
-  const users = await db.select().from(schema.users).all();
+  const users = await db.query.users.findMany();
   const userCount = users.length;
 
   stats.repos = repoCount;

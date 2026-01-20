@@ -1,0 +1,37 @@
+Note: Unnecessary 
+Note: use of -X or 
+Note: --request, 
+Note: POST is 
+Note: already 
+Note: inferred.
+* Host localhost:3000 was resolved.
+* IPv6: ::1
+* IPv4: 127.0.0.1
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0*   Trying [::1]:3000...
+* Established connection to localhost (::1 port 3000) from ::1 port 32838 
+* using HTTP/1.x
+> POST /api/auth/register HTTP/1.1
+> Host: localhost:3000
+> User-Agent: curl/8.18.0
+> Accept: */*
+> Content-Type: application/json
+> Content-Length: 127
+> 
+} [127 bytes data]
+* upload completely sent off: 127 bytes
+100    127   0      0 100    127      0    105   00:01   00:01            105< HTTP/1.1 201 Created
+< Vary: Origin
+* Added cookie och_session="eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOiJ1c3JfR3h4M1pCMk41eThpVXVyWjJEQVRsIiwidXNlcm5hbWUiOiJ0ZXN0dXNlcjUiLCJlbWFpbCI6InRlc3R1c2VyNUBleGFtcGxlLmNvbSIsInNlc3Npb25JZCI6InNlc3NfS3VFUHlNQmFsZ0s0RjgwZTVWZENMIiwiaWF0IjoxNzY4OTMzMDIyLCJpc3MiOiJvcGVuY29kZWh1YiIsImF1ZCI6Im9wZW5jb2RlaHViLWFwaSIsImV4cCI6MTc2OTUzNzgyMn0.QiHu30cZVUMaWabicMoWL9QIuy0FQ0fE4tEPkpUF3Sw" for domain localhost, path /, expire 1769537822
+< set-cookie: och_session=eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOiJ1c3JfR3h4M1pCMk41eThpVXVyWjJEQVRsIiwidXNlcm5hbWUiOiJ0ZXN0dXNlcjUiLCJlbWFpbCI6InRlc3R1c2VyNUBleGFtcGxlLmNvbSIsInNlc3Npb25JZCI6InNlc3NfS3VFUHlNQmFsZ0s0RjgwZTVWZENMIiwiaWF0IjoxNzY4OTMzMDIyLCJpc3MiOiJvcGVuY29kZWh1YiIsImF1ZCI6Im9wZW5jb2RlaHViLWFwaSIsImV4cCI6MTc2OTUzNzgyMn0.QiHu30cZVUMaWabicMoWL9QIuy0FQ0fE4tEPkpUF3Sw; Path=/; Expires=Tue, 27 Jan 2026 18:17:02 GMT; HttpOnly; SameSite=Lax
+< content-type: application/json
+< Date: Tue, 20 Jan 2026 18:17:02 GMT
+< Connection: keep-alive
+< Keep-Alive: timeout=5
+< Transfer-Encoding: chunked
+< 
+{ [560 bytes data]
+100    675   0    548 100    127    418     97   00:01   00:01            105100    675   0    548 100    127    418     97   00:01   00:01            105100    675   0    548 100    127    418     97   00:01   00:01            105
+* Connection #0 to host localhost:3000 left intact
+{"success":true,"data":{"user":{"id":"usr_Gxx3ZB2N5y8iUurZ2DATl","username":"testuser5","email":"testuser5@example.com","displayName":"Test User 5"},"token":"eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOiJ1c3JfR3h4M1pCMk41eThpVXVyWjJEQVRsIiwidXNlcm5hbWUiOiJ0ZXN0dXNlcjUiLCJlbWFpbCI6InRlc3R1c2VyNUBleGFtcGxlLmNvbSIsInNlc3Npb25JZCI6InNlc3NfS3VFUHlNQmFsZ0s0RjgwZTVWZENMIiwiaWF0IjoxNzY4OTMzMDIyLCJpc3MiOiJvcGVuY29kZWh1YiIsImF1ZCI6Im9wZW5jb2RlaHViLWFwaSIsImV4cCI6MTc2OTUzNzgyMn0.QiHu30cZVUMaWabicMoWL9QIuy0FQ0fE4tEPkpUF3Sw","expiresAt":"2026-01-27T18:17:02.573Z"}}

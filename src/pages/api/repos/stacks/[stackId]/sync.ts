@@ -5,6 +5,7 @@
  */
 
 import type { APIRoute } from "astro";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDatabase, schema } from "@/db";
 import { eq } from "drizzle-orm";
 import {
@@ -13,18 +14,24 @@ import {
     pullStackFromRemote,
 } from "@/lib/sync";
 
-export const GET: APIRoute = async ({ params, locals }) => {
+import { withErrorHandler } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { unauthorized, badRequest, notFound, serverError, success } from "@/lib/api";
+
+// ... existing imports ...
+
+export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
     const user = locals.user;
     if (!user) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+        return unauthorized();
     }
 
     const { owner, repo, stackId } = params;
     if (!owner || !repo || !stackId) {
-        return new Response(JSON.stringify({ error: "Missing parameters" }), { status: 400 });
+        return badRequest("Missing parameters");
     }
 
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // Get repository
     const repository = await db.query.repositories.findFirst({
@@ -32,50 +39,42 @@ export const GET: APIRoute = async ({ params, locals }) => {
     });
 
     if (!repository || !repository.diskPath) {
-        return new Response(JSON.stringify({ error: "Repository not found" }), { status: 404 });
+        return notFound("Repository not found");
     }
 
-    try {
-        const syncStatus = await getStackSyncStatus(repository.diskPath, stackId);
+    const syncStatus = await getStackSyncStatus(repository.diskPath, stackId);
 
-        return new Response(JSON.stringify({
-            stackId,
-            needsSync: syncStatus.needsSync,
-            hasConflicts: syncStatus.hasConflicts,
-            branches: Object.entries(syncStatus.branchStatuses).map(([branch, status]) => ({
-                branch,
-                ahead: status.ahead,
-                behind: status.behind,
-                hasUnpushedChanges: status.hasUnpushedChanges,
-                hasRemoteChanges: status.hasRemoteChanges,
-            })),
-            ci: Object.entries(syncStatus.ciStatuses).map(([prNumber, status]) => ({
-                prNumber: parseInt(prNumber),
-                status: status.status,
-                checkRuns: status.checkRuns,
-            })),
-        }), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-        });
-    } catch (error) {
-        console.error("Error getting sync status:", error);
-        return new Response(JSON.stringify({ error: "Failed to get sync status" }), { status: 500 });
-    }
-};
+    return success({
+        stackId,
+        needsSync: syncStatus.needsSync,
+        hasConflicts: syncStatus.hasConflicts,
+        branches: Object.entries(syncStatus.branchStatuses).map(([branch, status]) => ({
+            branch,
+            ahead: status.ahead,
+            behind: status.behind,
+            hasUnpushedChanges: status.hasUnpushedChanges,
+            hasRemoteChanges: status.hasRemoteChanges,
+        })),
+        ci: Object.entries(syncStatus.ciStatuses).map(([prNumber, status]) => ({
+            prNumber: parseInt(prNumber),
+            status: status.status,
+            checkRuns: status.checkRuns,
+        })),
+    });
+});
 
-export const POST: APIRoute = async ({ params, locals, request }) => {
+export const POST: APIRoute = withErrorHandler(async ({ params, locals, request }) => {
     const user = locals.user;
     if (!user) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+        return unauthorized();
     }
 
     const { owner, repo, stackId } = params;
     if (!owner || !repo || !stackId) {
-        return new Response(JSON.stringify({ error: "Missing parameters" }), { status: 400 });
+        return badRequest("Missing parameters");
     }
 
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // Get repository
     const repository = await db.query.repositories.findFirst({
@@ -83,34 +82,31 @@ export const POST: APIRoute = async ({ params, locals, request }) => {
     });
 
     if (!repository || !repository.diskPath) {
-        return new Response(JSON.stringify({ error: "Repository not found" }), { status: 404 });
+        return notFound("Repository not found");
     }
 
-    try {
-        const body = await request.json();
-        const { direction, force } = body;
+    const body = await request.json();
+    const { direction, force } = body;
 
-        let result;
+    let result;
 
-        if (direction === "push") {
-            result = await pushStackToRemote(repository.diskPath, stackId, force);
-        } else if (direction === "pull") {
-            result = await pullStackFromRemote(repository.diskPath, stackId, true);
-        } else {
-            return new Response(JSON.stringify({ error: "Invalid direction (use 'push' or 'pull')" }), { status: 400 });
-        }
-
-        return new Response(JSON.stringify({
-            success: result.success,
-            message: result.message,
-            syncedBranches: result.syncedBranches,
-            conflicts: result.conflicts,
-        }), {
-            status: result.success ? 200 : 400,
-            headers: { "Content-Type": "application/json" },
-        });
-    } catch (error) {
-        console.error("Error syncing:", error);
-        return new Response(JSON.stringify({ error: "Sync failed" }), { status: 500 });
+    if (direction === "push") {
+        result = await pushStackToRemote(repository.diskPath, stackId, force);
+    } else if (direction === "pull") {
+        result = await pullStackFromRemote(repository.diskPath, stackId, true);
+    } else {
+        return badRequest("Invalid direction (use 'push' or 'pull')");
     }
-};
+
+    logger.info({ userId: user.id, repoId: repository.id, stackId, direction, result: result.success ? "success" : "failed" }, "Stack sync operation");
+
+    return new Response(JSON.stringify({
+        success: result.success,
+        message: result.message,
+        syncedBranches: result.syncedBranches,
+        conflicts: result.conflicts,
+    }), {
+        status: result.success ? 200 : 400,
+        headers: { "Content-Type": "application/json" },
+    });
+});

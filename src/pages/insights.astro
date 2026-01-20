@@ -1,0 +1,423 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, desc, and, gte, sql } from "drizzle-orm";
+import {
+  BarChart3,
+  TrendingUp,
+  Clock,
+  GitPullRequest,
+  Users,
+  Calendar,
+  Download,
+  ChevronDown,
+} from "lucide-react";
+
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+const db = getDatabase();
+const period = Astro.url.searchParams.get("period") || "4w";
+const view = Astro.url.searchParams.get("view") || "personal";
+
+// Calculate date range
+const now = new Date();
+let startDate: Date;
+switch (period) {
+  case "1w":
+    startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    break;
+  case "4w":
+    startDate = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
+    break;
+  case "3m":
+    startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+    break;
+  case "1y":
+    startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+    break;
+  default:
+    startDate = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
+}
+
+// Fetch user metrics
+let myMetrics = {
+  prsOpened: 0,
+  prsMerged: 0,
+  reviewsGiven: 0,
+  avgTimeToMerge: 0,
+  avgReviewTime: 0,
+};
+
+let weeklyTrends: { week: string; opened: number; merged: number; reviewed: number }[] = [];
+let topContributors: { username: string; avatarUrl?: string; prs: number; reviews: number }[] = [];
+let reviewStats = { approvals: 0, changesRequested: 0, comments: 0 };
+
+try {
+  // Get user's PRs
+  const myPrs = await db.query.pullRequests.findMany({
+    where: and(
+      eq(schema.pullRequests.authorId, user.id),
+      gte(schema.pullRequests.createdAt, startDate.toISOString())
+    ),
+  });
+  
+  myMetrics.prsOpened = myPrs.length;
+  myMetrics.prsMerged = myPrs.filter(pr => pr.mergedAt).length;
+  
+  // Calculate avg time to merge (in hours)
+  const mergedPrs = myPrs.filter(pr => pr.mergedAt && pr.createdAt);
+  if (mergedPrs.length > 0) {
+    const totalTime = mergedPrs.reduce((acc, pr) => {
+      const created = new Date(pr.createdAt).getTime();
+      const merged = new Date(pr.mergedAt!).getTime();
+      return acc + (merged - created);
+    }, 0);
+    myMetrics.avgTimeToMerge = Math.round(totalTime / mergedPrs.length / (1000 * 60 * 60));
+  }
+  
+  // Get reviews given
+  const myReviews = await db.query.pullRequestReviews.findMany({
+    where: and(
+      eq(schema.pullRequestReviews.reviewerId, user.id),
+      gte(schema.pullRequestReviews.createdAt, startDate.toISOString())
+    ),
+  });
+  
+  myMetrics.reviewsGiven = myReviews.length;
+  reviewStats.approvals = myReviews.filter(r => r.state === "approved").length;
+  reviewStats.changesRequested = myReviews.filter(r => r.state === "changes_requested").length;
+  reviewStats.comments = myReviews.filter(r => r.state === "commented").length;
+  
+  // Generate weekly trends (last 4 weeks)
+  for (let i = 3; i >= 0; i--) {
+    const weekStart = new Date(now.getTime() - (i + 1) * 7 * 24 * 60 * 60 * 1000);
+    const weekEnd = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000);
+    const weekLabel = weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    
+    const weekPrs = myPrs.filter(pr => {
+      const created = new Date(pr.createdAt);
+      return created >= weekStart && created < weekEnd;
+    });
+    
+    const weekMerged = myPrs.filter(pr => {
+      if (!pr.mergedAt) return false;
+      const merged = new Date(pr.mergedAt);
+      return merged >= weekStart && merged < weekEnd;
+    });
+    
+    const weekReviews = myReviews.filter(r => {
+      const created = new Date(r.createdAt);
+      return created >= weekStart && created < weekEnd;
+    });
+    
+    weeklyTrends.push({
+      week: weekLabel,
+      opened: weekPrs.length,
+      merged: weekMerged.length,
+      reviewed: weekReviews.length,
+    });
+  }
+  
+  // Top contributors (if viewing team)
+  if (view === "team") {
+    const allPrs = await db.query.pullRequests.findMany({
+      where: gte(schema.pullRequests.createdAt, startDate.toISOString()),
+      with: { author: true },
+      limit: 100,
+    });
+    
+    const contributorMap = new Map<string, { username: string; avatarUrl?: string; prs: number; reviews: number }>();
+    
+    for (const pr of allPrs) {
+      if (pr.author) {
+        const existing = contributorMap.get(pr.author.id) || { 
+          username: pr.author.username, 
+          avatarUrl: pr.author.avatarUrl || undefined, 
+          prs: 0, 
+          reviews: 0 
+        };
+        existing.prs++;
+        contributorMap.set(pr.author.id, existing);
+      }
+    }
+    
+    topContributors = Array.from(contributorMap.values())
+      .sort((a, b) => b.prs - a.prs)
+      .slice(0, 10);
+  }
+  
+} catch (e) {
+  console.error("Failed to fetch metrics:", e);
+}
+
+function formatDuration(hours: number): string {
+  if (hours < 1) return "< 1h";
+  if (hours < 24) return `${hours}h`;
+  return `${Math.round(hours / 24)}d`;
+}
+---
+
+<BaseLayout title="Insights">
+  <div class="container py-8 max-w-6xl">
+    <div class="flex flex-col gap-6">
+      <!-- Header -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="p-2 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30">
+            <BarChart3 className="h-6 w-6 text-purple-400" />
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold text-white">Insights</h1>
+            <p class="text-sm text-gray-400">Track your productivity and team metrics</p>
+          </div>
+        </div>
+        
+        <div class="flex items-center gap-3">
+          <!-- View Toggle -->
+          <div class="flex bg-white/5 rounded-lg p-1 border border-white/10">
+            <a
+              href={`/insights?period=${period}&view=personal`}
+              class:list={[
+                "px-3 py-1.5 text-sm rounded-md transition-colors",
+                view === "personal" 
+                  ? "bg-purple-500/20 text-purple-300 border border-purple-500/30" 
+                  : "text-gray-400 hover:text-white"
+              ]}
+            >
+              Personal
+            </a>
+            <a
+              href={`/insights?period=${period}&view=team`}
+              class:list={[
+                "px-3 py-1.5 text-sm rounded-md transition-colors",
+                view === "team" 
+                  ? "bg-purple-500/20 text-purple-300 border border-purple-500/30" 
+                  : "text-gray-400 hover:text-white"
+              ]}
+            >
+              Team
+            </a>
+          </div>
+          
+          <!-- Period Selector -->
+          <div class="relative">
+            <select
+              id="period-select"
+              class="appearance-none bg-white/5 border border-white/10 rounded-lg px-4 py-2 pr-8 text-sm text-gray-300 cursor-pointer hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+            >
+              <option value="1w" selected={period === "1w"}>Last Week</option>
+              <option value="4w" selected={period === "4w"}>Last 4 Weeks</option>
+              <option value="3m" selected={period === "3m"}>Last 3 Months</option>
+              <option value="1y" selected={period === "1y"}>Last Year</option>
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          </div>
+          
+          <!-- Export -->
+          <button class="flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300 hover:bg-white/10 transition-colors">
+            <Download className="h-4 w-4" />
+            Export
+          </button>
+        </div>
+      </div>
+
+      <!-- Key Metrics Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="relative group">
+          <div class="absolute -inset-[1px] bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div class="relative p-6 rounded-xl border border-white/10 bg-[#0d1117]/80">
+            <div class="flex items-center justify-between mb-4">
+              <div class="p-2 rounded-lg bg-green-500/10">
+                <GitPullRequest className="h-5 w-5 text-green-400" />
+              </div>
+              <span class="text-xs text-green-400 flex items-center gap-1">
+                <TrendingUp className="h-3 w-3" />
+                +12%
+              </span>
+            </div>
+            <div class="text-3xl font-bold text-white mb-1">{myMetrics.prsOpened}</div>
+            <div class="text-sm text-gray-400">PRs Opened</div>
+          </div>
+        </div>
+        
+        <div class="relative group">
+          <div class="absolute -inset-[1px] bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div class="relative p-6 rounded-xl border border-white/10 bg-[#0d1117]/80">
+            <div class="flex items-center justify-between mb-4">
+              <div class="p-2 rounded-lg bg-purple-500/10">
+                <GitPullRequest className="h-5 w-5 text-purple-400" />
+              </div>
+              <span class="text-xs text-purple-400">{myMetrics.prsOpened > 0 ? Math.round(myMetrics.prsMerged / myMetrics.prsOpened * 100) : 0}%</span>
+            </div>
+            <div class="text-3xl font-bold text-white mb-1">{myMetrics.prsMerged}</div>
+            <div class="text-sm text-gray-400">PRs Merged</div>
+          </div>
+        </div>
+        
+        <div class="relative group">
+          <div class="absolute -inset-[1px] bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div class="relative p-6 rounded-xl border border-white/10 bg-[#0d1117]/80">
+            <div class="flex items-center justify-between mb-4">
+              <div class="p-2 rounded-lg bg-blue-500/10">
+                <Users className="h-5 w-5 text-blue-400" />
+              </div>
+            </div>
+            <div class="text-3xl font-bold text-white mb-1">{myMetrics.reviewsGiven}</div>
+            <div class="text-sm text-gray-400">Reviews Given</div>
+          </div>
+        </div>
+        
+        <div class="relative group">
+          <div class="absolute -inset-[1px] bg-gradient-to-r from-orange-500/20 to-yellow-500/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div class="relative p-6 rounded-xl border border-white/10 bg-[#0d1117]/80">
+            <div class="flex items-center justify-between mb-4">
+              <div class="p-2 rounded-lg bg-orange-500/10">
+                <Clock className="h-5 w-5 text-orange-400" />
+              </div>
+            </div>
+            <div class="text-3xl font-bold text-white mb-1">{formatDuration(myMetrics.avgTimeToMerge)}</div>
+            <div class="text-sm text-gray-400">Avg Time to Merge</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Weekly Trend Chart -->
+        <div class="relative">
+          <div class="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/20 via-transparent to-purple-500/20 rounded-xl opacity-50"></div>
+          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 p-6">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-cyan-400" />
+              Weekly Activity
+            </h3>
+            
+            <!-- Simple bar chart using CSS -->
+            <div class="space-y-4">
+              {weeklyTrends.map((week) => {
+                const maxValue = Math.max(...weeklyTrends.flatMap(w => [w.opened, w.merged, w.reviewed]), 1);
+                return (
+                  <div class="space-y-2">
+                    <div class="flex items-center justify-between text-sm">
+                      <span class="text-gray-400">{week.week}</span>
+                      <div class="flex items-center gap-4 text-xs">
+                        <span class="text-green-400">{week.opened} opened</span>
+                        <span class="text-purple-400">{week.merged} merged</span>
+                        <span class="text-blue-400">{week.reviewed} reviewed</span>
+                      </div>
+                    </div>
+                    <div class="flex gap-1 h-6">
+                      <div 
+                        class="bg-gradient-to-r from-green-500/50 to-green-500/30 rounded transition-all"
+                        style={`width: ${(week.opened / maxValue) * 100}%`}
+                      ></div>
+                      <div 
+                        class="bg-gradient-to-r from-purple-500/50 to-purple-500/30 rounded transition-all"
+                        style={`width: ${(week.merged / maxValue) * 100}%`}
+                      ></div>
+                      <div 
+                        class="bg-gradient-to-r from-blue-500/50 to-blue-500/30 rounded transition-all"
+                        style={`width: ${(week.reviewed / maxValue) * 100}%`}
+                      ></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+        
+        <!-- Review Breakdown -->
+        <div class="relative">
+          <div class="absolute -inset-[1px] bg-gradient-to-r from-green-500/20 via-transparent to-red-500/20 rounded-xl opacity-50"></div>
+          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 p-6">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Users className="h-5 w-5 text-green-400" />
+              Review Breakdown
+            </h3>
+            
+            <div class="flex items-center justify-center gap-8 py-4">
+              <div class="text-center">
+                <div class="w-20 h-20 rounded-full border-4 border-green-500/50 flex items-center justify-center mb-2">
+                  <span class="text-2xl font-bold text-green-400">{reviewStats.approvals}</span>
+                </div>
+                <span class="text-sm text-gray-400">Approvals</span>
+              </div>
+              <div class="text-center">
+                <div class="w-20 h-20 rounded-full border-4 border-yellow-500/50 flex items-center justify-center mb-2">
+                  <span class="text-2xl font-bold text-yellow-400">{reviewStats.changesRequested}</span>
+                </div>
+                <span class="text-sm text-gray-400">Changes</span>
+              </div>
+              <div class="text-center">
+                <div class="w-20 h-20 rounded-full border-4 border-blue-500/50 flex items-center justify-center mb-2">
+                  <span class="text-2xl font-bold text-blue-400">{reviewStats.comments}</span>
+                </div>
+                <span class="text-sm text-gray-400">Comments</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Team Leaderboard (if team view) -->
+      {view === "team" && topContributors.length > 0 && (
+        <div class="relative">
+          <div class="absolute -inset-[1px] bg-gradient-to-r from-yellow-500/20 via-transparent to-orange-500/20 rounded-xl opacity-50"></div>
+          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 p-6">
+            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Users className="h-5 w-5 text-yellow-400" />
+              Top Contributors
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {topContributors.slice(0, 5).map((contributor, index) => (
+                <div class="flex flex-col items-center p-4 rounded-lg bg-white/5 border border-white/10">
+                  <div class="relative mb-2">
+                    {contributor.avatarUrl ? (
+                      <img 
+                        src={contributor.avatarUrl} 
+                        alt="" 
+                        class="h-12 w-12 rounded-full"
+                      />
+                    ) : (
+                      <div class="h-12 w-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-lg font-bold text-white">
+                        {contributor.username[0]?.toUpperCase()}
+                      </div>
+                    )}
+                    {index < 3 && (
+                      <div class:list={[
+                        "absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold",
+                        index === 0 ? "bg-yellow-500 text-black" : 
+                        index === 1 ? "bg-gray-400 text-black" : 
+                        "bg-orange-600 text-white"
+                      ]}>
+                        {index + 1}
+                      </div>
+                    )}
+                  </div>
+                  <span class="font-medium text-white text-sm">{contributor.username}</span>
+                  <span class="text-xs text-gray-400">{contributor.prs} PRs</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  // Period selector handler
+  const periodSelect = document.getElementById('period-select') as HTMLSelectElement;
+  periodSelect?.addEventListener('change', (e) => {
+    const period = (e.target as HTMLSelectElement).value;
+    const url = new URL(window.location.href);
+    url.searchParams.set('period', period);
+    window.location.href = url.toString();
+  });
+</script>

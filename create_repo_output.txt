@@ -1,0 +1,36 @@
+Note: Unnecessary 
+Note: use of -X or 
+Note: --request, 
+Note: POST is 
+Note: already 
+Note: inferred.
+* Host localhost:3000 was resolved.
+* IPv6: ::1
+* IPv4: 127.0.0.1
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0*   Trying [::1]:3000...
+* Established connection to localhost (::1 port 3000) from ::1 port 36728 
+* using HTTP/1.x
+> POST /api/repos HTTP/1.1
+> Host: localhost:3000
+> User-Agent: curl/8.18.0
+> Accept: */*
+> Cookie: och_session=eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOiJ1c3JfR3h4M1pCMk41eThpVXVyWjJEQVRsIiwidXNlcm5hbWUiOiJ0ZXN0dXNlcjUiLCJlbWFpbCI6InRlc3R1c2VyNUBleGFtcGxlLmNvbSIsInNlc3Npb25JZCI6InNlc3NfS3VFUHlNQmFsZ0s0RjgwZTVWZENMIiwiaWF0IjoxNzY4OTMzMDIyLCJpc3MiOiJvcGVuY29kZWh1YiIsImF1ZCI6Im9wZW5jb2RlaHViLWFwaSIsImV4cCI6MTc2OTUzNzgyMn0.QiHu30cZVUMaWabicMoWL9QIuy0FQ0fE4tEPkpUF3Sw
+> Content-Type: application/json
+> Content-Length: 113
+> 
+} [113 bytes data]
+* upload completely sent off: 113 bytes
+100    113   0      0 100    113      0     94   00:01   00:01             94100    113   0      0 100    113      0     51   00:02   00:02             51100    113   0      0 100    113      0     35   00:03   00:03             35100    113   0      0 100    113      0     26   00:04   00:04             26100    113   0      0 100    113      0     21   00:05   00:05             21100    113   0      0 100    113      0     18   00:06   00:06              0100    113   0      0 100    113      0     15   00:07   00:07              0< HTTP/1.1 500 Internal Server Error
+< Vary: Origin
+< content-type: application/json
+< Date: Tue, 20 Jan 2026 18:17:33 GMT
+< Connection: keep-alive
+< Keep-Alive: timeout=5
+< Transfer-Encoding: chunked
+< 
+{ [104 bytes data]
+100    206   0     93 100    113     12     15   00:07   00:07             18100    206   0     93 100    113     12     15   00:07   00:07             18100    206   0     93 100    113     12     15   00:07   00:07             18
+* Connection #0 to host localhost:3000 left intact
+{"success":false,"error":{"code":"SERVER_ERROR","message":"Failed to initialize repository"}}

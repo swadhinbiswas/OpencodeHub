@@ -4,13 +4,13 @@
  */
 
 import { relations } from "drizzle-orm";
-import { sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { users } from "./users";
 
-export const systemConfig = sqliteTable("system_config", {
+export const systemConfig = pgTable("system_config", {
     key: text("key").primaryKey(), // e.g., 'storage_config'
     value: text("value").notNull(), // JSON string
-    updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
     updatedById: text("updated_by_id").references(() => users.id),
 });
 

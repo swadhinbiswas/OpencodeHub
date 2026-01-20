@@ -1,16 +1,15 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { repositories } from "./repositories";
-import { users } from "./users";
 import { relations } from "drizzle-orm";
 
-export const securityScans = sqliteTable("security_scans", {
+export const securityScans = pgTable("security_scans", {
     id: text("id").primaryKey(),
     repositoryId: text("repository_id")
         .notNull()
         .references(() => repositories.id, { onDelete: "cascade" }),
     status: text("status").notNull().default("queued"), // queued, in_progress, completed, failed
-    startedAt: integer("started_at", { mode: "timestamp" }),
-    completedAt: integer("completed_at", { mode: "timestamp" }),
+    startedAt: timestamp("started_at"),
+    completedAt: timestamp("completed_at"),
     criticalCount: integer("critical_count").default(0),
     highCount: integer("high_count").default(0),
     mediumCount: integer("medium_count").default(0),
@@ -19,7 +18,7 @@ export const securityScans = sqliteTable("security_scans", {
     logs: text("logs"),
 });
 
-export const securityVulnerabilities = sqliteTable("security_vulnerabilities", {
+export const securityVulnerabilities = pgTable("security_vulnerabilities", {
     id: text("id").primaryKey(),
     scanId: text("scan_id")
         .notNull()

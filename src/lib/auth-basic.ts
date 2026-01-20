@@ -1,4 +1,5 @@
 import { getDatabase, schema } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 
@@ -13,7 +14,7 @@ export async function validateBasicAuth(
 
   if (!username || !password) return null;
 
-  const db = getDatabase();
+  const db = getDatabase() as NodePgDatabase<typeof schema>;
   const user = await db.query.users.findFirst({
     where: eq(schema.users.username, username),
   });
@@ -33,7 +34,7 @@ export async function validateBasicAuth(
     // Update last used at
     await db
       .update(schema.personalAccessTokens)
-      .set({ lastUsedAt: new Date().toISOString() })
+      .set({ lastUsedAt: new Date() })
       .where(eq(schema.personalAccessTokens.id, pat.id));
     return user.id;
   }

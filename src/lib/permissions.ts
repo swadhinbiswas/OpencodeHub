@@ -1,4 +1,5 @@
-import { getDatabase } from "@/db";
+import { getDatabase, schema } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { Repository } from "@/db/schema";
 import { repositoryCollaborators } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
@@ -35,7 +36,7 @@ export async function getRepoPermission(
 
   if (!userId) return "none";
 
-  const db = getDatabase();
+  const db = getDatabase() as NodePgDatabase<typeof schema>;
 
   // Check collaborator status
   const collaborator = await db.query.repositoryCollaborators.findFirst({

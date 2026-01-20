@@ -4,6 +4,7 @@
  */
 
 import { eq, and, desc } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDatabase, schema } from "@/db";
 import { logger } from "@/lib/logger";
 import { generateId } from "./utils";
@@ -49,7 +50,7 @@ export async function triggerAIReview(
     triggeredById: string,
     config: AIReviewConfig
 ): Promise<typeof schema.aiReviews.$inferSelect> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // Create review record
     const reviewId = generateId();
@@ -61,7 +62,7 @@ export async function triggerAIReview(
         provider: config.provider,
         includesStackContext: config.includeStackContext || false,
         triggeredById,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(),
     };
 
     await db.insert(schema.aiReviews).values(review);
@@ -81,12 +82,12 @@ async function runAIReview(
     pullRequestId: string,
     config: AIReviewConfig
 ): Promise<void> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     try {
         // Mark as running
         await db.update(schema.aiReviews)
-            .set({ status: "running", startedAt: new Date().toISOString() })
+            .set({ status: "running", startedAt: new Date() })
             .where(eq(schema.aiReviews.id, reviewId));
 
         // Get PR and diff
@@ -137,7 +138,7 @@ async function runAIReview(
                 message: suggestion.message,
                 suggestedFix: suggestion.suggestedFix,
                 explanation: suggestion.explanation,
-                createdAt: new Date().toISOString(),
+                createdAt: new Date(),
             });
         }
 
@@ -161,7 +162,7 @@ async function runAIReview(
                 promptTokens: result.promptTokens,
                 completionTokens: result.completionTokens,
                 stackContext,
-                completedAt: new Date().toISOString(),
+                completedAt: new Date(),
             })
             .where(eq(schema.aiReviews.id, reviewId));
 
@@ -171,7 +172,7 @@ async function runAIReview(
             .set({
                 status: "failed",
                 errorMessage: error instanceof Error ? error.message : "Unknown error",
-                completedAt: new Date().toISOString(),
+                completedAt: new Date(),
             })
             .where(eq(schema.aiReviews.id, reviewId));
     }
@@ -304,7 +305,7 @@ export async function getLatestAIReview(pullRequestId: string): Promise<{
     review: typeof schema.aiReviews.$inferSelect;
     suggestions: typeof schema.aiReviewSuggestions.$inferSelect[];
 } | null> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     const review = await db.query.aiReviews.findFirst({
         where: eq(schema.aiReviews.pullRequestId, pullRequestId),
@@ -327,12 +328,12 @@ export async function applyAISuggestion(
     suggestionId: string,
     appliedById: string
 ): Promise<void> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     await db.update(schema.aiReviewSuggestions)
         .set({
             isApplied: true,
-            appliedAt: new Date().toISOString(),
+            appliedAt: new Date(),
             appliedById,
         })
         .where(eq(schema.aiReviewSuggestions.id, suggestionId));
@@ -346,12 +347,12 @@ export async function dismissAISuggestion(
     dismissedById: string,
     reason?: string
 ): Promise<void> {
-    const db = getDatabase();
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     await db.update(schema.aiReviewSuggestions)
         .set({
             isDismissed: true,
-            dismissedAt: new Date().toISOString(),
+            dismissedAt: new Date(),
             dismissedById,
             dismissReason: reason,
         })

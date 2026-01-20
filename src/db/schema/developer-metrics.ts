@@ -4,14 +4,14 @@
  */
 
 import { relations } from "drizzle-orm";
-import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { pullRequests } from "./pull-requests";
 import { repositories } from "./repositories";
 import { users } from "./users";
 
 
 // Per-PR metrics
-export const prMetrics = sqliteTable("pr_metrics", {
+export const prMetrics = pgTable("pr_metrics", {
     id: text("id").primaryKey(),
     pullRequestId: text("pull_request_id")
         .notNull()
@@ -42,21 +42,21 @@ export const prMetrics = sqliteTable("pr_metrics", {
     commits: integer("commits").default(1),
 
     // Stack info
-    isStacked: integer("is_stacked", { mode: "boolean" }).default(false),
+    isStacked: boolean("is_stacked").default(false),
     stackPosition: integer("stack_position"),
 
     // Timestamps
-    prCreatedAt: text("pr_created_at"),
-    firstReviewAt: text("first_review_at"),
-    approvedAt: text("approved_at"),
-    mergedAt: text("merged_at"),
+    prCreatedAt: timestamp("pr_created_at"),
+    firstReviewAt: timestamp("first_review_at"),
+    approvedAt: timestamp("approved_at"),
+    mergedAt: timestamp("merged_at"),
 
-    createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-    updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // Weekly user review metrics (aggregated)
-export const reviewMetrics = sqliteTable("review_metrics", {
+export const reviewMetrics = pgTable("review_metrics", {
     id: text("id").primaryKey(),
     userId: text("user_id")
         .notNull()
@@ -80,12 +80,12 @@ export const reviewMetrics = sqliteTable("review_metrics", {
     approvalsGiven: integer("approvals_given").default(0),
     changesRequestedGiven: integer("changes_requested_given").default(0),
 
-    createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
-    updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // Repository-level weekly metrics (aggregated)
-export const repoMetrics = sqliteTable("repo_metrics", {
+export const repoMetrics = pgTable("repo_metrics", {
     id: text("id").primaryKey(),
     repositoryId: text("repository_id")
         .notNull()
@@ -116,7 +116,7 @@ export const repoMetrics = sqliteTable("repo_metrics", {
     activeAuthors: integer("active_authors").default(0),
     activeReviewers: integer("active_reviewers").default(0),
 
-    createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Relations
