@@ -481,7 +481,8 @@ export async function getCommits(
 
     const args = [
       "log",
-      "--format=%H|%s|%b|%an|%ae|%ai|%cn|%ce|%ci|%P|%G?|%GK|%GS",
+      // Use ASCII record separator (0x1e) as delimiter to avoid issues with | in commit messages
+      "--format=%H%x1e%s%x1e%b%x1e%an%x1e%ae%x1e%ai%x1e%cn%x1e%ce%x1e%ci%x1e%P%x1e%G?%x1e%GK%x1e%GS",
       `-n${limit}`,
       `--skip=${skip}`,
       ref,
@@ -493,8 +494,13 @@ export async function getCommits(
 
     const output = await git.raw(args);
     const commits: CommitInfo[] = [];
+    const DELIMITER = "\x1e"; // ASCII record separator
 
     for (const line of output.trim().split("\n").filter(Boolean)) {
+      const parts = line.split(DELIMITER);
+      // Ensure we have at least the required fields
+      if (parts.length < 9) continue;
+
       const [
         sha,
         subject,
@@ -509,17 +515,17 @@ export async function getCommits(
         gpgStatus,
         gpgKeyId,
         gpgSigner,
-      ] = line.split("|");
+      ] = parts;
 
       commits.push({
         sha,
         message: subject,
         body: body || undefined,
-        authorName,
-        authorEmail,
+        authorName: authorName || "Unknown",
+        authorEmail: authorEmail || "unknown@unknown",
         authorDate: new Date(authorDate),
-        committerName,
-        committerEmail,
+        committerName: committerName || "Unknown",
+        committerEmail: committerEmail || "unknown@unknown",
         committerDate: new Date(committerDate),
         parentShas: parents ? parents.split(" ").filter(Boolean) : [],
         verification: {
