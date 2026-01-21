@@ -1,6 +1,7 @@
 import { getDatabase, schema } from "@/db";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { compareBranches, getMergeBase } from "@/lib/git";
+import { resolveRepoPath } from "@/lib/git-storage";
 import { canReadRepo } from "@/lib/permissions";
 import type { APIRoute } from "astro";
 import { and, eq } from "drizzle-orm";
@@ -48,8 +49,9 @@ export const GET: APIRoute = withErrorHandler(async ({ params, request, locals }
     }
 
     // Compare branches
-    const { commits, diffs } = await compareBranches(repo.diskPath, base, head);
-    const mergeBase = await getMergeBase(repo.diskPath, base, head);
+    const repoPath = await resolveRepoPath(repo.diskPath);
+    const { commits, diffs } = await compareBranches(repoPath, base, head);
+    const mergeBase = await getMergeBase(repoPath, base, head);
 
     return success({ commits, diffs, mergeBase });
 });

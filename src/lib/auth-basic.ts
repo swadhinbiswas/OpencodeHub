@@ -19,23 +19,34 @@ export async function validateBasicAuth(
     where: eq(schema.users.username, username),
   });
 
-  if (!user || !user.passwordHash) return null;
+  if (!user) return null;
+
+  // Check if password looks like a Personal Access Token (och_xxx format)
+  if (password.startsWith("och_")) {
+    const pat = await db.query.personalAccessTokens.findFirst({
+      where: (tokens, { and, eq }) =>
+        and(eq(tokens.userId, user.id), eq(tokens.token, password)),
+    });
+
+    if (pat) {
+      // Update last used at
+      await db
+        .update(schema.personalAccessTokens)
+        .set({ lastUsedAt: new Date() })
+        .where(eq(schema.personalAccessTokens.id, pat.id));
+      console.log(`[validateBasicAuth] Authenticated ${username} via PAT`);
+      return user.id;
+    }
+    // Token format but not valid
+    return null;
+  }
+
+  // Fall back to password check
+  if (!user.passwordHash) return null;
 
   const isValid = await bcrypt.compare(password, user.passwordHash);
-  if (isValid) return user.id;
-
-  // Check Personal Access Token
-  const pat = await db.query.personalAccessTokens.findFirst({
-    where: (tokens, { and, eq }) =>
-      and(eq(tokens.userId, user.id), eq(tokens.token, password)),
-  });
-
-  if (pat) {
-    // Update last used at
-    await db
-      .update(schema.personalAccessTokens)
-      .set({ lastUsedAt: new Date() })
-      .where(eq(schema.personalAccessTokens.id, pat.id));
+  if (isValid) {
+    console.log(`[validateBasicAuth] Authenticated ${username} via password`);
     return user.id;
   }
 

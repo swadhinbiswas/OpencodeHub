@@ -17,7 +17,8 @@ import {
     acquireRepo,
     releaseRepo,
     getDiskPath,
-    parseStoragePath
+    parseStoragePath,
+    ensureRepoInitialized
 } from "@/lib/git-storage";
 import { spawn, execSync } from "child_process";
 import { existsSync, mkdirSync, writeFileSync, unlinkSync } from "fs";
@@ -80,19 +81,39 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
         return badRequest("Empty bundle");
     }
 
-    // Get local path to the repository
+    // Get local path to the repository (with lazy initialization)
     let repoPath: string;
 
     if (await isCloudStorage()) {
         const parsed = parseStoragePath(repository.diskPath);
         if (parsed) {
-            repoPath = await acquireRepo(parsed.owner, parsed.repoName);
+            // Ensure repo is initialized before accepting push (lazy init)
+            repoPath = await ensureRepoInitialized(
+                parsed.owner,
+                parsed.repoName,
+                { defaultBranch: repository.defaultBranch }
+            );
         } else {
             // Fallback to standard path
-            repoPath = await acquireRepo(owner, repoName);
+            repoPath = await ensureRepoInitialized(
+                owner,
+                repoName,
+                { defaultBranch: repository.defaultBranch }
+            );
         }
     } else {
-        repoPath = repository.diskPath;
+        // Local storage - ensure repo directory exists and is initialized
+        const diskPath = repository.diskPath;
+        if (!existsSync(join(diskPath, 'HEAD'))) {
+            // Repo not initialized, initialize it
+            repoPath = await ensureRepoInitialized(
+                owner,
+                repoName,
+                { defaultBranch: repository.defaultBranch }
+            );
+        } else {
+            repoPath = diskPath;
+        }
     }
 
     // Ensure repo directory exists
@@ -173,9 +194,14 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
 
         // If using cloud storage, sync back
         if (await isCloudStorage()) {
+            logger.info({ repoPath, diskPath: repository.diskPath }, "Syncing to cloud storage after bundle push");
             const parsed = parseStoragePath(repository.diskPath);
             if (parsed) {
+                logger.info({ parsed }, "Releasing repo with modifications");
                 await releaseRepo(parsed.owner, parsed.repoName, true);
+                logger.info("Repo released and synced to storage");
+            } else {
+                logger.warn({ diskPath: repository.diskPath }, "Could not parse storage path for sync");
             }
         }
 

@@ -14,7 +14,7 @@ import {
   releaseRepo,
 } from "@/lib/git-storage";
 import { spawn } from "child_process";
-import { existsSync, mkdirSync, rmSync } from "fs";
+import { existsSync, mkdirSync, rmSync, readdirSync } from "fs";
 import { basename, dirname, extname, join, resolve } from "path";
 import { simpleGit, SimpleGit, SimpleGitOptions } from "simple-git";
 
@@ -116,78 +116,129 @@ export async function initRepository(
     ownerName = "Owner",
   } = options;
 
+  console.log(`[initRepository] Starting initialization at: ${repoPath}`);
+
   // repoPath should already be a valid local path (provided by caller)
   const localRepoPath = repoPath;
 
-  // Ensure directory exists
+  // Ensure parent directory exists
   const dir = dirname(localRepoPath);
   if (!existsSync(dir)) {
+    console.log(`[initRepository] Creating parent directory: ${dir}`);
     mkdirSync(dir, { recursive: true });
   }
 
+  // Ensure the repo directory itself exists
+  if (!existsSync(localRepoPath)) {
+    console.log(`[initRepository] Creating repo directory: ${localRepoPath}`);
+    mkdirSync(localRepoPath, { recursive: true });
+  }
+
   // Initialize bare repository
-  const git = simpleGit();
-  await git.init(true, [localRepoPath]);
-  await installHooks(localRepoPath);
+  try {
+    console.log(`[initRepository] Running git init --bare at: ${localRepoPath}`);
+    const git = simpleGit(localRepoPath);
+    await git.init(true);
+    console.log(`[initRepository] git init completed`);
+  } catch (err) {
+    console.error(`[initRepository] git init failed:`, err);
+    throw err;
+  }
+
+  // Install hooks
+  try {
+    console.log(`[initRepository] Installing hooks`);
+    await installHooks(localRepoPath);
+    console.log(`[initRepository] Hooks installed`);
+  } catch (err) {
+    console.error(`[initRepository] Hook installation failed:`, err);
+    throw err;
+  }
 
   // If we need initial content, create a temporary working copy
   if (readme || gitignoreTemplate || licenseType) {
     const tempPath = `${localRepoPath}.tmp`;
+    console.log(`[initRepository] Creating temp working copy at: ${tempPath}`);
     mkdirSync(tempPath, { recursive: true });
 
-    const workingGit = simpleGit(tempPath);
-    await workingGit.init();
-    await workingGit.addConfig("user.name", ownerName);
-    await workingGit.addConfig("user.email", "git@opencodehub.local");
+    try {
+      const workingGit = simpleGit(tempPath);
+      await workingGit.init();
+      await workingGit.addConfig("user.name", ownerName);
+      await workingGit.addConfig("user.email", "git@opencodehub.local");
 
-    // Create README.md
-    if (readme) {
-      const readmeContent = `# ${repoName}\\n\\nA new repository created with OpenCodeHub.\\n`;
-      const readmePath = join(tempPath, "README.md");
-      const fs = await import("fs/promises");
-      await fs.writeFile(readmePath, readmeContent);
-      await workingGit.add("README.md");
-    }
-
-    // Create .gitignore
-    if (gitignoreTemplate) {
-      const gitignorePath = join(tempPath, ".gitignore");
-      const gitignoreContent = getGitignoreTemplate(gitignoreTemplate);
-      const fs = await import("fs/promises");
-      await fs.writeFile(gitignorePath, gitignoreContent);
-      await workingGit.add(".gitignore");
-    }
-
-    // Create LICENSE
-    if (licenseType) {
-      const licensePath = join(tempPath, "LICENSE");
-      const licenseContent = getLicenseTemplate(licenseType, ownerName);
-      if (licenseContent) {
+      // Create README.md
+      if (readme) {
+        const readmeContent = `# ${repoName}\n\nA new repository created with OpenCodeHub.\n`;
+        const readmePath = join(tempPath, "README.md");
         const fs = await import("fs/promises");
-        await fs.writeFile(licensePath, licenseContent);
-        await workingGit.add("LICENSE");
+        await fs.writeFile(readmePath, readmeContent);
+        await workingGit.add("README.md");
+        console.log(`[initRepository] Created README.md`);
       }
+
+      // Create .gitignore
+      if (gitignoreTemplate) {
+        const gitignorePath = join(tempPath, ".gitignore");
+        const gitignoreContent = getGitignoreTemplate(gitignoreTemplate);
+        const fs = await import("fs/promises");
+        await fs.writeFile(gitignorePath, gitignoreContent);
+        await workingGit.add(".gitignore");
+        console.log(`[initRepository] Created .gitignore`);
+      }
+
+      // Create LICENSE
+      if (licenseType) {
+        const licensePath = join(tempPath, "LICENSE");
+        const licenseContent = getLicenseTemplate(licenseType, ownerName);
+        if (licenseContent) {
+          const fs = await import("fs/promises");
+          await fs.writeFile(licensePath, licenseContent);
+          await workingGit.add("LICENSE");
+          console.log(`[initRepository] Created LICENSE`);
+        }
+      }
+
+      // Create initial commit
+      await workingGit.commit("Initial commit");
+      console.log(`[initRepository] Created initial commit`);
+
+      // Rename branch to default
+      if (defaultBranch !== "master") {
+        await workingGit.branch(["-M", defaultBranch]);
+      }
+
+      // Push to bare repository
+      await workingGit.addRemote("origin", localRepoPath);
+      await workingGit.push("origin", defaultBranch);
+      console.log(`[initRepository] Pushed to bare repo`);
+
+      // Clean up temp directory
+      rmSync(tempPath, { recursive: true, force: true });
+      console.log(`[initRepository] Cleaned up temp directory`);
+    } catch (err) {
+      console.error(`[initRepository] Working copy operations failed:`, err);
+      // Clean up temp if it exists
+      if (existsSync(tempPath)) {
+        rmSync(tempPath, { recursive: true, force: true });
+      }
+      throw err;
     }
-
-    // Create initial commit
-    await workingGit.commit("Initial commit");
-
-    // Rename branch to default
-    if (defaultBranch !== "master") {
-      await workingGit.branch(["-M", defaultBranch]);
-    }
-
-    // Push to bare repository
-    await workingGit.addRemote("origin", localRepoPath);
-    await workingGit.push("origin", defaultBranch);
-
-    // Clean up temp directory
-    rmSync(tempPath, { recursive: true, force: true });
   }
 
   // Set default branch in bare repo
-  const bareGit = simpleGit(localRepoPath);
-  await bareGit.raw(["symbolic-ref", "HEAD", `refs/heads/${defaultBranch}`]);
+  try {
+    const bareGit = simpleGit(localRepoPath);
+    await bareGit.raw(["symbolic-ref", "HEAD", `refs/heads/${defaultBranch}`]);
+    console.log(`[initRepository] Set default branch to ${defaultBranch}`);
+  } catch (err) {
+    console.error(`[initRepository] Failed to set default branch:`, err);
+    throw err;
+  }
+
+  // Verify files were created
+  const files = readdirSync(localRepoPath);
+  console.log(`[initRepository] Completed. Files in repo: ${files.join(", ")}`);
 }
 
 /**
@@ -592,6 +643,12 @@ export async function getBranches(repoPath: string): Promise<BranchInfo[]> {
 
     for (const line of output.trim().split("\n").filter(Boolean)) {
       const [name, sha] = line.split("|");
+
+      // Filter out HEAD and other invalid branch names
+      if (!name || name === 'HEAD' || name.includes('HEAD')) {
+        continue;
+      }
+
       branches.push({
         name,
         sha,
@@ -860,21 +917,41 @@ export async function compareBranches(
   base: string,
   head: string
 ): Promise<{ commits: CommitInfo[]; diffs: DiffInfo[] }> {
+  // Verify branches exist first to avoid "ambiguous argument" errors
+  const fullBase = base.startsWith('refs/') ? base : `refs/heads/${base}`;
+  const fullHead = head.startsWith('refs/') ? head : `refs/heads/${head}`;
+
+  const git = getGit(repoPath);
+
+  try {
+    await git.raw(['rev-parse', '--verify', fullBase]);
+  } catch {
+    logger.warn({ base, fullBase }, "Base branch not found in compareBranches");
+    return { commits: [], diffs: [] };
+  }
+
+  try {
+    await git.raw(['rev-parse', '--verify', fullHead]);
+  } catch {
+    // Only warn if head is missing but base exists (uncommon but possible)
+    logger.warn({ head, fullHead }, "Head branch not found in compareBranches");
+    return { commits: [], diffs: [] };
+  }
+
   try {
     // Get commits between base and head
     // git log base..head
     const commits = await getCommits(repoPath, {
-      ref: `${base}..${head}`,
+      ref: `${fullBase}..${fullHead}`,
       limit: 100, // Limit to prevent overload
     });
 
     // Get diff stats
     // git diff --numstat base...head (triple dot for merge base comparison)
-    const git = getGit(repoPath);
     const output = await git.raw([
       "diff",
       "--numstat",
-      `${base}...${head}`, // Triple dot finds merge base automatically
+      `${fullBase}...${fullHead}`, // Triple dot finds merge base automatically
     ]);
 
     const diffs: DiffInfo[] = [];
@@ -896,7 +973,8 @@ export async function compareBranches(
     }
 
     return { commits, diffs };
-  } catch (error) {
+  } catch (error: any) {
+    // Fallback for any other errors
     logger.error({ err: error }, "Error comparing branches");
     return { commits: [], diffs: [] };
   }

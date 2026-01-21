@@ -4,6 +4,7 @@ import { canReadRepo, canWriteRepo } from "@/lib/permissions";
 import { startSSHServer } from "@/lib/ssh";
 import { and, eq } from "drizzle-orm";
 import { join } from "path";
+import { uploadRepoToStorage, getStorageRepoPath, isCloudStorage } from "@/lib/git-storage";
 
 const DATA_DIR = join(process.cwd(), "data");
 const REPOS_DIR = join(DATA_DIR, "repos");
@@ -111,6 +112,14 @@ async function main() {
                         }
                     });
                 });
+                // 3. Sync to Cloud Storage (if enabled)
+                if (await isCloudStorage()) {
+                    console.log(`[SSH] Syncing ${repoPath} to storage...`);
+                    const storagePath = getStorageRepoPath(owner.username, repo.name);
+                    const localRepoPath = join(REPOS_DIR, owner.username, `${repo.name}.git`);
+                    await uploadRepoToStorage(localRepoPath, storagePath);
+                    console.log(`[SSH] Sync complete.`);
+                }
             }
         }
     });

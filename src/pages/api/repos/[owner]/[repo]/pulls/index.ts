@@ -62,7 +62,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
         return badRequest("Base and head branches must be different");
     }
 
-    const repoPath = repo.diskPath;
+    const repoPath = await resolveRepoPath(repo.diskPath);
 
     // Verify branches exist and get SHAs
     // In a real implementation we should verify they exist using git.branch() or similar

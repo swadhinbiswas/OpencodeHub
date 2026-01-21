@@ -1,0 +1,131 @@
+---
+import { getDatabase, schema } from "@/db";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { desc, eq, inArray } from "drizzle-orm";
+import StackCard from "@/components/dashboard/StackCard.astro";
+
+const user = Astro.locals.user;
+if (!user) {
+    return Astro.redirect("/login");
+}
+
+const db = getDatabase();
+
+// Fetch user's stacks
+const userPrs = await db.query.pullRequests.findMany({
+    where: eq(schema.pullRequests.authorId, user.id),
+    columns: { id: true },
+});
+
+let stacks: any[] = [];
+const prIds = userPrs.map((pr) => pr.id);
+
+if (prIds.length > 0) {
+    const stackEntries = await db.query.prStackEntries.findMany({
+        where: inArray(schema.prStackEntries.pullRequestId, prIds),
+        columns: { stackId: true },
+    });
+
+    const uniqueStackIds = [...new Set(stackEntries.map((e) => e.stackId))];
+
+    if (uniqueStackIds.length > 0) {
+        const dbStacks = await db.query.prStacks.findMany({
+            where: inArray(schema.prStacks.id, uniqueStackIds),
+            orderBy: [desc(schema.prStacks.updatedAt)],
+            with: {
+                repository: {
+                    with: {
+                        owner: true,
+                    },
+                },
+                entries: {
+                    orderBy: (entries, { asc }) => [asc(entries.stackOrder)],
+                    with: {
+                        pullRequest: true,
+                    },
+                },
+            },
+        });
+
+        stacks = dbStacks.map((stack) => ({
+            id: stack.id,
+            name: stack.name || `Stack-${stack.id.substring(0, 6)}`,
+            baseBranch: stack.baseBranch,
+            status: stack.status,
+            repoName: stack.repository.name,
+            repoOwner: stack.repository.owner.username,
+            updatedAt: stack.updatedAt.toISOString(),
+            prs: stack.entries.map((entry) => ({
+                id: entry.pullRequest.id,
+                number: entry.pullRequest.number,
+                title: entry.pullRequest.title,
+                status: entry.pullRequest.state,
+                url: `/${stack.repository.owner.username}/${stack.repository.name}/pulls/${entry.pullRequest.number}`,
+                position: entry.stackOrder,
+                isMerged: entry.pullRequest.state === "merged",
+                isClosed: entry.pullRequest.state === "closed",
+            })),
+        }));
+    }
+}
+---
+
+<BaseLayout title={`Your Stacks - OpenCodeHub`}>
+    <div class="container py-8 max-w-5xl mx-auto">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-2xl font-bold text-white mb-2">Your Stacks</h1>
+                <p class="text-gray-400">
+                    Manage and visualize your stacked pull requests.
+                </p>
+            </div>
+            <a
+                href="/dashboard"
+                class="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-gray-300 transition-colors"
+            >
+                Back to Dashboard
+            </a>
+        </div>
+
+        {
+            stacks.length > 0 ? (
+                <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
+                    {stacks.map((stack) => (
+                        <StackCard stack={stack} />
+                    ))}
+                </div>
+            ) : (
+                <div class="text-center py-20 bg-[#0d1117]/50 rounded-xl border border-white/5">
+                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-500/10 text-blue-400 mb-4">
+                        <svg
+                            class="w-8 h-8"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                            />
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-medium text-white mb-2">
+                        No active stacks
+                    </h3>
+                    <p class="text-gray-500 max-w-sm mx-auto mb-6">
+                        Create stacked pull requests to see them visualized
+                        here.
+                    </p>
+                    <a
+                        href="/docs/stacks"
+                        class="text-blue-400 hover:text-blue-300 text-sm"
+                    >
+                        Learn how to create stacks &rarr;
+                    </a>
+                </div>
+            )
+        }
+    </div>
+</BaseLayout>

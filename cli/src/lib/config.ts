@@ -8,6 +8,7 @@ import Conf from "conf";
 interface OchConfig {
     serverUrl: string;
     token: string;
+    username?: string;
     defaultBranch?: string;
 }
 
@@ -24,6 +25,7 @@ export function getConfig(): OchConfig {
     return {
         serverUrl: config.get("serverUrl"),
         token: config.get("token"),
+        username: config.get("username"),
         defaultBranch: config.get("defaultBranch"),
     };
 }
@@ -34,6 +36,9 @@ export function saveConfig(updates: Partial<OchConfig>): void {
     }
     if (updates.token !== undefined) {
         config.set("token", updates.token);
+    }
+    if (updates.username !== undefined) {
+        config.set("username", updates.username);
     }
     if (updates.defaultBranch !== undefined) {
         config.set("defaultBranch", updates.defaultBranch);

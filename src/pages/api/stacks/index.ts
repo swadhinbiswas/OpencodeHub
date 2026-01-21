@@ -15,7 +15,9 @@ import { z } from "zod";
 import crypto from "crypto";
 
 const createStackSchema = z.object({
-    repositoryId: z.string(),
+    repositoryId: z.string().optional(),
+    owner: z.string().optional(),
+    repo: z.string().optional(),
     baseBranch: z.string().default("main"),
     name: z.string().optional(),
     branches: z.array(z.object({
@@ -24,6 +26,8 @@ const createStackSchema = z.object({
         description: z.string().optional(),
         parentBranch: z.string().optional(),
     })),
+}).refine(data => data.repositoryId || (data.owner && data.repo), {
+    message: "Either repositoryId or owner and repo must be provided",
 });
 
 type CreateStackInput = z.infer<typeof createStackSchema>;
@@ -86,10 +90,34 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
     const parsed = await parseBody(request, createStackSchema);
     if ("error" in parsed) return parsed.error;
 
-    const { repositoryId, name, branches } = parsed.data;
+    const { name, branches } = parsed.data;
     const baseBranch = parsed.data.baseBranch || "main";
+    let repositoryId = parsed.data.repositoryId;
 
     const db = getDatabase() as NodePgDatabase<typeof schema>;
+
+    // Find repo by owner/name if only provided
+    if (!repositoryId && parsed.data.owner && parsed.data.repo) {
+        const ownerUser = await db.query.users.findFirst({
+            where: eq(schema.users.username, parsed.data.owner),
+        });
+
+        if (ownerUser) {
+            const repo = await db.query.repositories.findFirst({
+                where: and(
+                    eq(schema.repositories.ownerId, ownerUser.id),
+                    eq(schema.repositories.name, parsed.data.repo)
+                ),
+            });
+            if (repo) {
+                repositoryId = repo.id;
+            }
+        }
+    }
+
+    if (!repositoryId) {
+        throw Errors.notFound("Repository not found");
+    }
 
     // Verify repository exists and user has access
     const repo = await db.query.repositories.findFirst({

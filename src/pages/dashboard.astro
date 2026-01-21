@@ -2,6 +2,19 @@
 import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { desc, eq } from "drizzle-orm";
+// Import Shadcn UI Components (using path aliases or relative paths)
+// Assuming components are in @/components/ui or src/components/ui
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/dashboard/UserAvatar";
+import { Badge } from "@/components/ui/badge";
 
 const user = Astro.locals.user;
 if (!user) {
@@ -10,7 +23,6 @@ if (!user) {
 
 const db = getDatabase();
 
-// Fetch user's repositories
 // Fetch user's repositories
 const repos = await db.query.repositories.findMany({
   where: eq(schema.repositories.ownerId, user.id),
@@ -33,310 +45,163 @@ function timeAgo(date: string | Date) {
 ---
 
 <BaseLayout title="Dashboard - OpenCodeHub">
-  <div class="container py-8">
-    <div class="flex flex-col lg:flex-row gap-8">
-      <!-- Sidebar -->
-      <aside class="w-full lg:w-72 space-y-6">
-        <!-- User Card -->
-        <div class="relative">
-          <div
-            class="absolute -inset-[1px] bg-gradient-to-b from-cyan-500/30 to-transparent rounded-xl opacity-50"
-          >
-          </div>
-          <div
-            class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-4"
-          >
-            <div class="flex items-center gap-4">
-              {
-                user.avatarUrl ? (
-                  <img
-                    src={user.avatarUrl}
-                    alt={user.username}
-                    class="h-14 w-14 rounded-full object-cover ring-2 ring-cyan-500/30"
-                  />
-                ) : (
-                  <div class="h-14 w-14 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-xl font-bold text-white ring-2 ring-cyan-500/30">
-                    {user.username[0].toUpperCase()}
-                  </div>
-                )
-              }
-              <div class="overflow-hidden">
-                <h2 class="font-semibold text-white truncate">
-                  {user.displayName || user.username}
-                </h2>
-                <p class="text-sm text-gray-500 truncate">
-                  @{user.username}
-                </p>
-              </div>
-            </div>
-
-            <!-- Quick Stats -->
-            <div
-              class="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-white/5"
-            >
-              <div class="text-center">
-                <div class="text-lg font-bold text-white">{repos.length}</div>
-                <div class="text-xs text-gray-500">Repos</div>
-              </div>
-              <div class="text-center">
-                <div class="text-lg font-bold text-yellow-400">
-                  {totalStars}
-                </div>
-                <div class="text-xs text-gray-500">Stars</div>
-              </div>
-              <div class="text-center">
-                <div class="text-lg font-bold text-purple-400">
-                  {totalForks}
-                </div>
-                <div class="text-xs text-gray-500">Forks</div>
-              </div>
-            </div>
-          </div>
+  <div class="container py-8 max-w-7xl mx-auto space-y-8">
+    <!-- Welcome Header -->
+    <div
+      class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+    >
+      <div class="flex items-center gap-4">
+        <UserAvatar
+          user={user}
+          className="h-16 w-16 border-2 border-white/10"
+          client:load
+        />
+        <div>
+          <h1 class="text-3xl font-bold text-white tracking-tight">
+            Welcome back, {user.displayName || user.username}
+          </h1>
+          <p class="text-gray-400">
+            Manage your repositories and development workflow.
+          </p>
         </div>
-
-        <!-- Quick Links -->
-        <div class="relative">
-          <div
-            class="absolute -inset-[1px] bg-gradient-to-b from-purple-500/20 to-transparent rounded-xl opacity-50"
-          >
-          </div>
-          <div
-            class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-4"
-          >
-            <h3
-              class="font-semibold text-sm text-white mb-3 flex items-center gap-2"
-            >
-              <svg
-                class="h-4 w-4 text-purple-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                ></path>
-              </svg>
-              Your Repositories
-            </h3>
-            <nav class="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
-              {
-                repos.slice(0, 8).map((repo) => (
-                  <a
-                    href={`/${user.username}/${repo.name}`}
-                    class="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-                  >
-                    <svg
-                      class="h-4 w-4 text-gray-500"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                      />
-                    </svg>
-                    <span class="truncate">{repo.name}</span>
-                  </a>
-                ))
-              }
-            </nav>
-            <a
-              href="/new"
-              class="flex items-center gap-2 px-3 py-2 mt-2 text-sm font-medium text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-colors"
-            >
-              <svg
-                class="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 4v16m8-8H4"></path>
-              </svg>
-              New Repository
-            </a>
-          </div>
-        </div>
-      </aside>
-
-      <!-- Main Content -->
-      <main class="flex-1 space-y-8">
-        <!-- Header -->
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-2xl font-bold text-white">Dashboard</h1>
-            <p class="text-gray-500 text-sm mt-1">
-              Welcome back, {user.displayName || user.username}
-            </p>
-          </div>
-          <a
-            href="/new"
-            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-sm font-medium text-white shadow-lg shadow-green-500/25 hover:shadow-green-500/40 transition-all"
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="/stacks">
+          <Button
+            variant="outline"
+            className="border-white/10 text-gray-300 hover:text-white hover:bg-white/5"
           >
             <svg
-              class="h-4 w-4"
+              class="mr-2 h-4 w-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
-            >
-              <path
+              ><path
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
-                d="M12 4v16m8-8H4"></path>
-            </svg>
-            New Repository
-          </a>
-        </div>
-
-        <!-- Activity Feed -->
-        <div class="relative">
-          <div
-            class="absolute -inset-[1px] bg-gradient-to-r from-orange-500/20 via-transparent to-pink-500/20 rounded-xl opacity-50"
-          >
-          </div>
-          <div
-            class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-6"
-          >
-            <h2
-              class="text-lg font-semibold text-white flex items-center gap-2 mb-4"
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+              ></path></svg
             >
-              <svg
-                class="h-5 w-5 text-orange-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-              </svg>
-              Recent Activity
-            </h2>
-            <div class="text-center py-8">
-              <div class="relative inline-block mb-4">
-                <svg
-                  class="h-12 w-12 text-gray-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="1.5"
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-              </div>
-              <p class="text-gray-500">No recent activity to show.</p>
-              <p class="text-sm text-gray-600 mt-1">
-                Get started by creating a repository or exploring existing ones.
-              </p>
-              <a
-                href="/explore"
-                class="inline-flex items-center gap-2 px-4 py-2 mt-4 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-300 hover:bg-white/10 transition-colors"
-              >
-                <svg
-                  class="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                </svg>
-                Explore Repositories
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <!-- Repositories Grid -->
-        <div>
-          <h2
-            class="text-lg font-semibold text-white mb-4 flex items-center gap-2"
+            View Stacks
+          </Button>
+        </a>
+        <a href="/new">
+          <Button
+            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white border-0 shadow-lg shadow-green-500/20"
           >
+            <svg
+              class="mr-2 h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              ><path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 4v16m8-8H4"></path></svg
+            >
+            New Repository
+          </Button>
+        </a>
+      </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <Card className="bg-[#0d1117]/50 border-white/10 backdrop-blur-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-gray-400"
+            >Total Repositories</CardTitle
+          >
+        </CardHeader>
+        <CardContent>
+          <div class="text-3xl font-bold text-white">{repos.length}</div>
+        </CardContent>
+      </Card>
+      <Card className="bg-[#0d1117]/50 border-white/10 backdrop-blur-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-gray-400"
+            >Total Stars</CardTitle
+          >
+        </CardHeader>
+        <CardContent>
+          <div class="text-3xl font-bold text-yellow-400">{totalStars}</div>
+        </CardContent>
+      </Card>
+      <Card className="bg-[#0d1117]/50 border-white/10 backdrop-blur-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-gray-400"
+            >Total Forks</CardTitle
+          >
+        </CardHeader>
+        <CardContent>
+          <div class="text-3xl font-bold text-purple-400">{totalForks}</div>
+        </CardContent>
+      </Card>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <!-- User's Repositories -->
+      <div class="md:col-span-2 space-y-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl font-semibold text-white flex items-center gap-2">
             <svg
               class="h-5 w-5 text-cyan-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
-            >
-              <path
+              ><path
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 stroke-width="2"
                 d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-              ></path>
-            </svg>
-            Your Repositories
+              ></path></svg
+            >
+            Repositories
           </h2>
-          {
-            repos.length > 0 ? (
-              <div class="grid gap-4 md:grid-cols-2">
-                {repos.map((repo) => (
-                  <a
-                    href={`/${user.username}/${repo.name}`}
-                    class="group relative"
-                  >
-                    <div class="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/20 via-transparent to-purple-500/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-5 hover:bg-white/[0.02] transition-colors">
-                      <div class="flex items-start justify-between mb-2">
-                        <div class="flex items-center gap-2">
-                          <svg
-                            class="h-5 w-5 text-gray-500"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                            />
-                          </svg>
-                          <span class="font-semibold text-white group-hover:text-cyan-400 transition-colors">
-                            {repo.name}
-                          </span>
-                          <span
-                            class={`text-xs px-2 py-0.5 rounded-full border ${
-                              repo.visibility === "public"
-                                ? "border-green-500/30 text-green-400 bg-green-500/10"
-                                : "border-orange-500/30 text-orange-400 bg-orange-500/10"
-                            }`}
-                          >
-                            {repo.visibility}
-                          </span>
+          <!-- Filter/Search could go here -->
+        </div>
+
+        {
+          repos.length > 0 ? (
+            <div class="grid gap-4">
+              {repos.map((repo) => (
+                <a href={`/${user.username}/${repo.name}`} class="block group">
+                  <Card className="bg-[#0d1117]/80 border-white/10 hover:border-white/20 hover:bg-[#161b22] transition-all duration-200">
+                    <CardContent className="p-5">
+                      <div class="flex items-start justify-between">
+                        <div class="space-y-1">
+                          <div class="flex items-center gap-2">
+                            <h3 class="font-semibold text-lg text-white group-hover:text-cyan-400 transition-colors">
+                              {repo.name}
+                            </h3>
+                            <Badge
+                              variant="secondary"
+                              className={`bg-opacity-10 border ${repo.visibility === "public" ? "border-green-500/30 text-green-400 bg-green-500" : "border-orange-500/30 text-orange-400 bg-orange-500"}`}
+                            >
+                              {repo.visibility}
+                            </Badge>
+                          </div>
+                          <p class="text-sm text-gray-400 line-clamp-1">
+                            {repo.description || "No description provided."}
+                          </p>
+                        </div>
+                        <div class="text-xs text-gray-500 whitespace-nowrap">
+                          {timeAgo(repo.updatedAt)}
                         </div>
                       </div>
-                      <p class="text-sm text-gray-500 line-clamp-2 mb-4">
-                        {repo.description || "No description provided."}
-                      </p>
-                      <div class="flex items-center gap-4 text-xs text-gray-500">
+                      <div class="mt-4 flex items-center gap-6 text-sm text-gray-500">
                         {repo.language && (
-                          <div class="flex items-center gap-1">
-                            <span class="h-2.5 w-2.5 rounded-full bg-blue-500" />
+                          <div class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-blue-500" />
                             {repo.language}
                           </div>
                         )}
-                        <div class="flex items-center gap-1">
+                        <div class="flex items-center gap-1 hover:text-yellow-400 transition-colors">
                           <svg
-                            class="h-3.5 w-3.5 text-yellow-400"
+                            class="h-4 w-4"
                             fill="currentColor"
                             viewBox="0 0 20 20"
                           >
@@ -344,9 +209,9 @@ function timeAgo(date: string | Date) {
                           </svg>
                           {repo.starCount || 0}
                         </div>
-                        <div class="flex items-center gap-1">
+                        <div class="flex items-center gap-1 hover:text-purple-400 transition-colors">
                           <svg
-                            class="h-3.5 w-3.5 text-purple-400"
+                            class="h-4 w-4"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -360,78 +225,114 @@ function timeAgo(date: string | Date) {
                           </svg>
                           {repo.forkCount || 0}
                         </div>
-                        <div class="ml-auto text-gray-600">
-                          Updated {timeAgo(repo.updatedAt)}
-                        </div>
                       </div>
-                    </div>
-                  </a>
-                ))}
+                    </CardContent>
+                  </Card>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div class="bg-[#0d1117]/30 border border-white/5 rounded-xl p-12 text-center">
+              <div class="inline-flex items-center justify-center p-4 bg-white/5 rounded-full mb-4">
+                <svg
+                  class="h-8 w-8 text-gray-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                  />
+                </svg>
               </div>
-            ) : (
-              <div class="relative">
-                <div class="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/20 via-purple-500/20 to-pink-500/20 rounded-xl opacity-50" />
-                <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-12 text-center">
-                  <div class="relative inline-block mb-4">
-                    <svg
-                      class="h-16 w-16 text-cyan-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="1.5"
-                        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                      />
-                    </svg>
-                    <div class="absolute inset-0 bg-cyan-500 blur-2xl opacity-20" />
-                  </div>
-                  <h3 class="text-lg font-semibold text-white mb-2">
-                    No repositories yet
-                  </h3>
-                  <p class="text-gray-500 mb-6">
-                    Create your first repository to get started.
-                  </p>
-                  <a
-                    href="/new"
-                    class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-sm font-medium text-white shadow-lg shadow-cyan-500/25"
+              <h3 class="text-lg font-medium text-white mb-2">
+                No repositories found
+              </h3>
+              <p class="text-gray-500 mb-6">
+                Get started by creating your first repository.
+              </p>
+              <a href="/new">
+                <Button>Create Repository</Button>
+              </a>
+            </div>
+          )
+        }
+      </div>
+
+      <!-- Sidebar / Activity -->
+      <div class="space-y-6">
+        <Card className="bg-[#0d1117]/50 border-white/10 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-white">
+              <svg
+                class="h-5 w-5 text-orange-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                ><path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg
+              >
+              Recent Activity
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div class="text-center py-6 text-gray-500 text-sm">
+              No recent activity to show.
+            </div>
+            <div class="pt-4 border-t border-white/5">
+              <a href="/explore" class="block">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-gray-400 hover:text-white"
+                >
+                  <svg
+                    class="mr-2 h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    ><path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    ></path></svg
                   >
-                    <svg
-                      class="h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M12 4v16m8-8H4"
-                      />
-                    </svg>
-                    Create a repository
-                  </a>
-                </div>
-              </div>
-            )
-          }
-        </div>
-      </main>
+                  Explore Repositories
+                </Button>
+              </a>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card
+          className="bg-gradient-to-br from-purple-900/10 to-blue-900/10 border-white/10"
+        >
+          <CardContent className="p-6">
+            <h3 class="font-semibold text-white mb-2">Try the CLI</h3>
+            <p class="text-sm text-gray-400 mb-4">
+              Push code, create PRs, and manage stacks directly from your
+              terminal.
+            </p>
+            <div
+              class="bg-black/50 rounded-lg p-3 font-mono text-xs text-green-400 mb-4 border border-white/10"
+            >
+              npm install -g opencodehub
+            </div>
+            <a
+              href="/docs/cli"
+              class="text-sm text-blue-400 hover:text-blue-300 hover:underline"
+            >
+              Read the documentation &rarr;
+            </a>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   </div>
 </BaseLayout>
-
-<style>
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-  }
-</style>

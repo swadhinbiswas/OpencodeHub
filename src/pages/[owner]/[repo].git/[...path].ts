@@ -34,9 +34,11 @@ export const ALL: APIRoute = async ({ params, request }) => {
 
   // 2. Auth Check
   const authHeader = request.headers.get("Authorization");
+  console.log(`[GitBackend] Auth check for ${ownerName}/${repoName}: authHeader=${authHeader ? 'present' : 'missing'}`);
   let userId: string | null = null;
   if (authHeader) {
     userId = await validateBasicAuth(authHeader);
+    console.log(`[GitBackend] Auth result: userId=${userId || 'null'}`);
   }
 
   // 3. Handle Routes
@@ -150,17 +152,28 @@ export const ALL: APIRoute = async ({ params, request }) => {
     child.on("close", async (code) => {
       if (code === 0) {
         // Trigger Analysis on successful push
+        // Trigger Analysis on successful push
         if (!isUpload) { // git-receive-pack
           try {
-            // SYNC BACK TO R2
-            await releaseRepo(ownerName, repoName, true);
-            console.log(`Synced ${ownerName}/${repoName} back to R2 after push`);
+            console.log(`[GitBackend] Push successful, triggering analysis for ${ownerName}/${repoName}`);
 
-            // Trigger Analysis
+            // Trigger Analysis FIRST (while files are still locally present)
             const { analyzeRepository } = await import("@/lib/analysis");
-            await analyzeRepository(repoData.id, userId).catch(console.error);
+            await analyzeRepository(repoData.id, userId).catch((err) => {
+              console.error(`[GitBackend] Analysis failed for ${ownerName}/${repoName}:`, err);
+            });
+            console.log(`[GitBackend] Analysis completed for ${ownerName}/${repoName}`);
           } catch (err) {
-            console.error("Failed to sync/analyze after push:", err);
+            console.error("Failed to trigger analysis after push:", err);
+          } finally {
+            // SYNC BACK TO R2 (Upload and Cleanup)
+            // Always run this even if analysis fails
+            try {
+              await releaseRepo(ownerName, repoName, true);
+              console.log(`Synced ${ownerName}/${repoName} back to R2 after push`);
+            } catch (cleanupErr) {
+              console.error(`[GitBackend] Failed to clean up ${ownerName}/${repoName}:`, cleanupErr);
+            }
           }
         }
       }

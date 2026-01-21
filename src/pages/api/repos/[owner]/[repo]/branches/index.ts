@@ -1,6 +1,7 @@
 import { getDatabase, schema } from "@/db";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { createBranch, getBranches } from "@/lib/git";
+import { resolveRepoPath } from "@/lib/git-storage";
 import { canReadRepo, canWriteRepo } from "@/lib/permissions";
 import type { APIRoute } from "astro";
 import { and, eq } from "drizzle-orm";
@@ -46,7 +47,8 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
     }
 
     // Get branches
-    const branches = await getBranches(repo.diskPath);
+    const repoPath = await resolveRepoPath(repo.diskPath);
+    const branches = await getBranches(repoPath);
     return success(branches);
 });
 

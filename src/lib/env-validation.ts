@@ -63,6 +63,33 @@ const envVars: EnvConfig[] = [
         required: false,
         defaultValue: "./data/storage",
     },
+    // S3 Storage (Required if STORAGE_TYPE=s3)
+    {
+        name: "STORAGE_BUCKET",
+        required: false,
+    },
+    {
+        name: "STORAGE_ENDPOINT",
+        required: false,
+    },
+    {
+        name: "STORAGE_ACCESS_KEY_ID",
+        required: false,
+    },
+    {
+        name: "STORAGE_SECRET_ACCESS_KEY",
+        required: false,
+    },
+    {
+        name: "STORAGE_REGION",
+        required: false,
+        defaultValue: "us-east-1",
+    },
+    // Rclone Storage (Required if STORAGE_TYPE=rclone)
+    {
+        name: "STORAGE_RCLONE_REMOTE",
+        required: false,
+    },
 
     // Google Drive
     {
@@ -175,6 +202,19 @@ export function validateEnvironment(exitOnError: boolean = true): boolean {
         if (!process.env.GOOGLE_CLIENT_SECRET) errors.push("❌ GOOGLE_CLIENT_SECRET is required when STORAGE_TYPE is 'gdrive'");
         if (!process.env.GOOGLE_REFRESH_TOKEN) errors.push("❌ GOOGLE_REFRESH_TOKEN is required when STORAGE_TYPE is 'gdrive'");
         if (!process.env.GOOGLE_FOLDER_ID) errors.push("❌ GOOGLE_FOLDER_ID is required when STORAGE_TYPE is 'gdrive'");
+    }
+
+    // S3 Validation
+    if (process.env.STORAGE_TYPE === "s3") {
+        if (!process.env.STORAGE_BUCKET) errors.push("❌ STORAGE_BUCKET is required when STORAGE_TYPE is 's3'");
+        if (!process.env.STORAGE_ACCESS_KEY_ID) errors.push("❌ STORAGE_ACCESS_KEY_ID is required when STORAGE_TYPE is 's3'");
+        if (!process.env.STORAGE_SECRET_ACCESS_KEY) errors.push("❌ STORAGE_SECRET_ACCESS_KEY is required when STORAGE_TYPE is 's3'");
+        // Endpoint might be optional for AWS S3 but usually required for others.
+    }
+
+    // Rclone Validation
+    if (process.env.STORAGE_TYPE === "rclone") {
+        if (!process.env.STORAGE_RCLONE_REMOTE) errors.push("❌ STORAGE_RCLONE_REMOTE is required when STORAGE_TYPE is 'rclone'");
     }
 
     // Print results
