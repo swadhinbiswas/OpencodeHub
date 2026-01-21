@@ -1,6 +1,7 @@
 import { getDatabase, schema } from "@/db";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { logger } from "@/lib/logger";
+import { resolveRepoPath } from "@/lib/git-storage";
 import type { APIRoute } from "astro";
 import { spawn } from "child_process";
 // removed
@@ -27,8 +28,9 @@ export const GET: APIRoute = async ({ request }) => {
     try {
       logger.debug({ owner: repo.ownerId, name: repo.name }, "Processing repository");
       // Run git gc --auto --quiet
+      const repoPath = await resolveRepoPath(repo.diskPath);
       const child = spawn("git", ["gc", "--auto", "--quiet"], {
-        cwd: repo.diskPath,
+        cwd: repoPath,
         stdio: "ignore",
       });
 

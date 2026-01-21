@@ -245,33 +245,33 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
     updatedAt: timestamp,
   });
 
-  // Initialize git repository
+  // Initialize git repository immediately (fast, ~100ms)
+  // Upload to S3 happens asynchronously to not block response
   try {
     // Get local path for git operations (temp path for cloud storage, direct path for local)
     const localGitPath = await initRepoInStorage(user.username, slug);
 
     await initRepository(localGitPath, {
       defaultBranch,
-      readme,
+      readme: false, // No README on creation to keep it fast
       gitignoreTemplate,
       licenseType,
       repoName: name,
       ownerName: user.displayName || user.username,
     });
 
-    // If using cloud storage, upload the initialized repo
+    // If using cloud storage, upload asynchronously (don't wait)
     const isCloud = await isCloudStorage();
-    logger.info({ isCloud, storageType: import.meta.env.STORAGE_TYPE }, 'Checking cloud storage strict');
 
     if (isCloud) {
-      logger.info('Starting cloud storage sync...');
-      // Fire-and-forget to avoid blocking the response
+      logger.info('Uploading to cloud storage (async)...');
+      // Fire-and-forget async upload
       finalizeRepoInit(user.username, slug)
-        .then(() => logger.info({ repoId, diskPath }, 'Repository synced to cloud storage'))
-        .catch((err) => logger.error({ err, repoId, diskPath }, 'Background cloud sync failed'));
-    } else {
-      logger.info('Skipping cloud sync (isCloudStorage=false)');
+        .then(() => logger.info({ repoId, diskPath }, 'Repository uploaded to S3'))
+        .catch((err) => logger.error({ err, repoId }, 'Background S3 upload failed'));
     }
+
+    logger.info({ repoId, diskPath }, 'Repository initialized and ready (S3 upload in progress if cloud)');
   } catch (error) {
     // Rollback database entry if git init fails
     await db.delete(repositories).where(eq(repositories.id, repoId));

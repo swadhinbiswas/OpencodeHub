@@ -90,7 +90,13 @@ const refParam = Astro.params.ref || "";
 let currentBranch = repoData.defaultBranch;
 let currentPath = "";
 
-// Find the longest matching branch name
+// Helper to check if a ref exists
+// We need to check if the refParam (or parts of it) is a valid branch/ref
+// Since getBranches might return incomplete list or fail, we'll try to resolve it directly
+let resolvedBranch = "";
+let resolvedPath = "";
+
+// 1. Check against known branches (fastest)
 const matchingBranch = branches
   .filter((b) => refParam === b || refParam.startsWith(b + "/"))
   .sort((a, b) => b.length - a.length)[0];
@@ -99,13 +105,100 @@ if (matchingBranch) {
   currentBranch = matchingBranch;
   currentPath = refParam.slice(matchingBranch.length).replace(/^\//, "");
 } else {
-  // If no match, maybe it's a commit hash or we default to main and treat Ref as path?
-  // For now, assume default branch if no match found (or 404)
-  // Actually, if we are in /tree/, we expect the first part to be a ref.
-  // If it's a valid commit SHA, we could use that.
-  // Let's assume it's a branch for now.
-  currentBranch = refParam.split("/")[0];
-  currentPath = refParam.split("/").slice(1).join("/");
+  // 2. Fallback: Try to identify where the branch name ends and path starts
+  // This is tricky for "stack/feature-1/src". Is it branch "stack" path "feature-1/src" or branch "stack/feature-1" path "src"?
+  // We'll optimistically assume the longest possible prefix that *could* be a ref is the branch.
+
+  // Since we can't easily check every permutation without spamming git,
+  // and we know getBranches might have missed it if it's new/remote-only that just got synced?
+  // Actually, resolveRepoPath ensures we have the repo. getBranches should see it.
+
+  // IF getBranches missed it, it might be because the branch is "refs/heads/stack/feature-1"
+  // and getBranches returned "stack/feature-1".
+
+  // Let's assume the first segment is the branch if no match found, BUT
+  // for "stack/feature-1", current logic picked "stack".
+
+  // Improved Heuristic:
+  // If the refParam contains slashes, try to verify if the full thing is a ref first?
+  // No, because it might be "main/README.md".
+
+  // Better fallback:
+  // Default to treating the whole first part as branch is dangerous.
+  // Instead, let's try to pass the WHOLE refParam as the ref if it looks like a branch?
+  // But subsequent git operations (listFiles) need strict separation.
+
+  // We will try to resolve the branch by invoking a quick check?
+  // No, we can't easily do async inside this synchronous block structure easily without restructuring.
+
+  // FIX: Just update the fallback to handle common "stack/" or "feature/" prefixes?
+  // Or, since we know getBranches output matches, maybe getBranches output IS "stack/feature-1"?
+  // The Logs said: "Available refs... refs/heads/stack/feature-1".
+  // So getBranches SHOULD have returned "stack/feature-1".
+
+  // Why did it fail?
+  // "branches" variable is populated via: branches = branchInfos.map(b => b.name);
+
+  // Hypothethis: getBranches failed or returned empty?
+  // The previous logs showed "Ambiguous argument" error before this.
+  // Maybe getBranches failed silently in the try/catch block line 85?
+
+  // If getBranches failed, branches = [repoData.defaultBranch].
+  // Repo default is "main". User is visiting "stack/feature-1".
+  // "stack/feature-1" does not start with "main".
+  // So it goes to fallback.
+  // Fallback: currentBranch = refParam.split("/")[0] -> "stack".
+  // currentPath = "feature-1".
+  // git log stack -- feature-1 -> ERROR.
+
+  // SOLUTION: If getBranches failed or didn't contain it, we need to try to trust the refParam more.
+  // If the ref looks like a branch, treat it as one.
+
+  // Let's add a check using `git rev-parse --verify` to resolve the split accurately.
+  // We can do this because we are in an async function context (Astro component script).
+
+  try {
+    const { getGit } = await import("@/lib/git");
+    const git = getGit(resolvedLocalPath);
+
+    // Try to see if the full refParam is a ref
+    try {
+      await git.raw(["rev-parse", "--verify", refParam]);
+      // It is a valid ref!
+      currentBranch = refParam;
+      currentPath = "";
+    } catch (e) {
+      // Not a full ref. Try to find the splitting point.
+      // Split by / and find the longest prefix that is a ref.
+      const parts = refParam.split("/");
+      let found = false;
+      for (let i = parts.length - 1; i > 0; i--) {
+        const potentialBranch = parts.slice(0, i).join("/");
+        try {
+          await git.raw(["rev-parse", "--verify", potentialBranch]);
+          currentBranch = potentialBranch;
+          currentPath = parts.slice(i).join("/");
+          found = true;
+          break;
+        } catch {}
+      }
+
+      if (!found) {
+        // If still nothing, fallback to first part (legacy behavior) or default branch?
+        // If we default to defaultBranch, we treat the whole thing as path.
+        // currentBranch = repoData.defaultBranch;
+        // currentPath = refParam;
+        // But existing legacy behavior was split[0]. Let's keep legacy if detection fails,
+        // OR default to the sophisticated split[0].
+        currentBranch = parts[0];
+        currentPath = parts.slice(1).join("/");
+      }
+    }
+  } catch (err) {
+    // If git fails entirely, fallback
+    currentBranch = refParam.split("/")[0];
+    currentPath = refParam.split("/").slice(1).join("/");
+  }
 }
 
 let files: any[] = [];

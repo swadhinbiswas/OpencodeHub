@@ -3,6 +3,7 @@ import { getDatabase, schema } from "@/db";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { logger } from "@/lib/logger";
 import { getCommits, getRepoSize, listFiles, getCommitDiff } from "./git";
+import { resolveRepoPath } from "./git-storage";
 import { eq } from "drizzle-orm";
 import { extname } from "path";
 
@@ -46,9 +47,18 @@ export async function analyzeRepository(repoId: string, userId: string | null = 
     logger.info({ repo: repo.name }, "Analyzing repository");
 
     try {
+        // Resolve disk path for cloud storage
+        let repoPath: string;
+        try {
+            repoPath = await resolveRepoPath(repo.diskPath);
+        } catch (err) {
+            logger.warn({ repo: repo.name, err }, "Could not resolve repo path for analysis, skipping");
+            return;
+        }
+
         // 2. Sync Commits (Last 20 to update recent history)
         // In a full system we'd diff 'refs/heads/main' vs DB, but here we just fetch recent
-        const commits = await getCommits(repo.diskPath, { limit: 20 });
+        const commits = await getCommits(repoPath, { limit: 20 });
         let newCommitsCount = 0;
 
         for (const c of commits) {
@@ -59,7 +69,7 @@ export async function analyzeRepository(repoId: string, userId: string | null = 
 
             if (!exists) {
                 // Get diff stats
-                const diffs = await getCommitDiff(repo.diskPath, c.sha);
+                const diffs = await getCommitDiff(repoPath, c.sha);
                 const additions = diffs.reduce((sum, d) => sum + d.additions, 0);
                 const deletions = diffs.reduce((sum, d) => sum + d.deletions, 0);
 
@@ -88,7 +98,7 @@ export async function analyzeRepository(repoId: string, userId: string | null = 
 
         // 3. Analyze Languages
         // Scan HEAD files
-        const files = await listFiles(repo.diskPath, "HEAD");
+        const files = await listFiles(repoPath, "HEAD");
         const langCounts: Record<string, number> = {};
 
         for (const file of files) {

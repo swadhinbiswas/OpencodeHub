@@ -1,6 +1,7 @@
 import { getDatabase, schema } from "@/db";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { mergeBranch } from "@/lib/git";
+import { resolveRepoPath } from "@/lib/git-storage";
 import { canWriteRepo } from "@/lib/permissions";
 import type { APIRoute } from "astro";
 import { and, eq } from "drizzle-orm";
@@ -66,7 +67,8 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals }) => {
     }
 
     // Merge branch
-    const result = await mergeBranch(repo.diskPath, pr.baseBranch, pr.headBranch);
+    const repoPath = await resolveRepoPath(repo.diskPath);
+    const result = await mergeBranch(repoPath, pr.baseBranch, pr.headBranch);
 
     if (result.success) {
         // Update PR state with all merge fields

@@ -14,6 +14,7 @@ import {
 import { getDatabase, schema } from "@/db";
 import { eq, and, sql } from "drizzle-orm";
 import { listFiles, getLastCommit, getCommits, getBranches } from "@/lib/git";
+import { resolveRepoPath } from "@/lib/git-storage";
 import { canReadRepo } from "@/lib/permissions";
 import RepoHeader from "@/components/repo/RepoHeader.astro";
 import FileExplorer from "@/components/repo/FileExplorer.astro";
@@ -58,11 +59,18 @@ const issueCountResult = await db
       eq(schema.issues.repositoryId, repoData.id),
       eq(schema.issues.state, "open"),
     ),
-  )
-  ;
-
+  );
 const openIssueCount =
   (issueCountResult as { count: number } | undefined)?.count || 0;
+
+// Resolve disk path for cloud storage
+let repoPath: string;
+try {
+  repoPath = await resolveRepoPath(repoData.diskPath);
+} catch (err) {
+  console.error("Failed to resolve repo path:", err);
+  return Astro.redirect("/404");
+}
 
 // 2. Git Operations
 const currentBranch = branch || repoData.defaultBranch;
@@ -91,22 +99,14 @@ function timeAgo(date: Date | string | number) {
 
 try {
   // Get files
-  const gitFiles = await listFiles(
-    repoData.diskPath,
-    currentBranch,
-    currentPath,
-  );
+  const gitFiles = await listFiles(repoPath, currentBranch, currentPath);
 
   // Map to UI format with commits
   files = await Promise.all(
     gitFiles.map(async (f) => {
       // For subdirectories, we need to pass the full path to getLastCommit
       // listFiles returns 'path' which is the full relative path
-      const commit = await getLastCommit(
-        repoData.diskPath,
-        currentBranch,
-        f.path,
-      );
+      const commit = await getLastCommit(repoPath, currentBranch, f.path);
 
       const lastCommit = commit
         ? {
@@ -132,7 +132,7 @@ try {
   });
 
   // Get latest commit for the directory
-  const commits = await getCommits(repoData.diskPath, {
+  const commits = await getCommits(repoPath, {
     limit: 1,
     ref: currentBranch,
     path: currentPath,
@@ -167,7 +167,7 @@ const repo = {
 // Fetch all branches
 let branches: string[] = [repoData.defaultBranch];
 try {
-  const branchInfos = await getBranches(repoData.diskPath);
+  const branchInfos = await getBranches(repoPath);
   branches = branchInfos.map((b) => b.name);
   // Ensure default branch is first
   branches = [

@@ -1,0 +1,92 @@
+---
+interface Props {
+  stack: {
+    id: string;
+    name: string;
+    repoName: string;
+    repoOwner: string;
+    status: string;
+    updatedAt: string;
+    prs: {
+      id: string;
+      number: number;
+      title: string;
+      status: string;
+      url: string;
+      position: number;
+      isMerged: boolean;
+      isClosed: boolean;
+    }[];
+  };
+}
+
+const { stack } = Astro.props;
+
+// Determine stack status color
+const isFullyMerged = stack.prs.every(pr => pr.isMerged);
+const hasFailures = false; // TODO: Check CI status if available
+
+const statusColor = isFullyMerged ? "text-green-400" : hasFailures ? "text-red-400" : "text-blue-400";
+const statusBorder = isFullyMerged ? "border-green-500/30" : hasFailures ? "border-red-500/30" : "border-blue-500/30";
+const statusBg = isFullyMerged ? "bg-green-500/10" : hasFailures ? "bg-red-500/10" : "bg-blue-500/10";
+---
+
+<div class="relative group">
+    <div class="absolute -inset-[1px] bg-gradient-to-r from-blue-500/20 via-cyan-500/20 to-purple-500/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+    <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-5 hover:bg-white/[0.02] transition-colors">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class={`text-sm font-semibold ${statusColor}`}>{stack.name}</span>
+                    <span class="text-xs text-gray-500">in {stack.repoOwner}/{stack.repoName}</span>
+                </div>
+                <div class="text-xs text-gray-600 mt-0.5">
+                    Updated {new Date(stack.updatedAt).toLocaleDateString()}
+                </div>
+            </div>
+            <div class={`text-xs px-2 py-0.5 rounded-full border ${statusBorder} ${statusColor} ${statusBg}`}>
+                {isFullyMerged ? "Merged" : "Active"}
+            </div>
+        </div>
+
+        <!-- Stack Visualization (Subway Map) -->
+        <div class="relative pl-2 space-y-0">
+            {stack.prs.map((pr, index) => (
+                <div class="relative flex items-start gap-3 pb-4 last:pb-0">
+                    <!-- Connecting Line -->
+                    {index !== stack.prs.length - 1 && (
+                        <div class="absolute left-[5px] top-2.5 bottom-0 w-0.5 bg-gray-800" />
+                    )}
+                    
+                    <!-- Dot -->
+                    <div class={`relative z-10 w-3 h-3 rounded-full mt-1.5 border-2 ${
+                        pr.isMerged 
+                            ? "bg-green-500 border-green-500" 
+                            : pr.isClosed
+                                ? "bg-red-500 border-red-500"
+                                : "bg-[#0d1117] border-blue-500"
+                    }`} />
+
+                    <!-- Content -->
+                    <div class="flex-1 min-w-0 -mt-0.5">
+                        <a href={pr.url} class="block hover:underline truncate text-sm font-medium text-gray-300 hover:text-blue-400 decoration-blue-400/50">
+                            {pr.title}
+                        </a>
+                        <div class="flex items-center gap-2 text-xs text-gray-500">
+                            <span class="font-mono">#{pr.number}</span>
+                            <span>•</span>
+                            <span class={
+                                pr.isMerged ? "text-green-500" : pr.isClosed ? "text-red-500" : "text-blue-500"
+                            }>
+                                {pr.status.charAt(0).toUpperCase() + pr.status.slice(1)}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            ))}
+        </div>
+
+    </div>
+</div>

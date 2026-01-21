@@ -13,6 +13,8 @@ import * as path from "path";
 import { join, relative } from "path";
 import { Readable } from "stream";
 import { getStorage, type StorageAdapter } from "./storage";
+import { initRepository } from "./git";
+import { logger } from "./logger";
 
 // Cache for warm Vercel functions
 const repoCache = new Map<string, { localPath: string; lastUsed: Date; modified: boolean }>();
@@ -72,6 +74,13 @@ export async function downloadRepoFromStorage(
     // List all files in the storage path
     const result = await storage.list({ prefix: storagePath });
 
+    // If no objects found, repo might not be initialized yet (lazy init)
+    // This is OK - just return with empty directory
+    if (!result.objects || result.objects.length === 0) {
+        console.log(`[downloadRepoFromStorage] No files found at ${storagePath} - repo may not be initialized yet`);
+        return;
+    }
+
     // Download each file
     for (const obj of result.objects) {
         const relativePath = obj.key.replace(storagePath, "").replace(/^\//, "");
@@ -112,9 +121,25 @@ export async function uploadRepoToStorage(
     const storage = await getStorage();
     console.log(`[uploadRepoToStorage] Starting upload from ${localPath} to ${storagePath}`);
 
+    // Check if directory exists
+    if (!existsSync(localPath)) {
+        console.error(`[uploadRepoToStorage] ERROR: Directory does not exist: ${localPath}`);
+        return;
+    }
+
+    // Check what's in the directory
+    const topLevelEntries = readdirSync(localPath, { withFileTypes: true });
+    console.log(`[uploadRepoToStorage] Found ${topLevelEntries.length} top-level entries: ${topLevelEntries.map(e => e.name).join(', ')}`);
+
     let fileCount = 0;
     async function uploadDir(dirPath: string): Promise<void> {
-        const entries = readdirSync(dirPath, { withFileTypes: true });
+        let entries;
+        try {
+            entries = readdirSync(dirPath, { withFileTypes: true });
+        } catch (err) {
+            console.error(`[uploadRepoToStorage] Failed to read directory ${dirPath}:`, err);
+            return;
+        }
 
         for (const entry of entries) {
             const fullPath = join(dirPath, entry.name);
@@ -124,10 +149,14 @@ export async function uploadRepoToStorage(
             if (entry.isDirectory()) {
                 await uploadDir(fullPath);
             } else {
-                const content = await fs.readFile(fullPath);
-                console.log(`[uploadRepoToStorage] Uploading: ${storageKey} (${content.length} bytes)`);
-                await storage.put(storageKey, content);
-                fileCount++;
+                try {
+                    const content = await fs.readFile(fullPath);
+                    console.log(`[uploadRepoToStorage] Uploading: ${storageKey} (${content.length} bytes)`);
+                    await storage.put(storageKey, content);
+                    fileCount++;
+                } catch (err) {
+                    console.error(`[uploadRepoToStorage] Failed to upload ${fullPath}:`, err);
+                }
             }
         }
     }
@@ -191,12 +220,63 @@ export async function acquireRepo(owner: string, repoName: string): Promise<stri
     // Download from storage
     const localPath = getLocalTempPath(owner, repoName);
 
-    // Clean up any existing temp files
+    // Check if local directory already has a valid git repo
+    // This handles:
+    // 1. Race condition where upload is in progress but page loads
+    // 2. Recently created repos where async S3 upload hasn't finished
+    const headPath = join(localPath, 'HEAD');
+    if (existsSync(localPath) && existsSync(headPath)) {
+        console.log(`[acquireRepo] Local repo exists and has HEAD file, using existing: ${localPath}`);
+        // Add to cache so subsequent requests use it
+        repoCache.set(cacheKey, {
+            localPath,
+            lastUsed: new Date(),
+            modified: false,
+        });
+        return localPath;
+    }
+
+    // Clean up any existing temp files (only if not a valid git repo)
     if (existsSync(localPath)) {
+        console.log(`[acquireRepo] Cleaning up incomplete temp directory: ${localPath}`);
         rmSync(localPath, { recursive: true, force: true });
     }
 
-    await downloadRepoFromStorage(storagePath, localPath);
+    // Download from S3 (this might fail if async upload is still in progress)
+    try {
+        await downloadRepoFromStorage(storagePath, localPath);
+    } catch (err) {
+        console.error(`[acquireRepo] Failed to download from storage:`, err);
+        // If download fails, the repo might not be uploaded yet
+        // Try to use local git repos path as fallback
+        const gitReposPath = import.meta.env?.GIT_REPOS_PATH || process.env.GIT_REPOS_PATH;
+        const reposPath = gitReposPath
+            ? (path.isAbsolute(gitReposPath) ? gitReposPath : join(process.cwd(), gitReposPath))
+            : join(process.cwd(), "data", "repos");
+        const fallbackPath = join(reposPath, owner, `${repoName}.git`);
+
+        if (existsSync(fallbackPath) && existsSync(join(fallbackPath, 'HEAD'))) {
+            console.log(`[acquireRepo] Using fallback local path: ${fallbackPath}`);
+            // For local fallback, copy to temp location
+            // Remove target dir if exists, then copy
+            if (existsSync(localPath)) {
+                rmSync(localPath, { recursive: true, force: true });
+            }
+            // Create target directory
+            mkdirSync(localPath, { recursive: true });
+            const { execSync } = await import('child_process');
+            // Copy directory CONTENTS (using /. to copy contents, not the directory itself)
+            execSync(`cp -R "${fallbackPath}/." "${localPath}/"`, { stdio: 'inherit' });
+            console.log(`[acquireRepo] Successfully copied from fallback`);
+        } else {
+            console.error(`[acquireRepo] No fallback found at: ${fallbackPath}`);
+            throw new Error(`Repository not found in S3 and local fallback unavailable. S3 upload may still be in progress - try again in a moment.`);
+        }
+    }
+
+    // After download, log if repo was initialized
+    // headPath already declared at line 225
+    console.log(`[acquireRepo] After download - HEAD exists: ${existsSync(headPath)}`);
 
     // Cache the path
     repoCache.set(cacheKey, {
@@ -368,4 +448,79 @@ export async function resolveRepoPath(diskPath: string): Promise<string> {
     }
 
     return acquireRepo(parsed.owner, parsed.repoName);
+}
+
+/**
+ * Check if a repository has been initialized with Git
+ * Checks for the presence of HEAD file in both local and cloud storage
+ */
+export async function isRepoInitialized(owner: string, repoName: string): Promise<boolean> {
+    if (!(await isCloudStorage())) {
+        // Local: check if HEAD file exists
+        const diskPath = await getDiskPath(owner, repoName);
+        return existsSync(join(diskPath, 'HEAD'));
+    }
+
+    // Cloud: check if HEAD exists in S3
+    const storage = await getStorage();
+    const headPath = `${getStorageRepoPath(owner, repoName)}/HEAD`;
+    return await storage.exists(headPath);
+}
+
+/**
+ * Ensure repository is initialized, creating it if needed
+ * Thread-safe for concurrent first pushes (checks again after acquiring repo)
+ * 
+ * @returns Local path to the initialized repository
+ */
+export async function ensureRepoInitialized(
+    owner: string,
+    repoName: string,
+    options: {
+        defaultBranch?: string;
+        readme?: boolean;
+        gitignoreTemplate?: string;
+        licenseType?: string;
+        repoName?: string;
+        ownerName?: string;
+    }
+): Promise<string> {
+    logger.info({ owner, repoName }, "Ensuring repo is initialized");
+
+    // Quick check if already initialized (avoid download if possible)
+    if (await isRepoInitialized(owner, repoName)) {
+        logger.info("Repo already initialized, acquiring");
+        return await acquireRepo(owner, repoName);
+    }
+
+    logger.info("Repo not initialized, initializing now");
+
+    // Initialize locally
+    const localPath = await initRepoInStorage(owner, repoName);
+
+    // Double-check in case of concurrent initialization
+    const headPath = join(localPath, 'HEAD');
+    if (existsSync(headPath)) {
+        logger.info("HEAD file exists (concurrent init?), using existing");
+        return localPath;
+    }
+
+    logger.info({ localPath }, "Running git init");
+    await initRepository(localPath, {
+        defaultBranch: options.defaultBranch || 'main',
+        readme: options.readme ?? false, // Don't add README on lazy init by default
+        gitignoreTemplate: options.gitignoreTemplate,
+        licenseType: options.licenseType,
+        repoName: options.repoName || repoName,
+        ownerName: options.ownerName || owner,
+    });
+
+    // Upload to cloud if needed
+    if (await isCloudStorage()) {
+        logger.info("Uploading initialized repo to cloud storage");
+        await finalizeRepoInit(owner, repoName);
+    }
+
+    logger.info("Repo initialization complete");
+    return localPath;
 }

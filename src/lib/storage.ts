@@ -90,9 +90,18 @@ export abstract class StorageAdapter {
 
   abstract put(
     key: string,
-    data: Buffer | Readable,
+    data: Buffer | Readable | ReadableStream,
     options?: PutOptions
   ): Promise<void>;
+
+  async writeStream(
+    key: string,
+    stream: Readable | ReadableStream,
+    options?: PutOptions
+  ): Promise<void> {
+    return this.put(key, stream, options);
+  }
+
   abstract get(key: string, options?: GetOptions): Promise<Buffer>;
   abstract getStream(key: string, options?: GetOptions): Promise<Readable>;
   abstract delete(key: string): Promise<void>;
@@ -115,7 +124,7 @@ export class LocalStorageAdapter extends StorageAdapter {
 
   async put(
     key: string,
-    data: Buffer | Readable,
+    data: Buffer | Readable | ReadableStream,
     options?: PutOptions
   ): Promise<void> {
     const fullPath = this.getFullPath(key);
@@ -125,6 +134,7 @@ export class LocalStorageAdapter extends StorageAdapter {
       await fs.writeFile(fullPath, data);
     } else {
       const writeStream = createWriteStream(fullPath);
+      // @ts-ignore
       await pipeline(data, writeStream);
     }
 
@@ -318,14 +328,39 @@ export class S3StorageAdapter extends StorageAdapter {
     await client.send(
       new PutObjectCommand({
         Bucket: this.config.bucket,
-        Key: key,
+        Key: path.join(this.config.basePath, key),
         Body: data,
         ContentType: options?.contentType,
         Metadata: options?.metadata,
         CacheControl: options?.cacheControl,
-        ContentDisposition: options?.contentDisposition,
       })
     );
+  }
+
+  async writeStream(
+    key: string,
+    stream: Readable | ReadableStream,
+    options?: PutOptions
+  ): Promise<void> {
+    const { Upload } = await import("@aws-sdk/lib-storage");
+    const client = await this.getClient();
+
+    const upload = new Upload({
+      client,
+      params: {
+        Bucket: this.config.bucket,
+        Key: path.join(this.config.basePath, key),
+        Body: stream,
+        ContentType: options?.contentType,
+        Metadata: options?.metadata,
+        CacheControl: options?.cacheControl,
+        ContentDisposition: options?.contentDisposition,
+      },
+      queueSize: 4, // Concurrent upload parts
+      partSize: 5 * 1024 * 1024, // 5MB chunks
+    });
+
+    await upload.done();
   }
 
   async get(key: string, options?: GetOptions): Promise<Buffer> {
@@ -335,7 +370,7 @@ export class S3StorageAdapter extends StorageAdapter {
     const response = await client.send(
       new GetObjectCommand({
         Bucket: this.config.bucket,
-        Key: key,
+        Key: path.join(this.config.basePath, key),
         Range: options?.range
           ? `bytes=${options.range.start}-${options.range.end}`
           : undefined,
@@ -356,7 +391,7 @@ export class S3StorageAdapter extends StorageAdapter {
     const response = await client.send(
       new GetObjectCommand({
         Bucket: this.config.bucket,
-        Key: key,
+        Key: path.join(this.config.basePath, key),
         Range: options?.range
           ? `bytes=${options.range.start}-${options.range.end}`
           : undefined,
@@ -373,7 +408,7 @@ export class S3StorageAdapter extends StorageAdapter {
     await client.send(
       new DeleteObjectCommand({
         Bucket: this.config.bucket,
-        Key: key,
+        Key: path.join(this.config.basePath, key),
       })
     );
   }
@@ -386,7 +421,7 @@ export class S3StorageAdapter extends StorageAdapter {
       await client.send(
         new HeadObjectCommand({
           Bucket: this.config.bucket,
-          Key: key,
+          Key: path.join(this.config.basePath, key),
         })
       );
       return true;
@@ -428,13 +463,14 @@ export class S3StorageAdapter extends StorageAdapter {
     const { CopyObjectCommand } = await import("@aws-sdk/client-s3");
     const client = await this.getClient();
 
+    // CopySource must be key, potentially URL encoded
+    const sourceFullPath = path.join(this.config.basePath, sourceKey);
+    const copySource = `${this.config.bucket}/${encodeURIComponent(sourceFullPath)}`;
+
     await client.send(
       new CopyObjectCommand({
         Bucket: this.config.bucket,
-        CopySource: `${this.config.bucket}/${path.join(
-          this.config.basePath,
-          sourceKey
-        )}`,
+        CopySource: copySource,
         Key: path.join(this.config.basePath, destKey),
       })
     );
@@ -548,7 +584,8 @@ export class RcloneStorageAdapter extends StorageAdapter {
         await fs.writeFile(tempFile, data);
       } else {
         const writeStream = createWriteStream(tempFile);
-        await pipeline(data, writeStream);
+        // @ts-ignore
+        await pipeline(Readable.from(data as any), writeStream);
       }
 
       // Use rclone copyto for single file
@@ -556,6 +593,14 @@ export class RcloneStorageAdapter extends StorageAdapter {
     } finally {
       await fs.unlink(tempFile).catch(() => { });
     }
+  }
+
+  async writeStream(
+    key: string,
+    stream: Readable | ReadableStream,
+    options?: PutOptions
+  ): Promise<void> {
+    return this.put(key, stream, options); // defined above to handle streams via temp file
   }
 
   async get(key: string, options?: GetOptions): Promise<Buffer> {
@@ -1194,9 +1239,18 @@ export async function getStorage(): Promise<StorageAdapter> {
   }
 
   if (!storageInstance) {
+    const storageType = (import.meta.env?.STORAGE_TYPE || process.env.STORAGE_TYPE || "local") as StorageConfig["type"];
+
+    // BasePath should be empty for cloud storage (S3, GCS, etc)
+    // Only use directory path for local storage
+    let basePath = "";
+    if (storageType === "local") {
+      basePath = import.meta.env?.STORAGE_PATH || process.env.STORAGE_PATH || "./data/storage";
+    }
+
     const config: StorageConfig = {
-      type: (import.meta.env?.STORAGE_TYPE || process.env.STORAGE_TYPE || "local") as StorageConfig["type"],
-      basePath: import.meta.env?.STORAGE_PATH || process.env.STORAGE_PATH || "./data/storage",
+      type: storageType,
+      basePath,
       bucket: import.meta.env?.STORAGE_BUCKET || process.env.STORAGE_BUCKET,
       region: import.meta.env?.STORAGE_REGION || process.env.STORAGE_REGION,
       endpoint: import.meta.env?.STORAGE_ENDPOINT || process.env.STORAGE_ENDPOINT,

@@ -4,6 +4,7 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDatabase, schema } from "@/db";
 import { eq } from "drizzle-orm";
 import { commitFile } from "@/lib/git";
+import { resolveRepoPath } from "@/lib/git-storage";
 import { canWriteRepo } from "@/lib/permissions";
 import { analyzeRepository } from "@/lib/analysis";
 
@@ -40,8 +41,9 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
     if (!hasAccess) return forbidden();
 
     // Commit
+    const repoPath = await resolveRepoPath(repo.diskPath);
     const commitSha = await commitFile(
-        repo.diskPath,
+        repoPath,
         branch,
         path,
         content,

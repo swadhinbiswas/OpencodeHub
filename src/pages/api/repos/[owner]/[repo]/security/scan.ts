@@ -2,6 +2,7 @@ import { getDatabase, schema } from "@/db";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { canWriteRepo } from "@/lib/permissions";
 import { runSecurityScan } from "@/lib/security";
+import { resolveRepoPath } from "@/lib/git-storage";
 import { generateId } from "@/lib/utils";
 import type { APIRoute } from "astro";
 import { and, eq } from "drizzle-orm";
@@ -50,7 +51,8 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals }) => {
     });
 
     // Start scan asynchronously
-    runSecurityScan(repo.diskPath, scanId, repo.id).catch(err => {
+    const repoPath = await resolveRepoPath(repo.diskPath);
+    runSecurityScan(repoPath, scanId, repo.id).catch(err => {
         logger.error({ err, repoId: repo.id, scanId }, "Background scan failed to start properly");
     });
 

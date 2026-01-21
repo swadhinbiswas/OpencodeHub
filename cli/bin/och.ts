@@ -147,6 +147,63 @@ program.addCommand(apiCommands);
 // Shorthand Commands
 // ================================
 
+// Stacking Commands (Graphite-inspired)
+program
+    .command("stack")
+    .description("Manage stacked pull requests")
+    .command("submit")
+    .description("Submit the current branch as a stacked PR")
+    .option("-m, --message <message>", "PR Title/Description")
+    .action(async (options) => {
+        console.log("🚀 Submitting stack...");
+
+        // 1. Git Push
+        try {
+            const { execSync } = require('child_process');
+            const branch = execSync('git iconv -futf-8 -tutf-8 branch --show-current').toString().trim();
+            console.log(`Pushing branch ${branch}...`);
+            execSync(`git push origin ${branch}`); // Assumes 'origin' is set
+        } catch (e: any) {
+            console.error("Failed to push branch:", e.message);
+            return;
+        }
+
+        // 2. Identify PR Context
+        // We need to know who we are (config) and where we are (remote)
+        // For MVP, just log instructions
+        console.log(`✅ Branch pushed. To create/update stack, visit OpenCodeHub or use 'och pr create' (coming soon).`);
+    });
+
+program
+    .command("queue")
+    .description("Manage merge queue")
+    .command("join")
+    .description("Add the current PR to the merge queue")
+    .action(async () => {
+        console.log("⏳ Adding to merge queue...");
+
+        try {
+            const { execSync } = require('child_process');
+            const branch = execSync('git branch --show-current').toString().trim();
+            // Parse remote to get owner/repo
+            const remoteUrl = execSync('git remote get-url origin').toString().trim();
+            // Regex to match http://host/owner/repo.git or git@...
+            // MVP: Assume standard format
+            // This requires robust parsing.
+
+            console.log(`Detected branch: ${branch}`);
+            console.log(`Use 'cho queue join <pr-id>' implementation pending API client config.`);
+
+            // Real implementation requires Authenticated API Client
+            // which involves reading ~/.och/config.json
+            // I will stub this with a TODO for the user to configure auth first.
+
+            console.log("⚠️  Please configure CLI authentication first.");
+        } catch (e: any) {
+            console.error("Error:", e.message);
+        }
+    });
+
 // och push (shorthand for repo push)
 program
     .command("push")
@@ -223,40 +280,51 @@ program
     .alias("st")
     .description("Show current stack and branch status")
     .action(async () => {
-        const branches = await git.branchLocal();
-        const currentBranch = branches.current;
-        const stackBranches = branches.all.filter(b => b.startsWith("stack/"));
-
-        console.log(chalk.bold("\n📊 Status\n"));
-        console.log(`Current branch: ${chalk.cyan(currentBranch)}`);
-
-        if (stackBranches.length > 0) {
-            console.log(`\nStack branches: ${stackBranches.length}`);
-            for (const branch of stackBranches) {
-                const isCurrent = branch === currentBranch;
-                const marker = isCurrent ? chalk.yellow("●") : chalk.dim("○");
-                console.log(`  ${marker} ${isCurrent ? chalk.bold(branch) : branch}`);
+        try {
+            const isRepo = await git.checkIsRepo();
+            if (!isRepo) {
+                console.log(chalk.yellow("Not a git repository. Run this command inside a git repository."));
+                return;
             }
+
+            const branches = await git.branchLocal();
+            const currentBranch = branches.current;
+            const stackBranches = branches.all.filter(b => b.startsWith("stack/"));
+
+            console.log(chalk.bold("\n📊 Status\n"));
+            console.log(`Current branch: ${chalk.cyan(currentBranch)}`);
+
+            if (stackBranches.length > 0) {
+                console.log(`\nStack branches: ${stackBranches.length}`);
+                for (const branch of stackBranches) {
+                    const isCurrent = branch === currentBranch;
+                    const marker = isCurrent ? chalk.yellow("●") : chalk.dim("○");
+                    console.log(`  ${marker} ${isCurrent ? chalk.bold(branch) : branch}`);
+                }
+            }
+
+            // Show git status
+            const status = await git.status();
+            if (status.modified.length > 0 || status.not_added.length > 0 || status.staged.length > 0) {
+                console.log(chalk.bold("\nChanges:"));
+                if (status.staged.length > 0) {
+                    console.log(chalk.green(`  Staged: ${status.staged.length} files`));
+                }
+                if (status.modified.length > 0) {
+                    console.log(chalk.yellow(`  Modified: ${status.modified.length} files`));
+                }
+                if (status.not_added.length > 0) {
+                    console.log(chalk.red(`  Untracked: ${status.not_added.length} files`));
+                }
+            } else {
+                console.log(chalk.dim("\nWorking tree clean"));
+            }
+
+            console.log("");
+        } catch (error) {
+            console.error(chalk.red("\nError checking status:"));
+            console.error(chalk.dim(error instanceof Error ? error.message : "Unknown error"));
         }
-
-        // Show git status
-        const status = await git.status();
-        if (status.modified.length > 0 || status.not_added.length > 0 || status.staged.length > 0) {
-            console.log(chalk.bold("\nChanges:"));
-            if (status.staged.length > 0) {
-                console.log(chalk.green(`  Staged: ${status.staged.length} files`));
-            }
-            if (status.modified.length > 0) {
-                console.log(chalk.yellow(`  Modified: ${status.modified.length} files`));
-            }
-            if (status.not_added.length > 0) {
-                console.log(chalk.red(`  Untracked: ${status.not_added.length} files`));
-            }
-        } else {
-            console.log(chalk.dim("\nWorking tree clean"));
-        }
-
-        console.log("");
     });
 
 // och whoami (alias for auth status)

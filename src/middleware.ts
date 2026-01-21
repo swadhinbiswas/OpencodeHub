@@ -52,7 +52,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
       context.cookies.delete("och_session", { path: "/" });
     }
   } else {
-    console.log(`[Middleware] No token found for request: ${context.url.pathname}`);
+    // Only log warning for non-git requests, as git uses Basic Auth handled by backend
+    if (!context.url.pathname.endsWith(".git") && !context.url.pathname.includes(".git/")) {
+      console.log(`[Middleware] No token found for request: ${context.url.pathname}`);
+    }
   }
 
   // Protected routes logic

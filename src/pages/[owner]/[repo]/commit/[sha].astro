@@ -1,0 +1,171 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, and } from "drizzle-orm";
+import { resolveRepoPath } from "@/lib/git-storage";
+import { getCommitDiff } from "@/lib/git";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { canReadRepo } from "@/lib/permissions";
+
+const { owner: ownerName, repo: repoName,sha } = Astro.params;
+const db = getDatabase();
+
+// Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!),
+  ),
+  with: {
+    owner: true,
+  },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canReadRepo(currentUser?.id, repoData);
+
+if (!hasAccess) {
+  return Astro.redirect("/404");
+}
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  license: repoData.licenseType || "None",
+  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+  updatedAt: repoData.updatedAt,
+  httpCloneUrl: repoData.httpCloneUrl,
+  sshCloneUrl: repoData.sshCloneUrl,
+  openIssueCount: repoData.openIssueCount,
+  openPrCount: repoData.openPrCount,
+  website: repoData.website,
+};
+
+// Get commit diff
+const resolvedLocalPath = await resolveRepoPath(repoData.diskPath);
+let commit: any = null;
+let error: string | null = null;
+
+try {
+  commit = await getCommitDiff(resolvedLocalPath, sha!);
+} catch (e: any) {
+  console.error("Error fetching commit:", e);
+  error = e.message || "Failed to fetch commit";
+}
+
+if (!commit && !error) {
+  return Astro.redirect("/404");
+}
+
+function timeAgo(date: Date | string | number) {
+  if (!date) return "";
+  const seconds = Math.floor(
+    (new Date().getTime() - new Date(date).getTime()) / 1000,
+  );
+  let interval = seconds / 31536000;
+  if (interval > 1) return Math.floor(interval) + " years ago";
+  interval = seconds / 2592000;
+  if (interval > 1) return Math.floor(interval) + " months ago";
+  interval = seconds / 86400;
+  if (interval > 1) return Math.floor(interval) + " days ago";
+  interval = seconds / 3600;
+  if (interval > 1) return Math.floor(interval) + " hours ago";
+  interval = seconds / 60;
+  if (interval > 1) return Math.floor(interval) + " minutes ago";
+  return Math.floor(seconds) + " seconds ago";
+}
+---
+
+<BaseLayout title={`Commit ${sha?.substring(0, 7)} · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="code" />
+
+    {error ? (
+      <div class="p-6 text-center">
+        <p class="text-destructive">{error}</p>
+      </div>
+    ) : commit && (
+      <div class="space-y-6">
+        <!-- Commit Header -->
+        <div class="rounded-lg border bg-card p-6">
+          <div class="mb-4">
+            <h1 class="text-2xl font-bold mb-2">{commit.message}</h1>
+            {commit.body && (
+              <pre class="text-sm text-muted-foreground whitespace-pre-wrap font-sans">{commit.body}</pre>
+            )}
+          </div>
+          
+          <div class="flex items-center gap-4 text-sm text-muted-foreground border-t pt-4">
+            <div class="flex items-center gap-2">
+              <div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                <span class="text-sm font-medium">
+                  {commit.authorName?.[0]?.toUpperCase() || "?"}
+                </span>
+              </div>
+              <div>
+                <div class="font-medium text-foreground">{commit.authorName}</div>
+                <div>{commit.authorEmail}</div>
+              </div>
+            </div>
+            <div class="flex-1"></div>
+            <div>
+              committed {timeAgo(commit.authorDate)}
+            </div>
+          </div>
+
+          <div class="mt-4 flex items-center gap-4 text-sm">
+            <div class="font-mono bg-muted px-3 py-1 rounded">
+              {(commit.sha || sha)?.substring(0, 7)}
+            </div>
+            <div class="text-muted-foreground">
+              {commit.stats?.additions || 0} additions, {commit.stats?.deletions || 0} deletions
+            </div>
+          </div>
+        </div>
+
+        <!-- Changed Files -->
+        <div class="space-y-4">
+          <h2 class="text-lg font-semibold">Changed files</h2>
+          
+          {commit.files && commit.files.length > 0 ? (
+            commit.files.map((file: any) => (
+              <div class="rounded-lg border overflow-hidden">
+                <div class="flex items-center justify-between bg-muted/30 px-4 py-2 border-b">
+                  <span class="font-mono text-sm">{file.path}</span>
+                  <span class="text-sm text-muted-foreground">
+                    +{file.additions || 0} -{file.deletions || 0}
+                  </span>
+                </div>
+                {file.diff && (
+                  <div class="overflow-x-auto">
+                    <pre class="text-xs p-4 bg-background font-mono"><code>{file.diff}</code></pre>
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
+            <div class="text-center text-muted-foreground py-8">
+              No files changed
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+  </div>
+</BaseLayout>

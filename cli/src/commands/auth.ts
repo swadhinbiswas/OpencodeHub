@@ -106,6 +106,7 @@ authCommands
             saveConfig({
                 serverUrl,
                 token,
+                username,
             });
 
             console.log(chalk.green("\n✓ Logged in to " + serverUrl));

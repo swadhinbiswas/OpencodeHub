@@ -1,6 +1,7 @@
 import { getDatabase, schema } from "@/db";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { deleteBranch } from "@/lib/git";
+import { resolveRepoPath } from "@/lib/git-storage";
 import { canWriteRepo } from "@/lib/permissions";
 import type { APIRoute } from "astro";
 import { and, eq } from "drizzle-orm";
@@ -55,7 +56,8 @@ export const DELETE: APIRoute = withErrorHandler(async ({ params, locals }) => {
     }
 
     // Delete branch
-    await deleteBranch(repo.diskPath, branch);
+    const repoPath = await resolveRepoPath(repo.diskPath);
+    await deleteBranch(repoPath, branch);
 
     logger.info({ userId: user.id, repoId: repo.id, branch }, "Branch deleted");
 

@@ -1,5 +1,6 @@
 import { getDatabase, schema } from "@/db";
 import { getFileRawContent } from "@/lib/git";
+import { resolveRepoPath } from "@/lib/git-storage";
 import { canReadRepo } from "@/lib/permissions";
 import type { APIRoute } from "astro";
 import { and, eq } from "drizzle-orm";
@@ -39,8 +40,11 @@ export const GET: APIRoute = async ({ params, locals }) => {
   const filePath = path || "";
 
   try {
+    // Resolve disk path for cloud storage
+    const repoPath = await resolveRepoPath(repoData.diskPath);
+
     const content = await getFileRawContent(
-      repoData.diskPath,
+      repoPath,
       filePath,
       currentBranch
     );

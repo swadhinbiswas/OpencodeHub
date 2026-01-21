@@ -22,10 +22,13 @@ import {
   AlertCircle,
   Layers,
   ChevronRight,
+  ListOrdered,
 } from "lucide-react";
 
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+
 const { owner: ownerName, repo: repoName, number } = Astro.params;
-const db = getDatabase();
+const db = getDatabase() as NodePgDatabase<typeof schema>;
 
 const user = Astro.locals.user;
 
@@ -64,6 +67,11 @@ const pr = await db.query.pullRequests.findFirst({
 
 if (!pr) return Astro.redirect("/404");
 
+// Check Queue Status
+const queueItem = await db.query.mergeQueueItems.findFirst({
+  where: eq(schema.mergeQueueItems.pullRequestId, pr.id),
+});
+
 // Fetch Stack Info
 let stackInfo = null;
 try {
@@ -97,7 +105,6 @@ try {
 
 // Fetch open issue count (for header)
 const issueCountResult = (await db
-  // @ts-expect-error: count argument mismatch
   .select({ count: sql<number>`count(*)` })
   .from(schema.issues)
   .where(
@@ -105,10 +112,9 @@ const issueCountResult = (await db
       eq(schema.issues.repositoryId, repoData.id),
       eq(schema.issues.state, "open"),
     ),
-  )
-  ) as { count: number }[];
+  )) as { count: number }[];
 
-const openIssueCount = issueCountResult?.count || 0;
+const openIssueCount = issueCountResult[0]?.count || 0;
 
 const repo = {
   owner: repoData.owner.username,
@@ -135,8 +141,11 @@ let diffData: { commits: CommitInfo[]; diffs: DiffInfo[] } = {
   diffs: [],
 };
 
+import { resolveRepoPath } from "@/lib/git-storage";
 try {
-  const repoPath = getRepoPath(repoData.owner.username, repoData.name);
+  const repoPath = await resolveRepoPath(
+    getRepoPath(repoData.owner.username, repoData.name),
+  );
   diffData = await compareBranches(repoPath, pr.baseBranch, pr.headBranch);
 } catch (error) {
   console.error("Error fetching comparison:", error);
@@ -249,25 +258,43 @@ try {
               <div class="border rounded-lg bg-muted/10 p-4">
                 <div class="flex items-start gap-4">
                   <div class="mt-1">
-                    <div class="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center text-white">
-                      <GitMerge className="h-4 w-4" />
-                    </div>
+                    {queueItem ? (
+                      <div class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                        <ListOrdered className="h-4 w-4 animate-pulse" />
+                      </div>
+                    ) : (
+                      <div class="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center text-white">
+                        <GitMerge className="h-4 w-4" />
+                      </div>
+                    )}
                   </div>
                   <div class="flex-1">
                     <h4 class="font-medium mb-1">
-                      This branch has no conflicts with the base branch
+                      {queueItem
+                        ? "This PR is in the merge queue"
+                        : "This branch has no conflicts with the base branch"}
                     </h4>
                     <p class="text-sm text-muted-foreground mb-4">
-                      Merging can be performed automatically.
+                      {queueItem
+                        ? `Position: ${queueItem.position || "Pending"} • Status: ${queueItem.status}`
+                        : "Merging can be performed automatically."}
                     </p>
 
-                    {canWrite && (
+                    {canWrite && !queueItem && (
                       <div class="flex items-center gap-2">
                         <Button
                           id="merge-btn"
                           className="bg-green-600 hover:bg-green-700 text-white"
                         >
                           Merge pull request
+                        </Button>
+                        <Button
+                          id="queue-btn"
+                          variant="secondary"
+                          className="border-primary/20 hover:bg-primary/10 text-primary"
+                        >
+                          <ListOrdered className="mr-2 h-4 w-4" />
+                          Add to merge queue
                         </Button>
                         <div
                           id="merge-error"
@@ -276,6 +303,19 @@ try {
                           <AlertCircle className="h-4 w-4" />
                           <span>Merge failed</span>
                         </div>
+                      </div>
+                    )}
+                    {queueItem && (
+                      <div class="flex items-center gap-2">
+                        <Button variant="outline" disabled>
+                          In Queue
+                        </Button>
+                        <a
+                          href={`/${repo.owner}/${repo.name}/merge-queue`}
+                          class="text-sm text-blue-500 hover:underline"
+                        >
+                          View Queue
+                        </a>
                       </div>
                     )}
                   </div>
@@ -420,10 +460,40 @@ try {
     repoOwner: repo.owner,
     repoName: repo.name,
     prNumber: pr.number,
+    prId: pr.id,
   }}
 >
   const mergeBtn = document.getElementById("merge-btn");
+  const queueBtn = document.getElementById("queue-btn");
   const errorDiv = document.getElementById("merge-error");
+
+  queueBtn?.addEventListener("click", async () => {
+    queueBtn.setAttribute("disabled", "true");
+    queueBtn.textContent = "Queueing...";
+    errorDiv.classList.add("hidden");
+
+    try {
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/queue/join`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pullRequestId: prId }),
+        },
+      );
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error?.message || "Failed to enqueue");
+      }
+      window.location.reload();
+    } catch (e) {
+      errorDiv.querySelector("span").textContent = e.message;
+      errorDiv.classList.remove("hidden");
+      queueBtn.removeAttribute("disabled");
+      queueBtn.textContent = "Add to merge queue";
+    }
+  });
 
   mergeBtn?.addEventListener("click", async () => {
     if (!confirm("Are you sure you want to merge this pull request?")) return;

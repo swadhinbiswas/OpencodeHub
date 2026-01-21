@@ -81,8 +81,10 @@ stackCommands
             }
 
             // Parse owner/repo from remote URL
+            // Handles both SSH (git@host:owner/repo) and HTTP (http://host/owner/repo.git) formats
             const remoteUrl = origin.refs.push;
-            const match = remoteUrl.match(/[:/]([^/]+)\/([^/.]+)/);
+            // Match the last two path segments before .git (owner/repo)
+            const match = remoteUrl.match(/\/([^/]+)\/([^/]+?)(?:\.git)?$/);
 
             if (!match) {
                 spinner.fail("Could not parse repository from remote URL");
@@ -91,16 +93,36 @@ stackCommands
 
             const [, owner, repoName] = match;
 
-            // Push all stack branches
+            // Push all stack branches with authentication
             spinner.text = "Pushing branches...";
             const pushedBranches: string[] = [];
 
+            // Build authenticated URL for push (format: http://user:token@host/owner/repo.git)
+            const urlParts = new URL(config.serverUrl);
+            const pushUrl = `${urlParts.protocol}//${config.username || owner}:${config.token}@${urlParts.host}/${owner}/${repoName}.git`;
+
+            console.log(chalk.dim(`\n  Remote URL: ${origin.refs.push}`));
+            console.log(chalk.dim(`  Parsed: owner=${owner}, repo=${repoName}`));
+            console.log(chalk.dim(`  Push URL: ${pushUrl.replace(config.token, '[TOKEN]')}`));
+
             for (const branch of stackBranches) {
                 try {
-                    await git.push(["-u", "origin", branch, "--force-with-lease"]);
+                    // Use the authenticated URL for pushing
+                    console.log(chalk.dim(`  Pushing ${branch} to authenticated URL...`));
+                    await git.push([pushUrl, branch, "--force-with-lease"]);
                     pushedBranches.push(branch);
+                    console.log(chalk.green(`  ✓ Pushed ${branch}`));
                 } catch (e) {
-                    console.log(chalk.yellow(`\n  Warning: Could not push ${branch}`));
+                    console.log(chalk.yellow(`\n  First push attempt failed: ${e instanceof Error ? e.message : 'Unknown error'}`));
+                    // Try regular push if authenticated push fails
+                    try {
+                        console.log(chalk.dim(`  Trying fallback push to origin...`));
+                        await git.push(["-u", "origin", branch, "--force-with-lease"]);
+                        pushedBranches.push(branch);
+                        console.log(chalk.green(`  ✓ Pushed ${branch} via origin`));
+                    } catch (e2) {
+                        console.log(chalk.red(`\n  ✗ Could not push ${branch}: ${e2 instanceof Error ? e2.message : 'Unknown error'}`));
+                    }
                 }
             }
 
