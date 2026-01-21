@@ -1,0 +1,57 @@
+---
+title: OpenCodeHub Documentation
+description: The open-source, AI-native Git server with Stacked PRs and Smart Merge Queues.
+template: splash
+hero:
+  tagline: The fully self-hosted GitHub alternative with SSH hosting, CI/CD pipelines, and a modern developer experience.
+  image:
+    file: ../../assets/houston.webp
+  actions:
+    - text: Get Started
+      link: /getting-started/installation/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/swadhinbiswas/OpencodeHub
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Why OpenCodeHub?
+
+<CardGrid stagger>
+	<Card title="🚀 Stacked PRs" icon="rocket">
+		Break large features into small, dependent steps. Ship faster without the review bottleneck.
+	</Card>
+	<Card title="🤖 AI Code Review" icon="star">
+		Built-in LLM agents (GPT-4/Claude) review your code for bugs and security issues automatically.
+	</Card>
+	<Card title="🔀 Smart Merge Queue" icon="random">
+		Automate your merging strategy. Ensure `main` never breaks with speculative CI runs.
+	</Card>
+	<Card title="🏠 Fully Self-Hosted" icon="laptop">
+		Keep your code on your servers. No "per-seat" pricing. No vendor lock-in.
+	</Card>
+</CardGrid>
+
+## Quick Links
+
+<CardGrid>
+	<Card title="Installation" icon="add-document">
+		Get OpenCodeHub running in minutes with Docker or Node.js.
+		[Read the guide →](/getting-started/installation/)
+	</Card>
+	<Card title="CLI Reference" icon="seti:shell">
+		Learn the `och` CLI commands for managing stacks and repositories.
+		[View commands →](/reference/cli-commands/)
+	</Card>
+	<Card title="API Reference" icon="open-book">
+		Integrate with OpenCodeHub using the REST API.
+		[Explore the API →](/api/rest-api/)
+	</Card>
+	<Card title="Contributing" icon="github">
+		Help make OpenCodeHub better. Set up your local dev environment.
+		[Start contributing →](/development/contributing/)
+	</Card>
+</CardGrid>
