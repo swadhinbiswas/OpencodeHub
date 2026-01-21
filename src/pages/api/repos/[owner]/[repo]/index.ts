@@ -9,6 +9,7 @@ import { getDatabase, schema } from "@/db";
 import { repositories, repositoryCollaborators, users } from '@/db/schema';
 import { getUserFromRequest } from '@/lib/auth';
 import { canAdminRepo, canWriteRepo } from '@/lib/permissions';
+import { isCloudStorage, deleteRepoFromStorage } from '@/lib/git-storage';
 import {
   success,
   badRequest,
@@ -294,6 +295,17 @@ export const DELETE: APIRoute = withErrorHandler(async ({ params, request }) => 
     await deleteGitRepo(repository.diskPath);
   } catch (error) {
     logger.error({ err: error, diskPath: repository.diskPath }, 'Failed to delete git repository on disk');
+    // Continue anyway to clean up database
+  }
+
+  // Delete from cloud storage if applicable
+  try {
+    if (await isCloudStorage()) {
+      await deleteRepoFromStorage(repository.diskPath);
+      logger.info({ diskPath: repository.diskPath }, 'Repository deleted from cloud storage');
+    }
+  } catch (error) {
+    logger.error({ err: error, diskPath: repository.diskPath }, 'Failed to delete repository from cloud storage');
     // Continue anyway to clean up database
   }
 

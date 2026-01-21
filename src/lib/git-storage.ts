@@ -33,7 +33,11 @@ function getTempBase(): string {
  * Check if we're using cloud storage that requires sync
  */
 export async function isCloudStorage(): Promise<boolean> {
-    const type = process.env.STORAGE_TYPE || "local";
+    // Use import.meta.env for Astro compatibility, fallback to process.env for CLI/scripts
+    const importMetaEnvType = import.meta.env?.STORAGE_TYPE;
+    const processEnvType = process.env.STORAGE_TYPE;
+    const type = importMetaEnvType || processEnvType || "local";
+    console.log(`[isCloudStorage] import.meta.env.STORAGE_TYPE=${importMetaEnvType}, process.env.STORAGE_TYPE=${processEnvType}, using=${type}`);
     return ["gdrive", "s3", "gcs", "azure", "rclone", "onedrive"].includes(type);
 }
 
@@ -106,7 +110,9 @@ export async function uploadRepoToStorage(
     storagePath: string
 ): Promise<void> {
     const storage = await getStorage();
+    console.log(`[uploadRepoToStorage] Starting upload from ${localPath} to ${storagePath}`);
 
+    let fileCount = 0;
     async function uploadDir(dirPath: string): Promise<void> {
         const entries = readdirSync(dirPath, { withFileTypes: true });
 
@@ -119,12 +125,15 @@ export async function uploadRepoToStorage(
                 await uploadDir(fullPath);
             } else {
                 const content = await fs.readFile(fullPath);
+                console.log(`[uploadRepoToStorage] Uploading: ${storageKey} (${content.length} bytes)`);
                 await storage.put(storageKey, content);
+                fileCount++;
             }
         }
     }
 
     await uploadDir(localPath);
+    console.log(`[uploadRepoToStorage] Completed: ${fileCount} files uploaded`);
 }
 
 /**
@@ -155,8 +164,9 @@ export async function acquireRepo(owner: string, repoName: string): Promise<stri
     // Check if we're using local storage
     if (!(await isCloudStorage())) {
         // Local storage: return the direct path
-        const reposPath = process.env.GIT_REPOS_PATH
-            ? (path.isAbsolute(process.env.GIT_REPOS_PATH) ? process.env.GIT_REPOS_PATH : join(process.cwd(), process.env.GIT_REPOS_PATH))
+        const gitReposPath = import.meta.env?.GIT_REPOS_PATH || process.env.GIT_REPOS_PATH;
+        const reposPath = gitReposPath
+            ? (path.isAbsolute(gitReposPath) ? gitReposPath : join(process.cwd(), gitReposPath))
             : join(process.cwd(), "data", "repos");
         return join(reposPath, owner, `${repoName}.git`);
     }
@@ -245,8 +255,9 @@ export async function initRepoInStorage(
 ): Promise<string> {
     if (!(await isCloudStorage())) {
         // Local storage: return the direct path
-        const reposPath = process.env.GIT_REPOS_PATH
-            ? (path.isAbsolute(process.env.GIT_REPOS_PATH) ? process.env.GIT_REPOS_PATH : join(process.cwd(), process.env.GIT_REPOS_PATH))
+        const gitReposPath = import.meta.env?.GIT_REPOS_PATH || process.env.GIT_REPOS_PATH;
+        const reposPath = gitReposPath
+            ? (path.isAbsolute(gitReposPath) ? gitReposPath : join(process.cwd(), gitReposPath))
             : join(process.cwd(), "data", "repos");
         return join(reposPath, owner, `${repoName}.git`);
     }
@@ -270,12 +281,18 @@ export async function initRepoInStorage(
  * Call this after git init operations are complete
  */
 export async function finalizeRepoInit(owner: string, repoName: string): Promise<void> {
-    if (!(await isCloudStorage())) {
+    console.log(`[finalizeRepoInit] Called for ${owner}/${repoName}`);
+    const isCloud = await isCloudStorage();
+    console.log(`[finalizeRepoInit] isCloudStorage=${isCloud}`);
+
+    if (!isCloud) {
+        console.log(`[finalizeRepoInit] Skipping - not cloud storage`);
         return;
     }
 
     const localPath = getLocalTempPath(owner, repoName);
     const storagePath = getStorageRepoPath(owner, repoName);
+    console.log(`[finalizeRepoInit] Uploading from ${localPath} to ${storagePath}`);
 
     await uploadRepoToStorage(localPath, storagePath);
 
@@ -285,6 +302,7 @@ export async function finalizeRepoInit(owner: string, repoName: string): Promise
         lastUsed: new Date(),
         modified: false,
     });
+    console.log(`[finalizeRepoInit] Completed`);
 }
 
 /**
@@ -328,8 +346,9 @@ export async function getDiskPath(owner: string, repoName: string): Promise<stri
     if (await isCloudStorage()) {
         return getStorageRepoPath(owner, repoName);
     }
-    const reposPath = process.env.GIT_REPOS_PATH
-        ? (path.isAbsolute(process.env.GIT_REPOS_PATH) ? process.env.GIT_REPOS_PATH : join(process.cwd(), process.env.GIT_REPOS_PATH))
+    const gitReposPath = import.meta.env?.GIT_REPOS_PATH || process.env.GIT_REPOS_PATH;
+    const reposPath = gitReposPath
+        ? (path.isAbsolute(gitReposPath) ? gitReposPath : join(process.cwd(), gitReposPath))
         : join(process.cwd(), "data", "repos");
     return join(reposPath, owner, `${repoName}.git`);
 }

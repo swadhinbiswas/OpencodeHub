@@ -36,13 +36,23 @@ export const onRequest = defineMiddleware(async (context, next) => {
           if (user) {
             context.locals.user = user;
             context.locals.session = session;
+            console.log(`[Middleware] Authenticated user: ${user.username} (${user.id})`);
+          } else {
+            console.log(`[Middleware] User not found for ID: ${payload.userId}`);
           }
+        } else {
+          console.log(`[Middleware] Session invalid or expired. Session: ${!!session}, Expired: ${session && new Date(session.expiresAt) <= new Date()}`);
         }
+      } else {
+        console.log(`[Middleware] Invalid payload or missing userId: ${JSON.stringify(payload)}`);
       }
     } catch (e) {
+      console.error(`[Middleware] Error verifying token:`, e);
       // Invalid token or session
       context.cookies.delete("och_session", { path: "/" });
     }
+  } else {
+    console.log(`[Middleware] No token found for request: ${context.url.pathname}`);
   }
 
   // Protected routes logic

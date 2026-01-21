@@ -5,6 +5,7 @@ import { getDatabase, schema } from "@/db";
 import { eq, and } from "drizzle-orm";
 import { canReadRepo } from "@/lib/permissions";
 import { getCommits, type CommitInfo } from "@/lib/git";
+import { resolveRepoPath } from "@/lib/git-storage";
 import { GitCommit as GitCommitIcon, Copy, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -56,10 +57,13 @@ const repo = {
   openPrCount: repoData.openPrCount,
 };
 
+// Resolve disk path for git operations (handles cloud storage)
+const resolvedLocalPath = await resolveRepoPath(repoData.diskPath);
+
 // Fetch commits
 let commits: CommitInfo[] = [];
 try {
-  commits = await getCommits(repoData.diskPath, {
+  commits = await getCommits(resolvedLocalPath, {
     ref: ref,
     limit: 100, // Fetch last 100 commits
   });

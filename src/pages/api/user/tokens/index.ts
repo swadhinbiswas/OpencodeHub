@@ -60,5 +60,6 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
     logger.info({ userId: tokenPayload.userId, tokenId: newToken.id }, "Personal Access Token created (legacy endpoint)");
 
     // Return the raw token to the user (only once!)
+    console.log("Debug - New Token Object:", JSON.stringify(newToken, null, 2));
     return success(newToken);
 });

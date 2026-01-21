@@ -1,6 +1,7 @@
 import { getDatabase, schema } from "@/db";
 import { validateBasicAuth } from "@/lib/auth-basic";
 import { canReadRepo, canWriteRepo } from "@/lib/permissions";
+import { resolveRepoPath, releaseRepo, parseStoragePath } from "@/lib/git-storage";
 import type { APIRoute } from "astro";
 import { spawn } from "child_process";
 import { and, eq } from "drizzle-orm";
@@ -42,6 +43,15 @@ export const ALL: APIRoute = async ({ params, request }) => {
   const url = new URL(request.url);
   const service = url.searchParams.get("service");
 
+  // Get local path (downloads from R2 if needed)
+  let localRepoPath: string;
+  try {
+    localRepoPath = await resolveRepoPath(repoData.diskPath);
+  } catch (err) {
+    console.error("Failed to resolve repo path:", err);
+    return new Response("Internal Server Error", { status: 500 });
+  }
+
   // --- info/refs ---
   if (path === "info/refs") {
     if (!service)
@@ -73,7 +83,7 @@ export const ALL: APIRoute = async ({ params, request }) => {
       cmd,
       "--stateless-rpc",
       "--advertise-refs",
-      repoData.diskPath,
+      localRepoPath,
     ]);
 
     const stream = new PassThrough();
@@ -121,7 +131,7 @@ export const ALL: APIRoute = async ({ params, request }) => {
     }
 
     const cmd = path.replace("git-", "");
-    const child = spawn("git", [cmd, "--stateless-rpc", repoData.diskPath]);
+    const child = spawn("git", [cmd, "--stateless-rpc", localRepoPath]);
 
     if (request.body) {
       // Convert Web Stream to Node Stream
@@ -136,16 +146,25 @@ export const ALL: APIRoute = async ({ params, request }) => {
       console.error(`Git error (${path}):`, data.toString());
     });
 
-    // Trigger Analysis on successful push
-    if (!isUpload) { // git-receive-pack
-      child.on("close", (code) => {
-        if (code === 0) {
-          import("@/lib/analysis").then(({ analyzeRepository }) => {
-            analyzeRepository(repoData.id, userId).catch(console.error);
-          });
+    // Handle process exit
+    child.on("close", async (code) => {
+      if (code === 0) {
+        // Trigger Analysis on successful push
+        if (!isUpload) { // git-receive-pack
+          try {
+            // SYNC BACK TO R2
+            await releaseRepo(ownerName, repoName, true);
+            console.log(`Synced ${ownerName}/${repoName} back to R2 after push`);
+
+            // Trigger Analysis
+            const { analyzeRepository } = await import("@/lib/analysis");
+            await analyzeRepository(repoData.id, userId).catch(console.error);
+          } catch (err) {
+            console.error("Failed to sync/analyze after push:", err);
+          }
         }
-      });
-    }
+      }
+    });
 
     return new Response(child.stdout as any, {
       headers: {

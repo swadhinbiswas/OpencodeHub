@@ -318,7 +318,7 @@ export class S3StorageAdapter extends StorageAdapter {
     await client.send(
       new PutObjectCommand({
         Bucket: this.config.bucket,
-        Key: path.join(this.config.basePath, key),
+        Key: key,
         Body: data,
         ContentType: options?.contentType,
         Metadata: options?.metadata,
@@ -335,7 +335,7 @@ export class S3StorageAdapter extends StorageAdapter {
     const response = await client.send(
       new GetObjectCommand({
         Bucket: this.config.bucket,
-        Key: path.join(this.config.basePath, key),
+        Key: key,
         Range: options?.range
           ? `bytes=${options.range.start}-${options.range.end}`
           : undefined,
@@ -356,7 +356,7 @@ export class S3StorageAdapter extends StorageAdapter {
     const response = await client.send(
       new GetObjectCommand({
         Bucket: this.config.bucket,
-        Key: path.join(this.config.basePath, key),
+        Key: key,
         Range: options?.range
           ? `bytes=${options.range.start}-${options.range.end}`
           : undefined,
@@ -373,7 +373,7 @@ export class S3StorageAdapter extends StorageAdapter {
     await client.send(
       new DeleteObjectCommand({
         Bucket: this.config.bucket,
-        Key: path.join(this.config.basePath, key),
+        Key: key,
       })
     );
   }
@@ -386,7 +386,7 @@ export class S3StorageAdapter extends StorageAdapter {
       await client.send(
         new HeadObjectCommand({
           Bucket: this.config.bucket,
-          Key: path.join(this.config.basePath, key),
+          Key: key,
         })
       );
       return true;
@@ -736,12 +736,16 @@ export class GoogleDriveStorageAdapter extends StorageAdapter {
     let parentId = this.folderId;
 
     for (const name of parts) {
+      if (name === ".") continue; // Skip current directory dot
+
       const q = `name='${name}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
       const res = await drive.files.list({ q, fields: 'files(id)' });
 
       if (res.data.files?.length > 0) {
         parentId = res.data.files[0].id;
+        // console.log(`[GoogleDrive] Found existing folder '${name}', id=${parentId}`);
       } else {
+        console.log(`[GoogleDrive] Creating folder '${name}' in parent '${parentId}'`);
         const folder = await drive.files.create({
           requestBody: {
             name,
@@ -751,6 +755,7 @@ export class GoogleDriveStorageAdapter extends StorageAdapter {
           fields: 'id',
         });
         parentId = folder.data.id;
+        console.log(`[GoogleDrive] Created folder '${name}', id=${parentId}`);
       }
     }
 
@@ -759,7 +764,9 @@ export class GoogleDriveStorageAdapter extends StorageAdapter {
 
   async put(key: string, data: Buffer | Readable, options?: PutOptions): Promise<void> {
     const drive = await this.getDrive();
-    const fullPath = path.join(this.config.basePath, key);
+    // For Google Drive, use key directly as path relative to the configured folder
+    // basePath is for local storage, not needed for cloud folder structure
+    const fullPath = key;
     const fileName = path.basename(fullPath);
     const folderPath = path.dirname(fullPath);
 
@@ -784,7 +791,7 @@ export class GoogleDriveStorageAdapter extends StorageAdapter {
 
   async get(key: string, options?: GetOptions): Promise<Buffer> {
     const drive = await this.getDrive();
-    const fullPath = path.join(this.config.basePath, key);
+    const fullPath = key; // Use key directly, not basePath prefix
     const fileId = await this.findFileByPath(fullPath);
 
     if (!fileId) throw new Error(`File not found: ${key}`);
@@ -808,20 +815,35 @@ export class GoogleDriveStorageAdapter extends StorageAdapter {
 
   async delete(key: string): Promise<void> {
     const drive = await this.getDrive();
-    const fullPath = path.join(this.config.basePath, key);
+    const fullPath = key;
     const fileId = await this.findFileByPath(fullPath);
     if (fileId) await drive.files.delete({ fileId });
   }
 
   async exists(key: string): Promise<boolean> {
-    const fullPath = path.join(this.config.basePath, key);
+    const fullPath = key;
     return (await this.findFileByPath(fullPath)) !== null;
   }
 
   async list(options?: ListOptions): Promise<ListResult> {
     const drive = await this.getDrive();
-    const prefix = path.join(this.config.basePath, options?.prefix || '');
-    const folderId = (await this.findFileByPath(prefix)) || this.folderId;
+    // Do not use basePath for Google Drive, use prefix directly
+    const prefix = options?.prefix || '';
+
+    // If prefix is provided, we MUST find that specific folder.
+    // If it doesn't exist, return empty list (or throw).
+    // Only use root folderId if prefix is empty.
+    let folderId: string | null = null;
+
+    if (prefix) {
+      folderId = await this.findFileByPath(prefix);
+      if (!folderId) {
+        // Folder not found, return empty list
+        return { objects: [], prefixes: [], isTruncated: false };
+      }
+    } else {
+      folderId = this.folderId;
+    }
 
     const res = await drive.files.list({
       q: `'${folderId}' in parents and trashed=false`,
@@ -836,8 +858,9 @@ export class GoogleDriveStorageAdapter extends StorageAdapter {
       if (file.mimeType === 'application/vnd.google-apps.folder') {
         prefixes.push(file.name + '/');
       } else {
+        const key = options?.prefix ? path.join(options.prefix, file.name) : file.name;
         objects.push({
-          key: file.name,
+          key,
           size: parseInt(file.size || '0'),
           lastModified: new Date(file.modifiedTime),
         });
@@ -1172,19 +1195,19 @@ export async function getStorage(): Promise<StorageAdapter> {
 
   if (!storageInstance) {
     const config: StorageConfig = {
-      type: (process.env.STORAGE_TYPE as StorageConfig["type"]) || "local",
-      basePath: process.env.STORAGE_PATH || "./data/storage",
-      bucket: process.env.STORAGE_BUCKET,
-      region: process.env.STORAGE_REGION,
-      endpoint: process.env.STORAGE_ENDPOINT,
-      accessKeyId: process.env.STORAGE_ACCESS_KEY_ID,
-      secretAccessKey: process.env.STORAGE_SECRET_ACCESS_KEY,
-      rcloneRemote: process.env.STORAGE_RCLONE_REMOTE,
+      type: (import.meta.env?.STORAGE_TYPE || process.env.STORAGE_TYPE || "local") as StorageConfig["type"],
+      basePath: import.meta.env?.STORAGE_PATH || process.env.STORAGE_PATH || "./data/storage",
+      bucket: import.meta.env?.STORAGE_BUCKET || process.env.STORAGE_BUCKET,
+      region: import.meta.env?.STORAGE_REGION || process.env.STORAGE_REGION,
+      endpoint: import.meta.env?.STORAGE_ENDPOINT || process.env.STORAGE_ENDPOINT,
+      accessKeyId: import.meta.env?.STORAGE_ACCESS_KEY_ID || process.env.STORAGE_ACCESS_KEY_ID,
+      secretAccessKey: import.meta.env?.STORAGE_SECRET_ACCESS_KEY || process.env.STORAGE_SECRET_ACCESS_KEY,
+      rcloneRemote: import.meta.env?.STORAGE_RCLONE_REMOTE || process.env.STORAGE_RCLONE_REMOTE,
       // Google Drive
-      googleClientId: process.env.GOOGLE_CLIENT_ID,
-      googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      googleRefreshToken: process.env.GOOGLE_REFRESH_TOKEN,
-      googleFolderId: process.env.GOOGLE_FOLDER_ID,
+      googleClientId: import.meta.env?.OAUTH_GOOGLE_CLIENT_ID || process.env.OAUTH_GOOGLE_CLIENT_ID || import.meta.env?.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID,
+      googleClientSecret: import.meta.env?.OAUTH_GOOGLE_CLIENT_SECRET || process.env.OAUTH_GOOGLE_CLIENT_SECRET || import.meta.env?.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET,
+      googleRefreshToken: import.meta.env?.GOOGLE_REFRESH_TOKEN || process.env.GOOGLE_REFRESH_TOKEN,
+      googleFolderId: import.meta.env?.GOOGLE_FOLDER_ID || process.env.GOOGLE_FOLDER_ID,
     };
     storageInstance = createStorageAdapter(config);
     lastConfigHash = JSON.stringify(config);
