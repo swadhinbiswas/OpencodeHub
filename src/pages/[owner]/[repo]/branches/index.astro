@@ -6,6 +6,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 import { getBranches, getCommits } from "@/lib/git";
 import { canReadRepo, canWriteRepo } from "@/lib/permissions";
 import { getRepoPath } from "@/lib/utils";
+import { resolveRepoPath } from "@/lib/git-storage";
 import { and, eq, sql, count } from "drizzle-orm";
 import {
   GitBranch,
@@ -47,10 +48,13 @@ if (!hasAccess) {
   return Astro.redirect("/404");
 }
 
+// Resolve disk path for git operations (handles cloud storage)
+const resolvedLocalPath = await resolveRepoPath(repoData.diskPath);
+
 // Fetch branches
 let branches: any[] = [];
 try {
-  const repoPath = repoData.diskPath;
+  const repoPath = resolvedLocalPath;
   const gitBranches = await getBranches(repoPath);
 
   // For each branch, get the last commit info
@@ -88,9 +92,7 @@ const issueCountResult = await (db as any)
       eq(schema.issues.repositoryId, repoData.id),
       eq(schema.issues.state, "open"),
     ),
-  )
-  ;
-
+  );
 const openIssueCount = issueCountResult?.count || 0;
 
 const repo = {

@@ -5,6 +5,7 @@ import { getDatabase, schema } from "@/db";
 import { eq, and, sql, desc, gte, count } from "drizzle-orm";
 import { canReadRepo } from "@/lib/permissions";
 import { getContributors, getCommits } from "@/lib/git";
+import { resolveRepoPath } from "@/lib/git-storage";
 import {
     GitCommit,
     GitPullRequest,
@@ -70,19 +71,21 @@ const issueCountResult = (await db
             eq(schema.issues.repositoryId, repoData.id),
             eq(schema.issues.state, "open"),
         ),
-    )
-    ) as { count: number }[];
+    )) as { count: number }[];
 
-repo.openIssueCount = issueCountResult?.count || 0;
+repo.openIssueCount = issueCountResult[0]?.count || 0;
 
 // Gather Insights Data
 
+// Resolve disk path for git operations (handles cloud storage)
+const resolvedLocalPath = await resolveRepoPath(repoData.diskPath);
+
 // 1. Contributors
-const contributors = await getContributors(repoData.diskPath);
+const contributors = await getContributors(resolvedLocalPath);
 
 // 2. Recent Commits (Pulse - e.g., last month)
 // For now, simple last 50 commits
-const recentCommits = await getCommits(repoData.diskPath, { limit: 20 });
+const recentCommits = await getCommits(resolvedLocalPath, { limit: 20 });
 
 // 3. Issue/PR Stats (Last 30 days)
 const thirtyDaysAgo = new Date();
@@ -94,22 +97,18 @@ const [recentIssues] = await (db as any)
     .where(
         and(
             eq(schema.issues.repositoryId, repoData.id),
-            gte(schema.issues.createdAt, thirtyDaysAgo.toISOString()),
+            gte(schema.issues.createdAt, thirtyDaysAgo),
         ),
-    )
-    ;
-
+    );
 const [recentPRs] = await (db as any)
     .select({ count: count() })
     .from(schema.pullRequests)
     .where(
         and(
             eq(schema.pullRequests.repositoryId, repoData.id),
-            gte(schema.pullRequests.createdAt, thirtyDaysAgo.toISOString()),
+            gte(schema.pullRequests.createdAt, thirtyDaysAgo),
         ),
-    )
-    ;
-
+    );
 const [closedIssues] = await (db as any)
     .select({ count: count() })
     .from(schema.issues)
@@ -117,11 +116,9 @@ const [closedIssues] = await (db as any)
         and(
             eq(schema.issues.repositoryId, repoData.id),
             eq(schema.issues.state, "closed"),
-            gte(schema.issues.updatedAt, thirtyDaysAgo.toISOString()),
+            gte(schema.issues.updatedAt, thirtyDaysAgo),
         ),
-    )
-    ;
-
+    );
 const [mergedPRs] = await (db as any)
     .select({ count: count() })
     .from(schema.pullRequests)
@@ -129,10 +126,9 @@ const [mergedPRs] = await (db as any)
         and(
             eq(schema.pullRequests.repositoryId, repoData.id),
             eq(schema.pullRequests.state, "merged"),
-            gte(schema.pullRequests.updatedAt, thirtyDaysAgo.toISOString()),
+            gte(schema.pullRequests.updatedAt, thirtyDaysAgo),
         ),
-    )
-    ;
+    );
 ---
 
 <BaseLayout title={`Insights · ${repo.owner}/${repo.name}`}>

@@ -1,6 +1,7 @@
 ---
 import "@/styles/globals.css";
 import Header from "@/components/layout/Header.astro";
+import { Toaster } from "@/components/ui/sonner";
 
 interface Props {
   title?: string;
@@ -58,6 +59,7 @@ const {
         </div>
       </footer>
     </div>
+    <Toaster client:idle />
   </body>
 </html>
 

@@ -4,6 +4,7 @@ import RepoHeader from "@/components/repo/RepoHeader.astro";
 import { getDatabase, schema } from "@/db";
 import { eq, and } from "drizzle-orm";
 import { getBranches, getFileContent } from "@/lib/git";
+import { resolveRepoPath } from "@/lib/git-storage";
 import { canWriteRepo } from "@/lib/permissions";
 import { Save } from "lucide-react";
 
@@ -11,176 +12,262 @@ const { owner: ownerName, repo: repoName } = Astro.params;
 const db = getDatabase();
 
 const user = await db.query.users.findFirst({
-  where: eq(schema.users.username, ownerName!),
+    where: eq(schema.users.username, ownerName!),
 });
 if (!user) return Astro.redirect("/404");
 
 const repoData = await db.query.repositories.findFirst({
-  where: and(
-    eq(schema.repositories.ownerId, user.id),
-    eq(schema.repositories.name, repoName!)
-  ),
-  with: { owner: true }
+    where: and(
+        eq(schema.repositories.ownerId, user.id),
+        eq(schema.repositories.name, repoName!),
+    ),
+    with: { owner: true },
 });
 if (!repoData) return Astro.redirect("/404");
 
 const currentUser = Astro.locals.user;
-if (!await canWriteRepo(currentUser?.id, repoData)) return Astro.redirect("/403");
+if (!(await canWriteRepo(currentUser?.id, repoData)))
+    return Astro.redirect("/403");
+
+// Resolve disk path for git operations (handles cloud storage)
+const resolvedLocalPath = await resolveRepoPath(repoData.diskPath);
 
 // Parse Ref
 const refParam = Astro.params.ref || "";
 let branches: string[] = [repoData.defaultBranch];
-try { branches = (await getBranches(repoData.diskPath)).map(b => b.name); } catch {}
+try {
+    branches = (await getBranches(resolvedLocalPath)).map((b) => b.name);
+} catch {}
 
-const matchingBranch = branches.filter(b => refParam === b || refParam.startsWith(b + "/")).sort((a, b) => b.length - a.length)[0];
+const matchingBranch = branches
+    .filter((b) => refParam === b || refParam.startsWith(b + "/"))
+    .sort((a, b) => b.length - a.length)[0];
 const currentBranch = matchingBranch || repoData.defaultBranch;
-const filePath = matchingBranch ? refParam.slice(matchingBranch.length).replace(/^\//, "") : refParam;
+const filePath = matchingBranch
+    ? refParam.slice(matchingBranch.length).replace(/^\//, "")
+    : refParam;
 
 // Get Content
 let fileContent = "";
 try {
-    const data = await getFileContent(repoData.diskPath, filePath, currentBranch);
+    const data = await getFileContent(
+        resolvedLocalPath,
+        filePath,
+        currentBranch,
+    );
     if (data && !data.isBinary) fileContent = data.content;
 } catch {}
 
-
 const repo = {
-  id: repoData.id,
-  owner: repoData.owner.username,
-  name: repoData.name,
-  description: repoData.description,
-  visibility: repoData.visibility,
-  defaultBranch: repoData.defaultBranch,
-  stars: repoData.starCount,
-  forks: repoData.forkCount,
-  watchers: repoData.watchCount,
-  language: repoData.language || "Unknown",
-  license: repoData.licenseType || "None",
-  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
-  updatedAt: repoData.updatedAt,
-  httpCloneUrl: repoData.httpCloneUrl,
-  sshCloneUrl: repoData.sshCloneUrl,
-  openIssueCount: repoData.openIssueCount,
-  openPrCount: repoData.openPrCount,
+    id: repoData.id,
+    owner: repoData.owner.username,
+    name: repoData.name,
+    description: repoData.description,
+    visibility: repoData.visibility,
+    defaultBranch: repoData.defaultBranch,
+    stars: repoData.starCount,
+    forks: repoData.forkCount,
+    watchers: repoData.watchCount,
+    language: repoData.language || "Unknown",
+    license: repoData.licenseType || "None",
+    topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+    updatedAt: repoData.updatedAt,
+    httpCloneUrl: repoData.httpCloneUrl,
+    sshCloneUrl: repoData.sshCloneUrl,
+    openIssueCount: repoData.openIssueCount,
+    openPrCount: repoData.openPrCount,
 };
 ---
 
 <BaseLayout title={`Edit ${filePath} - ${repo.owner}/${repo.name}`}>
     <div class="container py-6 h-[calc(100vh-4rem)] flex flex-col">
         <RepoHeader repo={repo} activeTab="code" />
-        
-        <div class="flex-1 flex flex-col border rounded-lg mt-4 overflow-hidden bg-background">
-             <!-- Toolbar -->
-            <div class="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
-                <div class="flex items-center gap-2 text-sm text-muted-foreground">
+
+        <div
+            class="flex-1 flex flex-col border rounded-lg mt-4 overflow-hidden bg-background"
+        >
+            <!-- Toolbar -->
+            <div
+                class="flex items-center justify-between px-4 py-2 border-b bg-muted/30"
+            >
+                <div
+                    class="flex items-center gap-2 text-sm text-muted-foreground"
+                >
                     <span class="font-mono">{currentBranch}</span>
                     <span>/</span>
                     <span class="font-medium text-foreground">{filePath}</span>
                 </div>
-                <button id="commit-btn" class="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                <button
+                    id="commit-btn"
+                    class="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
                     <Save className="h-4 w-4" />
                     Commit Changes
                 </button>
             </div>
 
             <!-- Editor Container -->
-             <div id="editor-container" class="flex-1 min-h-0"></div>
+            <div id="editor-container" class="flex-1 min-h-0"></div>
         </div>
     </div>
 
     <!-- Commit Modal -->
-    <div id="commit-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden">
-        <div class="bg-background border rounded-lg shadow-lg w-full max-w-md p-6 space-y-4">
+    <div
+        id="commit-modal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 hidden"
+    >
+        <div
+            class="bg-background border rounded-lg shadow-lg w-full max-w-md p-6 space-y-4"
+        >
             <h3 class="text-lg font-semibold">Commit Changes</h3>
             <div class="space-y-2">
                 <label class="text-sm font-medium">Commit Message</label>
-                <textarea id="commit-message" class="w-full h-24 rounded-md border bg-background px-3 py-2 text-sm" placeholder="Update file..."></textarea>
+                <textarea
+                    id="commit-message"
+                    class="w-full h-24 rounded-md border bg-background px-3 py-2 text-sm"
+                    placeholder="Update file..."></textarea>
             </div>
             <div class="flex justify-end gap-2">
-                 <button id="cancel-commit" class="px-4 py-2 text-sm font-medium border rounded-md hover:bg-accent">Cancel</button>
-                 <button id="confirm-commit" class="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90">Commit</button>
+                <button
+                    id="cancel-commit"
+                    class="px-4 py-2 text-sm font-medium border rounded-md hover:bg-accent"
+                    >Cancel</button
+                >
+                <button
+                    id="confirm-commit"
+                    class="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                    >Commit</button
+                >
             </div>
         </div>
     </div>
 </BaseLayout>
 
-<script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
-<script define:vars={{ initialContent: fileContent, repoId: repo.id, branch: currentBranch, path: filePath, owner: repo.owner, repoName: repo.name }}>
+<script
+    is:inline
+    src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"
+></script>
+<script
+    define:vars={{
+        initialContent: fileContent,
+        repoId: repo.id,
+        branch: currentBranch,
+        path: filePath,
+        owner: repo.owner,
+        repoName: repo.name,
+    }}
+>
     // Initialize Monaco
-    require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
-    
+    require.config({
+        paths: {
+            vs: "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs",
+        },
+    });
+
     let editor;
 
     // Detect current theme
     function getEditorTheme() {
         // Check for dark class on html/body or use prefers-color-scheme
-        const isDark = document.documentElement.classList.contains('dark') ||
-                       document.body.classList.contains('dark') ||
-                       (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        return isDark ? 'vs-dark' : 'vs';
+        const isDark =
+            document.documentElement.classList.contains("dark") ||
+            document.body.classList.contains("dark") ||
+            (window.matchMedia &&
+                window.matchMedia("(prefers-color-scheme: dark)").matches);
+        return isDark ? "vs-dark" : "vs";
     }
 
-    require(['vs/editor/editor.main'], function () {
-        editor = monaco.editor.create(document.getElementById('editor-container'), {
-            value: initialContent,
-            language: getLanguage(path),
-            theme: getEditorTheme(),
-            automaticLayout: true,
-            minimap: { enabled: false }
-        });
+    require(["vs/editor/editor.main"], function () {
+        editor = monaco.editor.create(
+            document.getElementById("editor-container"),
+            {
+                value: initialContent,
+                language: getLanguage(path),
+                theme: getEditorTheme(),
+                automaticLayout: true,
+                minimap: { enabled: false },
+            },
+        );
 
         // Listen for theme changes
         const observer = new MutationObserver(() => {
             monaco.editor.setTheme(getEditorTheme());
         });
-        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-        observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ["class"],
+        });
+        observer.observe(document.body, {
+            attributes: true,
+            attributeFilter: ["class"],
+        });
 
         // Listen for system theme changes
         if (window.matchMedia) {
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-                monaco.editor.setTheme(getEditorTheme());
-            });
+            window
+                .matchMedia("(prefers-color-scheme: dark)")
+                .addEventListener("change", () => {
+                    monaco.editor.setTheme(getEditorTheme());
+                });
         }
     });
 
     function getLanguage(filename) {
-        const ext = filename.split('.').pop()?.toLowerCase();
-        const map = { js: 'javascript', ts: 'typescript', jsx: 'javascript', tsx: 'typescript', py: 'python', rs: 'rust', go: 'go', html: 'html', css: 'css', json: 'json', md: 'markdown', yml: 'yaml' };
-        return map[ext] || 'plaintext';
+        const ext = filename.split(".").pop()?.toLowerCase();
+        const map = {
+            js: "javascript",
+            ts: "typescript",
+            jsx: "javascript",
+            tsx: "typescript",
+            py: "python",
+            rs: "rust",
+            go: "go",
+            html: "html",
+            css: "css",
+            json: "json",
+            md: "markdown",
+            yml: "yaml",
+        };
+        return map[ext] || "plaintext";
     }
 
     // Modal Logic
-    const modal = document.getElementById('commit-modal');
-    document.getElementById('commit-btn').addEventListener('click', () => modal.classList.remove('hidden'));
-    document.getElementById('cancel-commit').addEventListener('click', () => modal.classList.add('hidden'));
+    const modal = document.getElementById("commit-modal");
+    document
+        .getElementById("commit-btn")
+        .addEventListener("click", () => modal.classList.remove("hidden"));
+    document
+        .getElementById("cancel-commit")
+        .addEventListener("click", () => modal.classList.add("hidden"));
 
-    document.getElementById('confirm-commit').addEventListener('click', async () => {
-        const message = document.getElementById('commit-message').value;
-        const content = editor.getValue();
-        const btn = document.getElementById('confirm-commit');
-        
-        btn.disabled = true;
-        btn.innerText = "Committing...";
+    document
+        .getElementById("confirm-commit")
+        .addEventListener("click", async () => {
+            const message = document.getElementById("commit-message").value;
+            const content = editor.getValue();
+            const btn = document.getElementById("confirm-commit");
 
-        try {
-            const res = await fetch(`/api/repos/${repoId}/commit`, {
-                method: 'POST',
-                body: JSON.stringify({ branch, path, content, message })
-            });
-            const data = await res.json();
-            
-            if (res.ok) {
-                 window.location.href = `/${owner}/${repoName}/blob/${branch}/${path}`;
-            } else {
-                alert('Commit failed: ' + (data.error || 'Unknown error'));
+            btn.disabled = true;
+            btn.innerText = "Committing...";
+
+            try {
+                const res = await fetch(`/api/repos/${repoId}/commit`, {
+                    method: "POST",
+                    body: JSON.stringify({ branch, path, content, message }),
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    window.location.href = `/${owner}/${repoName}/blob/${branch}/${path}`;
+                } else {
+                    alert("Commit failed: " + (data.error || "Unknown error"));
+                }
+            } catch (e) {
+                alert("Error: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Commit";
+                modal.classList.add("hidden");
             }
-        } catch (e) {
-            alert('Error: ' + e.message);
-        } finally {
-            btn.disabled = false;
-            btn.innerText = "Commit";
-            modal.classList.add('hidden');
-        }
-    });
+        });
 </script>

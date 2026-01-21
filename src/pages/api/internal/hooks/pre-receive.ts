@@ -30,13 +30,30 @@ export const POST: APIRoute = async ({ request, url }) => {
 
     const db = getDatabase() as NodePgDatabase<typeof schema>;
 
-    // Find repo
-    const repo = await db.query.repositories.findFirst({
+    // Extract owner and repo name from path for flexible lookup
+    // Path formats: 
+    //   - local: /path/to/data/repos/owner/repo.git
+    //   - cloud diskPath: repos/owner/repo.git
+    //   - temp path: /path/to/.tmp/repos/owner/repo.git
+    const pathParts = repoPath.split('/');
+    const repoGit = pathParts.pop() || '';
+    const repoName = repoGit.replace('.git', '');
+    const owner = pathParts.pop() || '';
+
+    // Try finding by exact diskPath first
+    let repo = await db.query.repositories.findFirst({
         where: eq(schema.repositories.diskPath, repoPath),
-        with: {
-            owner: true
-        }
+        with: { owner: true }
     });
+
+    // If not found, try cloud storage path format
+    if (!repo && owner && repoName) {
+        const cloudPath = `repos/${owner}/${repoName}.git`;
+        repo = await db.query.repositories.findFirst({
+            where: eq(schema.repositories.diskPath, cloudPath),
+            with: { owner: true }
+        });
+    }
 
     if (!repo) {
         return new Response("Repo not found", { status: 404 });

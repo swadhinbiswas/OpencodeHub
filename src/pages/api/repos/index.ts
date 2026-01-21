@@ -260,9 +260,17 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
     });
 
     // If using cloud storage, upload the initialized repo
-    if (await isCloudStorage()) {
-      await finalizeRepoInit(user.username, slug);
-      logger.info({ repoId, diskPath }, 'Repository synced to cloud storage');
+    const isCloud = await isCloudStorage();
+    logger.info({ isCloud, storageType: import.meta.env.STORAGE_TYPE }, 'Checking cloud storage strict');
+
+    if (isCloud) {
+      logger.info('Starting cloud storage sync...');
+      // Fire-and-forget to avoid blocking the response
+      finalizeRepoInit(user.username, slug)
+        .then(() => logger.info({ repoId, diskPath }, 'Repository synced to cloud storage'))
+        .catch((err) => logger.error({ err, repoId, diskPath }, 'Background cloud sync failed'));
+    } else {
+      logger.info('Skipping cloud sync (isCloudStorage=false)');
     }
   } catch (error) {
     // Rollback database entry if git init fails

@@ -15,7 +15,7 @@ import {
 } from "@/lib/git-storage";
 import { spawn } from "child_process";
 import { existsSync, mkdirSync, rmSync } from "fs";
-import { basename, dirname, extname, join } from "path";
+import { basename, dirname, extname, join, resolve } from "path";
 import { simpleGit, SimpleGit, SimpleGitOptions } from "simple-git";
 
 export interface RepoInitOptions {
@@ -99,7 +99,9 @@ export interface BlameInfo {
 
 /**
  * Initialize a new bare git repository
- * If using cloud storage, creates locally then syncs to storage
+ * The caller is responsible for providing the correct local path.
+ * For cloud storage, the caller should use initRepoInStorage before calling this,
+ * and finalizeRepoInit after this completes.
  */
 export async function initRepository(
   repoPath: string,
@@ -114,18 +116,8 @@ export async function initRepository(
     ownerName = "Owner",
   } = options;
 
-  // For cloud storage, repoPath is a logical path like "repos/owner/name.git"
-  // We need to create in a local temp directory first
-  let localRepoPath = repoPath;
-  const usingCloud = await isCloudStorage();
-
-  if (usingCloud) {
-    // Parse owner and repo from the logical path
-    const parsed = parseStoragePath(repoPath);
-    if (parsed) {
-      localRepoPath = await initRepoInStorage(parsed.owner, parsed.repoName);
-    }
-  }
+  // repoPath should already be a valid local path (provided by caller)
+  const localRepoPath = repoPath;
 
   // Ensure directory exists
   const dir = dirname(localRepoPath);
@@ -150,7 +142,7 @@ export async function initRepository(
 
     // Create README.md
     if (readme) {
-      const readmeContent = `# ${repoName}\n\nA new repository created with OpenCodeHub.\n`;
+      const readmeContent = `# ${repoName}\\n\\nA new repository created with OpenCodeHub.\\n`;
       const readmePath = join(tempPath, "README.md");
       const fs = await import("fs/promises");
       await fs.writeFile(readmePath, readmeContent);
@@ -196,14 +188,6 @@ export async function initRepository(
   // Set default branch in bare repo
   const bareGit = simpleGit(localRepoPath);
   await bareGit.raw(["symbolic-ref", "HEAD", `refs/heads/${defaultBranch}`]);
-
-  // If cloud storage, sync the initialized repo to storage
-  if (usingCloud) {
-    const parsed = parseStoragePath(repoPath);
-    if (parsed) {
-      await finalizeRepoInit(parsed.owner, parsed.repoName);
-    }
-  }
 }
 
 /**
@@ -257,16 +241,31 @@ export async function forkRepository(sourcePath: string, targetPath: string): Pr
   logger.info(`Repository forked from ${sourcePath} to ${targetPath}`);
 }
 
-/**
- * Get a SimpleGit instance for a repository
- */
 export function getGit(repoPath: string): SimpleGit {
+  // console.log(`[getGit] Initializing for path: ${repoPath} (Exists: ${require('fs').existsSync(repoPath)})`);
+  if (!repoPath || repoPath === '.' || repoPath === './') {
+    console.warn(`[getGit] WARNING: repoPath is empty or current directory! This might read project git history. Path: '${repoPath}'`);
+  }
+  // Prevent git from looking in parent directories if the repoPath is not a git repo
+  // This fixes the issue where empty temp dirs cause git to read the project's own history
+  const ceilingDir = dirname(resolve(repoPath));
+
   const options: Partial<SimpleGitOptions> = {
     baseDir: repoPath,
     binary: "git",
     maxConcurrentProcesses: 6,
   };
-  return simpleGit(options);
+
+  const git = simpleGit(options);
+
+  // Set environment to prevent walking up
+  // We strictly want to operate ONLY in the intended directory
+  git.env({
+    ...process.env,
+    GIT_CEILING_DIRECTORIES: ceilingDir
+  });
+
+  return git;
 }
 
 /**
@@ -296,6 +295,19 @@ export async function getActualDefaultBranch(repoPath: string): Promise<string |
     // Repository might be empty or HEAD detached
     return null;
   }
+}
+
+// Helper to check for expected errors
+function isExpectedGitError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error);
+  return (
+    msg.includes("outside repository") ||
+    msg.includes("not a git repository") ||
+    msg.includes("does not exist") ||
+    msg.includes("Not a valid object name") ||
+    msg.includes("unknown revision") ||
+    msg.includes("ambiguous argument")
+  );
 }
 
 /**
@@ -358,9 +370,7 @@ export async function listFiles(
 
     return entries;
   } catch (error) {
-    // Only log if it's not an empty repo issue
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    if (!errorMessage.includes("Not a valid object name") && !errorMessage.includes("unknown revision")) {
+    if (!isExpectedGitError(error)) {
       logger.error({ err: error }, "Error listing files");
     }
     return [];
@@ -538,9 +548,7 @@ export async function getCommits(
 
     return commits;
   } catch (error) {
-    // Only log if it's not an empty repo issue
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    if (!errorMessage.includes("unknown revision") && !errorMessage.includes("ambiguous argument")) {
+    if (!isExpectedGitError(error)) {
       logger.error({ err: error }, "Error getting commits");
     }
     return [];
@@ -600,7 +608,9 @@ export async function getBranches(repoPath: string): Promise<BranchInfo[]> {
 
     return branches;
   } catch (error) {
-    logger.error({ err: error }, "Error getting branches");
+    if (!isExpectedGitError(error)) {
+      logger.error({ err: error }, "Error getting branches");
+    }
     return [];
   }
 }
@@ -636,7 +646,9 @@ export async function getTags(repoPath: string): Promise<TagInfo[]> {
 
     return tags;
   } catch (error) {
-    logger.error({ err: error }, "Error getting tags");
+    if (!isExpectedGitError(error)) {
+      logger.error({ err: error }, "Error getting tags");
+    }
     return [];
   }
 }
@@ -694,7 +706,9 @@ export async function getCommitDiff(
 
     return diffs;
   } catch (error) {
-    logger.error({ err: error }, "Error getting commit diff");
+    if (!isExpectedGitError(error)) {
+      logger.error({ err: error }, "Error getting commit diff");
+    }
     return [];
   }
 }
@@ -754,7 +768,9 @@ export async function getBlame(
 
     return blameLines;
   } catch (error) {
-    logger.error({ err: error }, "Error getting blame");
+    if (!isExpectedGitError(error)) {
+      logger.error({ err: error }, "Error getting blame");
+    }
     return [];
   }
 }
@@ -1208,6 +1224,11 @@ export async function getContributors(
   const git = getGit(repoPath);
 
   try {
+    // Check if repository is empty first
+    if (await isRepoEmpty(repoPath)) {
+      return [];
+    }
+
     // git shortlog -sne (summary, numbered, email)
     const output = await git.raw(["shortlog", "-sne", ref]);
 
@@ -1230,6 +1251,13 @@ export async function getContributors(
 
     return contributors;
   } catch (error) {
+    // Catch "outside repository" error and others
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes("outside repository") || errorMessage.includes("not a git repository") || errorMessage.includes("does not exist")) {
+      // This is expected for empty/missing repos
+      return [];
+    }
+
     logger.error({ err: error }, "Error getting contributors");
     return [];
   }

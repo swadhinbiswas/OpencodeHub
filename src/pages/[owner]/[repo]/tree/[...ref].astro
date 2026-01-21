@@ -20,6 +20,7 @@ import {
   getFileContent,
   getBranches,
 } from "@/lib/git";
+import { resolveRepoPath } from "@/lib/git-storage";
 import { canReadRepo } from "@/lib/permissions";
 import { renderMarkdown } from "@/lib/markdown";
 import RepoHeader from "@/components/repo/RepoHeader.astro";
@@ -70,13 +71,16 @@ const issueCountResult = await db
 const openIssueCount =
   (issueCountResult as { count: number }[])?.[0]?.count || 0;
 
+// Resolve disk path for git operations (handles cloud storage)
+const resolvedLocalPath = await resolveRepoPath(repoData.diskPath);
+
 // 2. Git Operations
 // Extract branch and path from [...ref]
 // ref could be "main", "main/src", "feature/new", "feature/new/src"
 // We need to match against valid branches
 let branches: string[] = [repoData.defaultBranch];
 try {
-  const branchInfos = await getBranches(repoData.diskPath);
+  const branchInfos = await getBranches(resolvedLocalPath);
   branches = branchInfos.map((b) => b.name);
 } catch (e) {
   console.error("Error fetching branches", e);
@@ -130,7 +134,7 @@ function timeAgo(date: Date | string | number) {
 try {
   // Get files
   const gitFiles = await listFiles(
-    repoData.diskPath,
+    resolvedLocalPath,
     currentBranch,
     currentPath,
   );
@@ -139,7 +143,7 @@ try {
   files = await Promise.all(
     gitFiles.map(async (f) => {
       const commit = await getLastCommit(
-        repoData.diskPath,
+        resolvedLocalPath,
         currentBranch,
         f.path,
       );
@@ -168,7 +172,7 @@ try {
   });
 
   // Get latest commit for the directory
-  const commits = await getCommits(repoData.diskPath, {
+  const commits = await getCommits(resolvedLocalPath, {
     limit: 1,
     ref: currentBranch,
     path: currentPath,
@@ -181,7 +185,7 @@ try {
   const readmeFile = files.find((f) => f.name.toLowerCase() === "readme.md");
   if (readmeFile) {
     const content = await getFileContent(
-      repoData.diskPath,
+      resolvedLocalPath,
       readmeFile.name,
       currentBranch,
     );

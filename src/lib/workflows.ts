@@ -27,25 +27,32 @@ ensureDirs();
 export async function triggerRepoWorkflows(repoId: string, commitSha: string, ref: string, pusherId: string) {
     logger.info({ repoId, ref, commitSha }, "Checking workflows");
 
-    // 1. Get Repo Disk Path
-    const db = getDatabase() as NodePgDatabase<typeof schema>;
-    const repo = await db.query.repositories.findFirst({
-        where: eq(schema.repositories.id, repoId)
-    });
-
-    if (!repo) return;
-
-    // 2. Look for .github/workflows/*.yml in the actual repo content
-    // Since it's a bare repo, we need to inspect the tree at commitSha.
-    // For simplicity in this "MVP Plus", we will assume we can extract them using 'git show'
-    // or if we have a working copy. 
-    // Implementing "git show HEAD:.github/workflows/main.yml" logic:
-
-    // Check if workflows exist in the commit
-    const { getGit } = await import("./git");
-    const git = getGit(repo.diskPath);
-
     try {
+        // 1. Get Repo Disk Path
+        const db = getDatabase() as NodePgDatabase<typeof schema>;
+        const repo = await db.query.repositories.findFirst({
+            where: eq(schema.repositories.id, repoId)
+        });
+
+        if (!repo) return;
+
+        // 2. For cloud storage, we need to resolve the repo path to a local directory
+        //    For local storage, diskPath is already local.
+        const { resolveRepoPath } = await import("./git-storage");
+        const { getGit } = await import("./git");
+
+        let localRepoPath: string;
+        try {
+            localRepoPath = await resolveRepoPath(repo.diskPath);
+        } catch (resolveErr) {
+            // If we can't resolve the path (e.g., repo doesn't exist yet in storage), skip workflows
+            logger.debug({ err: resolveErr, diskPath: repo.diskPath }, "Could not resolve repo path for workflows, skipping");
+            return;
+        }
+
+        const git = getGit(localRepoPath);
+
+        // Look for .github/workflows/*.yml in the actual repo content
         // List files in .github/workflows
         const treeInfo = await git.raw(["ls-tree", "-r", "--name-only", commitSha, ".github/workflows"]);
         const workflowFiles = treeInfo.split("\n").filter(f => f.endsWith(".yml") || f.endsWith(".yaml"));
