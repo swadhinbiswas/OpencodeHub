@@ -45,6 +45,7 @@
 ## 🚀 Features
 
 ### Git Hosting & Collaboration
+
 - **Full Git Support** - SSH and HTTP/HTTPS protocols with authentication
 - **Repository Management** - Create, fork, archive, and transfer repositories
 - **Branch Protection** - Enforce PR requirements, approvals, and code review policies
@@ -54,6 +55,7 @@
 - **Organizations** - Team management with role-based access control (RBAC)
 
 ### CI/CD & Automation
+
 - **GitHub Actions Compatible** - Run workflows defined in `.github/workflows/`
 - **Self-hosted Runners** - Docker-based job execution with artifact support
 - **Merge Queue** - Automated PR merge management with conflict detection
@@ -61,6 +63,7 @@
 - **Secrets Management** - Encrypted storage for CI/CD credentials
 
 ### Security Features ✅
+
 - **Rate Limiting** - Prevents brute force attacks (5 login attempts per 15min)
 - **CSRF Protection** - Double-submit cookie pattern for all state-changing operations
 - **Input Validation** - Zod schemas prevent injection attacks
@@ -69,6 +72,7 @@
 - **Audit Logging** - Complete activity tracking for compliance
 
 ### Modern Tech Stack
+
 - **Astro + React** - Fast, modern frontend with island architecture
 - **TailwindCSS + shadcn/ui** - Beautiful, accessible UI components
 - **Universal Database Adapter** - PostgreSQL, MySQL, SQLite, MongoDB, Turso, PlanetScale
@@ -77,7 +81,6 @@
 - **Comprehensive Docs** - Integrated documentation site with guides and API reference
 
 ---
-
 
 ---
 
@@ -100,6 +103,7 @@ OpenCodeHub is built on a modern, scalable architecture designed for performance
 ## 📦 Quick Start
 
 ### Prerequisites
+
 - **Node.js** 18+ or **Bun** 1.0+
 - **Database**: PostgreSQL 14+ (recommended) / MySQL 8+ / SQLite 3.35+
 - **Git** 2.30+
@@ -234,8 +238,6 @@ och status                  # Show stack status (alias: st)
 
 ![Stacked PR Workflow](public/stack-workflow.svg)
 <br>
-
-Each PR builds on the previous one. When #123 merges, #124 automatically rebases.
 
 Each PR builds on the previous one. When #123 merges, #124 automatically rebases.
 
