@@ -86,6 +86,8 @@ export async function downloadRepoFromStorage(
         const relativePath = obj.key.replace(storagePath, "").replace(/^\//, "");
         if (!relativePath) continue;
 
+        console.log(`[downloadRepoFromStorage] storagePath="${storagePath}", obj.key="${obj.key}", relativePath="${relativePath}"`);
+
         const localFilePath = join(localPath, relativePath);
         const localDir = path.dirname(localFilePath);
 

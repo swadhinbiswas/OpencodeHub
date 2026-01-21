@@ -1,20 +1,28 @@
 # OpenCodeHub
 
 <p align="center">
-  <img src="public/logo.svg" alt="OpenCodeHub Logo" width="200">
+  <img src="public/logo.svg" alt="OpenCodeHub Logo" width="300">
+  <br>
 </p>
 
 <p align="center">
-  <strong>A powerful, self-hosted Git platform with CI/CD, code review, and enterprise-grade security</strong>
+  <strong>The self-hosted Git platform for high-velocity teams.</strong><br>
+  Built for stacked PRs, AI code review, and enterprise security.
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/opencodehub-cli"><img src="https://img.shields.io/npm/v/opencodehub-cli?style=flat-square&color=bd93f9&label=CLI" alt="npm version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/swadhinbiswas/OpenCodeHub?style=flat-square&color=50fa7b" alt="License"></a>
+  <a href="https://github.com/swadhinbiswas/OpenCodeHub/actions"><img src="https://img.shields.io/github/actions/workflow/status/swadhinbiswas/OpenCodeHub/ci.yml?branch=main&style=flat-square&color=8be9fd" alt="Build Status"></a>
+  <a href="https://docker.com"><img src="https://img.shields.io/badge/docker-ready-blue?style=flat-square&logo=docker" alt="Docker"></a>
 </p>
 
 <p align="center">
   <a href="#-features">Features</a> •
+  <a href="#-architecture">Architecture</a> •
   <a href="#-quick-start">Quick Start</a> •
-  <a href="#%EF%B8%8F-configuration">Configuration</a> •
-  <a href="#-security">Security</a> •
-  <a href="#-production-deployment">Production</a> •
-  <a href="#-api">API</a> •
+  <a href="#-och-cli---command-line-interface">CLI</a> •
+  <a href="#-advanced-features">Advanced Features</a> •
   <a href="#-contributing">Contributing</a>
 </p>
 
@@ -67,6 +75,25 @@
 - **Flexible Storage** - Local, S3, MinIO, Google Drive, Azure Blob, R2
 - **Production-Ready** - Rate limiting, CSRF, input validation, error monitoring
 - **Comprehensive Docs** - Integrated documentation site with guides and API reference
+
+---
+
+
+---
+
+## 🏗 Architecture
+
+<p align="center">
+  <img src="public/architecture.svg" alt="System Architecture" width="800">
+</p>
+
+OpenCodeHub is built on a modern, scalable architecture designed for performance and flexibility.
+
+- **Frontend**: Astro + React for high-performance UI.
+- **Backend API**: tRPC + Node.js for type-safe communication.
+- **Git Server**: Custom implementation over standard Git protocols (HTTP/SSH).
+- **Database**: Drizzle ORM supporting PostgreSQL, MySQL, and SQLite.
+- **Storage**: Pluggable storage system (S3, R2, G-Drive, Local).
 
 ---
 
@@ -205,12 +232,10 @@ och status                  # Show stack status (alias: st)
 
 #### How It Works
 
-```text
-main
- └── PR #123: Add database schema
-      └── PR #124: Add authentication service  
-           └── PR #125: Add login UI
-```
+![Stacked PR Workflow](public/stack-workflow.svg)
+<br>
+
+Each PR builds on the previous one. When #123 merges, #124 automatically rebases.
 
 Each PR builds on the previous one. When #123 merges, #124 automatically rebases.
 

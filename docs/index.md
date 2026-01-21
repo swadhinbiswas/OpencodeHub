@@ -1,5 +1,9 @@
 # OpenCodeHub Documentation
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/swadhinbiswas/OpenCodeHub/main/public/logo.svg" alt="OpenCodeHub Logo" width="300">
+</p>
+
 > Everything you need to know about OpenCodeHub - from getting started to advanced features
 
 Welcome to OpenCodeHub's comprehensive documentation. Whether you're new to the platform or looking to master advanced features, you'll find everything you need here.
@@ -107,10 +111,17 @@ For system administrators:
 
 Contributing to OpenCodeHub:
 
-- **[Architecture](development/architecture.md)** - System design and components
-- **[Database Schema](development/database-schema.md)** - Database structure
-- **[Contributing Guide](development/contributing.md)** - How to contribute
-- **[Testing Guide](development/testing.md)** - Write and run tests
+- **[Architecture](development/architecture.md)** - System design components
+- **[Database Schema](development/database-schema.md)** - Database tables
+- **[Contributing](development/contributing.md)** - Dev environment setup
+- **[Testing](development/testing.md)** - Running tests
+
+### Reference & Support
+
+- **[CLI Commands](reference/cli-commands.md)** - Full CLI reference
+- **[Glossary](reference/glossary.md)** - Project terminology
+- **[Troubleshooting](support/troubleshooting.md)** - Fix common issues
+
 
 ---
 
