@@ -367,10 +367,13 @@ export class S3StorageAdapter extends StorageAdapter {
     const { GetObjectCommand } = await import("@aws-sdk/client-s3");
     const client = await this.getClient();
 
+    const s3Key = path.join(this.config.basePath, key);
+    console.log(`[S3StorageAdapter.get] basePath="${this.config.basePath}", key="${key}", s3Key="${s3Key}"`);
+
     const response = await client.send(
       new GetObjectCommand({
         Bucket: this.config.bucket,
-        Key: path.join(this.config.basePath, key),
+        Key: s3Key,
         Range: options?.range
           ? `bytes=${options.range.start}-${options.range.end}`
           : undefined,
@@ -446,13 +449,18 @@ export class S3StorageAdapter extends StorageAdapter {
 
     return {
       objects: (response.Contents || []).map((obj: any) => ({
-        key: obj.Key!.replace(this.config.basePath + "/", ""),
+        // Only remove basePath if it's not empty
+        key: this.config.basePath
+          ? obj.Key!.replace(this.config.basePath + "/", "")
+          : obj.Key!,
         size: obj.Size!,
         lastModified: obj.LastModified!,
         etag: obj.ETag?.replace(/"/g, ""),
       })),
       prefixes: response.CommonPrefixes?.map((p: any) =>
-        p.Prefix!.replace(this.config.basePath + "/", "")
+        this.config.basePath
+          ? p.Prefix!.replace(this.config.basePath + "/", "")
+          : p.Prefix!
       ),
       isTruncated: response.IsTruncated || false,
       continuationToken: response.NextContinuationToken,
@@ -1247,6 +1255,7 @@ export async function getStorage(): Promise<StorageAdapter> {
     if (storageType === "local") {
       basePath = import.meta.env?.STORAGE_PATH || process.env.STORAGE_PATH || "./data/storage";
     }
+    console.log(`[getStorage] storageType=${storageType}, basePath="${basePath}"`);
 
     const config: StorageConfig = {
       type: storageType,

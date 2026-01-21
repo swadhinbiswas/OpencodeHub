@@ -7,6 +7,7 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import { simpleGit } from "simple-git";
+import gradient from "gradient-string";
 
 // Import all command modules
 import { stackCommands } from "../src/commands/stack/index.js";
@@ -33,9 +34,56 @@ import { insightsCommand } from "../src/commands/insights/index.js";
 const git = simpleGit();
 const program = new Command();
 
+// Custom help formatter with Dracula theme
+program.configureHelp({
+    sortSubcommands: true,
+    subcommandTerm: (cmd) => chalk.hex('#bd93f9')(cmd.name()), // Dracula purple
+});
+
+// Add custom help banner with Dracula colors
+program.addHelpText('beforeAll', () => {
+    const banner = `
+  ╔═══════════════════════════════════╗
+  ║     OpenCodeHub CLI (OCH)         ║
+  ╚═══════════════════════════════════╝`;
+
+    return chalk.hex('#ff79c6')(banner) + '\n' +  // Dracula pink
+        chalk.hex('#6272a4')('    Stack-first ') +  // Dracula comment gray
+        chalk.hex('#bd93f9').bold('PR workflows') +  // Dracula purple  
+        chalk.hex('#6272a4')(' from your terminal\n');  // Dracula comment gray
+});
+
+// Customize command help colors with Dracula theme
+const originalHelp = program.helpInformation.bind(program);
+program.helpInformation = function () {
+    const help = originalHelp();
+
+    return help
+        // Usage line - Dracula cyan
+        .replace(/^Usage: (.+)$/gm, (_, usage) =>
+            chalk.hex('#8be9fd').bold('Usage: ') + chalk.hex('#f8f8f2')(usage)
+        )
+        // Section headers - Dracula green
+        .replace(/^Options:$/gm, '\n' + chalk.hex('#50fa7b').bold('Options:'))
+        .replace(/^Commands:$/gm, '\n' + chalk.hex('#50fa7b').bold('Commands:'))
+        // Flags - Dracula purple
+        .replace(/(-[a-zA-Z-]+)/g, chalk.hex('#bd93f9')('$1'))
+        // Arguments - Dracula yellow
+        .replace(/<([^>]+)>/g, chalk.hex('#f1fa8c')('<$1>'))
+        // Optional params - Dracula comment
+        .replace(/\[([^\]]+)\]/g, chalk.hex('#6272a4')('[$1]'))
+        // Command names at start of lines - Dracula pink
+        .replace(/^(\s+)([a-z-]+)(\s)/gm, (match, space, cmd, after) =>
+            space + chalk.hex('#ff79c6')(cmd) + after
+        );
+};
+
 program
     .name("och")
-    .description("OpenCodeHub CLI - Complete Git hosting with stack-first PR workflows")
+    .description(
+        chalk.hex('#f8f8f2')("Complete Git hosting with ") +  // Dracula foreground
+        chalk.hex('#bd93f9').bold("stack-first PR workflows")  // Dracula purple
+    )
     .version("1.1.0");
 
 // ================================
@@ -146,63 +194,6 @@ program.addCommand(apiCommands);
 // ================================
 // Shorthand Commands
 // ================================
-
-// Stacking Commands (Graphite-inspired)
-program
-    .command("stack")
-    .description("Manage stacked pull requests")
-    .command("submit")
-    .description("Submit the current branch as a stacked PR")
-    .option("-m, --message <message>", "PR Title/Description")
-    .action(async (options) => {
-        console.log("🚀 Submitting stack...");
-
-        // 1. Git Push
-        try {
-            const { execSync } = require('child_process');
-            const branch = execSync('git iconv -futf-8 -tutf-8 branch --show-current').toString().trim();
-            console.log(`Pushing branch ${branch}...`);
-            execSync(`git push origin ${branch}`); // Assumes 'origin' is set
-        } catch (e: any) {
-            console.error("Failed to push branch:", e.message);
-            return;
-        }
-
-        // 2. Identify PR Context
-        // We need to know who we are (config) and where we are (remote)
-        // For MVP, just log instructions
-        console.log(`✅ Branch pushed. To create/update stack, visit OpenCodeHub or use 'och pr create' (coming soon).`);
-    });
-
-program
-    .command("queue")
-    .description("Manage merge queue")
-    .command("join")
-    .description("Add the current PR to the merge queue")
-    .action(async () => {
-        console.log("⏳ Adding to merge queue...");
-
-        try {
-            const { execSync } = require('child_process');
-            const branch = execSync('git branch --show-current').toString().trim();
-            // Parse remote to get owner/repo
-            const remoteUrl = execSync('git remote get-url origin').toString().trim();
-            // Regex to match http://host/owner/repo.git or git@...
-            // MVP: Assume standard format
-            // This requires robust parsing.
-
-            console.log(`Detected branch: ${branch}`);
-            console.log(`Use 'cho queue join <pr-id>' implementation pending API client config.`);
-
-            // Real implementation requires Authenticated API Client
-            // which involves reading ~/.och/config.json
-            // I will stub this with a TODO for the user to configure auth first.
-
-            console.log("⚠️  Please configure CLI authentication first.");
-        } catch (e: any) {
-            console.error("Error:", e.message);
-        }
-    });
 
 // och push (shorthand for repo push)
 program

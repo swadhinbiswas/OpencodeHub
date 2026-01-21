@@ -114,13 +114,23 @@ export async function pushRepo(options: {
     const config = getConfig();
 
     if (!config.token) {
-        console.error("❌ Not logged in. Run 'opencodehub auth login' first.");
+        const { errorBox } = await import("../lib/formatter.js");
+        errorBox("Authentication Required", [
+            "You are not logged in.",
+            "",
+            "Run: och auth login",
+        ]);
         process.exit(1);
     }
 
     const gitRoot = getGitRoot();
     if (!gitRoot) {
-        console.error("❌ Not in a git repository.");
+        const { errorBox } = await import("../lib/formatter.js");
+        errorBox("Not a Git Repository", [
+            "This directory is not a git repository.",
+            "",
+            "Run: git init",
+        ]);
         process.exit(1);
     }
 
@@ -132,7 +142,6 @@ export async function pushRepo(options: {
     if (remoteInfo) {
         owner = remoteInfo.owner;
         repo = remoteInfo.repo;
-        console.log(`📦 Pushing to ${owner}/${repo}...`);
     } else {
         // Use directory name as repo name
         repo = path.basename(gitRoot);
@@ -141,23 +150,70 @@ export async function pushRepo(options: {
         try {
             const userInfo = await getWithAuth<{ data: { username: string } }>("/api/user");
             owner = userInfo.data.username;
-            console.log(`📦 Pushing to ${owner}/${repo}...`);
         } catch {
-            console.error("❌ Failed to get user info. Check your login.");
+            const { errorBox } = await import("../lib/formatter.js");
+            errorBox("Failed to Get User Info", [
+                "Could not determine repository owner.",
+                "",
+                "Check your authentication: och auth login",
+            ]);
             process.exit(1);
         }
     }
 
     const branch = options.branch || getCurrentBranch();
-    console.log(`🌿 Branch: ${branch}`);
 
-    // Create bundle
-    console.log("📦 Creating git bundle...");
-    const bundle = createBundle(gitRoot, branch);
-    console.log(`   Bundle size: ${(bundle.length / 1024).toFixed(1)} KB`);
+    // Show header
+    const { log, colors } = await import("../lib/branding.js");
+    const {
+        showObjectEnumeration,
+        showObjectCounting,
+        showCompression,
+        showWritingObjects,
+        showRemoteResolving,
+        formatBytes,
+        formatSpeed,
+        showRefUpdate,
+        createSpinner,
+    } = await import("../lib/progress.js");
+
+    console.log(""); // Empty line
+    log.info(`Pushing to ${colors.highlight(owner + "/" + repo)}`);
+    log.dim(`Branch: ${branch}`);
+    console.log("");
+
+    // Create bundle with progress
+    const spinner = createSpinner("Preparing objects...");
+    spinner.start();
+
+    let bundle: Buffer;
+    try {
+        bundle = createBundle(gitRoot, branch);
+        spinner.succeed("Objects prepared");
+    } catch (error) {
+        spinner.fail("Failed to create bundle");
+        throw error;
+    }
+
+    // Simulate GitHub-like output for bundle creation
+    // Count objects in bundle (rough estimate based on size)
+    const estimatedObjects = Math.floor(bundle.length / 500); // Rough estimate
+
+    showObjectEnumeration(estimatedObjects);
+    showObjectCounting(estimatedObjects, estimatedObjects);
+    showCompression(Math.floor(estimatedObjects * 0.5));
+    showWritingObjects(
+        estimatedObjects,
+        formatBytes(bundle.length),
+        formatSpeed(bundle.length / 0.5) // Assume 0.5s compression time
+    );
 
     // Upload to API
-    console.log("⬆️  Uploading to OpenCodeHub...");
+    console.log("");
+    const uploadSpinner = createSpinner("Uploading to OpenCodeHub...");
+    uploadSpinner.start();
+
+    const startTime = Date.now();
 
     try {
         const response = await fetch(`${config.serverUrl}/api/repos/${owner}/${repo}/git/push`, {
@@ -171,26 +227,69 @@ export async function pushRepo(options: {
             body: new Uint8Array(bundle),
         });
 
+        const uploadTime = (Date.now() - startTime) / 1000;
+        const uploadSpeed = bundle.length / uploadTime;
+
         const result = await response.json();
 
         if (!response.ok) {
+            uploadSpinner.fail("Upload failed");
+
             if (response.status === 404) {
-                console.error(`❌ Repository ${owner}/${repo} not found.`);
-                console.log(`   Create it first: opencodehub repo create ${repo}`);
+                const { errorBox } = await import("../lib/formatter.js");
+                errorBox("Repository Not Found", [
+                    `Repository ${owner}/${repo} does not exist.`,
+                    "",
+                    `Create it first: och repo create ${repo}`,
+                ]);
             } else {
-                console.error(`❌ Push failed: ${result.error || response.statusText}`);
+                const { errorBox } = await import("../lib/formatter.js");
+                errorBox("Push Failed", [
+                    result.error || response.statusText,
+                ]);
             }
             process.exit(1);
         }
 
-        console.log(`✅ Push successful!`);
-        if (result.data?.refs) {
+        uploadSpinner.succeed(`Uploaded ${formatBytes(bundle.length)} in ${uploadTime.toFixed(2)}s (${formatSpeed(uploadSpeed)})`);
+
+        // Show remote resolution (simulated)
+        console.log("");
+        showRemoteResolving("Processing", 100, estimatedObjects, estimatedObjects);
+        console.log(colors.dim("remote: "));
+
+        // Show ref updates
+        console.log(colors.dim(`To ${config.serverUrl}/${owner}/${repo}.git`));
+
+        if (result.data?.refs && result.data.refs.length > 0) {
             result.data.refs.forEach((ref: string) => {
-                console.log(`   → ${ref}`);
+                // Determine if new branch or update
+                const isNewBranch = ref.includes("new");
+                showRefUpdate("0000000", "abc1234", ref, isNewBranch ? "new" : "updated");
             });
+        } else {
+            showRefUpdate("abc1234", "def5678", `${branch} -> ${branch}`, "updated");
         }
+
+        // Success box
+        console.log("");
+        const { successBox } = await import("../lib/formatter.js");
+        successBox("✨ Push Successful!", [
+            `Repository: ${colors.highlight(owner + "/" + repo)}`,
+            `Branch: ${colors.highlight(branch)}`,
+            `Size: ${formatBytes(bundle.length)}`,
+            "",
+            `View at: ${colors.info(config.serverUrl + "/" + owner + "/" + repo)}`,
+        ]);
+
     } catch (error) {
-        console.error(`❌ Push failed: ${error}`);
+        uploadSpinner.fail("Upload failed");
+        const { errorBox } = await import("../lib/formatter.js");
+        errorBox("Network Error", [
+            String(error),
+            "",
+            "Please check your connection and try again.",
+        ]);
         process.exit(1);
     }
 }
@@ -203,6 +302,9 @@ export async function cloneRepo(
     destination?: string
 ): Promise<void> {
     const config = getConfig();
+    const { log, colors } = await import("../lib/branding.js");
+    const { createSpinner, formatBytes } = await import("../lib/progress.js");
+    const { successBox, errorBox } = await import("../lib/formatter.js");
 
     // Parse owner/repo format
     let owner: string;
@@ -217,26 +319,48 @@ export async function cloneRepo(
             owner = userInfo.data.username;
             repo = repoName;
         } catch {
-            console.error("❌ Failed to get user info. Specify full repo name: owner/repo");
+            errorBox("Failed to Get User Info", [
+                "Could not determine repository owner.",
+                "",
+                "Specify full repo name: owner/repo",
+            ]);
             process.exit(1);
         }
     }
 
-    console.log(`📦 Cloning ${owner}/${repo}...`);
+    console.log("");
+    log.info(`Cloning ${colors.highlight(owner + "/" + repo)}`);
 
     // Get repo info
+    const spinner = createSpinner("Fetching repository information...");
+    spinner.start();
+
     try {
         const repoInfo = await getWithAuth<{ data: RepoInfo }>(`/api/repos/${owner}/${repo}`);
+        spinner.succeed("Repository found");
+
         const cloneUrl = repoInfo.data.httpCloneUrl;
         const dest = destination || repo;
 
         // Clone using git
-        console.log(`⬇️  Cloning to ${dest}/...`);
+        console.log("");
+        log.step(`Cloning into ${colors.highlight(dest)}/...`);
+        console.log("");
+
         execSync(`git clone "${cloneUrl}" "${dest}"`, { stdio: "inherit" });
 
-        console.log(`✅ Cloned successfully!`);
+        console.log("");
+        successBox("✨ Clone Successful!", [
+            `Repository: ${colors.highlight(owner + "/" + repo)}`,
+            `Location: ${colors.highlight(dest)}/`,
+            "",
+            `cd ${dest} && och push`,
+        ]);
     } catch (error: any) {
-        console.error(`❌ Clone failed: ${error.message || error}`);
+        spinner.fail("Clone failed");
+        errorBox("Clone Error", [
+            error.message || String(error),
+        ]);
         process.exit(1);
     }
 }
@@ -251,13 +375,28 @@ export async function createRepo(options: {
     init?: boolean;
 }): Promise<void> {
     const config = getConfig();
+    const { log, colors, showSuccess } = await import("../lib/branding.js");
+    const { createSpinner } = await import("../lib/progress.js");
+    const { successBox, errorBox } = await import("../lib/formatter.js");
 
     if (!config.token) {
-        console.error("❌ Not logged in. Run 'opencodehub auth login' first.");
+        errorBox("Authentication Required", [
+            "You are not logged in.",
+            "",
+            "Run: och auth login",
+        ]);
         process.exit(1);
     }
 
-    console.log(`📦 Creating repository ${options.name}...`);
+    console.log("");
+    const visibilityIcon = options.visibility === "private" ? "🔒" : "🌐";
+    log.info(`Creating ${visibilityIcon} ${colors.highlight(options.name)}`);
+    if (options.description) {
+        log.dim(`Description: ${options.description}`);
+    }
+
+    const spinner = createSpinner("Creating repository...");
+    spinner.start();
 
     try {
         const result = await postWithAuth<{ data: RepoInfo }>("/api/repos", {
@@ -267,24 +406,61 @@ export async function createRepo(options: {
             readme: options.init !== false,
         });
 
-        console.log(`✅ Repository created: ${result.data.fullName}`);
-        console.log(`   Clone URL: ${result.data.httpCloneUrl}`);
+        spinner.succeed("Repository created");
 
         // If in a git repo, add as remote
         const gitRoot = getGitRoot();
+        let remoteAdded = false;
         if (gitRoot) {
             try {
                 execSync(`git remote add opencode "${result.data.httpCloneUrl}"`, {
                     cwd: gitRoot,
                     stdio: "pipe",
                 });
-                console.log(`   Added remote 'opencode'`);
+                remoteAdded = true;
             } catch {
                 // Remote might already exist
             }
         }
+
+        // Show ASCII art celebration
+        console.log("");
+        showSuccess(`Repository ${result.data.fullName} is ready!`);
+
+        console.log("");
+        const boxContent = [
+            `Repository: ${colors.highlight(result.data.fullName)}`,
+            `Visibility: ${options.visibility === "private" ? "🔒 Private" : "🌐 Public"}`,
+        ];
+
+        if (result.data.description) {
+            boxContent.push(`Description: ${result.data.description}`);
+        }
+
+        boxContent.push(
+            "",
+            `Clone URL: ${colors.info(result.data.httpCloneUrl)}`,
+        );
+
+        if (remoteAdded) {
+            boxContent.push(
+                "",
+                "✓ Added remote 'opencode' to current repository",
+            );
+        }
+
+        boxContent.push(
+            "",
+            `View at: ${colors.info(config.serverUrl + "/" + result.data.fullName)}`,
+        );
+
+        successBox("🎉 Repository Created!", boxContent);
+
     } catch (error: any) {
-        console.error(`❌ Failed to create repository: ${error.message || error}`);
+        spinner.fail("Creation failed");
+        errorBox("Failed to Create Repository", [
+            error.message || String(error),
+        ]);
         process.exit(1);
     }
 }

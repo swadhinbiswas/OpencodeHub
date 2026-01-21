@@ -5,7 +5,7 @@
 <h1 align="center">OpenCodeHub CLI</h1>
 
 <p align="center">
-  <strong>Stack-first PR workflows from your terminal</strong>
+  <strong>🎨 Production-grade Git workflows with beautiful UI</strong>
 </p>
 
 <p align="center">
@@ -17,9 +17,9 @@
 
 <p align="center">
   <a href="#-installation">Installation</a> •
-  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-features">Features</a> •
   <a href="#-commands">Commands</a> •
-  <a href="#-workflow-examples">Examples</a> •
+  <a href="#-examples">Examples</a> •
   <a href="#-contributing">Contributing</a>
 </p>
 
@@ -27,11 +27,12 @@
 
 ## ✨ Features
 
-- 📚 **Stacked PRs** - Create dependent pull requests that automatically update when parent changes
-- 🔄 **Smart Sync** - Rebase entire stacks with a single command
-- 🚀 **Fast Workflow** - Submit, update, and manage PRs without leaving your terminal
-- 🔗 **GitHub/GitLab Alternative** - Works with self-hosted OpenCodeHub instances
-- 🎯 **Zero Config** - Works out of the box with sensible defaults
+- 🎨 **Beautiful UI** - GitHub-like progress indicators, ASCII art, and colored output
+- 📦 **Git Push/Pull** - Fast repository operations with real-time progress
+- 🚀 **Simple Commands** - `och push`, `och clone`, `och create` - that's it!
+- 📊 **Progress Tracking** - See object enumeration, compression, and upload speeds
+- 🎯 **Production Ready** - Professional output that rivals GitHub's CLI
+- ✨ **Spinners & Boxes** - Beautiful feedback for every operation
 
 ## 📦 Installation
 
@@ -58,108 +59,148 @@ och auth login
 # 2. Navigate to your repository
 cd your-repo
 
-# 3. Initialize (one-time setup)
-och init --url https://git.yourcompany.com
+# 3. Push code with beautiful progress indicators
+och push -b master
 
-# 4. Create your first stack
-och stack create my-feature
-
-# 5. Make changes, commit, and submit
-git add . && git commit -m "Add feature"
-och stack submit
+# That's it! 🎉
 ```
 
 ## 📖 Commands
 
 ### Authentication
 
-| Command | Description |
-|---------|-------------|
-| `och auth login` | Interactive login |
-| `och auth login --token TOKEN` | Login with access token (for CI/CD) |
-| `och auth whoami` | Show current user |
-| `och auth logout` | Clear stored credentials |
+```bash
+# Interactive login
+och auth login
 
-### Stack Management
+# Login with token (for CI/CD)
+och auth login --token YOUR_TOKEN
 
-| Command | Description |
-|---------|-------------|
-| `och stack create <name>` | Create a new branch in current stack |
-| `och stack view` / `och stack ls` | View all branches in current stack |
-| `och stack submit` | Push and create/update PR |
-| `och stack submit --draft` | Submit as draft PR |
-| `och stack sync` | Rebase entire stack on latest main |
-| `och stack reorder` | Interactively reorder branches |
+# Check current user
+och auth whoami
+
+# Logout
+och auth logout
+```
 
 ### Repository Operations
 
-| Command | Description |
-|---------|-------------|
-| `och init` | Initialize repo for OpenCodeHub |
-| `och status` / `och st` | Show current stack status |
-| `och sync` | Sync with remote |
-
-## 🔄 Workflow Examples
-
-### Creating a Feature Stack
-
 ```bash
-# Start from main
-git checkout main && git pull
+# Push current repository
+och push                    # Push current branch
+och push -b feature-branch  # Push specific branch
+och push --force           # Force push
 
-# Create base layer
-och stack create database-schema
-# ... make changes ...
-git commit -m "Add user database models"
+# Clone a repository
+och clone owner/repo       # Clone to ./repo
+och clone owner/repo mydir # Clone to ./mydir
 
-# Create next layer (builds on database-schema)
-och stack create auth-service
-# ... make changes ...
-git commit -m "Add authentication service"
+# Create new repository
+och create myrepo                    # Create public repo
+och create myrepo --private          # Create private repo
+och create myrepo --description "..." # With description
 
-# Submit entire stack
-och stack submit
-
-# Result:
-# PR #1: Add user database models (main ← database-schema)
-# PR #2: Add auth service (database-schema ← auth-service)
+# List repositories
+och repo list
 ```
 
-### Updating After Review
+## 🎨 Beautiful Output Examples
 
-```bash
-# Make requested changes
-git add . && git commit -m "Address review feedback"
+### Push Command
+```
+ℹ Pushing to swadhinbiswas/myrepo
+  Branch: master
 
-# Resubmit (updates PR automatically)
-och stack submit
+✔ Objects prepared
+  Enumerating objects: 159, done.
+  Counting objects: 100% (159/159), done.
+  Delta compression using up to 20 threads
+  Compressing objects: 100% (76/76), done.
+  Writing objects: 100% (90/90), 49.17 KiB | 8.20 MiB/s, done.
+  Total 90 (delta 45), reused 0 (delta 0), pack-reused 0
 
-# If main changed, sync the whole stack
-och stack sync
+✔ Uploaded 49.17 KB in 0.52s (94.56 KB/s)
+
+remote: Processing: 100% (90/90), done.
+remote: 
+To https://opencodehub.com/swadhinbiswas/myrepo.git
+   abc1234..def5678  master -> master
+
+╭─────────────────────────────────────────╮
+│                                         │
+│   ✨ Push Successful!                  │
+│                                         │
+│   Repository: swadhinbiswas/myrepo      │
+│   Branch: master                        │
+│   Size: 49.17 KB                        │
+│                                         │
+│   View at: https://opencodehub.com/... │
+│                                         │
+╰─────────────────────────────────────────╯
 ```
 
-## ⚙️ Configuration
+### Clone Command
+```
+ℹ Cloning swadhinbiswas/awesome-project
 
-OCH CLI stores configuration in `~/.ochrc`.
+✔ Repository found
 
-```bash
-# View config
-och config list
+→ Cloning into awesome-project/...
+Cloning into 'awesome-project'...
+remote: Enumerating objects: 234, done.
+remote: Total 234 (delta 0), reused 0 (delta 0)
+Receiving objects: 100% (234/234), 1.23 MiB | 2.45 MiB/s, done.
 
-# Set config
-och config set host https://git.yourcompany.com
-och config set defaultBranch main
+╭─────────────────────────────────────────╮
+│                                         │
+│   ✨ Clone Successful!                  │
+│                                         │
+│   Repository: swadhinbiswas/project     │
+│   Location: awesome-project/            │
+│                                         │
+│   cd awesome-project && och push        │
+│                                         │
+╰─────────────────────────────────────────╯
+```
+
+### Create Command
+```
+ℹ Creating 🌐 my-new-repo
+  Description: An awesome new project
+
+✔ Repository created
+
+    ✨ SUCCESS! ✨
+    
+    Repository swadhinbiswas/my-new-repo is ready!
+
+╭─────────────────────────────────────────╮
+│                                         │
+│   🎉 Repository Created!                 │
+│                                         │
+│   Repository: swadhinbiswas/my-new-repo │
+│   Visibility: 🌐 Public                 │
+│   Description: An awesome new project   │
+│                                         │
+│   Clone URL: https://...                │
+│                                         │
+│   ✓ Added remote 'opencode'             │
+│                                         │
+│   View at: https://opencodehub.com/... │
+│                                         │
+╰─────────────────────────────────────────╯
 ```
 
 ## 🔧 CI/CD Usage
 
 ```yaml
-# .github/workflows/pr.yml
-name: Submit PR
+# .github/workflows/deploy.yml
+name: Deploy
+
 on: push
 
 jobs:
-  submit:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -172,11 +213,45 @@ jobs:
       - name: Install CLI
         run: npm install -g opencodehub-cli
       
-      - name: Login & Submit
+      - name: Push to OpenCodeHub
         run: |
           och auth login --token ${{ secrets.OCH_TOKEN }}
-          och stack submit
+          och push -b main
 ```
+
+## ⚙️ Configuration
+
+OCH CLI stores configuration in `~/.ochrc`.
+
+```bash
+# View current configuration
+och config list
+
+# Set server URL
+och config set serverUrl https://git.yourcompany.com
+
+# Set default branch
+och config set defaultBranch main
+```
+
+## 🎨 UI Features
+
+- **ASCII Art Logos** - Gradient-colored branding
+- **Progress Indicators** - GitHub-style object counting and compression
+- **Upload Speeds** - Real-time speed indicators
+- **Colored Output** - Green for success, red for errors, cyan for info
+- **Spinners** - Smooth animations for long operations
+- **Boxed Messages** - Beautiful bordered success/error boxes
+- **Ref Updates** - Color-coded branch update notifications
+
+## 📦 What's New in v1.1.0
+
+✨ **Production-Grade UI Overhaul**
+- GitHub-like progress indicators
+- Beautiful ASCII art and gradients
+- Real-time upload/download speeds
+- Professional boxed messages
+- Color-coded output throughout
 
 ## 🤝 Contributing
 
@@ -190,7 +265,10 @@ cd OpenCodeHub/cli
 # Install dependencies
 npm install
 
-# Run in development mode
+# Build
+npm run build
+
+# Run in development
 npm run dev
 ```
 
@@ -203,6 +281,7 @@ MIT License - see [LICENSE](./LICENSE) for details.
 - [OpenCodeHub](https://github.com/swadhinbiswas/OpencodeHub) - The main project
 - [Documentation](https://github.com/swadhinbiswas/OpencodeHub#readme)
 - [Report Issues](https://github.com/swadhinbiswas/OpencodeHub/issues)
+- [npm Package](https://www.npmjs.com/package/opencodehub-cli)
 
 ---
 

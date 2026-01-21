@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;display=swap');
+    </style>
+    <!-- Gradients -->
+    <linearGradient id="grad-main" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#22c55e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#16a34a;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad-feat1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2563eb;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad-feat2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#a855f7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#9333ea;stop-opacity:1" />
+    </linearGradient>
+    
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.2"/>
+    </filter>
+    
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#64748b" />
+    </marker>
+  </defs>
+
+  <!-- Background (optional) -->
+  <!-- <rect width="800" height="300" fill="#f8fafc" /> -->
+
+  <!-- Title -->
+  <text x="400" y="40" font-family="Inter, sans-serif" font-size="20" font-weight="600" text-anchor="middle" fill="#334155">Stacked PR Workflow</text>
+
+  <!-- Workflow Steps -->
+  <g transform="translate(50, 80)">
+    
+    <!-- Step 1: Main (Base) -->
+    <g transform="translate(0, 50)">
+      <rect x="0" y="0" width="160" height="80" rx="12" fill="url(#grad-main)" filter="url(#shadow)"/>
+      <text x="80" y="35" font-family="Inter, sans-serif" font-size="16" font-weight="600" text-anchor="middle" fill="white">main</text>
+      <text x="80" y="55" font-family="Inter, sans-serif" font-size="12" text-anchor="middle" fill="white" opacity="0.9">Production Ready</text>
+    </g>
+
+    <!-- Arrow 1 -->
+    <path d="M170 90 L230 90" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" fill="none"/>
+
+    <!-- Step 2: Feature 1 -->
+    <g transform="translate(240, 50)">
+      <rect x="0" y="0" width="160" height="80" rx="12" fill="url(#grad-feat1)" filter="url(#shadow)"/>
+      <text x="80" y="35" font-family="Inter, sans-serif" font-size="16" font-weight="600" text-anchor="middle" fill="white">feat/api-core</text>
+      <text x="80" y="55" font-family="Inter, sans-serif" font-size="12" text-anchor="middle" fill="white" opacity="0.9">PR #1 (Base: main)</text>
+    </g>
+
+    <!-- Arrow 2 -->
+    <path d="M410 90 L470 90" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" fill="none"/>
+
+    <!-- Step 3: Feature 2 (Stacked) -->
+    <g transform="translate(480, 50)">
+      <rect x="0" y="0" width="160" height="80" rx="12" fill="url(#grad-feat2)" filter="url(#shadow)"/>
+      <text x="80" y="35" font-family="Inter, sans-serif" font-size="16" font-weight="600" text-anchor="middle" fill="white">feat/ui-login</text>
+      <text x="80" y="55" font-family="Inter, sans-serif" font-size="12" text-anchor="middle" fill="white" opacity="0.9">PR #2 (Base: PR #1)</text>
+    </g>
+
+    <!-- Connection Lines for "Stack" concept -->
+    <path d="M320 140 L320 160 L560 160 L560 140" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="5,5" fill="none"/>
+    <text x="440" y="180" font-family="Inter, sans-serif" font-size="12" text-anchor="middle" fill="#64748b">Changes propagate automatically down the stack</text>
+
+  </g>
+</svg>
