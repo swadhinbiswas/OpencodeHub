@@ -1,3 +1,8 @@
+---
+title: "Legacy: Storage Adapters"
+slug: "legacy/guides/storage-adapters"
+---
+
 # Storage Adapters
 
 OpenCodeHub supports a pluggable storage system, allowing you to store repository data (git objects, LFS files, artifacts) on various backends.
@@ -16,6 +21,7 @@ OpenCodeHub supports a pluggable storage system, allowing you to store repositor
 Data is stored in the `data/` directory relative to the application root.
 
 **Configuration:**
+
 ```env
 STORAGE_TYPE=local
 STORAGE_PATH=./data/storage  # Optional, default is ./data
@@ -28,6 +34,7 @@ STORAGE_PATH=./data/storage  # Optional, default is ./data
 Store data in any S3-compatible bucket. This is recommended for production scalablity.
 
 **Configuration:**
+
 ```env
 STORAGE_TYPE=s3
 STORAGE_BUCKET=my-opencodehub-bucket
@@ -40,6 +47,7 @@ S3_SECRET_KEY=your-secret-key
 ### Examples
 
 **MinIO (Self-hosted):**
+
 ```env
 STORAGE_ENDPOINT=http://minio:9000
 STORAGE_REGION=us-east-1
@@ -47,6 +55,7 @@ S3_FORCE_PATH_STYLE=true
 ```
 
 **Cloudflare R2:**
+
 ```env
 STORAGE_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
 STORAGE_REGION=auto
@@ -75,6 +84,7 @@ GOOGLE_FOLDER_ID=your-folder-id
 ```
 
 **How to get Credentials:**
+
 1.  Go to [Google Cloud Console](https://console.cloud.google.com).
 2.  Create a project -> Enable **Google Drive API**.
 3.  Create **OAuth Client ID**.
@@ -85,6 +95,7 @@ GOOGLE_FOLDER_ID=your-folder-id
 ## 🔷 Azure Blob Storage
 
 **Configuration:**
+
 ```env
 STORAGE_TYPE=azure
 AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=...

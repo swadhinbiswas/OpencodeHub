@@ -1,3 +1,8 @@
+---
+title: "Legacy: AI-Powered Code Reviews"
+slug: "legacy/tutorials/ai-powered-reviews"
+---
+
 # Tutorial: AI-Powered Code Reviews
 
 OpenCodeHub integrates with LLMs (GPT-4, Claude) to provide automated, intelligent code reviews on every Pull Request. This tutorial guides you through setting it up.
@@ -12,12 +17,14 @@ OpenCodeHub integrates with LLMs (GPT-4, Claude) to provide automated, intellige
 As an administrator, you need to configure the AI provider in your environment variables.
 
 **For OpenAI:**
+
 ```env
 AI_PROVIDER=openai
 OPENAI_API_KEY=sk-proj-...
 ```
 
 **For Anthropic:**
+
 ```env
 AI_PROVIDER=anthropic
 ANTHROPIC_API_KEY=sk-ant-...

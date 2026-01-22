@@ -19,12 +19,15 @@ import {
   getCommits,
   getFileContent,
   getBranches,
+  getCommitCount,
 } from "@/lib/git";
 import { resolveRepoPath } from "@/lib/git-storage";
 import { canReadRepo } from "@/lib/permissions";
 import { renderMarkdown } from "@/lib/markdown";
 import RepoHeader from "@/components/repo/RepoHeader.astro";
 import FileExplorer from "@/components/repo/FileExplorer.astro";
+import { RepoControls } from "@/components/repo/RepoControls";
+import { Card } from "@/components/ui/card";
 
 const { owner: ownerName, repo: repoName } = Astro.params;
 const db = getDatabase();
@@ -77,6 +80,7 @@ const currentBranch = repoData.defaultBranch;
 const currentPath = "";
 let files: any[] = [];
 let latestCommit: any = null;
+let totalCommits = 0;
 let readme = "";
 
 // Format dates helper
@@ -148,6 +152,9 @@ try {
     latestCommit = commits[0];
   }
 
+  // Get total commit count
+  totalCommits = await getCommitCount(resolvedLocalPath, currentBranch);
+
   // Get README
   const readmeFile = files.find((f) => f.name.toLowerCase() === "readme.md");
   if (readmeFile) {
@@ -203,183 +210,102 @@ const repo = {
       <!-- Main Content -->
       <div class="lg:col-span-3 space-y-4">
         <!-- Branch/Clone Bar -->
-        <div
-          class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-        >
-          <div class="flex items-center gap-2">
-            <!-- Branch Selector -->
-            <div class="relative">
-              <button
-                class="inline-flex items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-accent"
-                id="branch-btn"
-              >
-                <GitBranch className="h-4 w-4" />
-                {currentBranch}
-                <ChevronDown className="h-4 w-4" />
-              </button>
-              <div
-                id="branch-dropdown"
-                class="hidden absolute left-0 top-full mt-1 w-64 rounded-md border bg-popover p-2 shadow-lg z-10"
-              >
-                <input
-                  type="search"
-                  placeholder="Find a branch..."
-                  class="w-full mb-2 h-8 rounded-md border bg-background px-3 text-sm"
-                />
-                <div class="max-h-64 overflow-y-auto">
-                  <div
-                    class="text-xs font-semibold text-muted-foreground px-2 py-1"
-                  >
-                    Branches
-                  </div>
-                  {
-                    branches.map((b) => (
-                      <a
-                        href={`/${repo.owner}/${repo.name}/tree/${b}`}
-                        class={`flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent ${b === currentBranch ? "bg-accent" : ""}`}
-                      >
-                        {b === currentBranch && (
-                          <span class="text-primary">✓</span>
-                        )}
-                        {b}
-                      </a>
-                    ))
-                  }
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <!-- Clone Button -->
-            <div class="relative">
-              <button
-                class="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
-                id="clone-btn"
-              >
-                <Code className="h-4 w-4" />
-                Code
-                <ChevronDown className="h-4 w-4" />
-              </button>
-              <div
-                id="clone-dropdown"
-                class="hidden absolute right-0 top-full mt-1 w-80 rounded-md border bg-popover p-4 shadow-lg z-10"
-              >
-                <div class="space-y-4">
-                  <div>
-                    <div class="flex items-center gap-2 mb-2">
-                      <button
-                        id="https-tab"
-                        class="text-sm font-medium border-b-2 border-primary pb-1"
-                        >HTTPS</button
-                      >
-                      <button
-                        id="ssh-tab"
-                        class="text-sm font-medium text-muted-foreground pb-1 border-b-2 border-transparent"
-                        >SSH</button
-                      >
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <input
-                        type="text"
-                        readonly
-                        id="clone-url"
-                        value={repo.httpCloneUrl ||
-                          `http://localhost:3000/${repo.owner}/${repo.name}.git`}
-                        data-https={repo.httpCloneUrl ||
-                          `http://localhost:3000/${repo.owner}/${repo.name}.git`}
-                        data-ssh={repo.sshCloneUrl ||
-                          `git@localhost:${repo.owner}/${repo.name}.git`}
-                        class="flex-1 h-8 rounded-md border bg-muted px-2 text-xs font-mono"
-                      />
-                      <button
-                        id="copy-url-btn"
-                        class="inline-flex items-center justify-center h-8 w-8 rounded-md border hover:bg-accent"
-                        title="Copy to clipboard"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                  <div class="border-t pt-4 space-y-2">
-                    <a
-                      href={`/${repo.owner}/${repo.name}/archive/refs/heads/${currentBranch}.zip`}
-                      class="flex items-center gap-2 text-sm hover:text-primary"
-                    >
-                      <Download className="h-4 w-4" />
-                      Download ZIP
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <RepoControls
+          client:load
+          owner={repo.owner}
+          repo={repo.name}
+          currentBranch={currentBranch}
+          branches={branches}
+          httpCloneUrl={repo.httpCloneUrl ||
+            `http://localhost:3000/${repo.owner}/${repo.name}.git`}
+          sshCloneUrl={repo.sshCloneUrl ||
+            `git@localhost:${repo.owner}/${repo.name}.git`}
+        />
 
         <!-- File Browser -->
         <div class="space-y-4">
           <!-- Latest Commit -->
           {
             latestCommit && latestCommit.authorName ? (
-              <div class="flex items-center gap-4 rounded-lg border bg-muted/30 p-4">
-                <div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                  <span class="text-sm font-medium">
-                    {latestCommit.authorName[0].toUpperCase()}
-                  </span>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 text-sm">
-                    <a href="#" class="font-medium hover:text-primary">
-                      {latestCommit.authorName}
-                    </a>
-                    <a href="#" class="truncate hover:text-primary">
-                      {latestCommit.message}
-                    </a>
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-lg border bg-card p-4 text-sm shadow-sm">
+                <div class="flex items-center gap-3 overflow-hidden">
+                  <div class="h-8 w-8 shrink-0 rounded-full bg-muted flex items-center justify-center border text-xs font-medium">
+                    {latestCommit.authorName[0]?.toUpperCase()}
                   </div>
-                  <div class="flex items-center gap-2 text-xs text-muted-foreground">
-                    <a href="#" class="font-mono hover:text-primary">
+                  <div class="flex flex-col min-w-0">
+                    <div class="flex items-center gap-2 truncate">
+                      <a
+                        href="#"
+                        class="font-semibold hover:text-primary hover:underline truncate"
+                      >
+                        {latestCommit.authorName}
+                      </a>
+                      <span class="text-muted-foreground truncate hidden sm:inline">
+                        {latestCommit.message}
+                      </span>
+                    </div>
+                    <div class="flex sm:hidden text-muted-foreground truncate text-xs">
+                      {latestCommit.message}
+                    </div>
+                    <div class="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>committed {timeAgo(latestCommit.authorDate)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-3 shrink-0 ml-11 sm:ml-0">
+                  <div class="flex items-center border rounded-md overflow-hidden bg-muted/30">
+                    <a
+                      href={`/${repo.owner}/${repo.name}/commit/${latestCommit.sha}`}
+                      class="px-3 py-1.5 hover:bg-muted hover:text-primary font-mono text-xs transition-colors border-r"
+                    >
                       {latestCommit.sha.substring(0, 7)}
                     </a>
-                    <span>·</span>
-                    <span>committed {timeAgo(latestCommit.authorDate)}</span>
+                    <a
+                      href={`/${repo.owner}/${repo.name}/commits/${currentBranch}`}
+                      class="px-3 py-1.5 hover:bg-muted hover:text-primary text-xs flex items-center gap-1.5 transition-colors"
+                    >
+                      <Clock className="h-3.5 w-3.5" />
+                      <span class="font-medium">{totalCommits}</span>
+                      <span class="sr-only">commits</span>
+                    </a>
                   </div>
                 </div>
-                <a
-                  href={`/${repo.owner}/${repo.name}/commits/${currentBranch}`}
-                  class="text-sm text-muted-foreground hover:text-primary whitespace-nowrap"
-                >
-                  <GitCommit className="h-4 w-4 inline mr-1" />
-                  History
-                </a>
               </div>
             ) : (
-              <div class="p-4 text-sm text-muted-foreground border rounded-lg">
-                No commits yet.
-              </div>
+              <Card className="p-8 text-center text-muted-foreground border-dashed">
+                <div class="flex flex-col items-center gap-2">
+                  <GitBranch className="h-8 w-8 opacity-50 mb-2" />
+                  <p>No commits yet.</p>
+                </div>
+              </Card>
             )
           }
 
           <!-- File List -->
-          <FileExplorer
-            owner={repo.owner}
-            repo={repo.name}
-            branch={currentBranch}
-            path={currentPath}
-            files={files}
-          />
+          <Card className="overflow-hidden">
+            <FileExplorer
+              owner={repo.owner}
+              repo={repo.name}
+              branch={currentBranch}
+              path={currentPath}
+              files={files}
+            />
+          </Card>
 
           <!-- README -->
           {
             readme && (
-              <div class="rounded-lg border mt-8">
+              <Card className="mt-8 overflow-hidden">
                 <div class="flex items-center gap-2 border-b px-4 py-3 bg-muted/30">
-                  <FileText className="h-4 w-4" />
-                  <span class="font-medium">README.md</span>
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span class="font-medium text-sm">README.md</span>
                 </div>
                 <div
-                  class="p-6 prose dark:prose-invert max-w-none"
+                  class="p-6 prose prose-sm dark:prose-invert max-w-none prose-headings:border-b prose-headings:pb-2 prose-img:rounded-lg"
                   set:html={readme}
                 />
-              </div>
+              </Card>
             )
           }
         </div>
@@ -524,108 +450,3 @@ const repo = {
     </div>
   </div>
 </BaseLayout>
-
-<script>
-  // Branch dropdown
-  const branchBtn = document.getElementById("branch-btn");
-  const branchDropdown = document.getElementById("branch-dropdown");
-
-  branchBtn?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    branchDropdown?.classList.toggle("hidden");
-    document.getElementById("clone-dropdown")?.classList.add("hidden");
-  });
-
-  // Clone dropdown
-  const cloneBtn = document.getElementById("clone-btn");
-  const cloneDropdown = document.getElementById("clone-dropdown");
-
-  cloneBtn?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    cloneDropdown?.classList.toggle("hidden");
-    branchDropdown?.classList.add("hidden");
-  });
-
-  // Close dropdowns when clicking outside
-  document.addEventListener("click", () => {
-    branchDropdown?.classList.add("hidden");
-    cloneDropdown?.classList.add("hidden");
-  });
-
-  // HTTPS/SSH tab switching
-  const httpsTab = document.getElementById("https-tab");
-  const sshTab = document.getElementById("ssh-tab");
-  const cloneUrl = document.getElementById("clone-url") as HTMLInputElement;
-
-  httpsTab?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (cloneUrl) {
-      cloneUrl.value = cloneUrl.dataset.https || "";
-    }
-    httpsTab.classList.add("border-primary");
-    httpsTab.classList.remove("text-muted-foreground", "border-transparent");
-    sshTab?.classList.remove("border-primary");
-    sshTab?.classList.add("text-muted-foreground", "border-transparent");
-  });
-
-  sshTab?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (cloneUrl) {
-      cloneUrl.value = cloneUrl.dataset.ssh || "";
-    }
-    sshTab.classList.add("border-primary");
-    sshTab.classList.remove("text-muted-foreground", "border-transparent");
-    httpsTab?.classList.remove("border-primary");
-    httpsTab?.classList.add("text-muted-foreground", "border-transparent");
-  });
-
-  // Copy URL to clipboard
-  const copyBtn = document.getElementById("copy-url-btn");
-  copyBtn?.addEventListener("click", async (e) => {
-    e.stopPropagation();
-    if (cloneUrl) {
-      await navigator.clipboard.writeText(cloneUrl.value);
-      copyBtn.innerHTML =
-        '<svg class="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
-      setTimeout(() => {
-        copyBtn.innerHTML =
-          '<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-      }, 2000);
-    }
-  });
-
-  // Fork button
-  const forkBtn = document.getElementById("fork-btn") as HTMLButtonElement;
-  forkBtn?.addEventListener("click", async () => {
-    const owner = forkBtn.dataset.owner;
-    const repo = forkBtn.dataset.repo;
-
-    forkBtn.disabled = true;
-    forkBtn.innerHTML =
-      '<svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Forking...';
-
-    try {
-      const response = await fetch(`/api/repos/${owner}/${repo}/fork`, {
-        method: "POST",
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        window.location.href = data.fork.url;
-      } else if (response.status === 409) {
-        // Already forked - redirect to existing fork
-        window.location.href = `/${data.fork.owner}/${data.fork.name}`;
-      } else {
-        alert(data.message || "Failed to fork repository");
-        forkBtn.disabled = false;
-        forkBtn.innerHTML =
-          '<svg class="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 5C7 3.89543 7.89543 3 9 3C10.1046 3 11 3.89543 11 5C11 5.74028 10.5978 6.38663 10 6.73244V14.0396H14.5M17 5C17 3.89543 16.1046 3 15 3C13.8954 3 13 3.89543 13 5C13 5.74028 13.4022 6.38663 14 6.73244V8.5M14.5 14.0396C14.5 15.1441 15.3954 16.0396 16.5 16.0396C17.6046 16.0396 18.5 15.1441 18.5 14.0396C18.5 12.935 17.6046 12.0396 16.5 12.0396C15.3954 12.0396 14.5 12.935 14.5 14.0396Z"></path></svg>Fork';
-      }
-    } catch (error) {
-      console.error("Fork error:", error);
-      alert("Failed to fork repository");
-      forkBtn.disabled = false;
-    }
-  });
-</script>

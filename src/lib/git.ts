@@ -607,6 +607,28 @@ export async function getCommits(
 }
 
 /**
+ * Get total commit count
+ */
+export async function getCommitCount(
+  repoPath: string,
+  ref: string = "HEAD"
+): Promise<number> {
+  const git = getGit(repoPath);
+
+  try {
+    // Check if repository is empty first
+    if (await isRepoEmpty(repoPath)) {
+      return 0;
+    }
+
+    const count = await git.raw(["rev-list", "--count", ref]);
+    return parseInt(count.trim(), 10);
+  } catch (error) {
+    return 0;
+  }
+}
+
+/**
  * Get a single commit
  */
 export async function getCommit(

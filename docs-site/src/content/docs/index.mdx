@@ -16,7 +16,7 @@ hero:
       variant: minimal
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import { Card, CardGrid, Tabs, TabItem } from '@astrojs/starlight/components';
 
 ## Why OpenCodeHub?
 
@@ -34,6 +34,60 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 		Keep your code on your servers. No "per-seat" pricing. No vendor lock-in.
 	</Card>
 </CardGrid>
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        OpenCodeHub                               │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │   Astro     │  │   Git       │  │   CLI       │              │
+│  │   Web UI    │  │   Server    │  │   (och)     │              │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘              │
+│         └────────────────┼────────────────┘                      │
+│                          ▼                                       │
+│              ┌───────────────────────┐                           │
+│              │   REST/GraphQL API    │                           │
+│              └───────────┬───────────┘                           │
+│                          ▼                                       │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │ PostgreSQL  │  │   Redis     │  │  Storage    │              │
+│  │  (Turso)    │  │  (optional) │  │ (S3/Local)  │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Deploy Anywhere
+
+<CardGrid>
+	<Card title="🐳 Docker" icon="add-document">
+		The recommended way to deploy. Full Docker Compose setup with PostgreSQL and Redis.
+		[Deploy with Docker →](/administration/deploy-docker/)
+	</Card>
+	<Card title="🦭 Podman" icon="add-document">
+		Rootless containers with native systemd integration. Ideal for security-focused deployments.
+		[Deploy with Podman →](/administration/deploy-podman/)
+	</Card>
+	<Card title="☁️ Cloudflare" icon="add-document">
+		Use Cloudflare Tunnel + R2 for zero-port exposure and S3-compatible storage.
+		[Deploy with Cloudflare →](/administration/deploy-cloudflare/)
+	</Card>
+	<Card title="🌐 Nginx" icon="add-document">
+		Production-ready reverse proxy config with SSL and Git-specific optimizations.
+		[Configure Nginx →](/administration/deploy-nginx/)
+	</Card>
+</CardGrid>
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | Astro, React, Tailwind CSS, shadcn/ui |
+| **Backend** | Node.js, Hono (API), simple-git |
+| **Database** | PostgreSQL, Turso (LibSQL), SQLite |
+| **Storage** | Local disk, S3, R2, Google Drive |
+| **Auth** | JWT, 2FA, OAuth (GitHub, Google) |
+| **CI/CD** | GitHub Actions compatible runners |
 
 ## Quick Links
 
@@ -55,3 +109,16 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 		[Start contributing →](/development/contributing/)
 	</Card>
 </CardGrid>
+
+## Storage Options
+
+:::tip[Performance Recommendation]
+For best performance, use **local SSD storage** in production. Object storage (S3/R2) introduces latency. See [Storage Adapters](/guides/storage-adapters/#️-performance-considerations) for details.
+:::
+
+| Storage Type | Performance | Cost | Best For |
+|--------------|-------------|------|----------|
+| **Local SSD** | ⚡ Fastest | $$ | Production, self-hosted |
+| **S3/R2** | 🐢 Slow | $ | Backup, serverless |
+| **Google Drive** | 🐢 Slow | Free | Personal projects |
+

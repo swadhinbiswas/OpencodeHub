@@ -1,5 +1,9 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/swadhinbiswas/OpenCodeHub/main/public/logo.svg" alt="OpenCodeHub CLI" width="120" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/swadhinbiswas/OpenCodeHub/main/public/logo-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/swadhinbiswas/OpenCodeHub/main/public/logo-light.png">
+    <img src="https://raw.githubusercontent.com/swadhinbiswas/OpenCodeHub/main/public/logo-light.png" alt="OpenCodeHub CLI" width="400" />
+  </picture>
 </p>
 
 <h1 align="center">OpenCodeHub CLI</h1>
@@ -107,6 +111,7 @@ och repo list
 ## 🎨 Beautiful Output Examples
 
 ### Push Command
+
 ```
 ℹ Pushing to swadhinbiswas/myrepo
   Branch: master
@@ -122,7 +127,7 @@ och repo list
 ✔ Uploaded 49.17 KB in 0.52s (94.56 KB/s)
 
 remote: Processing: 100% (90/90), done.
-remote: 
+remote:
 To https://opencodehub.com/swadhinbiswas/myrepo.git
    abc1234..def5678  master -> master
 
@@ -140,6 +145,7 @@ To https://opencodehub.com/swadhinbiswas/myrepo.git
 ```
 
 ### Clone Command
+
 ```
 ℹ Cloning swadhinbiswas/awesome-project
 
@@ -164,6 +170,7 @@ Receiving objects: 100% (234/234), 1.23 MiB | 2.45 MiB/s, done.
 ```
 
 ### Create Command
+
 ```
 ℹ Creating 🌐 my-new-repo
   Description: An awesome new project
@@ -171,7 +178,7 @@ Receiving objects: 100% (234/234), 1.23 MiB | 2.45 MiB/s, done.
 ✔ Repository created
 
     ✨ SUCCESS! ✨
-    
+
     Repository swadhinbiswas/my-new-repo is ready!
 
 ╭─────────────────────────────────────────╮
@@ -204,15 +211,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      
+          node-version: "20"
+
       - name: Install CLI
         run: npm install -g opencodehub-cli
-      
+
       - name: Push to OpenCodeHub
         run: |
           och auth login --token ${{ secrets.OCH_TOKEN }}
@@ -247,6 +254,7 @@ och config set defaultBranch main
 ## 📦 What's New in v1.1.0
 
 ✨ **Production-Grade UI Overhaul**
+
 - GitHub-like progress indicators
 - Beautiful ASCII art and gradients
 - Real-time upload/download speeds

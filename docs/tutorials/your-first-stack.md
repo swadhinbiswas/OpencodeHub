@@ -1,3 +1,8 @@
+---
+title: "Legacy: Your First Stacked PR"
+slug: "legacy/tutorials/your-first-stack"
+---
+
 # Tutorial: Your First Stacked PR
 
 > Learn how to split a large feature into reviewable chunks in 15 minutes
@@ -11,7 +16,7 @@ This hands-on tutorial teaches you how to use Stacked Pull Requests to break dow
 - Navigate the review process
 - Merge the stack successfully
 
-**Time:** 15-20 minutes  
+**Time:** 15-20 minutes
 **Difficulty:** Beginner
 
 ---
@@ -27,6 +32,7 @@ Before starting, make sure you have:
 - [ ] Basic Git knowledge (branch, commit, push)
 
 **First time with OCH CLI?**
+
 ```bash
 # Install
 npm install -g opencodehub-cli
@@ -124,7 +130,7 @@ och stack submit
 # Output:
 # ✓ Pushing stack/auth-database
 # ✓ Creating pull request
-# 
+#
 # PR #123 created: feat: add users table migration
 # https://git.yourcompany.com/yourorg/your-repo/pulls/123
 ```
@@ -132,6 +138,7 @@ och stack submit
 **2.5. Verify in web UI:**
 
 Open the PR link. You should see:
+
 - Title: "feat: add users table migration"
 - Files changed: `db/migrations/001_create_users_table.sql`
 - Status: Draft or Ready for Review
@@ -162,34 +169,34 @@ import { db } from '../db';
 export class AuthService {
   async register(email: string, password: string) {
     const hash = await bcrypt.hash(password, 10);
-    
+
     const user = await db.users.create({
       email,
       password_hash: hash
     });
-    
+
     return { id: user.id, email: user.email };
   }
-  
+
   async login(email: string, password: string) {
     const user = await db.users.findByEmail(email);
-    
+
     if (!user) {
       throw new Error('Invalid credentials');
     }
-    
+
     const valid = await bcrypt.compare(password, user.password_hash);
-    
+
     if (!valid) {
       throw new Error('Invalid credentials');
     }
-    
+
     const token = jwt.sign(
       { userId: user.id, email: user.email },
       process.env.JWT_SECRET!,
       { expiresIn: '7d' }
     );
-    
+
     return { token, user: { id: user.id, email: user.email } };
   }
 }
@@ -264,14 +271,14 @@ const authService = new AuthService();
 router.post('/register', async (req, res) => {
   try {
     const { email, password } = req.body;
-    
+
     // Validation
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
     }
-    
+
     const user = await authService.register(email, password);
-    
+
     res.status(201).json({ user });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -281,9 +288,9 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    
+
     const result = await authService.login(email, password);
-    
+
     res.json(result);
   } catch (error) {
     res.status(401).json({ error: error.message });
@@ -311,7 +318,7 @@ och stack submit
 
 # Output:
 # ✓ Pushing stack/auth-api
-# ✓ Creating pull request  
+# ✓ Creating pull request
 # ✓ Linking to base PR #124
 #
 # PR #125 created: feat: add authentication API endpoints
@@ -353,6 +360,7 @@ curl -X PATCH https://git.yourcompany.com/api/prs/123 \
 **5.2. Request reviews:**
 
 In the web UI for PR #123:
+
 1. Click "Reviewers" → Select team members
 2. Add comment: "This is the first PR in a stack of 3. Reviewing these in order would be helpful!"
 
@@ -370,14 +378,14 @@ import { db } from '../db';
 test('creates users table', async () => {
   // Run migration
   await db.migrate();
-  
+
   // Verify table exists
   const tables = await db.raw(`
-    SELECT table_name 
-    FROM information_schema.tables 
+    SELECT table_name
+    FROM information_schema.tables
     WHERE table_name = 'users'
   `);
-  
+
   expect(tables.length).toBe(1);
 });
 EOF
@@ -440,7 +448,7 @@ och queue watch
 # 🔄 Rebasing PR #124...
 # 🏃 Running CI for #124...
 #
-# [2 min later]  
+# [2 min later]
 # ✅ PR #124 merged!
 # 🔄 Rebasing PR #125...
 ```
@@ -456,7 +464,7 @@ git log --oneline -3
 
 # Output:
 # abc123 feat: add authentication API endpoints
-# def456 feat: implement authentication service  
+# def456 feat: implement authentication service
 # ghi789 feat: add users table migration
 ```
 
@@ -466,22 +474,24 @@ All 3 PRs merged! Your auth system is live!
 
 ## What You've Learned
 
-✅ How to create a stack of dependent PRs  
-✅ Using `och stack create` for easy stacking  
-✅ Submitting stacks with `och stack submit`  
-✅ Viewing stack visualization  
-✅ Using the merge queue for automatic merging  
+✅ How to create a stack of dependent PRs
+✅ Using `och stack create` for easy stacking
+✅ Submitting stacks with `och stack submit`
+✅ Viewing stack visualization
+✅ Using the merge queue for automatic merging
 ✅ How auto-rebasing works
 
 ## Key Takeaways
 
 **Stacked PRs are better because:**
+
 - Each PR was ~50-100 lines (easy to review)
 - Reviews happened in parallel (faster)
 - Each merge was low-risk (incremental)
 - Clear history (logical progression)
 
 **vs. One Large PR:**
+
 - Would be ~200-300 lines
 - Single review bottleneck
 - High-risk merge
@@ -494,6 +504,7 @@ All 3 PRs merged! Your auth system is live!
 ### Practice More
 
 Try stacking your next feature:
+
 - 🎨 Frontend feature → Split UI, logic, styles
 - 🔧 Backend feature → Split models, services, controllers
 - 📊 Data pipeline → Split ingestion, processing, output
@@ -501,6 +512,7 @@ Try stacking your next feature:
 ### Advanced Techniques
 
 Learn more about:
+
 - [Parallel stacks](../features/stacked-prs.md#parallel-stacks)
 - [Stack reordering](../features/stacked-prs.md#reordering)
 - [AI code review](../features/ai-review.md) on stacks
