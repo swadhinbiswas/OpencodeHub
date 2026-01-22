@@ -1,3 +1,8 @@
+---
+title: "Legacy: Smart Merge Queue"
+slug: "legacy/features/merge-queue"
+---
+
 # Smart Merge Queue
 
 > Automate merging with stack-aware CI optimization and conflict resolution
@@ -21,6 +26,7 @@ The Smart Merge Queue automatically merges approved pull requests in the correct
 ### The Problem
 
 Manual merging is:
+
 - ⏰ **Slow** - Wait for CI, merge, repeat
 - 🐛 **Error-prone** - Merge conflicts, wrong order
 - 💸 **Expensive** - Run CI for every PR individually
@@ -30,23 +36,25 @@ Manual merging is:
 
 Smart Merge Queue:
 
-✅ **Automatic Merging** - Set it and forget it  
-✅ **Stack-Aware** - Merges in dependency order  
-✅ **CI Optimization** - Batches compatible PRs  
-✅ **Conflict Resolution** - Auto-rebases or alerts  
+✅ **Automatic Merging** - Set it and forget it
+✅ **Stack-Aware** - Merges in dependency order
+✅ **CI Optimization** - Batches compatible PRs
+✅ **Conflict Resolution** - Auto-rebases or alerts
 ✅ **Priority Handling** - Hotfixes jump the queue
 
 ### Real-World Impact
 
 **Without Queue:**
+
 ```
-PR #123 → Wait for CI (5 min) → Merge → 
+PR #123 → Wait for CI (5 min) → Merge →
 PR #124 → Rebase → Wait for CI (5 min) → Merge →
 PR #125 → Rebase → Wait for CI (5 min) → Merge
 Total: ~20 minutes, 3 CI runs
 ```
 
 **With Queue:**
+
 ```
 Add #123, #124, #125 to queue →
 Queue detects dependencies →
@@ -105,6 +113,7 @@ All automatic!
 ### CI Optimization
 
 **Batching:**
+
 ```
 PR #126: Fix typo in docs (no code changes)
 PR #127:  Update README
@@ -117,6 +126,7 @@ Queue batches #126 + #127 (docs only)
 ```
 
 **Smart Scheduling:**
+
 - Long CI jobs run in parallel
 - Short jobs batch together
 - Stack dependencies respected
@@ -170,6 +180,7 @@ curl -X POST https://git.yourcompany.com/api/queue \
 Navigate to `/queue` or click "Merge Queue" in repository navigation
 
 **CLI:**
+
 ```bash
 # View entire queue
 och queue list
@@ -186,6 +197,7 @@ och queue watch
 ```
 
 **API:**
+
 ```bash
 curl https://git.yourcompany.com/api/queue \
   -H "Authorization: Bearer $TOKEN"
@@ -197,14 +209,15 @@ curl https://git.yourcompany.com/api/queue \
 
 ### Priority Levels
 
-| Priority | Use Case | Behavior |
-|----------|----------|----------|
-| 🔥 **Critical** | Production outage | Jumps to front, blocks other merges |
-| ⚡ **High** | Security fix, hotfix | Merges before normal PRs |
-| 📄 **Normal** | Regular features | Default, FIFO order |
-| 🐌 **Low** | Refactoring, docs | Merges when queue is empty |
+| Priority        | Use Case             | Behavior                            |
+| --------------- | -------------------- | ----------------------------------- |
+| 🔥 **Critical** | Production outage    | Jumps to front, blocks other merges |
+| ⚡ **High**     | Security fix, hotfix | Merges before normal PRs            |
+| 📄 **Normal**   | Regular features     | Default, FIFO order                 |
+| 🐌 **Low**      | Refactoring, docs    | Merges when queue is empty          |
 
 **Setting priority:**
+
 ```bash
 # CLI
 och queue add 126 --priority critical
@@ -245,31 +258,31 @@ och queue resume
 
 ```yaml
 # Merge strategy
-merge_method: squash  # or merge, rebase
+merge_method: squash # or merge, rebase
 
 # CI requirements
 require_ci: true
 required_checks:
   - "test"
-  - "lint"  
+  - "lint"
   - "build"
 
-# Approval requirements  
+# Approval requirements
 require_approvals: 1
 dismiss_stale_reviews: true
 
 # Batching
 enable_batching: true
-batch_window: 5m        # Wait 5 min to batch PRs
-max_batch_size: 3       # Max 3 PRs per batch
+batch_window: 5m # Wait 5 min to batch PRs
+max_batch_size: 3 # Max 3 PRs per batch
 
 # Rebasing
-auto_rebase: true       # Auto-rebase on conflicts
-rebase_strategy: merge  # or rebase, squash
+auto_rebase: true # Auto-rebase on conflicts
+rebase_strategy: merge # or rebase, squash
 
 # Priorities
-allow_priority_override: true  # Let users set priority
-max_queue_size: 50            # Max PRs in queue
+allow_priority_override: true # Let users set priority
+max_queue_size: 50 # Max PRs in queue
 ```
 
 ### Branch Protection Rules
@@ -285,7 +298,7 @@ branches:
       - lint
     required_approvals: 1
     allow_force_push: false
-    allow_queue_bypass: false  # Even admins use queue!
+    allow_queue_bypass: false # Even admins use queue!
 ```
 
 ### Webhook Notifications
@@ -303,6 +316,7 @@ curl -X POST https://git.yourcompany.com/api/webhooks \
 ```
 
 **Payload:**
+
 ```json
 {
   "event": "merge_queue.merged",
@@ -315,7 +329,7 @@ curl -X POST https://git.yourcompany.com/api/webhooks \
     "position": 1,
     "wait_time_seconds": 180
   },
- "timestamp": "2024-01-01T12:00:00Z"
+  "timestamp": "2024-01-01T12:00:00Z"
 }
 ```
 
@@ -326,30 +340,34 @@ curl -X POST https://git.yourcompany.com/api/webhooks \
 ### 💡 When to Use the Queue
 
 **✅ Always use for:**
+
 - Feature branches → main
 - Release branches
 - Any PR affecting production
 
 **❌ Don't use for:**
+
 - Draft PRs
-- WIP branches  
+- WIP branches
 - Experimental features
 
 ### 💡 Optimizing Queue Performance
 
 **1. Fast CI:**
+
 ```yaml
 # Run quick tests in queue
 queue_ci:
-  - unit_tests  # 2 min
-  
+  - unit_tests # 2 min
+
 # Run slow tests post-merge
 post_merge_ci:
-  - integration_tests  # 10 min
-  - e2e_tests          # 15 min
+  - integration_tests # 10 min
+  - e2e_tests # 15 min
 ```
 
 **2. Parallel CIs:**
+
 ```yaml
 # Run multiple jobs in parallel
 ci:
@@ -360,6 +378,7 @@ ci:
 ```
 
 **3. Smart batching:**
+
 ```bash
 # Group related PRs
 och queue add 123 124 125 --batch-id feature-auth
@@ -370,6 +389,7 @@ och queue add 123 124 125 --batch-id feature-auth
 ### 💡 Handling Conflicts
 
 **Automatic resolution:**
+
 ```yaml
 auto_rebase: true
 rebase_strategy: merge  # Creates merge commit
@@ -379,6 +399,7 @@ rebase_strategy: rebase  # Cleaner history
 ```
 
 **Manual resolution:**
+
 ```bash
 # If auto-rebase fails, you'll get notification
 # Fix locally:
@@ -394,18 +415,20 @@ git push --force-with-lease
 ### 💡 Queue Monitoring
 
 **Set up alerts:**
+
 ```yaml
 # Slack notification if queue stalled
 alerts:
   - type: queue_stalled
     threshold: 30m
     channel: "#eng-deployments"
-    
+
   - type: merge_failed
     channel: "#eng-alerts"
 ```
 
 **Dashboard example:**
+
 ```bash
 # View queue health
 och queue stats
@@ -425,12 +448,14 @@ och queue stats
 ### "PR stuck in queue"
 
 **Causes:**
+
 1. CI failing
 2. Waiting for approval
 3. Merge conflict
 4. Dependency not merged yet
 
 **Solutions:**
+
 ```bash
 # Check status
 och queue status 125
@@ -449,6 +474,7 @@ och queue add 125
 **Cause:** Complex merge conflicts.
 
 **Solution:**
+
 ```bash
 # Remove from queue
 och queue remove 125
@@ -466,11 +492,13 @@ och queue add 125
 ### "Queue not processing"
 
 **Causes:**
+
 1. Queue paused
 2. CI service down
 3. Rate limit reached
 
 **Solutions:**
+
 ```bash
 # Check queue status
 och queue info
@@ -490,6 +518,7 @@ och admin logs queue
 **Cause:** Dependencies not detected.
 
 **Solution:**
+
 ```bash
 # Manually set dependency
 och pr edit 125 --depends-on 124
@@ -510,7 +539,7 @@ For high-velocity teams:
 merge_train:
   enabled: true
   max_concurrent: 5
-  
+
 # Creates temporary integration branches
 # Runs CI in parallel
 # Merges in rapid succession
@@ -538,11 +567,11 @@ module.exports = {
     // Update JIRA ticket
     // Trigger deployment
   },
-  
+
   afterMerge(pr) {
     // Create release notes
     // Update documentation
-  }
+  },
 };
 ```
 

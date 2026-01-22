@@ -1,7 +1,11 @@
 # OpenCodeHub Documentation
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/swadhinbiswas/OpenCodeHub/main/public/logo.svg" alt="OpenCodeHub Logo" width="300">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/swadhinbiswas/OpenCodeHub/main/public/logo-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/swadhinbiswas/OpenCodeHub/main/public/logo-light.png">
+    <img src="https://raw.githubusercontent.com/swadhinbiswas/OpenCodeHub/main/public/logo-light.png" alt="OpenCodeHub Logo" width="400">
+  </picture>
 </p>
 
 > Everything you need to know about OpenCodeHub - from getting started to advanced features
@@ -17,17 +21,17 @@ Welcome to OpenCodeHub's comprehensive documentation. Whether you're new to the 
     <h3>🎯 Getting Started</h3>
     <p>Install and set up OpenCodeHub in 5 minutes</p>
   </a>
-  
+
   <a href="#features">
     <h3>✨ Features</h3>
     <p>Learn about stacked PRs, AI review, and more</p>
   </a>
-  
+
   <a href="#tutorials">
     <h3>📚 Tutorials</h3>
     <p>Hands-on guides to master OpenCodeHub</p>
   </a>
-  
+
   <a href="#api">
     <h3>🔌 API Reference</h3>
     <p>Integrate with OpenCodeHub programmatically</p>
@@ -50,35 +54,35 @@ New to OpenCodeHub? Start here!
 
 Learn about OpenCodeHub's powerful features:
 
-- **[Stacked Pull Requests](features/stacked-prs.md)** ⭐  
+- **[Stacked Pull Requests](features/stacked-prs.md)** ⭐
   Break large changes into reviewable stacks. Ship code faster.
-  
-- **[AI Code Review](features/ai-review.md)** 🤖  
+
+- **[AI Code Review](features/ai-review.md)** 🤖
   Get instant feedback from GPT-4 or Claude. Catch bugs automatically.
-  
-- **[Smart Merge Queue](features/merge-queue.md)** 🔀  
+
+- **[Smart Merge Queue](features/merge-queue.md)** 🔀
   Automate merging with stack-aware CI optimization.
-  
-- **[Developer Metrics](features/developer-metrics.md)** 📊  
+
+- **[Developer Metrics](features/developer-metrics.md)** 📊
   Track velocity, review efficiency, and team performance.
-  
-- **[Slack Integration](features/slack-integration.md)** 💬  
+
+- **[Slack Integration](features/slack-integration.md)** 💬
   Get actionable notifications in Slack. Review without leaving chat.
-  
-- **[CI/CD Pipelines](features/ci-cd.md)** ⚙️  
+
+- **[CI/CD Pipelines](features/ci-cd.md)** ⚙️
   GitHub Actions-compatible workflows. Build, test, deploy.
 
 ### Hands-On Tutorials
 
 Step-by-step guides to master OpenCodeHub:
 
-- **[Your First Stacked PR](tutorials/your-first-stack.md)** 🎓  
+- **[Your First Stacked PR](tutorials/your-first-stack.md)** 🎓
   15-minute tutorial: Create your first stack of PRs
-  
-- **[AI-Powered Code Reviews](tutorials/ai-powered-reviews.md)**  
+
+- **[AI-Powered Code Reviews](tutorials/ai-powered-reviews.md)**
   Set up and use AI review for your projects
-  
-- **[Automated Deployment](tutorials/automated-deployment.md)**  
+
+- **[Automated Deployment](tutorials/automated-deployment.md)**
   Build a complete CI/CD pipeline from scratch
 
 ### Guides
@@ -121,7 +125,6 @@ Contributing to OpenCodeHub:
 - **[CLI Commands](reference/cli-commands.md)** - Full CLI reference
 - **[Glossary](reference/glossary.md)** - Project terminology
 - **[Troubleshooting](support/troubleshooting.md)** - Fix common issues
-
 
 ---
 
@@ -267,13 +270,13 @@ We welcome contributions!
 
 ## 🌟 Why OpenCodeHub?
 
-| Feature | GitHub | GitLab | OpenCodeHub |
-|---------|--------|--------|-------------|
-| Stacked PRs | ❌ | ❌ | ✅ Native support |
-| AI Code Review | ⚠️ Copilot only | ❌ | ✅ GPT-4 & Claude |
-| Smart Merge Queue | ⚠️ Basic | ⚠️ Basic | ✅ Stack-aware |
-| Self-Hosted | ❌ | ✅ Complex | ✅ Simple |
-| Cost | $$$ | $$$ | Free |
+| Feature           | GitHub          | GitLab     | OpenCodeHub       |
+| ----------------- | --------------- | ---------- | ----------------- |
+| Stacked PRs       | ❌              | ❌         | ✅ Native support |
+| AI Code Review    | ⚠️ Copilot only | ❌         | ✅ GPT-4 & Claude |
+| Smart Merge Queue | ⚠️ Basic        | ⚠️ Basic   | ✅ Stack-aware    |
+| Self-Hosted       | ❌              | ✅ Complex | ✅ Simple         |
+| Cost              | $$$             | $$$        | Free              |
 
 ---
 

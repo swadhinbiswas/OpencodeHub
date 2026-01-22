@@ -1,22 +1,17 @@
 ---
 import {
-  GitBranch,
-  Star,
-  GitFork,
-  Eye,
   Code,
   FileText,
   Settings,
-  Lock,
-  Globe,
-  PlayCircle,
-  Book,
   Shield,
   BarChart2,
   GitPullRequest,
   Layout,
-  ChevronDown,
+  PlayCircle,
+  Book,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { RepoActions } from "@/components/repo/RepoActions";
 
 interface Props {
   repo: {
@@ -30,6 +25,9 @@ interface Props {
     stars?: number;
     openIssueCount?: number;
     openPrCount?: number;
+    website?: string | null;
+    license?: string | null;
+    updatedAt?: Date | string | number | null;
   };
   activeTab:
     | "code"
@@ -44,6 +42,26 @@ interface Props {
 }
 
 const { repo, activeTab } = Astro.props;
+const isLoggedIn = !!Astro.locals.user;
+
+// Helper for time ago
+function timeAgo(date: Date | string | number) {
+  if (!date) return "";
+  const seconds = Math.floor(
+    (new Date().getTime() - new Date(date).getTime()) / 1000,
+  );
+  let interval = seconds / 31536000;
+  if (interval > 1) return Math.floor(interval) + "y ago";
+  interval = seconds / 2592000;
+  if (interval > 1) return Math.floor(interval) + "mo ago";
+  interval = seconds / 86400;
+  if (interval > 1) return Math.floor(interval) + "d ago";
+  interval = seconds / 3600;
+  if (interval > 1) return Math.floor(interval) + "h ago";
+  interval = seconds / 60;
+  if (interval > 1) return Math.floor(interval) + "m ago";
+  return Math.floor(seconds) + "s ago";
+}
 
 const tabs = [
   {
@@ -105,148 +123,151 @@ const tabs = [
 ];
 ---
 
-<!-- Enhanced Repo Header -->
 <div class="mb-6">
   <!-- Top Section: Repo Name & Action Buttons -->
-  <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 py-4 border-b border-white/10">
+  <div
+    class="flex flex-col lg:flex-row lg:items-start justify-between gap-4 py-8 border-b"
+  >
     <!-- Repo Info -->
-    <div class="space-y-2">
-      <!-- Repo Name - BIGGER and more prominent -->
+    <div class="space-y-4 max-w-3xl">
+      <!-- Repo Name -->
       <div class="flex items-center gap-3 flex-wrap">
-        <a 
-          href={`/${repo.owner}`} 
-          class="text-xl font-semibold text-cyan-400 hover:underline transition-colors"
+        <a
+          href={`/${repo.owner}`}
+          class="text-xl text-muted-foreground hover:text-foreground hover:underline transition-colors"
         >
           {repo.owner}
         </a>
-        <span class="text-xl text-gray-500">/</span>
+        <span class="text-xl text-muted-foreground">/</span>
         <a
           href={`/${repo.owner}/${repo.name}`}
-          class="text-xl font-bold text-white hover:text-cyan-400 transition-colors"
+          class="text-xl font-bold hover:text-primary hover:underline transition-colors"
         >
           {repo.name}
         </a>
-        <!-- Visibility Badge -->
-        <span
-          class="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/5 px-2.5 py-1 text-xs font-medium text-gray-400"
+        <Badge
+          variant="secondary"
+          className="rounded-full px-2.5 font-normal text-muted-foreground border-muted-foreground/30"
         >
-          {
-            repo.visibility === "public" ? (
-              <>
-                <Globe className="h-3 w-3 text-green-400" />
-                <span>Public</span>
-              </>
-            ) : (
-              <>
-                <Lock className="h-3 w-3 text-orange-400" />
-                <span>Private</span>
-              </>
-            )
-          }
-        </span>
+          {repo.visibility}
+        </Badge>
       </div>
-      
+
       <!-- Description -->
       {
         repo.description && (
-          <p class="text-gray-400 text-sm max-w-2xl">{repo.description}</p>
+          <p class="text-base text-foreground/80 leading-relaxed">
+            {repo.description}
+          </p>
         )
       }
-      
+
+      <!-- Metadata Row -->
+      <div
+        class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground"
+      >
+        {
+          repo.website && (
+            <a
+              href={repo.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex items-center gap-1.5 hover:text-primary transition-colors"
+            >
+              <svg
+                class="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                />
+              </svg>
+              {repo.website}
+            </a>
+          )
+        }
+        {
+          repo.license && (
+            <div class="flex items-center gap-1.5">
+              <svg
+                class="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"
+                />
+              </svg>
+              {repo.license} license
+            </div>
+          )
+        }
+        {repo.updatedAt && <div>Updated {timeAgo(repo.updatedAt)}</div>}
+      </div>
+
       <!-- Topics -->
       {
         repo.topics && repo.topics.length > 0 && (
-          <div class="flex flex-wrap gap-2 mt-2">
+          <div class="flex flex-wrap gap-2">
             {repo.topics.map((topic: string) => (
-              <a
-                href={`/topics/${topic}`}
-                class="inline-flex items-center rounded-full bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-0.5 text-xs font-medium text-cyan-400 hover:bg-cyan-500/20 transition-colors"
+              <Badge
+                variant="secondary"
+                className="rounded-full hover:bg-primary/20 hover:text-primary cursor-pointer transition-colors"
               >
-                {topic}
-              </a>
+                <a href={`/topics/${topic}`}>{topic}</a>
+              </Badge>
             ))}
           </div>
         )
       }
     </div>
-    
+
     <!-- Action Buttons -->
-    <div class="flex items-center gap-2 flex-wrap">
-      <!-- Watch -->
-      <div class="flex items-center rounded-lg border border-white/10 bg-white/5 overflow-hidden">
-        <button
-          class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/10 transition-colors"
-        >
-          <Eye className="h-4 w-4" />
-          Watch
-          <span class="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-xs text-cyan-400">
-            {repo.watchers || 0}
-          </span>
-        </button>
-        <div class="w-px h-6 bg-white/10"></div>
-        <button class="px-2 py-2 hover:bg-white/10 transition-colors text-gray-400">
-          <ChevronDown className="h-4 w-4" />
-        </button>
-      </div>
-      
-      <!-- Fork -->
-      <div class="flex items-center rounded-lg border border-white/10 bg-white/5 overflow-hidden">
-        <button
-          id="fork-btn"
-          data-owner={repo.owner}
-          data-repo={repo.name}
-          class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/10 transition-colors"
-        >
-          <GitFork className="h-4 w-4" />
-          Fork
-          <span class="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-xs text-purple-400">
-            {repo.forks || 0}
-          </span>
-        </button>
-      </div>
-      
-      <!-- Star -->
-      <div class="flex items-center rounded-lg border border-white/10 bg-white/5 overflow-hidden">
-        <button
-          class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-white/10 transition-colors"
-        >
-          <Star className="h-4 w-4" />
-          Star
-          <span class="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-xs text-yellow-400">
-            {repo.stars || 0}
-          </span>
-        </button>
-        <div class="w-px h-6 bg-white/10"></div>
-        <button class="px-2 py-2 hover:bg-white/10 transition-colors text-gray-400">
-          <ChevronDown className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
+    <RepoActions
+      client:load
+      owner={repo.owner}
+      repo={repo.name}
+      watchers={repo.watchers || 0}
+      forks={repo.forks || 0}
+      stars={repo.stars || 0}
+      isLoggedIn={isLoggedIn}
+    />
   </div>
 
   <!-- Navigation Tabs -->
-  <div class="overflow-x-auto -mx-4 px-4">
-    <nav class="flex gap-1 pt-3 min-w-max">
+  <div class="overflow-x-auto -mx-4 px-4 pt-4">
+    <nav class="flex gap-1 min-w-max border-b border-transparent">
       {
         tabs.map((tab) => (
           <a
             href={tab.href}
             class:list={[
-              "inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
+              "inline-flex items-center gap-2 px-4 py-2.5 rounded-t-lg text-sm font-medium border-b-2 transition-all",
               activeTab === tab.id
-                ? "bg-white/10 text-white border border-white/10"
-                : "text-gray-400 hover:text-white hover:bg-white/5",
+                ? "border-primary text-foreground bg-muted/40"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30",
             ]}
           >
             <tab.icon className="h-4 w-4" />
             {tab.label}
             {tab.count !== undefined && tab.count > 0 && (
-              <span class:list={[
-                "rounded-full px-2 py-0.5 text-xs font-medium",
-                activeTab === tab.id
-                  ? "bg-cyan-500/20 text-cyan-400"
-                  : "bg-white/10 text-gray-400"
-              ]}>
+              <span
+                class:list={[
+                  "rounded-full px-2 py-0.5 text-xs font-medium",
+                  activeTab === tab.id
+                    ? "bg-primary/10 text-primary"
+                    : "bg-muted text-muted-foreground",
+                ]}
+              >
                 {tab.count}
               </span>
             )}

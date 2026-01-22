@@ -9,7 +9,8 @@ const user = Astro.locals.user;
   <div class="container h-16 flex items-center justify-between gap-4">
     <!-- Logo -->
     <a href="/" class="flex items-center gap-2 transition-opacity hover:opacity-80">
-      <img src="/logo.svg" alt="OpenCodeHub" class="h-9 w-auto" />
+      <img src="/logo-dark.png" alt="OpenCodeHub" class="h-9 w-auto dark:hidden" />
+      <img src="/logo-light.png" alt="OpenCodeHub" class="h-9 w-auto hidden dark:block" />
     </a>
 
     <!-- Navigation -->
@@ -160,7 +161,7 @@ const user = Astro.locals.user;
       <a href="/actions" class="block px-3 py-2 text-sm font-medium hover:bg-accent rounded-lg transition-colors">Actions</a>
       <a href="/cli" class="block px-3 py-2 text-sm font-medium hover:bg-accent rounded-lg transition-colors">CLI</a>
       <a href="/admin" class="block px-3 py-2 text-sm font-medium text-purple-400 hover:bg-purple-500/10 rounded-lg transition-colors">Mission Control</a>
-      
+
       <div class="pt-2">
         <button
           class="w-full flex items-center h-10 rounded-lg border border-input bg-background/50 px-3 text-sm text-muted-foreground text-left"
@@ -172,7 +173,7 @@ const user = Astro.locals.user;
       </div>
     </nav>
   </div>
-  
+
   <GlobalSearch client:idle />
 </header>
 
@@ -226,7 +227,7 @@ const user = Astro.locals.user;
       });
       // Also handle keydown k if focused (though usually we intercept global k)
   }
-  
+
   if (mobileSearchTrigger) {
       mobileSearchTrigger.addEventListener('click', openSearch);
   }

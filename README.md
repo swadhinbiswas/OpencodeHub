@@ -1,7 +1,11 @@
 # OpenCodeHub
 
 <p align="center">
-  <img src="public/logo.svg" alt="OpenCodeHub Logo" width="300">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/logo-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="public/logo-light.png">
+    <img src="public/logo-light.png" alt="OpenCodeHub Logo" width="400"/>
+  </picture>
   <br>
 </p>
 
@@ -32,10 +36,10 @@
 
 **All critical security vulnerabilities are now fixed. OpenCodeHub is production-ready!** 🎊
 
-✅ **Rate Limiting** - Prevents brute force attacks  
-✅ **CSRF Protection** - Cross-site request forgery defense  
-✅ **Input Validation** - SQL injection & XSS prevention  
-✅ **Hook Authentication** - Secure git operations  
+✅ **Rate Limiting** - Prevents brute force attacks
+✅ **CSRF Protection** - Cross-site request forgery defense
+✅ **Input Validation** - SQL injection & XSS prevention
+✅ **Hook Authentication** - Secure git operations
 ✅ **Environment Validation** - Safe configuration management
 
 📚 **See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment guide** with SSL setup, Nginx configuration, monitoring, database backups, and production best practices.
@@ -195,6 +199,7 @@ och init --url https://git.yourcompany.com
 ### CLI Commands Reference
 
 **Authentication:**
+
 ```bash
 och auth login              # Interactive login
 och auth login --token TOKEN  # Login with token
@@ -203,6 +208,7 @@ och auth whoami             # Show current user
 ```
 
 **Stack Management:**
+
 ```bash
 och stack create \u003cname\u003e      # Create new stacked branch
 och stack view              # View current stack (alias: ls)
@@ -213,6 +219,7 @@ och stack reorder           # Reorder branches in stack
 ```
 
 **Repository:**
+
 ```bash
 och init                    # Initialize repo for OpenCodeHub
 och sync                    # Bidirectional sync with remote
@@ -236,7 +243,7 @@ och status                  # Show stack status (alias: st)
 
 #### How It Works
 
-![Stacked PR Workflow](public/stack-workflow.svg)
+![Stacked PR Workflow](/stack-workflow.svg)
 <br>
 
 Each PR builds on the previous one. When #123 merges, #124 automatically rebases.
@@ -244,6 +251,7 @@ Each PR builds on the previous one. When #123 merges, #124 automatically rebases
 #### Creating a Stack
 
 **Using CLI:**
+
 ```bash
 # 1. Create base branch
 git checkout -b feature/auth
@@ -263,15 +271,16 @@ och stack submit
 ```
 
 **Using Web UI:**
+
 1. Create first PR normally
 2. When creating second PR, select "Stack on PR #123"
 3. System tracks dependencies automatically
 
 #### Stack Features
 
-✅ **Auto-Rebasing**: When base PR merges, dependent PRs rebase automatically  
-✅ **Dependency Visualization**: See entire stack in PR view  
-✅ **Smart Merge Queue**: Merges in correct order  
+✅ **Auto-Rebasing**: When base PR merges, dependent PRs rebase automatically
+✅ **Dependency Visualization**: See entire stack in PR view
+✅ **Smart Merge Queue**: Merges in correct order
 ✅ **Conflict Detection**: Alerts on rebase conflicts
 
 ---
@@ -283,6 +292,7 @@ och stack submit
 #### Setup
 
 **1. Configure AI Provider:**
+
 ```env
 # In .env
 AI_PROVIDER=openai  # or anthropic
@@ -293,6 +303,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 **2. Enable for Repository:**
 Navigate to **Repository → Settings → AI Review**
+
 - ✅ Enable AI Review
 - Set review triggers (on PR open, on push, manual)
 - Configure review rules
@@ -300,24 +311,28 @@ Navigate to **Repository → Settings → AI Review**
 #### What AI Reviews Catch
 
 🔍 **Security Vulnerabilities**
+
 - SQL injection risks
 - XSS vulnerabilities
 - Authentication bypasses
 - Secrets in code
 
 ⚡ **Performance Issues**
+
 - N+1 queries
 - Inefficient algorithms
 - Memory leaks
 - Blocking operations
 
 📝 **Code Quality**
+
 - Best practice violations
 - Code smells
 - Incomplete error handling
 - Missing documentation
 
 🐛 **Potential Bugs**
+
 - Null pointer exceptions
 - Race conditions
 - Off-by-one errors
@@ -329,6 +344,7 @@ Navigate to **Repository → Settings → AI Review**
 AI review runs automatically on every PR based on configured triggers.
 
 **Manual:**
+
 ```bash
 # Via CLI
 och review ai \u003cPR_NUMBER\u003e
@@ -339,19 +355,21 @@ och review ai \u003cPR_NUMBER\u003e
 #### Review Output
 
 AI provides:
+
 - **Severity Score**: Critical / High / Medium / Low / Info
 - **Specific Line Comments**: Inline code suggestions
 - **Summary Report**: Overall code quality assessment
 - **Fix Suggestions**: Actionable improvements
 
 **Example:**
+
 ```text
 🔴 CRITICAL: SQL Injection Vulnerability
 File: src/api/users.ts:45
 Issue: User input directly concatenated into SQL query
 Fix: Use parameterized queries or ORM
 
-🟡 MEDIUM: Performance Concern  
+🟡 MEDIUM: Performance Concern
 File: src/lib/data.ts:128
 Issue: N+1 query in loop (1000+ iterations)
 Fix: Use batch loading or eager loading
@@ -366,21 +384,25 @@ Fix: Use batch loading or eager loading
 #### Features
 
 **Stack-Aware Merging:**
+
 - Detects PR dependencies
 - Merges in correct order automatically
 - Handles entire stacks atomically
 
 **CI Optimization:**
+
 - Batches compatible PRs
 - Runs CI once for multiple PRs
 - Reduces CI cost by ~60%
 
 **Automatic Rebasing:**
+
 - Detects conflicts early
 - Auto-rebases on base changes
 - Alerts author on conflicts
 
 **Smart Ordering:**
+
 - Priority-based queue
 - Dependency resolution
 - Hotfix fast-tracking
@@ -388,6 +410,7 @@ Fix: Use batch loading or eager loading
 #### Using Merge Queue
 
 **Add to Queue:**
+
 ```bash
 # Via CLI
 och queue add \u003cPR_NUMBER\u003e
@@ -397,6 +420,7 @@ Click "Add to Merge Queue" button on approved PR
 ```
 
 **Queue Status:**
+
 ```bash
 # View queue
 och queue list
@@ -419,6 +443,7 @@ Position  PR     Title                Status
 #### Queue Configuration
 
 **Repository → Settings → Merge Queue:**
+
 - **Require CI**: Only merge if all checks pass
 - **Batch Window**: Wait time to batch PRs (default: 5min)
 - **Max Batch Size**: Max PRs to merge together (default: 3)
@@ -433,24 +458,28 @@ Position  PR     Title                Status
 #### Available Metrics
 
 **PR Velocity:**
+
 - PRs merged per week
 - Average time to merge
 - Stack success rate
 - Review cycle time
 
 **Review Efficiency:**
+
 - Average review time
 - Reviews per day
 - Review quality score
 - Reviewer responsiveness
 
 **Team Performance:**
+
 - Lines changed per PR
 - PR size distribution
 - Revert rate
 - CI success rate
 
 **Stack Metrics:**
+
 - % PRs that use stacks
 - Average stack depth
 - Stack merge success rate
@@ -459,16 +488,19 @@ Position  PR     Title                Status
 #### Viewing Metrics
 
 **Personal Dashboard:**
+
 ```text
 /metrics/me
 ```
 
 **Team Dashboard (Admin):**
+
 ```text
 /admin/metrics
 ```
 
 **Via CLI:**
+
 ```bash
 och metrics show
 och metrics show --user @username
@@ -500,6 +532,7 @@ Review Efficiency
 #### Setup
 
 **1. Create Slack App:**
+
 1. Go to https://api.slack.com/apps
 2. Create New App → From Scratch
 3. Add OAuth Scopes:
@@ -510,6 +543,7 @@ Review Efficiency
 
 **2. Connect to OpenCodeHub:**
 Navigate to **Admin → Integrations → Slack**
+
 ```
 Workspace Name: Your Team
 Bot Token: xoxb-...
@@ -518,6 +552,7 @@ Signing Secret: ...
 
 **3. Map Channels:**
 **Repository → Settings → Slack**
+
 ```
 #engineering     → All PR events
 #deployments     → Merges only
@@ -531,6 +566,7 @@ Users can link their Slack account:
 #### Notification Types
 
 **PR Events:**
+
 - 🎉 PR opened
 - ✅ PR approved
 - 🔀 PR merged
@@ -539,17 +575,20 @@ Users can link their Slack account:
 - 🔴 Changes requested
 
 **CI/CD Events:**
+
 - ✅ Build passed
 - ❌ Build failed
 - 🚀 Deployment started
 - ✅ Deployment successful
 
 **Code Review:**
+
 - 🤖 AI review completed
 - 🔍 Security issue found
 - ⚠️ Performance concern
 
 **Merge Queue:**
+
 - ⏭️ Added to queue
 - ✅ Merged from queue
 - ⚠️ Removed (conflict)
@@ -557,6 +596,7 @@ Users can link their Slack account:
 #### Interactive Actions
 
 Notifications include action buttons:
+
 ```
 [swadhin] opened PR#125: Add login UI
 Stack: #123 → #124 → #125  •  files →32  •  LoC +420/-18
@@ -565,6 +605,7 @@ Stack: #123 → #124 → #125  •  files →32  •  LoC +420/-18
 ```
 
 Click buttons to:
+
 - Approve/reject directly from Slack
 - Request changes with comment
 - Add to merge queue
@@ -611,12 +652,13 @@ och stack view
 ```
 
 **Output:**
+
 ```
 📚 Current Stack
 
 main (base)
  └─ #301: profile-db ✅ Approved
-     └─ #302: profile-api  🔍 In Review  
+     └─ #302: profile-api  🔍 In Review
          └─ #303: profile-ui ⏳ AI Review Running
 ```
 
@@ -657,7 +699,7 @@ git push
 
 # Developer B: Builds on A's work (before merge!)
 git checkout api/payments
-git checkout -b api/payment-processing  
+git checkout -b api/payment-processing
 # ... implements payment processing ...
 git commit -m "Add payment processing"
 git push
@@ -682,7 +724,6 @@ git checkout -b ui/payment-form
 
 ---
 
-
 ## ⚙️ Configuration
 
 ### Critical Environment Variables
@@ -704,18 +745,21 @@ HOST=0.0.0.0
 ### Database Configuration
 
 **PostgreSQL (Recommended for Production):**
+
 ```env
 DATABASE_DRIVER=postgres
 DATABASE_URL=postgresql://user:password@localhost:5432/opencodehub
 ```
 
 **MySQL:**
+
 ```env
 DATABASE_DRIVER=mysql
 DATABASE_URL=mysql://user:password@localhost:3306/opencodehub
 ```
 
 **SQLite (Development Only):**
+
 ```env
 DATABASE_DRIVER=sqlite
 DATABASE_URL=./data/opencodehub.db
@@ -726,12 +770,14 @@ DATABASE_URL=./data/opencodehub.db
 Storage can be configured via Admin Panel (`/admin/storage`) or environment variables:
 
 **Local Storage:**
+
 ```env
 STORAGE_TYPE=local
 STORAGE_PATH=./data/storage
 ```
 
 **S3/MinIO/R2:**
+
 ```env
 STORAGE_TYPE=s3
 STORAGE_BUCKET=opencodehub
@@ -742,6 +788,7 @@ S3_SECRET_KEY=your-secret-key
 ```
 
 **Google Drive (via Admin Panel):**
+
 - Navigate to `/admin/storage`
 - Select "Google Drive"
 - Enter Client ID, Secret, and Refresh Token
@@ -750,6 +797,7 @@ S3_SECRET_KEY=your-secret-key
 ### Security Configuration
 
 **Rate Limiting:**
+
 ```env
 RATE_LIMIT_AUTH=5          # Login attempts per 15 minutes
 RATE_LIMIT_API=100         # API requests per minute
@@ -758,6 +806,7 @@ RATE_LIMIT_SKIP_DEV=false  # Never skip in production
 ```
 
 **CSRF Protection:**
+
 ```env
 CSRF_SKIP_DEV=false  # Never skip in production
 ```
@@ -765,6 +814,7 @@ CSRF_SKIP_DEV=false  # Never skip in production
 ### Optional Services
 
 **Email (SMTP):**
+
 ```env
 SMTP_HOST=smtp.example.com
 SMTP_PORT=587
@@ -774,11 +824,13 @@ SMTP_FROM=noreply@example.com
 ```
 
 **Redis (Caching & Sessions):**
+
 ```env
 REDIS_URL=redis://localhost:6379
 ```
 
 **Error Monitoring (Sentry):**
+
 ```env
 SENTRY_DSN=https://...
 ENABLE_TRACING=true
@@ -793,18 +845,21 @@ OpenCodeHub implements **production-grade security** out of the box:
 ### Implemented Security Features
 
 ✅ **Authentication & Authorization**
+
 - JWT-based sessions with automatic expiration
 - Bcrypt password hashing (10 rounds)
 - 2FA/TOTP support
 - Role-based access control (RBAC)
 
 ✅ **Attack Prevention**
+
 - **Rate Limiting**: Prevents brute force (5 login attempts per 15min)
 - **CSRF Protection**: Double-submit cookie pattern on all state-changing operations
 - **Input Validation**: Zod schemas prevent SQL injection and XSS
 - **XSS Sanitization**: Markdown rendered with `rehype-sanitize`
 
 ✅ **Operational Security**
+
 - **Audit Logging**: All admin actions logged to database
 - **Hook Authentication**: Git hooks protected with shared secrets
 - **Session Management**: Automatic cleanup and rotation
@@ -879,7 +934,7 @@ ENABLE_REGISTRATION=true  # Set false for invite-only
 
 ```yaml
 # docker-compose.prod.yml
-version: '3.8'
+version: "3.8"
 
 services:
   app:
@@ -977,6 +1032,7 @@ find /backups -name "opencodehub-*.sql.gz" -mtime +30 -delete
 All authenticated endpoints require a session cookie or `Authorization: Bearer <token>` header.
 
 **Register:**
+
 ```bash
 POST /api/auth/register
 Content-Type: application/json
@@ -997,6 +1053,7 @@ Content-Type: application/json
 ```
 
 **Login:**
+
 ```bash
 POST /api/auth/login
 Content-Type: application/json
@@ -1017,6 +1074,7 @@ Content-Type: application/json
 ### Repositories
 
 **Create Repository:**
+
 ```bash
 POST /api/repos
 Authorization: Bearer <token>
@@ -1030,6 +1088,7 @@ Content-Type: application/json
 ```
 
 **Branch Protection:**
+
 ```bash
 POST /api/repos/{repoId}/branch-protection
 Authorization: Bearer <token>
@@ -1046,12 +1105,14 @@ Content-Type: application/json
 ### Admin Endpoints
 
 **List Users (Admin Only):**
+
 ```bash
 GET /admin/users?q=search&page=1
 Cookie: och_session=...
 ```
 
 **Update Storage Config (Admin Only):**
+
 ```bash
 POST /api/admin/config/storage
 Cookie: och_session=...
@@ -1068,6 +1129,7 @@ Content-Type: application/json
 ### Rate Limits
 
 All endpoints return rate limit headers:
+
 ```http
 X-RateLimit-Limit: 100
 X-RateLimit-Remaining: 95
@@ -1096,12 +1158,14 @@ Retry-After: 30  (when rate limited)
 oning Repositories
 
 **SSH (Recommended):**
+
 ```bash
 # Add your SSH key in Settings → SSH Keys
 git clone git@your-domain.com:username/repo.git
 ```
 
 **HTTPS:**
+
 ```bash
 git clone https://your-domain.com/username/repo.git
 # Username: your-username
@@ -1137,21 +1201,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      
+          node-version: "20"
+
       - name: Install
         run: npm ci
-      
+
       - name: Test
         run: npm test
-      
+
       - name: Build
         run: npm run build
-      
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -1166,25 +1230,30 @@ jobs:
 ### Common Issues
 
 **"Rate limit exceeded" on login:**
+
 - Default: 5 attempts per 15 minutes
 - Solution: Wait 15 minutes or adjust `RATE_LIMIT_AUTH` in `.env`
 
 **"CSRF token validation failed":**
+
 - Ensure cookies are enabled
 - Check `SITE_URL` matches your actual domain
 - Verify HTTPS in production
 
 **"Unauthorized" on git hooks:**
+
 - Check `INTERNAL_HOOK_SECRET` is set
 - Verify hooks have correct secret in curl headers
 - Re-run `git init` on repositories to reinstall hooks
 
 **Database connection errors:**
+
 - Verify `DATABASE_URL` format
 - Check database server is running
 - Ensure user has correct permissions
 
 **Storage upload fails:**
+
 - Test connection in `/admin/storage`
 - Verify S3 credentials and bucket permissions
 - Check firewall rules for external storage
@@ -1225,14 +1294,17 @@ curl http://localhost:3000/api/health
 We are constantly improving OpenCodeHub to make it the ultimate self-hosted development platform.
 
 ### Q2 2026: Advanced AI Agents
+
 - [ ] **Auto-Fix Agents**: Autonomous agents that can silently fix lint errors and simple bugs.
 - [ ] **Test Generation**: Automatically generate unit and integration tests for new code.
 
 ### Q3 2026: Federation & Social
+
 - [ ] **ActivityPub Support**: Follow users and repositories across different OpenCodeHub instances.
 - [ ] **Federated Merge Requests**: Cross-instance collaboration (like Email but better).
 
 ### Q4 2026: Ecosystem Expansion
+
 - [ ] **Mobile App**: Native iOS and Android apps for reviewing code on the go.
 - [ ] **IDE Extensions**: dedicated VS Code and JetBrains plugins.
 

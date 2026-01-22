@@ -1,3 +1,8 @@
+---
+title: "Legacy: AI Code Review"
+slug: "legacy/features/ai-review"
+---
+
 # AI Code Review
 
 > Get instant, intelligent code reviews powered by GPT-4 or Claude
@@ -24,6 +29,7 @@ AI Code Review uses advanced language models to automatically review your pull r
 ### What AI Review Catches
 
 🔒 **Security Vulnerabilities**
+
 - SQL injection risks
 - XSS (Cross-Site Scripting) vectors
 - Authentication bypasses
@@ -31,13 +37,15 @@ AI Code Review uses advanced language models to automatically review your pull r
 - Insecure dependencies
 
 ⚡ **Performance Issues**
+
 - N+1 database queries
 - Inefficient algorithms (O(n²) → O(n log n))
 - Memory leaks
 - Blocking operations in async code
 - Missing indexes
 
-📝 **Code Quality** 
+📝 **Code Quality**
+
 - Best practice violations
 - Code smells (long functions, deep nesting)
 - Incomplete error handling
@@ -45,6 +53,7 @@ AI Code Review uses advanced language models to automatically review your pull r
 - Poor naming conventions
 
 🐛 **Potential Bugs**
+
 - Null/undefined pointer exceptions
 - Race conditions
 - Off-by-one errors
@@ -78,6 +87,7 @@ AI Code Review uses advanced language models to automatically review your pull r
 1. Get API key from [platform.openai.com](https://platform.openai.com/api-keys)
 
 2. Add to `.env`:
+
    ```env
    AI_PROVIDER=openai
    OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxx
@@ -91,6 +101,7 @@ AI Code Review uses advanced language models to automatically review your pull r
 1. Get API key from [console.anthropic.com](https://console.anthropic.com/)
 
 2. Add to `.env`:
+
    ```env
    AI_PROVIDER=anthropic
    ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxx
@@ -111,6 +122,7 @@ AZURE_OPENAI_DEPLOYMENT=your-deployment-name
 **Option 4: Self-Hosted (Coming Soon)**
 
 OpenCodeHub will support local models via Ollama:
+
 ```env
 AI_PROVIDER=ollama
 OLLAMA_ENDPOINT=http://localhost:11434
@@ -170,6 +182,7 @@ git push origin feature-branch
 ```
 
 You'll see:
+
 - ✅ **Status check**: "AI Review: In Progress" → "AI Review: Complete"
 - 💬 **Inline comments**: On specific lines with issues
 - 📊 **Summary comment**: Overall assessment
@@ -179,12 +192,14 @@ You'll see:
 Request AI review on-demand:
 
 **Via Web UI:**
+
 1. Open PR page
 2. Click **"Request AI Review"** button
 3. Wait ~30-60 seconds
 4. Review appears as comments
 
 **Via CLI:**
+
 ```bash
 # Review specific PR
 och review ai 125
@@ -197,6 +212,7 @@ och review ai 125 --force
 ```
 
 **Via API:**
+
 ```bash
 curl -X POST https://git.yourcompany.com/api/prs/125/ai-review \
   -H "Authorization: Bearer $TOKEN"
@@ -210,30 +226,33 @@ curl -X POST https://git.yourcompany.com/api/prs/125/ai-review \
 
 AI assigns severity to each finding:
 
-| Severity | Icon | Meaning | Example |
-|----------|------|---------|---------|
-| 🔴 **CRITICAL** | Must fix | Security vulnerability, data loss risk | SQL injection, exposed API key |
-| 🟡 **WARNING** | Should fix | Performance issue, bad practice | N+1 query, missing error handling |
-| 🔵 **INFO** | Consider | Suggestion, refactoring opportunity | Better variable name, code simplification |
+| Severity        | Icon       | Meaning                                | Example                                   |
+| --------------- | ---------- | -------------------------------------- | ----------------------------------------- |
+| 🔴 **CRITICAL** | Must fix   | Security vulnerability, data loss risk | SQL injection, exposed API key            |
+| 🟡 **WARNING**  | Should fix | Performance issue, bad practice        | N+1 query, missing error handling         |
+| 🔵 **INFO**     | Consider   | Suggestion, refactoring opportunity    | Better variable name, code simplification |
 
 ### Example Review Comment
 
-```markdown
+````markdown
 🔴 CRITICAL: SQL Injection Vulnerability
 
-**File:** `src/api/users.ts`  
+**File:** `src/api/users.ts`
 **Line:** 45
 
-**Issue:**  
+**Issue:**
 User input is directly concatenated into SQL query without sanitization.
 
 **Current Code:**
+
 ```typescript
 const query = `SELECT * FROM users WHERE email = '${userEmail}'`;
 ```
+````
 
 **Risk:**
 An attacker could inject malicious SQL:
+
 ```
 userEmail = "' OR '1'='1"
 → Query becomes: SELECT * FROM users WHERE email = '' OR '1'='1'
@@ -242,6 +261,7 @@ userEmail = "' OR '1'='1"
 
 **Fix:**
 Use parameterized queries or ORM:
+
 ```typescript
 const query = `SELECT * FROM users WHERE email = ?`;
 const results = await db.query(query, [userEmail]);
@@ -251,9 +271,11 @@ const user = await db.users.findOne({ email: userEmail });
 ```
 
 **References:**
+
 - [OWASP SQL Injection](https://owasp.org/www-community/attacks/SQL_Injection)
 - [Node.js SQL Injection Prevention](https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html)
-```
+
+````
 
 ### Summary Comment
 
@@ -285,7 +307,7 @@ AI posts an overall summary:
 - ✅ Comprehensive TypeScript types
 
 **Estimated fix time:** 2-3 hours
-```
+````
 
 ---
 
@@ -313,7 +335,7 @@ exclude:
 
 # Focus areas (weighted 1-10)
 focus:
-  security: 10      # Highest priority
+  security: 10 # Highest priority
   performance: 8
   bugs: 8
   code_quality: 5
@@ -323,7 +345,7 @@ focus:
 report:
   critical: always
   warning: always
-  info: on_request  # Only if --verbose flag used
+  info: on_request # Only if --verbose flag used
 
 # Custom rules
 custom_rules:
@@ -331,7 +353,7 @@ custom_rules:
     pattern: 'console\\.log\\('
     severity: warning
     message: "Remove console.log before merging"
-    
+
   - name: "Require error handling"
     pattern: 'await.*\\(.*\\)'
     check: must_have_try_catch
@@ -344,7 +366,7 @@ instructions: >
   2. Database query efficiency
   3. Input validation
   4. Proper error handling
-  
+
   Our coding standards:
   - TypeScript strict mode
   - Functional programming preferred
@@ -386,36 +408,42 @@ AI automatically adapts to programming language:
 AI review costs depend on provider and model:
 
 **OpenAI (GPT-4 Turbo):**
+
 - ~$0.01 per 1K tokens (input)
 - ~$0.03 per 1K tokens (output)
 - **Typical PR**: 500-2000 tokens = **$0.02-0.10 per review**
 
 **Anthropic (Claude 3 Opus):**
+
 - ~$0.015 per 1K tokens (input)
 - ~$0.075 per 1K tokens (output)
 - **Typical PR**: **$0.03-0.15 per review**
 
 **Example monthly cost:**
+
 - 50 PRs/month × $0.05/review = **$2.50/month**
 - 500 PRs/month × $0.05/review = **$25/month**
 
 ### Cost Optimization
 
 **1. Limit file count:**
+
 ```yaml
-max_files_per_review: 10  # Review only 10 largest changed files
+max_files_per_review: 10 # Review only 10 largest changed files
 ```
 
 **2. Use cheaper models for simple changes:**
+
 ```yaml
 rules:
   - if: changed_files < 3
-    model: gpt-3.5-turbo  # 10x cheaper
+    model: gpt-3.5-turbo # 10x cheaper
   - if: changed_files >= 3
     model: gpt-4-turbo
 ```
 
 **3. Skip test files:**
+
 ```yaml
 exclude:
   - "**/*.test.*"
@@ -423,13 +451,15 @@ exclude:
 ```
 
 **4. Review only on-request:**
+
 ```yaml
-trigger: manual  # Don't auto-review every push
+trigger: manual # Don't auto-review every push
 ```
 
 **5. Use severity threshold:**
+
 ```yaml
-severity_threshold: warning  # Skip "info" level comments
+severity_threshold: warning # Skip "info" level comments
 ```
 
 ---
@@ -439,6 +469,7 @@ severity_threshold: warning  # Skip "info" level comments
 ### 💡 When to Use AI Review
 
 **✅ Good Use Cases:**
+
 - Security-sensitive code (auth, payments)
 - Complex algorithms
 - Database queries
@@ -446,6 +477,7 @@ severity_threshold: warning  # Skip "info" level comments
 - Third-party integrations
 
 **❌ Less Useful:**
+
 - Generated code
 - Configuration files
 - Simple refactoring
@@ -454,19 +486,22 @@ severity_threshold: warning  # Skip "info" level comments
 ### 💡 Responding to AI Feedback
 
 **1. Don't auto-fix everything**
+
 - AI can be wrong
 - Context matters
 - Use judgment
 
 **2. Engage in discussion**
+
 ```markdown
-@ai-review That's a good catch, but in this case we're using a 
+@ai-review That's a good catch, but in this case we're using a
 trusted source and the data is already sanitized earlier in the pipeline.
 
 See line 23 where we validate input.
 ```
 
 **3. Track false positives**
+
 ```yaml
 # .opencodehub/ai-review.yml
 ignore:
@@ -486,6 +521,7 @@ AI complements, doesn't replace humans:
 ```
 
 This workflow:
+
 - Reduces human reviewer burden
 - Catches more bugs
 - Faster feedback cycles
@@ -499,6 +535,7 @@ This workflow:
 **Cause:** Large PR (many files/lines).
 
 **Solution:**
+
 ```bash
 # Check review status
 och review status 125
@@ -511,11 +548,13 @@ och review ai 125 --max-files 5
 ### "AI review failed"
 
 **Causes:**
+
 1. API key invalid/expired
 2. Rate limit exceeded
 3. Timeout (very large PR)
 
 **Solutions:**
+
 ```bash
 # 1. Verify API key
 echo $OPENAI_API_KEY
@@ -535,9 +574,9 @@ och review ai 125 --files src/api/users.ts src/api/auth.ts
 ```yaml
 # .opencodehub/ai-review.yml
 sensitivity:
-  security: high     # Strict
+  security: high # Strict
   performance: medium
-  code_quality: low   # Lenient
+  code_quality: low # Lenient
 ```
 
 ### "Missing obvious bugs"
@@ -573,7 +612,7 @@ jobs:
         run: och review ai ${{ github.event.pull_request.number }}
         env:
           OCH_TOKEN: ${{ secrets.OCH_TOKEN }}
-      
+
       - name: Check for critical issues
         run: |
           CRITICAL=$(och review status ${{ github.event.pull_request.number }} --json | jq '.critical_count')

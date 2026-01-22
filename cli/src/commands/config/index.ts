@@ -96,7 +96,7 @@ configCommands
     const value = config.get(key as keyof OchConfig);
 
     if (key === "token") {
-      if (value) {
+      if (typeof value === "string" && value) {
         console.log(value.slice(0, 12) + "...");
       } else {
         console.log(chalk.dim("(not set)"));
@@ -139,11 +139,11 @@ configCommands
       key === "insecure" ? value === "true" || value === "1" : value;
 
     config.set(key as keyof OchConfig, normalizedValue as any);
-    console.log(
-      chalk.green(
-        `✓ Set ${key} = ${key === "token" ? value.slice(0, 12) + "..." : value}`,
-      ),
-    );
+    const displayValue =
+      key === "token" && typeof normalizedValue === "string"
+        ? `${normalizedValue.slice(0, 12)}...`
+        : String(normalizedValue);
+    console.log(chalk.green(`✓ Set ${key} = ${displayValue}`));
   });
 
 // Config Unset

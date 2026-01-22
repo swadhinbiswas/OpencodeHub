@@ -38,6 +38,10 @@ import { stackCommands } from "../src/commands/stack/index.js";
 const git = simpleGit();
 const program = new Command();
 
+if (!process.stdout.isTTY) {
+  chalk.level = 0;
+}
+
 // Custom help formatter with Dracula theme
 program.configureHelp({
   sortSubcommands: true,
@@ -60,33 +64,79 @@ program.addHelpText("beforeAll", () => {
   ); // Dracula comment gray
 });
 
+function isHiddenCommand(cmd: Command) {
+  return Boolean((cmd as { hidden?: boolean }).hidden);
+}
+
+function buildCommandTable() {
+  const commands = program.commands
+    .filter((cmd) => !isHiddenCommand(cmd))
+    .map((cmd) => ({
+      name: cmd.name(),
+      desc: cmd.description() || "",
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const maxDescWidth = 46;
+  const nameWidth = Math.max(
+    "Command".length,
+    ...commands.map((c) => c.name.length),
+  );
+  const descWidth = Math.min(
+    maxDescWidth,
+    Math.max("Description".length, ...commands.map((c) => c.desc.length)),
+  );
+
+  const top = `  ┌${"─".repeat(nameWidth + 2)}┬${"─".repeat(descWidth + 2)}┐`;
+  const header =
+    `  │ ${chalk.hex("#50fa7b").bold("Command".padEnd(nameWidth))} ` +
+    `│ ${chalk.hex("#50fa7b").bold("Description".padEnd(descWidth))} │`;
+  const mid = `  ├${"─".repeat(nameWidth + 2)}┼${"─".repeat(descWidth + 2)}┤`;
+
+  const rows = commands.map(({ name, desc }) => {
+    const clipped =
+      desc.length > descWidth ? `${desc.slice(0, descWidth - 1)}…` : desc;
+    return (
+      `  │ ${chalk.hex("#ff79c6")(name.padEnd(nameWidth))} ` +
+      `│ ${chalk.hex("#f8f8f2")(clipped.padEnd(descWidth))} │`
+    );
+  });
+
+  const bottom = `  └${"─".repeat(nameWidth + 2)}┴${"─".repeat(descWidth + 2)}┘`;
+
+  return [top, header, mid, ...rows, bottom].join("\n");
+}
+
 // Customize command help colors with Dracula theme
 const originalHelp = program.helpInformation.bind(program);
 program.helpInformation = function () {
   const help = originalHelp();
+  const commandsIndex = help.indexOf("Commands:");
+  const commandsBlock =
+    commandsIndex >= 0 ? help.slice(0, commandsIndex) : help;
+
+  const styled = commandsBlock
+    // Usage line - Dracula cyan
+    .replace(
+      /^Usage: (.+)$/gm,
+      (_, usage) =>
+        chalk.hex("#8be9fd").bold("Usage: ") + chalk.hex("#f8f8f2")(usage),
+    )
+    // Section headers - Dracula green
+    .replace(/^Options:$/gm, "\n" + chalk.hex("#50fa7b").bold("Options:"))
+    // Flags - Dracula purple
+    .replace(/(-[a-zA-Z-]+)/g, chalk.hex("#bd93f9")("$1"))
+    // Arguments - Dracula yellow
+    .replace(/<([^>]+)>/g, chalk.hex("#f1fa8c")("<$1>"))
+    // Optional params - Dracula comment
+    .replace(/\[([^\]]+)\]/g, chalk.hex("#6272a4")("[$1]"));
 
   return (
-    help
-      // Usage line - Dracula cyan
-      .replace(
-        /^Usage: (.+)$/gm,
-        (_, usage) =>
-          chalk.hex("#8be9fd").bold("Usage: ") + chalk.hex("#f8f8f2")(usage),
-      )
-      // Section headers - Dracula green
-      .replace(/^Options:$/gm, "\n" + chalk.hex("#50fa7b").bold("Options:"))
-      .replace(/^Commands:$/gm, "\n" + chalk.hex("#50fa7b").bold("Commands:"))
-      // Flags - Dracula purple
-      .replace(/(-[a-zA-Z-]+)/g, chalk.hex("#bd93f9")("$1"))
-      // Arguments - Dracula yellow
-      .replace(/<([^>]+)>/g, chalk.hex("#f1fa8c")("<$1>"))
-      // Optional params - Dracula comment
-      .replace(/\[([^\]]+)\]/g, chalk.hex("#6272a4")("[$1]"))
-      // Command names at start of lines - Dracula pink
-      .replace(
-        /^(\s+)([a-z-]+)(\s)/gm,
-        (match, space, cmd, after) => space + chalk.hex("#ff79c6")(cmd) + after,
-      )
+    styled +
+    "\n" +
+    chalk.hex("#50fa7b").bold("\nCommands:") +
+    "\n" +
+    buildCommandTable()
   );
 };
 
