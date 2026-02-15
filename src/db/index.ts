@@ -9,9 +9,6 @@ import { dirname } from "path";
 import { logger } from "@/lib/logger";
 import * as schema from "./schema";
 
-// Force SSL bypass for self-signed certs (Aiven)
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-
 // Database driver types
 export type DatabaseDriver = "sqlite" | "postgres" | "mysql" | "libsql" | "turso";
 
@@ -30,6 +27,15 @@ function getDbConfig(): { driver: DatabaseDriver; url: string } {
   const url = envUrl || "./data/opencodehub.db";
 
   return { driver, url };
+}
+
+function isTruthy(value: string | undefined): boolean {
+  return value === "1" || value?.toLowerCase() === "true";
+}
+
+function shouldRejectUnauthorized(value: string | undefined): boolean {
+  if (value === undefined) return true;
+  return !["0", "false"].includes(value.toLowerCase());
 }
 
 /**
@@ -57,15 +63,28 @@ export function getDatabase():
 
   // Support for PostgreSQL
   if (driver === "postgres") {
-    // Strip sslmode from URL to avoid conflict with ssl config option
-    const cleanUrl = url.replace(/[\?&]sslmode=require/, "");
+    const sslEnabled =
+      isTruthy(process.env.DATABASE_SSL) ||
+      /[?&]sslmode=require/i.test(url);
+    const rejectUnauthorized = shouldRejectUnauthorized(
+      process.env.DATABASE_SSL_REJECT_UNAUTHORIZED
+    );
+
+    const cleanUrl = url.replace(/([?&])sslmode=require(&|$)/i, (_, prefix, suffix) =>
+      suffix === "&" ? prefix : ""
+    );
     const pool = new pg.Pool({
       connectionString: cleanUrl,
-      ssl: { rejectUnauthorized: false },
+      ssl: sslEnabled
+        ? { rejectUnauthorized }
+        : undefined,
       max: parseInt(process.env.DATABASE_POOL_SIZE || "10", 10),
     });
     db = drizzlePg(pool, { schema });
-    logger.info({ driver: "postgres" }, "Database connected (PostgreSQL)");
+    logger.info(
+      { driver: "postgres", sslEnabled, rejectUnauthorized: sslEnabled ? rejectUnauthorized : undefined },
+      "Database connected (PostgreSQL)"
+    );
     return db;
   }
 
