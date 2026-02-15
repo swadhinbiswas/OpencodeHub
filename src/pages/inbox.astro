@@ -415,16 +415,13 @@ function timeAgo(date: string) {
           case "k": // Previous PR
             e.preventDefault();
             selectedIndex = Math.max(selectedIndex - 1, 0);
+            highlightPR(selectedIndex);
+            break;
+
           case "o": // Open PR
           case "enter":
             e.preventDefault();
             (prItems[selectedIndex] as HTMLElement)?.click();
-            break;
-
-          case "k": // Previous PR
-            e.preventDefault();
-            selectedIndex = Math.max(selectedIndex - 1, 0);
-            highlightPR(selectedIndex);
             break;
 
           case "r": // Refresh
