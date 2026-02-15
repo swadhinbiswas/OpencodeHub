@@ -1,0 +1,100 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import CustomFieldsSettings from "@/components/repo/settings/CustomFieldsSettings";
+import { getDatabase, schema } from "@/db";
+import { eq, and } from "drizzle-orm";
+import { canAdminRepo } from "@/lib/permissions";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+// Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+    where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+    where: and(
+        eq(schema.repositories.ownerId, user.id),
+        eq(schema.repositories.name, repoName!),
+    ),
+    with: {
+        owner: true,
+    },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canAdminRepo(currentUser?.id, repoData);
+
+if (!hasAccess) {
+    return Astro.redirect(`/${ownerName}/${repoName}`);
+}
+
+const repo = {
+    id: repoData.id,
+    owner: repoData.owner.username,
+    name: repoData.name,
+    description: repoData.description,
+    visibility: repoData.visibility,
+    defaultBranch: repoData.defaultBranch,
+    stars: repoData.starCount,
+    forks: repoData.forkCount,
+    watchers: repoData.watchCount,
+    language: repoData.language || "Unknown",
+    openIssueCount: repoData.openIssueCount,
+    openPrCount: repoData.openPrCount,
+    hasIssues: repoData.hasIssues,
+    hasWiki: repoData.hasWiki,
+    hasActions: repoData.hasActions,
+};
+---
+
+<BaseLayout title={`Custom Fields · ${repo.owner}/${repo.name}`}>
+    <div class="container py-6">
+        <RepoHeader repo={repo} activeTab="settings" />
+
+        <div class="grid gap-6 md:grid-cols-[240px_1fr]">
+            <!-- Settings Sidebar -->
+            <nav class="space-y-1">
+                <a
+                    href={`/${repo.owner}/${repo.name}/settings`}
+                    class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                    General
+                </a>
+                <a
+                    href={`/${repo.owner}/${repo.name}/settings/collaborators`}
+                    class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                    Collaborators
+                </a>
+                <a
+                    href={`/${repo.owner}/${repo.name}/settings/workflow`}
+                    class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                    Workflow
+                </a>
+                <a
+                    href={`/${repo.owner}/${repo.name}/settings/fields`}
+                    class="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm font-medium text-foreground"
+                >
+                    Custom Fields
+                </a>
+            </nav>
+
+            <!-- Settings Content -->
+            <CustomFieldsSettings
+                client:load
+                repositoryId={repo.id}
+                owner={repo.owner}
+                repo={repo.name}
+            />
+        </div>
+    </div>
+</BaseLayout>

@@ -1,0 +1,231 @@
+---
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { getDatabase, schema } from "@/db";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { canReadRepo } from "@/lib/permissions";
+import { and, eq, desc } from "drizzle-orm";
+import { marked } from "marked";
+
+const { owner: ownerName, repo: repoName, slug } = Astro.params;
+const db = getDatabase();
+
+// 1. Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+    where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+    where: and(
+        eq(schema.repositories.ownerId, user.id),
+        eq(schema.repositories.name, repoName!),
+    ),
+    with: {
+        owner: true,
+    },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canReadRepo(currentUser?.id, repoData);
+
+if (!hasAccess) {
+    return Astro.redirect("/404");
+}
+
+const repo = {
+    owner: repoData.owner.username,
+    name: repoData.name,
+    description: repoData.description,
+    visibility: repoData.visibility,
+    defaultBranch: repoData.defaultBranch,
+    stars: repoData.starCount,
+    forks: repoData.forkCount,
+    watchers: repoData.watchCount,
+    topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+    openIssueCount: repoData.openIssueCount,
+    openPrCount: repoData.openPrCount,
+};
+
+// Fetch Wiki Pages for sidebar
+let wikiPages: any[] = [];
+let currentPage: any = null;
+let contentHtml = "";
+
+try {
+    if (schema.wikiPages) {
+        wikiPages = await db.query.wikiPages.findMany({
+            where: eq(schema.wikiPages.repositoryId, repoData.id),
+            orderBy: [desc(schema.wikiPages.updatedAt)],
+        });
+
+        // Find current page
+        if (slug) {
+            currentPage = wikiPages.find((p) => p.slug === slug);
+        }
+
+        if (currentPage) {
+            contentHtml = await marked.parse(currentPage.content || "");
+        }
+    }
+} catch (e) {}
+
+if (!currentPage) {
+    return Astro.redirect(`/${repo.owner}/${repo.name}/wiki`);
+}
+---
+
+<BaseLayout title={`${currentPage.title} · Wiki · ${repo.owner}/${repo.name}`}>
+    <div class="container py-6">
+        <RepoHeader repo={repo} activeTab="wiki" />
+
+        <div class="flex flex-col lg:flex-row gap-8 mt-8">
+            <!-- Sidebar -->
+            <div class="w-full lg:w-64 flex-shrink-0 space-y-4">
+                <!-- Sidebar Header -->
+                <div class="relative">
+                    <div
+                        class="absolute -inset-[1px] bg-gradient-to-b from-blue-500/20 to-transparent rounded-xl opacity-50"
+                    >
+                    </div>
+                    <div
+                        class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-4"
+                    >
+                        <div class="flex items-center justify-between mb-4">
+                            <h3
+                                class="font-semibold text-white flex items-center gap-2"
+                            >
+                                <svg
+                                    class="h-5 w-5 text-blue-400"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                                    ></path>
+                                </svg>
+                                Pages
+                            </h3>
+                            <a
+                                href={`/${repo.owner}/${repo.name}/wiki/_new`}
+                                class="p-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+                            >
+                                <svg
+                                    class="h-4 w-4 text-gray-400"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M12 4v16m8-8H4"></path>
+                                </svg>
+                            </a>
+                        </div>
+
+                        <nav class="flex flex-col space-y-1">
+                            {
+                                wikiPages.length > 0 ? (
+                                    wikiPages.map((page: any) => (
+                                        <a
+                                            href={`/${repo.owner}/${repo.name}/wiki/${page.slug}`}
+                                            class:list={[
+                                                "px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                                                currentPage?.id === page.id
+                                                    ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                                                    : "text-gray-400 hover:text-white hover:bg-white/5",
+                                            ]}
+                                        >
+                                            {page.title}
+                                        </a>
+                                    ))
+                                ) : (
+                                    <div class="text-sm text-gray-500 px-3">
+                                        No pages yet
+                                    </div>
+                                )
+                            }
+                        </nav>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="flex-1 min-w-0">
+                <div class="space-y-6">
+                    <!-- Page Header -->
+                    <div class="relative">
+                        <div
+                            class="absolute -inset-[1px] bg-gradient-to-r from-blue-500/20 via-transparent to-purple-500/20 rounded-xl opacity-50"
+                        >
+                        </div>
+                        <div
+                            class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm"
+                        >
+                            <div
+                                class="flex items-center justify-between px-6 py-4 border-b border-white/5"
+                            >
+                                <h1 class="text-2xl font-bold text-white">
+                                    {currentPage.title}
+                                </h1>
+                                <div class="flex gap-2">
+                                    <a
+                                        href={`/${repo.owner}/${repo.name}/wiki/edit/${currentPage.slug}`}
+                                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-300 hover:bg-white/10 transition-colors"
+                                    >
+                                        <svg
+                                            class="h-4 w-4"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                            ></path>
+                                        </svg>
+                                        Edit
+                                    </a>
+                                    <a
+                                        href={`/${repo.owner}/${repo.name}/wiki-history/${currentPage.slug}`}
+                                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-300 hover:bg-white/10 transition-colors"
+                                    >
+                                        <svg
+                                            class="h-4 w-4"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                            ></path>
+                                        </svg>
+                                        History
+                                    </a>
+                                </div>
+                            </div>
+                            <div
+                                class="p-6 prose prose-invert prose-sm max-w-none prose-p:text-gray-300 prose-headings:text-white prose-a:text-blue-400 prose-code:text-pink-400"
+                                set:html={contentHtml}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</BaseLayout>

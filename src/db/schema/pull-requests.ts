@@ -8,6 +8,7 @@ import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core"
 import { labels, milestones } from "./issues";
 import { repositories } from "./repositories";
 import { users } from "./users";
+import { prStateDefinitions } from "./pr-states";
 
 export const pullRequests = pgTable("pull_requests", {
   id: text("id").primaryKey(),
@@ -58,6 +59,12 @@ export const pullRequests = pgTable("pull_requests", {
   maintainerCanModify: boolean("maintainer_can_modify").default(true),
   allowAutoMerge: boolean("allow_auto_merge").default(false),
   autoMergeMethod: text("auto_merge_method"),
+  autoMergeEnabledById: text("auto_merge_enabled_by_id").references(() => users.id),
+  autoMergeEnabledAt: timestamp("auto_merge_enabled_at"),
+
+  // Custom workflow state
+  stateId: text("state_id").references(() => prStateDefinitions.id),
+  customStateChangedAt: timestamp("custom_state_changed_at"),
 
   closedAt: timestamp("closed_at"),
   closedById: text("closed_by_id").references(() => users.id),
@@ -109,6 +116,14 @@ export const pullRequestComments = pgTable("pull_request_comments", {
   resolvedAt: timestamp("resolved_at"),
   isEdited: boolean("is_edited").default(false),
   editedAt: timestamp("edited_at"),
+
+  // Suggested changes
+  suggestionContent: text("suggestion_content"), // The suggested code replacement
+  suggestionApplied: boolean("suggestion_applied").default(false),
+  suggestionAppliedById: text("suggestion_applied_by_id").references(() => users.id),
+  suggestionAppliedAt: timestamp("suggestion_applied_at"),
+  suggestionCommitSha: text("suggestion_commit_sha"), // Commit where suggestion was applied
+
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -159,6 +174,8 @@ export const pullRequestChecks = pgTable("pull_request_checks", {
   detailsUrl: text("details_url"),
   output: text("output"), // JSON { title, summary, text }
   startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Relations
@@ -195,6 +212,10 @@ export const pullRequestsRelations = relations(
     assignees: many(pullRequestAssignees),
     reviewers: many(pullRequestReviewers),
     checks: many(pullRequestChecks),
+    state: one(prStateDefinitions, {
+      fields: [pullRequests.stateId],
+      references: [prStateDefinitions.id],
+    }),
   })
 );
 

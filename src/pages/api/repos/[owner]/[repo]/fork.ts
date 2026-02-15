@@ -8,6 +8,7 @@ import { simpleGit } from "simple-git";
 
 import { withErrorHandler } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { logActivity } from "@/lib/activity";
 
 // ... existing imports ...
 
@@ -166,6 +167,17 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals }) => {
         .where(eq(schema.repositories.id, sourceRepo.id));
 
     logger.info({ userId: user.id, sourceRepoId: sourceRepo.id, forkId }, "Repository forked");
+
+    // Log activity
+    await logActivity(
+        user.id,
+        "fork",
+        "forked",
+        "repository",
+        sourceRepo.id,
+        sourceRepo.id,
+        { forkId, forkName: `${user.username}/${forkName}` }
+    );
 
     return new Response(JSON.stringify({
         message: "Repository forked successfully",

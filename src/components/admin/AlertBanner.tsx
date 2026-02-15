@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { AlertTriangle, CheckCircle, Info, Bell, X } from "lucide-react";
+import { AlertTriangle, CheckCircle, Info, X } from "lucide-react";
 import { useState } from "react";
 
 interface Alert {

@@ -68,6 +68,8 @@ export class PostgresAdapter extends BaseDatabaseAdapter {
             ? options.select.join(", ")
             : "*";
 
+        if (!/^[a-zA-Z0-9_]+$/.test(table)) throw new Error("Invalid table name");
+
         let sql = `SELECT ${selectClause} FROM "${table}"`;
         const params: unknown[] = [];
         let paramIndex = 1;

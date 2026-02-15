@@ -1,113 +1,91 @@
 ---
 title: OpenCodeHub Documentation
 description: The open-source, AI-native Git server with Stacked PRs and Smart Merge Queues.
-template: splash
 hero:
+  title: OpenCodeHub
   tagline: The fully self-hosted GitHub alternative with SSH hosting, CI/CD pipelines, and a modern developer experience.
-  image:
-    file: ../../assets/houston.webp
-  actions:
-    - text: Get Started
-      link: /getting-started/installation/
-      icon: right-arrow
-    - text: View on GitHub
-      link: https://github.com/swadhinbiswas/OpencodeHub
-      icon: external
-      variant: minimal
 ---
 
-import { Card, CardGrid, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Card, CardGrid } from "@astrojs/starlight/components";
 
 ## Why OpenCodeHub?
 
 <CardGrid stagger>
-	<Card title="🚀 Stacked PRs" icon="rocket">
-		Break large features into small, dependent steps. Ship faster without the review bottleneck.
-	</Card>
-	<Card title="🤖 AI Code Review" icon="star">
-		Built-in LLM agents (GPT-4/Claude) review your code for bugs and security issues automatically.
-	</Card>
-	<Card title="🔀 Smart Merge Queue" icon="random">
-		Automate your merging strategy. Ensure `main` never breaks with speculative CI runs.
-	</Card>
-	<Card title="🏠 Fully Self-Hosted" icon="laptop">
-		Keep your code on your servers. No "per-seat" pricing. No vendor lock-in.
-	</Card>
+  <Card title="🚀 Stacked PRs" icon="rocket">
+    Break large features into small, dependent steps. Ship faster without the
+    review bottleneck.
+  </Card>
+  <Card title="🤖 AI Code Review" icon="star">
+    Built-in LLM agents (GPT-4/Claude) review your code for bugs and security
+    issues automatically.
+  </Card>
+  <Card title="🔀 Smart Merge Queue" icon="random">
+    Automate your merging strategy. Ensure `main` never breaks with speculative
+    CI runs.
+  </Card>
+  <Card title="🏠 Fully Self-Hosted" icon="laptop">
+    Keep your code on your servers. No "per-seat" pricing. No vendor lock-in.
+  </Card>
 </CardGrid>
 
 ## Architecture Overview
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        OpenCodeHub                               │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
-│  │   Astro     │  │   Git       │  │   CLI       │              │
-│  │   Web UI    │  │   Server    │  │   (och)     │              │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘              │
-│         └────────────────┼────────────────┘                      │
-│                          ▼                                       │
-│              ┌───────────────────────┐                           │
-│              │   REST/GraphQL API    │                           │
-│              └───────────┬───────────┘                           │
-│                          ▼                                       │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
-│  │ PostgreSQL  │  │   Redis     │  │  Storage    │              │
-│  │  (Turso)    │  │  (optional) │  │ (S3/Local)  │              │
-│  └─────────────┘  └─────────────┘  └─────────────┘              │
-└─────────────────────────────────────────────────────────────────┘
-```
+![OpenCodeHub Architecture](/architecture.svg)
+
+OpenCodeHub is built on a modern, scalable architecture designed for performance and flexibility.
 
 ## Deploy Anywhere
 
 <CardGrid>
-	<Card title="🐳 Docker" icon="add-document">
-		The recommended way to deploy. Full Docker Compose setup with PostgreSQL and Redis.
-		[Deploy with Docker →](/administration/deploy-docker/)
-	</Card>
-	<Card title="🦭 Podman" icon="add-document">
-		Rootless containers with native systemd integration. Ideal for security-focused deployments.
-		[Deploy with Podman →](/administration/deploy-podman/)
-	</Card>
-	<Card title="☁️ Cloudflare" icon="add-document">
-		Use Cloudflare Tunnel + R2 for zero-port exposure and S3-compatible storage.
-		[Deploy with Cloudflare →](/administration/deploy-cloudflare/)
-	</Card>
-	<Card title="🌐 Nginx" icon="add-document">
-		Production-ready reverse proxy config with SSL and Git-specific optimizations.
-		[Configure Nginx →](/administration/deploy-nginx/)
-	</Card>
+  <Card title="🐳 Docker" icon="add-document">
+    The recommended way to deploy. Full Docker Compose setup with PostgreSQL and
+    Redis. [Deploy with Docker →](/administration/deploy-docker/)
+  </Card>
+  <Card title="🦭 Podman" icon="add-document">
+    Rootless containers with native systemd integration. Ideal for
+    security-focused deployments. [Deploy with Podman
+    →](/administration/deploy-podman/)
+  </Card>
+  <Card title="☁️ Cloudflare" icon="add-document">
+    Use Cloudflare Tunnel + R2 for zero-port exposure and S3-compatible storage.
+    [Deploy with Cloudflare →](/administration/deploy-cloudflare/)
+  </Card>
+  <Card title="🌐 Nginx" icon="add-document">
+    Production-ready reverse proxy config with SSL and Git-specific
+    optimizations. [Configure Nginx →](/administration/deploy-nginx/)
+  </Card>
 </CardGrid>
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
+| Layer        | Technology                            |
+| ------------ | ------------------------------------- |
 | **Frontend** | Astro, React, Tailwind CSS, shadcn/ui |
-| **Backend** | Node.js, Hono (API), simple-git |
-| **Database** | PostgreSQL, Turso (LibSQL), SQLite |
-| **Storage** | Local disk, S3, R2, Google Drive |
-| **Auth** | JWT, 2FA, OAuth (GitHub, Google) |
-| **CI/CD** | GitHub Actions compatible runners |
+| **Backend**  | Node.js, Hono (API), simple-git       |
+| **Database** | PostgreSQL, Turso (LibSQL), SQLite    |
+| **Storage**  | Local disk, S3, R2, Google Drive      |
+| **Auth**     | JWT, 2FA, OAuth (GitHub, Google)      |
+| **CI/CD**    | GitHub Actions compatible runners     |
 
 ## Quick Links
 
 <CardGrid>
-	<Card title="Installation" icon="add-document">
-		Get OpenCodeHub running in minutes with Docker or Node.js.
-		[Read the guide →](/getting-started/installation/)
-	</Card>
-	<Card title="CLI Reference" icon="seti:shell">
-		Learn the `och` CLI commands for managing stacks and repositories.
-		[View commands →](/reference/cli-commands/)
-	</Card>
-	<Card title="API Reference" icon="open-book">
-		Integrate with OpenCodeHub using the REST API.
-		[Explore the API →](/api/rest-api/)
-	</Card>
-	<Card title="Contributing" icon="github">
-		Help make OpenCodeHub better. Set up your local dev environment.
-		[Start contributing →](/development/contributing/)
-	</Card>
+  <Card title="Installation" icon="add-document">
+    Get OpenCodeHub running in minutes with Docker or Node.js. [Read the guide
+    →](/getting-started/installation/)
+  </Card>
+  <Card title="CLI Reference" icon="seti:shell">
+    Learn the `och` CLI commands for managing stacks and repositories. [View
+    commands →](/reference/cli-commands/)
+  </Card>
+  <Card title="API Reference" icon="open-book">
+    Integrate with OpenCodeHub using the REST API. [Explore the API
+    →](/api/rest-api/)
+  </Card>
+  <Card title="Contributing" icon="github">
+    Help make OpenCodeHub better. Set up your local dev environment. [Start
+    contributing →](/development/contributing/)
+  </Card>
 </CardGrid>
 
 ## Storage Options
@@ -116,9 +94,8 @@ import { Card, CardGrid, Tabs, TabItem } from '@astrojs/starlight/components';
 For best performance, use **local SSD storage** in production. Object storage (S3/R2) introduces latency. See [Storage Adapters](/guides/storage-adapters/#️-performance-considerations) for details.
 :::
 
-| Storage Type | Performance | Cost | Best For |
-|--------------|-------------|------|----------|
-| **Local SSD** | ⚡ Fastest | $$ | Production, self-hosted |
-| **S3/R2** | 🐢 Slow | $ | Backup, serverless |
-| **Google Drive** | 🐢 Slow | Free | Personal projects |
-
+| Storage Type     | Performance | Cost | Best For                |
+| ---------------- | ----------- | ---- | ----------------------- |
+| **Local SSD**    | ⚡ Fastest  | $$   | Production, self-hosted |
+| **S3/R2**        | 🐢 Slow     | $    | Backup, serverless      |
+| **Google Drive** | 🐢 Slow     | Free | Personal projects       |

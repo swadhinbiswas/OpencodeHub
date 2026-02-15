@@ -23,7 +23,13 @@ import {
   Layers,
   ChevronRight,
   ListOrdered,
+  Sparkles,
+  RefreshCw,
+  Edit2,
 } from "lucide-react";
+import { InteractiveRebase } from "@/components/git/InteractiveRebase";
+import { AIReviewSummary } from "@/components/pulls/AIReviewSummary";
+import PRConversation from "@/components/pulls/PRConversation";
 
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
@@ -104,15 +110,15 @@ try {
 }
 
 // Fetch open issue count (for header)
-const issueCountResult = (await db
-  .select({ count: sql<number>`count(*)` })
+const issueCountResult = await db
+  .select({ count: count() })
   .from(schema.issues)
   .where(
     and(
       eq(schema.issues.repositoryId, repoData.id),
       eq(schema.issues.state, "open"),
     ),
-  )) as { count: number }[];
+  );
 
 const openIssueCount = issueCountResult[0]?.count || 0;
 
@@ -208,6 +214,12 @@ try {
 
       <div class="grid gap-6 lg:grid-cols-4">
         <div class="lg:col-span-3 space-y-6">
+          <AIReviewSummary
+            client:load
+            owner={repo.owner}
+            repo={repo.name}
+            prNumber={pr.number}
+          />
           {/* Tabs (Simple implementation for MVP) */}
           <div class="border-b">
             <nav class="flex -mb-px space-x-6" aria-label="Tabs">
@@ -296,6 +308,14 @@ try {
                           <ListOrdered className="mr-2 h-4 w-4" />
                           Add to merge queue
                         </Button>
+                        <Button
+                          id="ai-review-btn"
+                          variant="outline"
+                          className="border-purple-500/20 hover:bg-purple-500/10 text-purple-400"
+                        >
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          Review with AI
+                        </Button>
                         <div
                           id="merge-error"
                           class="text-sm text-red-500 hidden font-medium flex items-center gap-1"
@@ -324,9 +344,45 @@ try {
             )
           }
 
+          {/* Conversation Timeline */}
+          <div id="conversation" class="py-4">
+            <PRConversation
+              client:load
+              owner={repo.owner}
+              repo={repo.name}
+              pullNumber={pr.number}
+              currentUser={user
+                ? {
+                    username: user.username,
+                    displayName: user.displayName,
+                    avatarUrl: user.avatarUrl,
+                  }
+                : null}
+            />
+          </div>
+
           {/* Commits List (Visible for MVP, ideally tabbed) */}
           <div id="commits" class="space-y-4 pt-4">
-            <h3 class="font-semibold text-lg">Commits</h3>
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-lg">Commits</h3>
+              {
+                canWrite && diffData.commits.length > 0 && (
+                  <InteractiveRebase
+                    client:load
+                    owner={repo.owner}
+                    repo={repo.name}
+                    prNumber={pr.number}
+                    headBranch={pr.headBranch}
+                    baseBranch={pr.baseBranch}
+                    commits={diffData.commits.map((c) => ({
+                      hash: c.sha,
+                      message: c.message,
+                      author: c.authorName,
+                    }))}
+                  />
+                )
+              }
+            </div>
             <div class="border rounded-lg divide-y">
               {
                 diffData.commits.map((commit) => (
@@ -354,9 +410,15 @@ try {
             <h3 class="font-semibold text-lg">Files changed</h3>
             {
               diffData.diffs.map((diff) => (
-                <div class="border rounded-lg overflow-hidden">
+                <div class="diff-file-card border rounded-lg overflow-hidden scroll-mt-20">
                   <div class="bg-muted/30 px-4 py-2 border-b text-sm font-mono flex items-center justify-between">
                     <span>{diff.file}</span>
+                    <div
+                      class="file-approval flex items-center gap-2 text-xs text-muted-foreground"
+                      data-file-path={diff.file}
+                    >
+                      <span>Loading approvals...</span>
+                    </div>
                     <span class="text-xs text-muted-foreground">
                       <span class="text-green-600">+{diff.additions}</span>
                       <span class="mx-1">/</span>
@@ -396,42 +458,96 @@ try {
                       {stackInfo.baseBranch}
                     </code>
                   </div>
-                  {stackInfo.entries.map((entry, i) => {
-                    const isCurrent = entry.pr.id === pr.id;
-                    return (
-                      <a
-                        href={`/${repo.owner}/${repo.name}/pulls/${entry.pr.number}`}
-                        class:list={[
-                          "flex items-center gap-2 p-2 rounded-md text-sm transition-colors",
-                          isCurrent
-                            ? "bg-primary/10 border border-primary/30"
-                            : "hover:bg-muted",
-                        ]}
+                  <div class="relative pl-3 space-y-0 mt-3">
+                    {stackInfo.entries.map((entry, index) => {
+                      const isCurrent = entry.pr.id === pr.id;
+                      const isLast = index === stackInfo.entries.length - 1;
+
+                      return (
+                        <div class="relative flex items-start gap-3 pb-3 last:pb-0 group">
+                          {/* Connecting Line */}
+                          {!isLast && (
+                            <div class="absolute left-[5px] top-2.5 bottom-0 w-0.5 bg-border group-hover:bg-primary/20 transition-colors" />
+                          )}
+
+                          {/* Dot */}
+                          <div
+                            class:list={[
+                              "relative z-10 w-3 h-3 rounded-full mt-1.5 border-2 transition-colors",
+                              isCurrent
+                                ? "bg-primary border-primary ring-2 ring-primary/20"
+                                : entry.pr.isMerged
+                                  ? "bg-green-500 border-green-500"
+                                  : entry.pr.state === "closed"
+                                    ? "bg-red-500 border-red-500"
+                                    : "bg-background border-muted-foreground",
+                            ]}
+                          />
+
+                          {/* Content */}
+                          <div class="flex-1 min-w-0 -mt-0.5">
+                            <a
+                              href={`/${repo.owner}/${repo.name}/pulls/${entry.pr.number}`}
+                              class:list={[
+                                "block text-sm transition-colors truncate",
+                                isCurrent
+                                  ? "font-semibold text-foreground"
+                                  : "text-muted-foreground hover:text-foreground",
+                              ]}
+                            >
+                              {entry.pr.title}
+                            </a>
+                            <div class="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span class="font-mono">#{entry.pr.number}</span>
+                              {isCurrent && (
+                                <span class="text-primary font-medium">
+                                  • Current
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                {canWrite && (
+                  <div class="mt-4 flex flex-wrap items-center gap-2">
+                    <Button id="queue-stack-btn" variant="outline" className="text-sm">
+                      Add stack to merge queue
+                    </Button>
+                    <Button id="rebase-stack-btn" variant="outline" className="text-sm">
+                      Rebase stack
+                    </Button>
+                    <div id="queue-stack-error" class="text-xs text-red-500 hidden"></div>
+                    <div id="rebase-stack-msg" class="text-xs text-muted-foreground hidden"></div>
+                  </div>
+                )}
+                <div class="mt-4 rounded-md border border-dashed px-3 py-2 text-xs">
+                  <div class="flex items-center justify-between">
+                    <div class="text-muted-foreground">Stack approvals</div>
+                    <button id="stack-approvals-refresh" class="text-xs text-primary hover:underline">
+                      Refresh
+                    </button>
+                  </div>
+                  <div id="stack-approvals-status" class="mt-2 text-muted-foreground"></div>
+                  <div id="stack-approvals-list" class="mt-2 space-y-1"></div>
+                  {canWrite && (
+                    <div class="mt-3 flex flex-wrap items-center gap-2">
+                      <input
+                        id="stack-approvals-reviewers"
+                        class="h-8 w-48 rounded-md border bg-background px-2 text-xs"
+                        placeholder="reviewer usernames"
+                      />
+                      <button
+                        id="stack-approvals-request"
+                        class="h-8 rounded-md border border-primary/30 px-3 text-xs text-primary"
                       >
-                        <span class="text-xs text-muted-foreground w-4">
-                          {entry.order}
-                        </span>
-                        {entry.pr.isMerged ? (
-                          <GitMerge className="h-4 w-4 text-purple-500" />
-                        ) : entry.pr.state === "open" ? (
-                          <GitPullRequest className="h-4 w-4 text-green-500" />
-                        ) : (
-                          <XCircle className="h-4 w-4 text-red-500" />
-                        )}
-                        <span
-                          class:list={[
-                            "flex-1 truncate",
-                            isCurrent ? "font-medium" : "",
-                          ]}
-                        >
-                          #{entry.pr.number}
-                        </span>
-                        {isCurrent && (
-                          <span class="text-xs text-primary">current</span>
-                        )}
-                      </a>
-                    );
-                  })}
+                        Request approvals
+                      </button>
+                      <div id="stack-approvals-msg" class="text-xs text-muted-foreground"></div>
+                    </div>
+                  )}
                 </div>
               </div>
             )
@@ -449,6 +565,37 @@ try {
             </div>
             <div class="text-sm">No one assigned</div>
           </div>
+          <div class="border-t pt-4">
+            <div class="text-sm font-medium mb-2 text-muted-foreground">
+              Linked Issues
+            </div>
+            <div id="linked-issues" class="text-sm space-y-2"></div>
+            {canWrite && (
+              <div class="mt-3 space-y-2">
+                <div class="flex items-center gap-2">
+                  <input
+                    id="link-issue-number"
+                    class="h-8 w-24 rounded-md border bg-background px-2 text-sm"
+                    placeholder="#123"
+                  />
+                  <select
+                    id="link-issue-type"
+                    class="h-8 rounded-md border bg-background px-2 text-sm"
+                  >
+                    <option value="relates">Relates</option>
+                    <option value="closes">Closes</option>
+                    <option value="fixes">Fixes</option>
+                    <option value="blocks">Blocks</option>
+                    <option value="duplicates">Duplicates</option>
+                  </select>
+                </div>
+                <Button id="link-issue-btn" variant="outline" className="w-full">
+                  Link Issue
+                </Button>
+                <div id="link-issue-error" class="text-xs text-red-500 hidden"></div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -461,11 +608,103 @@ try {
     repoName: repo.name,
     prNumber: pr.number,
     prId: pr.id,
+    canApproveFiles: !!user,
+    stackEntries: stackInfo ? stackInfo.entries.map((entry) => ({
+      id: entry.pr.id,
+      number: entry.pr.number,
+      state: entry.pr.state,
+      isMerged: entry.pr.isMerged,
+      order: entry.order,
+    })) : [],
+    stackId: stackInfo ? stackInfo.stack.id : null,
   }}
 >
   const mergeBtn = document.getElementById("merge-btn");
   const queueBtn = document.getElementById("queue-btn");
+  const aiReviewBtn = document.getElementById("ai-review-btn");
   const errorDiv = document.getElementById("merge-error");
+  const linkedIssuesContainer = document.getElementById("linked-issues");
+  const linkIssueBtn = document.getElementById("link-issue-btn");
+  const linkIssueNumber = document.getElementById("link-issue-number");
+  const linkIssueType = document.getElementById("link-issue-type");
+  const linkIssueError = document.getElementById("link-issue-error");
+  const queueStackBtn = document.getElementById("queue-stack-btn");
+  const queueStackError = document.getElementById("queue-stack-error");
+  const rebaseStackBtn = document.getElementById("rebase-stack-btn");
+  const rebaseStackMsg = document.getElementById("rebase-stack-msg");
+  const stackApprovalsRefresh = document.getElementById("stack-approvals-refresh");
+  const stackApprovalsStatus = document.getElementById("stack-approvals-status");
+  const stackApprovalsList = document.getElementById("stack-approvals-list");
+  const stackApprovalsReviewers = document.getElementById("stack-approvals-reviewers");
+  const stackApprovalsRequest = document.getElementById("stack-approvals-request");
+  const stackApprovalsMsg = document.getElementById("stack-approvals-msg");
+
+  // Keyboard Shortcuts
+  let currentFileIndex = -1;
+  const files = document.getElementsByClassName("diff-file-card");
+
+  document.addEventListener("keydown", (e) => {
+    // Ignore input fields
+    if (
+      ["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName) ||
+      document.activeElement?.isContentEditable
+    ) {
+      return;
+    }
+
+    if (e.key === "j" || e.key === "k") {
+      if (files.length === 0) return;
+
+      if (e.key === "j") {
+        currentFileIndex = Math.min(currentFileIndex + 1, files.length - 1);
+      } else {
+        currentFileIndex = Math.max(currentFileIndex - 1, 0);
+      }
+
+      const target = files[currentFileIndex];
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      // Highlight effect
+      Array.from(files).forEach((f) =>
+        f.classList.remove("ring-2", "ring-primary", "shadow-lg"),
+      );
+      target.classList.add("ring-2", "ring-primary", "shadow-lg");
+    }
+
+    // '[' and ']' to jump specific sections could be added here
+  });
+
+  aiReviewBtn?.addEventListener("click", async () => {
+    aiReviewBtn.setAttribute("disabled", "true");
+    const originalText = aiReviewBtn.innerHTML;
+    aiReviewBtn.innerHTML =
+      '<span class="animate-spin mr-2">⟳</span> Reviewing...';
+    errorDiv.classList.add("hidden");
+
+    try {
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}/ai-review`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error?.message || "Failed to trigger AI review");
+      }
+
+      // Wait a moment then reload to see results (if any UI showed them)
+      // Real implementation woudl poll or show toast
+      setTimeout(() => window.location.reload(), 2000);
+    } catch (e) {
+      errorDiv.querySelector("span").textContent = e.message;
+      errorDiv.classList.remove("hidden");
+      aiReviewBtn.removeAttribute("disabled");
+      aiReviewBtn.innerHTML = originalText;
+    }
+  });
 
   queueBtn?.addEventListener("click", async () => {
     queueBtn.setAttribute("disabled", "true");
@@ -495,6 +734,162 @@ try {
     }
   });
 
+  queueStackBtn?.addEventListener("click", async () => {
+    if (!stackEntries || stackEntries.length === 0) return;
+
+    queueStackBtn.setAttribute("disabled", "true");
+    queueStackBtn.textContent = "Queueing stack...";
+    queueStackError.classList.add("hidden");
+
+    const targets = [...stackEntries]
+      .filter((entry) => entry.state === "open" && !entry.isMerged)
+      .sort((a, b) => a.order - b.order);
+
+    try {
+      for (const entry of targets) {
+        const res = await fetch(
+          `/api/repos/${repoOwner}/${repoName}/queue/join`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pullRequestId: entry.id }),
+          },
+        );
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data?.message || `Failed to queue PR #${entry.number}`);
+        }
+      }
+
+      window.location.reload();
+    } catch (e) {
+      queueStackError.textContent = e.message || "Failed to queue stack";
+      queueStackError.classList.remove("hidden");
+      queueStackBtn.removeAttribute("disabled");
+      queueStackBtn.textContent = "Add stack to merge queue";
+    }
+  });
+
+  rebaseStackBtn?.addEventListener("click", async () => {
+    if (!stackId) return;
+
+    rebaseStackBtn.setAttribute("disabled", "true");
+    rebaseStackBtn.textContent = "Rebasing...";
+    rebaseStackMsg.classList.add("hidden");
+
+    try {
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/stacks/${stackId}/rebase`,
+        { method: "POST" },
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to rebase stack");
+      }
+
+      rebaseStackMsg.textContent = data?.message || "Rebase complete";
+      rebaseStackMsg.classList.remove("hidden");
+
+      if (data?.result?.success) {
+        window.location.reload();
+      }
+    } catch (e) {
+      rebaseStackMsg.textContent = e.message || "Failed to rebase stack";
+      rebaseStackMsg.classList.remove("hidden");
+    } finally {
+      rebaseStackBtn.removeAttribute("disabled");
+      rebaseStackBtn.textContent = "Rebase stack";
+    }
+  });
+
+  async function loadStackApprovals() {
+    if (!stackId || !stackApprovalsStatus || !stackApprovalsList) return;
+
+    stackApprovalsStatus.textContent = "Loading...";
+    stackApprovalsList.innerHTML = "";
+
+    try {
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/stacks/${stackId}/approvals`,
+      );
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to load stack approvals");
+      }
+
+      const status = data.status;
+      stackApprovalsStatus.textContent = status.allApproved
+        ? "All PRs approved"
+        : "Pending approvals";
+
+      status.prs.forEach((pr) => {
+        const row = document.createElement("div");
+        row.className = "flex items-center justify-between text-xs";
+        row.innerHTML = `
+          <span>#${pr.prNumber} ${pr.title}</span>
+          <span class="${pr.isApproved ? "text-green-500" : "text-amber-500"}">
+            ${pr.approvalCount}/${pr.requiredApprovals}${pr.changesRequested ? " • changes requested" : ""}
+          </span>
+        `;
+        stackApprovalsList.appendChild(row);
+      });
+    } catch (e) {
+      stackApprovalsStatus.textContent = e.message || "Failed to load stack approvals";
+    }
+  }
+
+  stackApprovalsRefresh?.addEventListener("click", (event) => {
+    event.preventDefault();
+    loadStackApprovals();
+  });
+
+  stackApprovalsRequest?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    if (!stackId || !stackApprovalsReviewers) return;
+
+    const reviewers = stackApprovalsReviewers.value
+      .split(",")
+      .map((name) => name.trim())
+      .filter(Boolean);
+
+    if (reviewers.length === 0) {
+      stackApprovalsMsg.textContent = "Enter at least one username";
+      return;
+    }
+
+    stackApprovalsMsg.textContent = "Requesting...";
+
+    try {
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/stacks/${stackId}/approvals`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reviewers }),
+        },
+      );
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to request approvals");
+      }
+
+      stackApprovalsMsg.textContent = `Requested: ${data.requested.join(", ")}`;
+      stackApprovalsReviewers.value = "";
+      loadStackApprovals();
+    } catch (e) {
+      stackApprovalsMsg.textContent = e.message || "Failed to request approvals";
+    }
+  });
+
+  if (stackId) {
+    loadStackApprovals();
+  }
+
   mergeBtn?.addEventListener("click", async () => {
     if (!confirm("Are you sure you want to merge this pull request?")) return;
 
@@ -523,4 +918,167 @@ try {
       mergeBtn.textContent = "Merge pull request";
     }
   });
+
+  async function loadLinkedIssues() {
+    if (!linkedIssuesContainer) return;
+    linkedIssuesContainer.innerHTML = "<div class=\"text-muted-foreground\">Loading...</div>";
+
+    try {
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}/issue-links`,
+      );
+      if (!res.ok) throw new Error("Failed to load issues");
+
+      const data = await res.json();
+      const links = data.links || [];
+      if (links.length === 0) {
+        linkedIssuesContainer.textContent = "No linked issues";
+        return;
+      }
+
+      linkedIssuesContainer.innerHTML = "";
+      links.forEach((link) => {
+        const row = document.createElement("div");
+        row.className = "flex items-center justify-between gap-2";
+
+        const anchor = document.createElement("a");
+        anchor.href = `/${repoOwner}/${repoName}/issues/${link.issue.number}`;
+        anchor.className = "text-primary hover:underline";
+        anchor.textContent = `#${link.issue.number} ${link.issue.title}`;
+
+        const meta = document.createElement("span");
+        meta.className = "text-xs text-muted-foreground";
+        meta.textContent = link.linkType;
+
+        row.appendChild(anchor);
+        row.appendChild(meta);
+
+        linkedIssuesContainer.appendChild(row);
+      });
+    } catch (error) {
+      linkedIssuesContainer.textContent = "Unable to load linked issues";
+    }
+  }
+
+  linkIssueBtn?.addEventListener("click", async () => {
+    linkIssueError?.classList.add("hidden");
+
+    const rawNumber = linkIssueNumber?.value?.trim();
+    const issueNumber = rawNumber?.replace("#", "");
+    if (!issueNumber) return;
+
+    linkIssueBtn.setAttribute("disabled", "true");
+
+    try {
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}/issue-links`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            issueNumber: Number(issueNumber),
+            linkType: linkIssueType?.value || "relates",
+          }),
+        },
+      );
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error?.message || "Failed to link issue");
+      }
+
+      if (linkIssueNumber) linkIssueNumber.value = "";
+      await loadLinkedIssues();
+    } catch (error) {
+      linkIssueError.textContent = error.message || "Failed to link issue";
+      linkIssueError.classList.remove("hidden");
+    } finally {
+      linkIssueBtn.removeAttribute("disabled");
+    }
+  });
+
+  loadLinkedIssues();
+
+  const fileApprovalContainers = document.querySelectorAll(".file-approval");
+
+  async function loadFileApprovals() {
+    if (fileApprovalContainers.length === 0) return;
+
+    try {
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}/file-approvals`,
+      );
+      if (!res.ok) {
+        throw new Error("Failed to load approvals");
+      }
+      const data = await res.json();
+      const approvals = new Map(
+        (data.files || []).map((file) => [file.path, file]),
+      );
+
+      fileApprovalContainers.forEach((container) => {
+        const path = container.getAttribute("data-file-path");
+        if (!path) return;
+
+        const info = approvals.get(path);
+        container.innerHTML = "";
+
+        if (info?.approved) {
+          const badge = document.createElement("span");
+          badge.className = "px-2 py-0.5 rounded-full text-xs bg-green-500/10 text-green-500 border border-green-500/20";
+          badge.textContent = `Approved${info.approvers?.length ? ` by ${info.approvers.join(", ")}` : ""}`;
+          container.appendChild(badge);
+          return;
+        }
+
+        if (info?.stale) {
+          const stale = document.createElement("span");
+          stale.className = "px-2 py-0.5 rounded-full text-xs bg-yellow-500/10 text-yellow-500 border border-yellow-500/20";
+          stale.textContent = "Approval stale";
+          container.appendChild(stale);
+        } else {
+          const pending = document.createElement("span");
+          pending.className = "px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground border border-border";
+          pending.textContent = "Needs approval";
+          container.appendChild(pending);
+        }
+
+        if (canApproveFiles) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "px-2 py-0.5 rounded-md text-xs border border-primary/30 text-primary hover:bg-primary/10";
+          button.textContent = "Approve file";
+          button.addEventListener("click", async () => {
+            button.setAttribute("disabled", "true");
+            try {
+              const resp = await fetch(
+                `/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}/file-approvals`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ path }),
+                },
+              );
+
+              if (!resp.ok) {
+                throw new Error("Failed to approve file");
+              }
+
+              await loadFileApprovals();
+            } catch (error) {
+              button.removeAttribute("disabled");
+              alert("Failed to approve file");
+            }
+          });
+          container.appendChild(button);
+        }
+      });
+    } catch (error) {
+      fileApprovalContainers.forEach((container) => {
+        container.textContent = "Approval status unavailable";
+      });
+    }
+  }
+
+  loadFileApprovals();
 </script>

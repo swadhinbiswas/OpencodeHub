@@ -10,7 +10,10 @@ import { spawn } from "child_process";
 
 export const GET: APIRoute = async ({ request }) => {
   const authHeader = request.headers.get("Authorization");
-  const cronSecret = process.env.CRON_SECRET || "default-secret"; // Should be set in env
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    return new Response("Server misconfigured", { status: 500 });
+  }
 
   if (authHeader !== `Bearer ${cronSecret}`) {
     return new Response("Unauthorized", { status: 401 });

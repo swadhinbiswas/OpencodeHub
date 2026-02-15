@@ -74,7 +74,7 @@ describe("Security System", () => {
     // Setup test data
     beforeEach(async () => {
         // Create tables manually
-        db.run(sql`CREATE TABLE IF NOT EXISTS users (
+        await db.execute(sql`CREATE TABLE IF NOT EXISTS users (
          id text PRIMARY KEY,
          username text NOT NULL,
          email text NOT NULL,
@@ -86,7 +86,7 @@ describe("Security System", () => {
          role text DEFAULT 'user'
        )`);
 
-        db.run(sql`CREATE TABLE IF NOT EXISTS repositories (
+        await db.execute(sql`CREATE TABLE IF NOT EXISTS repositories (
          id text PRIMARY KEY,
          name text NOT NULL,
          slug text NOT NULL,
@@ -123,7 +123,7 @@ describe("Security System", () => {
          FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
        )`);
 
-        db.run(sql`CREATE TABLE IF NOT EXISTS security_scans (
+        await db.execute(sql`CREATE TABLE IF NOT EXISTS security_scans (
          id text PRIMARY KEY,
          repository_id text NOT NULL,
          status text DEFAULT 'queued',
@@ -138,7 +138,7 @@ describe("Security System", () => {
          FOREIGN KEY (repository_id) REFERENCES repositories(id) ON DELETE CASCADE
        )`);
 
-        db.run(sql`CREATE TABLE IF NOT EXISTS security_vulnerabilities (
+        await db.execute(sql`CREATE TABLE IF NOT EXISTS security_vulnerabilities (
          id text PRIMARY KEY,
          scan_id text NOT NULL,
          vulnerability_id text NOT NULL,

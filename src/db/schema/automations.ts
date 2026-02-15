@@ -135,6 +135,8 @@ export type AutomationActionType =
     | "add_comment"
     | "trigger_ai_review"
     | "notify_slack"
+    | "notify_discord"
+    | "notify_teams"
     | "close_pr"
     | "request_changes";
 

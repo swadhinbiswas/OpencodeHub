@@ -1,4 +1,4 @@
-import { HardDrive, Cpu, Zap, Activity, Wifi, Server } from "lucide-react";
+import { HardDrive, Cpu, Zap, Activity } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface SystemStatusProps {
@@ -15,13 +15,11 @@ interface SystemStatusProps {
 // Glowing ring gauge component
 function GlowingGauge({
     value,
-    color,
     icon: Icon,
     label,
     gradientColors
 }: {
     value: number;
-    color: string;
     icon: typeof Cpu;
     label: string;
     gradientColors: [string, string];
@@ -97,14 +95,12 @@ export default function SystemStatus({ status }: SystemStatusProps) {
             <div className="flex items-center gap-10">
                 <GlowingGauge
                     value={status.cpuLoad}
-                    color="#3b82f6"
                     icon={Cpu}
                     label="CPU"
                     gradientColors={status.cpuLoad > 80 ? ["#ef4444", "#f97316"] : ["#3b82f6", "#06b6d4"]}
                 />
                 <GlowingGauge
                     value={status.memoryUsage}
-                    color="#8b5cf6"
                     icon={Zap}
                     label="RAM"
                     gradientColors={status.memoryUsage > 80 ? ["#eab308", "#f97316"] : ["#8b5cf6", "#ec4899"]}

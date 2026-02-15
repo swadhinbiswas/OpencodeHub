@@ -20,7 +20,9 @@ import {
   getFileContent,
   getBranches,
   getCommitCount,
+  isRepoEmpty,
 } from "@/lib/git";
+import { EmptyRepoSetup } from "@/components/repo/EmptyRepoSetup";
 import { resolveRepoPath } from "@/lib/git-storage";
 import { canReadRepo } from "@/lib/permissions";
 import { renderMarkdown } from "@/lib/markdown";
@@ -74,6 +76,9 @@ const openIssueCount = issueCountResult?.[0]?.count || 0;
 
 // Resolve the disk path for git operations (handles cloud storage)
 const resolvedLocalPath = await resolveRepoPath(repoData.diskPath);
+
+// Check if repo is empty
+const isEmptyRepo = await isRepoEmpty(resolvedLocalPath);
 
 // 2. Git Operations
 const currentBranch = repoData.defaultBranch;
@@ -217,16 +222,30 @@ const repo = {
           currentBranch={currentBranch}
           branches={branches}
           httpCloneUrl={repo.httpCloneUrl ||
-            `http://localhost:3000/${repo.owner}/${repo.name}.git`}
+            `${process.env.SITE_URL || "http://localhost:3000"}/${repo.owner}/${repo.name}.git`}
           sshCloneUrl={repo.sshCloneUrl ||
-            `git@localhost:${repo.owner}/${repo.name}.git`}
+            `${process.env.GIT_SSH_URL || `ssh://git@localhost:${process.env.GIT_SSH_PORT || 2222}`}/${repo.owner}/${repo.name}.git`}
         />
 
         <!-- File Browser -->
         <div class="space-y-4">
           <!-- Latest Commit -->
           {
-            latestCommit && latestCommit.authorName ? (
+            isEmptyRepo ? (
+              <EmptyRepoSetup
+                client:load
+                owner={repo.owner}
+                repo={repo.name}
+                httpCloneUrl={
+                  repo.httpCloneUrl ||
+                  `http://localhost:3000/${repo.owner}/${repo.name}.git`
+                }
+                sshCloneUrl={
+                  repo.sshCloneUrl ||
+                  `git@localhost:${repo.owner}/${repo.name}.git`
+                }
+              />
+            ) : latestCommit && latestCommit.authorName ? (
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-lg border bg-card p-4 text-sm shadow-sm">
                 <div class="flex items-center gap-3 overflow-hidden">
                   <div class="h-8 w-8 shrink-0 rounded-full bg-muted flex items-center justify-center border text-xs font-medium">
@@ -249,6 +268,14 @@ const repo = {
                     </div>
                     <div class="flex items-center gap-2 text-xs text-muted-foreground">
                       <span>committed {timeAgo(latestCommit.authorDate)}</span>
+                      {latestCommit.verification?.status === "G" && (
+                        <div
+                          class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800 border border-green-200 ml-1"
+                          title={`Signed by ${latestCommit.verification.signerName} (${latestCommit.verification.signerKeyId})`}
+                        >
+                          Verified
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -273,12 +300,19 @@ const repo = {
                 </div>
               </div>
             ) : (
-              <Card className="p-8 text-center text-muted-foreground border-dashed">
-                <div class="flex flex-col items-center gap-2">
-                  <GitBranch className="h-8 w-8 opacity-50 mb-2" />
-                  <p>No commits yet.</p>
-                </div>
-              </Card>
+              <EmptyRepoSetup
+                client:load
+                owner={repo.owner}
+                repo={repo.name}
+                httpCloneUrl={
+                  repo.httpCloneUrl ||
+                  `${process.env.SITE_URL || "http://localhost:3000"}/${repo.owner}/${repo.name}.git`
+                }
+                sshCloneUrl={
+                  repo.sshCloneUrl ||
+                  `${process.env.GIT_SSH_URL || `ssh://git@localhost:${process.env.GIT_SSH_PORT || 2222}`}/${repo.owner}/${repo.name}.git`
+                }
+              />
             )
           }
 

@@ -1,0 +1,154 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, and } from "drizzle-orm";
+import { canReadRepo } from "@/lib/permissions";
+import { searchCode, type SearchResult } from "@/lib/git";
+import { resolveRepoPath } from "@/lib/git-storage";
+import { Search as SearchIcon, FileCode } from "lucide-react";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+const user = await db.query.users.findFirst({
+    where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+    where: and(
+        eq(schema.repositories.ownerId, user.id),
+        eq(schema.repositories.name, repoName!),
+    ),
+    with: {
+        owner: true,
+    },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canReadRepo(currentUser?.id, repoData);
+
+if (!hasAccess) {
+    return Astro.redirect("/404");
+}
+
+const repo = {
+    owner: repoData.owner.username,
+    name: repoData.name,
+    description: repoData.description,
+    visibility: repoData.visibility,
+    defaultBranch: repoData.defaultBranch,
+    stars: repoData.starCount,
+    forks: repoData.forkCount,
+    watchers: repoData.watchCount,
+    language: repoData.language || "Unknown",
+    license: repoData.licenseType || "None",
+    topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+    updatedAt: repoData.updatedAt,
+    openPrCount: repoData.openPrCount,
+    openIssueCount: repoData.openIssueCount || 0,
+};
+
+const q = Astro.url.searchParams.get("q");
+let results: SearchResult[] = [];
+let error = "";
+
+if (q && q.length >= 2) {
+    try {
+        const resolvedPath = await resolveRepoPath(repoData.diskPath);
+        results = await searchCode(resolvedPath, q, repoData.defaultBranch);
+    } catch (e) {
+        error = "Failed to search code. Please try again.";
+        console.error(e);
+    }
+} else if (q) {
+    error = "Search query must be at least 2 characters.";
+}
+---
+
+<BaseLayout title={`Search · ${repo.owner}/${repo.name}`}>
+    <div class="container py-6">
+        <RepoHeader repo={repo} activeTab="code" />
+
+        <div class="mt-6 max-w-4xl mx-auto">
+            <h1 class="text-2xl font-bold mb-6">Code Search</h1>
+
+            <form method="GET" class="flex gap-2 mb-8">
+                <div class="relative flex-1">
+                    <Search
+                        className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground"
+                    />
+                    <input
+                        type="search"
+                        name="q"
+                        value={q || ""}
+                        placeholder="Search code..."
+                        class="w-full pl-9 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        autofocus
+                    />
+                </div>
+                <button
+                    type="submit"
+                    class="h-10 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                >
+                    Search
+                </button>
+            </form>
+
+            {
+                error && (
+                    <div class="p-4 mb-6 rounded-md bg-destructive/10 text-destructive text-sm">
+                        {error}
+                    </div>
+                )
+            }
+
+            {
+                q && !error && (
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-lg font-semibold">
+                                {results.length} results for "{q}"
+                            </h2>
+                        </div>
+
+                        {results.length > 0 ? (
+                            <div class="border rounded-md divide-y">
+                                {results.map((result, i) => (
+                                    <div class="p-4 hover:bg-muted/30 transition-colors">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <a
+                                                href={`/${repo.owner}/${repo.name}/blob/${repo.defaultBranch}/${result.file}#L${result.line}`}
+                                                class="flex items-center gap-2 text-primary font-medium hover:underline text-sm"
+                                            >
+                                                <FileCode className="h-4 w-4" />
+                                                {result.file}
+                                            </a>
+                                            <span class="text-xs text-muted-foreground font-mono">
+                                                Line {result.line}
+                                            </span>
+                                        </div>
+                                        <div class="bg-muted/50 p-3 rounded-md overflow-x-auto">
+                                            <code class="text-sm font-mono whitespace-pre">
+                                                {result.content}
+                                            </code>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div class="text-center py-12 text-muted-foreground border rounded-md border-dashed">
+                                No code matches found.
+                            </div>
+                        )}
+                    </div>
+                )
+            }
+        </div>
+    </div>
+</BaseLayout>

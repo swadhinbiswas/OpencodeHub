@@ -1,5 +1,6 @@
 ---
 import SettingsLayout from "@/layouts/SettingsLayout.astro";
+import { MFASetup } from "@/components/settings/MFASetup";
 
 const user = Astro.locals.user;
 
@@ -13,9 +14,21 @@ if (!user) {
     <!-- Header -->
     <div>
       <h3 class="text-xl font-bold text-white flex items-center gap-3">
-        <div class="p-2 rounded-lg bg-gradient-to-br from-orange-500/20 to-red-500/20 border border-orange-500/30">
-          <svg class="h-5 w-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+        <div
+          class="p-2 rounded-lg bg-gradient-to-br from-orange-500/20 to-red-500/20 border border-orange-500/30"
+        >
+          <svg
+            class="h-5 w-5 text-orange-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+            ></path>
           </svg>
         </div>
         Security Settings
@@ -27,72 +40,121 @@ if (!user) {
 
     <!-- 2FA Section -->
     <div class="relative">
-      <div class="absolute -inset-[1px] bg-gradient-to-r from-orange-500/20 via-transparent to-red-500/20 rounded-xl opacity-50"></div>
-      <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-6">
-        <h4 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <svg class="h-5 w-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+      <div
+        class="absolute -inset-[1px] bg-gradient-to-r from-orange-500/20 via-transparent to-red-500/20 rounded-xl opacity-50"
+      >
+      </div>
+      <div
+        class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-6"
+      >
+        <h4
+          class="text-lg font-semibold text-white mb-4 flex items-center gap-2"
+        >
+          <svg
+            class="h-5 w-5 text-orange-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+            ></path>
           </svg>
           Two-Factor Authentication
         </h4>
-        
-        {user.twoFactorEnabled ? (
-          <div class="rounded-lg bg-green-500/10 border border-green-500/30 p-4">
-            <div class="flex items-start gap-3">
-              <div class="p-1.5 rounded-full bg-green-500/20">
-                <svg class="h-4 w-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+
+        {
+          user.twoFactorEnabled ? (
+            <div class="rounded-lg bg-green-500/10 border border-green-500/30 p-4">
+              <div class="flex items-start gap-3">
+                <div class="p-1.5 rounded-full bg-green-500/20">
+                  <svg
+                    class="h-4 w-4 text-green-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <p class="text-green-400 font-medium">
+                    Two-factor authentication is enabled
+                  </p>
+                  <p class="text-gray-500 text-sm mt-1">
+                    Your account is protected with an additional layer of
+                    security.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                id="disable-2fa-btn"
+                class="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-sm font-medium text-red-400 hover:bg-red-500/20 transition-colors"
+              >
+                <svg
+                  class="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
-              </div>
-              <div class="flex-1">
-                <p class="text-green-400 font-medium">Two-factor authentication is enabled</p>
-                <p class="text-gray-500 text-sm mt-1">Your account is protected with an additional layer of security.</p>
-              </div>
+                Disable 2FA
+              </button>
             </div>
-            <button
-              type="button"
-              id="disable-2fa-btn"
-              class="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-sm font-medium text-red-400 hover:bg-red-500/20 transition-colors"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-              Disable 2FA
-            </button>
-          </div>
-        ) : (
-          <div>
-            <p class="text-gray-400 text-sm mb-4">
-              Add an extra layer of security to your account by enabling two-factor authentication.
-            </p>
-            <button
-              type="button"
-              id="enable-2fa-btn"
-              class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-orange-500 to-red-600 text-sm font-medium text-white shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-              </svg>
-              Enable 2FA
-            </button>
-          </div>
-        )}
+          ) : (
+            <MFASetup client:load />
+          )
+        }
       </div>
     </div>
 
     <!-- Password Section -->
     <div class="relative">
-      <div class="absolute -inset-[1px] bg-gradient-to-r from-purple-500/20 via-transparent to-pink-500/20 rounded-xl opacity-50"></div>
-      <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-6">
-        <h4 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <svg class="h-5 w-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+      <div
+        class="absolute -inset-[1px] bg-gradient-to-r from-purple-500/20 via-transparent to-pink-500/20 rounded-xl opacity-50"
+      >
+      </div>
+      <div
+        class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-6"
+      >
+        <h4
+          class="text-lg font-semibold text-white mb-4 flex items-center gap-2"
+        >
+          <svg
+            class="h-5 w-5 text-purple-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+            ></path>
           </svg>
           Change Password
         </h4>
         <form id="password-form" class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2">Current Password</label>
+            <label class="block text-sm font-medium text-gray-300 mb-2"
+              >Current Password</label
+            >
             <input
               type="password"
               name="currentPassword"
@@ -101,7 +163,9 @@ if (!user) {
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2">New Password</label>
+            <label class="block text-sm font-medium text-gray-300 mb-2"
+              >New Password</label
+            >
             <input
               type="password"
               name="newPassword"
@@ -111,7 +175,9 @@ if (!user) {
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2">Confirm New Password</label>
+            <label class="block text-sm font-medium text-gray-300 mb-2"
+              >Confirm New Password</label
+            >
             <input
               type="password"
               name="confirmPassword"
@@ -123,128 +189,35 @@ if (!user) {
             type="submit"
             class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-600 text-sm font-medium text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all"
           >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            <svg
+              class="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M5 13l4 4L19 7"></path>
             </svg>
             Update Password
           </button>
         </form>
       </div>
     </div>
-
-    <!-- 2FA Modal -->
-    <div
-      id="2fa-modal"
-      class="hidden fixed z-50 inset-0 overflow-y-auto"
-    >
-      <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="fixed inset-0 bg-black/70 backdrop-blur-sm" id="2fa-modal-backdrop"></div>
-        <div class="relative rounded-2xl border border-white/10 bg-[#0d1117] p-6 w-full max-w-md">
-          <h3 class="text-lg font-bold text-white mb-2">Setup Two-Factor Authentication</h3>
-          <p class="text-gray-500 text-sm mb-4">
-            Scan the QR code with your authenticator app.
-          </p>
-          <div id="qr-code-container" class="bg-white/5 rounded-lg p-4 text-center mb-4">
-            <!-- QR Code inserted here -->
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2">Verify Code</label>
-            <input
-              type="text"
-              id="token"
-              placeholder="123456"
-              class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-orange-500/50 focus:ring-2 focus:ring-orange-500/20 transition-all"
-            />
-          </div>
-          <div class="flex gap-3 mt-4">
-            <button
-              type="button"
-              id="cancel-2fa-btn"
-              class="flex-1 px-4 py-2.5 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-300 hover:bg-white/10 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              id="verify-2fa-btn"
-              class="flex-1 px-4 py-2.5 rounded-lg bg-gradient-to-r from-orange-500 to-red-600 text-sm font-medium text-white"
-            >
-              Verify & Enable
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </SettingsLayout>
 
 <script>
-  const enableBtn = document.getElementById("enable-2fa-btn");
   const disableBtn = document.getElementById("disable-2fa-btn");
-  const modal = document.getElementById("2fa-modal");
-  const backdrop = document.getElementById("2fa-modal-backdrop");
-  const cancelBtn = document.getElementById("cancel-2fa-btn");
-  const verifyBtn = document.getElementById("verify-2fa-btn");
-  const qrContainer = document.getElementById("qr-code-container");
-  const tokenInput = document.getElementById("token") as HTMLInputElement;
-
-  let secret = "";
-
-  const closeModal = () => {
-    modal?.classList.add("hidden");
-    tokenInput!.value = "";
-  };
-
-  enableBtn?.addEventListener("click", async () => {
-    try {
-      const response = await fetch("/api/auth/2fa/setup", { method: "POST" });
-      const data = await response.json();
-
-      if (response.ok) {
-        secret = data.secret;
-        qrContainer!.innerHTML = `
-          <p class="text-xs text-gray-500 break-all">${data.uri}</p>
-          <p class="mt-2 font-mono font-bold text-white">${data.secret}</p>
-        `;
-        modal?.classList.remove("hidden");
-      } else {
-        alert(data.message || "Failed to setup 2FA");
-      }
-    } catch (error) {
-      console.error("Error setting up 2FA:", error);
-    }
-  });
-
-  cancelBtn?.addEventListener("click", closeModal);
-  backdrop?.addEventListener("click", closeModal);
-
-  verifyBtn?.addEventListener("click", async () => {
-    const token = tokenInput?.value;
-    if (!token) return;
-
-    try {
-      const response = await fetch("/api/auth/2fa/enable", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, secret }),
-      });
-
-      if (response.ok) {
-        alert("2FA enabled successfully");
-        window.location.reload();
-      } else {
-        const data = await response.json();
-        alert(data.message || "Failed to verify code");
-      }
-    } catch (error) {
-      console.error("Error enabling 2FA:", error);
-    }
-  });
 
   disableBtn?.addEventListener("click", async () => {
     if (confirm("Are you sure you want to disable 2FA?")) {
       try {
-        const response = await fetch("/api/auth/2fa/disable", { method: "POST" });
+        const response = await fetch("/api/auth/2fa/disable", {
+          method: "POST",
+        });
         if (response.ok) {
           window.location.reload();
         } else {
@@ -253,6 +226,39 @@ if (!user) {
       } catch (error) {
         console.error("Error disabling 2FA:", error);
       }
+    }
+  });
+
+  // Password form logic logic remains same but simplified since most logic was inline or simple
+  const form = document.getElementById("password-form") as HTMLFormElement;
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+
+    // Check match
+    if (data.newPassword !== data.confirmPassword) {
+      alert("New passwords do not match");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/auth/password", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (response.ok) {
+        alert("Password updated successfully");
+        form.reset();
+      } else {
+        const result = await response.json();
+        alert(result.message || "Failed to update password");
+      }
+    } catch (error) {
+      console.error("Error updating password:", error);
+      alert("An error occurred");
     }
   });
 </script>

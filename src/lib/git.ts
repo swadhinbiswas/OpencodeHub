@@ -25,6 +25,7 @@ export interface RepoInitOptions {
   licenseType?: string;
   repoName?: string;
   ownerName?: string;
+  skipHooks?: boolean;
 }
 
 export type MergeResult = {
@@ -146,13 +147,15 @@ export async function initRepository(
   }
 
   // Install hooks
-  try {
-    console.log(`[initRepository] Installing hooks`);
-    await installHooks(localRepoPath);
-    console.log(`[initRepository] Hooks installed`);
-  } catch (err) {
-    console.error(`[initRepository] Hook installation failed:`, err);
-    throw err;
+  if (!options.skipHooks) {
+    try {
+      console.log(`[initRepository] Installing hooks`);
+      await installHooks(localRepoPath);
+      console.log(`[initRepository] Hooks installed`);
+    } catch (err) {
+      console.error(`[initRepository] Hook installation failed:`, err);
+      throw err;
+    }
   }
 
   // If we need initial content, create a temporary working copy
@@ -607,6 +610,108 @@ export async function getCommits(
 }
 
 /**
+ * Get commit activity (daily commit counts)
+ */
+export async function getCommitActivity(
+  repoPath: string,
+  since: string = "1 year ago"
+): Promise<{ date: string; count: number }[]> {
+  const git = getGit(repoPath);
+
+  try {
+    if (await isRepoEmpty(repoPath)) {
+      return [];
+    }
+
+    // Get just the dates of commits
+    const output = await git.raw([
+      "log",
+      `--since=${since}`,
+      "--date=short",
+      "--format=%ad"
+    ]);
+
+    const dates = output.trim().split("\n").filter(Boolean);
+    const counts = new Map<string, number>();
+
+    for (const date of dates) {
+      counts.set(date, (counts.get(date) || 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  } catch (error) {
+    if (!isExpectedGitError(error)) {
+      logger.error({ err: error }, "Error getting commit activity");
+    }
+    return [];
+  }
+}
+
+export interface SearchResult {
+  file: string;
+  line: number;
+  content: string;
+}
+
+/**
+ * Search code in repository using git grep
+ */
+export async function searchCode(
+  repoPath: string,
+  query: string,
+  ref: string = "HEAD"
+): Promise<SearchResult[]> {
+  const git = getGit(repoPath);
+
+  try {
+    if (await isRepoEmpty(repoPath)) {
+      return [];
+    }
+
+    // git grep -n -I <query> <ref>
+    const output = await git.raw([
+      "grep",
+      "-n", // Line numbers
+      "-I", // Ignore binary files
+      query,
+      ref
+    ]);
+
+    const results: SearchResult[] = [];
+
+    for (const line of output.trim().split("\n").filter(Boolean)) {
+      // Format: <ref>:<file>:<line>:<content>
+      const parts = line.split(":");
+      if (parts.length < 4) continue;
+
+      const filePath = parts[1];
+      const lineNumber = parseInt(parts[2], 10);
+      const content = parts.slice(3).join(":");
+
+      results.push({
+        file: filePath,
+        line: lineNumber,
+        content: content.trim()
+      });
+    }
+
+    return results;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (msg.includes("exit code 1")) {
+      return []; // No matches
+    }
+
+    if (!isExpectedGitError(error)) {
+      logger.error({ err: error }, "Error searching code");
+    }
+    return [];
+  }
+}
+
+/**
  * Get total commit count
  */
 export async function getCommitCount(
@@ -689,6 +794,35 @@ export async function getBranches(repoPath: string): Promise<BranchInfo[]> {
   } catch (error) {
     if (!isExpectedGitError(error)) {
       logger.error({ err: error }, "Error getting branches");
+    }
+    return [];
+  }
+}
+
+/**
+ * Get list of changed files between two refs
+ */
+export async function getChangedFiles(
+  repoPath: string,
+  baseRef: string,
+  headRef: string
+): Promise<string[]> {
+  const git = getGit(repoPath);
+
+  try {
+    // git diff --name-only base...head
+    // using 3 dots for merge-base check, or 2 dots?
+    // usually for PRs we want 3 dots (changes from common ancestor)
+    const output = await git.raw([
+      "diff",
+      "--name-only",
+      `${baseRef}...${headRef}`
+    ]);
+
+    return output.trim().split("\n").filter(Boolean);
+  } catch (error) {
+    if (!isExpectedGitError(error)) {
+      logger.error({ err: error }, "Error getting changed files");
     }
     return [];
   }
@@ -1374,7 +1508,10 @@ export async function installHooks(repoPath: string) {
 
   // Use environment variable for site URL, fallback to localhost for development
   const siteUrl = process.env.SITE_URL || process.env.PUBLIC_URL || "http://localhost:3000";
-  const hookSecret = process.env.INTERNAL_HOOK_SECRET || "dev-hook-secret-change-in-production";
+  const hookSecret = process.env.INTERNAL_HOOK_SECRET;
+  if (!hookSecret) {
+    throw new Error("INTERNAL_HOOK_SECRET environment variable is required to install git hooks");
+  }
 
   const postReceiveScript = `#!/bin/bash
 while read oldrev newrev refname
@@ -1382,7 +1519,7 @@ do
     curl -X POST \\
       -H "Content-Type: application/json" \\
       -H "X-Hook-Secret: ${hookSecret}" \\
-      -d "{\\"oldrev\\":\\"$oldrev\\",\\"newrev\\":\\"$newrev\\",\\"refname\\":\\"$refname\\"}" \\
+      -d "{\\"oldrev\\":\\"$oldrev\\",\\"newrev\\":\\"$newrev\\",\\"refname\\":\\"$refname\\",\\"pusher\\":\\"$REMOTE_USER\\"}" \\
       ${siteUrl}/api/internal/hooks/post-receive?repo=${encodeURIComponent(repoPath)}
 done
 `;
@@ -1393,7 +1530,7 @@ do
     RESPONSE=$(curl -s -w "%{http_code}" -X POST \\
       -H "Content-Type: application/json" \\
       -H "X-Hook-Secret: ${hookSecret}" \\
-      -d "{\\"oldrev\\":\\"$oldrev\\",\\"newrev\\":\\"$newrev\\",\\"refname\\":\\"$refname\\"}" \\
+      -d "{\\"oldrev\\":\\"$oldrev\\",\\"newrev\\":\\"$newrev\\",\\"refname\\":\\"$refname\\",\\"pusher\\":\\"$REMOTE_USER\\"}" \\
       ${siteUrl}/api/internal/hooks/pre-receive?repo=${encodeURIComponent(repoPath)})
     
     HTTP_CODE=\${RESPONSE: -3}
@@ -1504,4 +1641,56 @@ export async function commitFile(
  */
 export function getRepoPath(owner: string, name: string): string {
   return join(process.cwd(), "repos", owner, `${name}.git`);
+}
+
+/**
+ * Create a speculative branch combining multiple PRs
+ */
+export async function createSpeculativeBranch(
+  repoPath: string,
+  baseBranch: string,
+  prs: { headBranch: string; number: number }[]
+): Promise<{ branchName: string; success: boolean; message?: string }> {
+  const git = getGit(repoPath);
+
+  // Generate unique temp branch name
+  const timestamp = Date.now();
+  const prNumbers = prs.map(p => p.number).join("-");
+  const branchName = `mq-spec-${timestamp}-${prNumbers}`;
+
+  try {
+    // 1. Create temp branch from base
+    await git.checkout(baseBranch);
+    await git.pull();
+    await git.checkoutLocalBranch(branchName);
+
+    // 2. Merge each PR in order
+    for (const pr of prs) {
+      try {
+        // Must fetch the PR branch first
+        await git.fetch("origin", pr.headBranch);
+        await git.merge([`origin/${pr.headBranch}`]);
+      } catch (e: any) {
+        // Conflict detected
+        await git.checkout(baseBranch);
+        // Attempt to delete the failed branch
+        try {
+          await git.deleteLocalBranch(branchName, true);
+        } catch { }
+
+        return {
+          branchName,
+          success: false,
+          message: `Conflict merging PR #${pr.number} during speculative build: ${e.message}`
+        };
+      }
+    }
+
+    // 3. Push to trigger CI
+    await git.push("origin", branchName, ["--force"]);
+
+    return { branchName, success: true };
+  } catch (error: any) {
+    return { branchName, success: false, message: error.message };
+  }
 }

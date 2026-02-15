@@ -1,0 +1,203 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getDatabase, schema } from "@/db";
+import { eq, and } from "drizzle-orm";
+import { canAdminRepo } from "@/lib/permissions";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { Plug, ShieldCheck } from "lucide-react";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!),
+  ),
+  with: { owner: true },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+const currentUser = Astro.locals.user;
+const hasAccess = await canAdminRepo(currentUser?.id, repoData, {
+  isAdmin: currentUser?.isAdmin ?? undefined,
+});
+
+if (!hasAccess) {
+  return Astro.redirect(`/${ownerName}/${repoName}`);
+}
+
+const integration = await db.query.externalCiIntegrations.findFirst({
+  where: eq(schema.externalCiIntegrations.repositoryId, repoData.id),
+});
+
+const siteUrl = process.env.SITE_URL || "http://localhost:4321";
+const endpointUrl = `${siteUrl}/api/repos/${repoData.owner.username}/${repoData.name}/external-ci/checks`;
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  openIssueCount: repoData.openIssueCount,
+  openPrCount: repoData.openPrCount,
+  hasIssues: repoData.hasIssues,
+  hasWiki: repoData.hasWiki,
+  hasActions: repoData.hasActions,
+};
+---
+
+<BaseLayout title={`External CI · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="settings" />
+
+    <div class="grid gap-6 md:grid-cols-[240px_1fr]">
+      <nav class="space-y-1">
+        <a
+          href={`/${repo.owner}/${repo.name}/settings`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          General
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/collaborators`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Collaborators
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/webhooks`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Webhooks
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/external-ci`}
+          class="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm font-medium text-foreground"
+        >
+          External CI
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/reviews`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Reviews
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/actions`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Actions
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/deploy-keys`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Deploy keys
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/workflow`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Workflow
+        </a>
+      </nav>
+
+      <div class="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Plug className="h-5 w-5" />
+              External CI Integration
+            </CardTitle>
+            <CardDescription>
+              Connect third-party CI systems to report status checks on pull requests.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div class="rounded-md border border-dashed border-white/10 bg-white/5 p-3 text-sm text-muted-foreground">
+              <div class="text-xs uppercase tracking-wide text-muted-foreground">Endpoint</div>
+              <div class="mt-1 font-mono text-xs break-all">{endpointUrl}</div>
+            </div>
+
+            <div class="rounded-md border border-white/10 bg-white/5 p-3 text-sm text-muted-foreground">
+              <div class="flex items-center gap-2 text-sm text-white">
+                <ShieldCheck className="h-4 w-4" />
+                {integration ? "Token configured" : "No token generated"}
+              </div>
+              {integration?.lastUsedAt && (
+                <div class="text-xs mt-1">Last used: {new Date(integration.lastUsedAt).toLocaleString()}</div>
+              )}
+            </div>
+
+            <Button id="generate-token" variant="outline">
+              {integration ? "Regenerate Token" : "Generate Token"}
+            </Button>
+            <p id="token-output" class="text-xs text-muted-foreground"></p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Payload Format</CardTitle>
+            <CardDescription>Use the token as a Bearer token or X-OpenCodeHub-Token header.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <pre class="text-xs bg-muted/10 rounded-md p-3 overflow-auto">{
+  "pullRequestNumber": 42,
+  "name": "ci/build",
+  "headSha": "abc123...",
+  "status": "completed",
+  "conclusion": "success",
+  "detailsUrl": "https://ci.example.com/build/42"
+}</pre>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script define:vars={{ repoOwner: repo.owner, repoName: repo.name }}>
+  const btn = document.getElementById("generate-token");
+  const output = document.getElementById("token-output");
+
+  btn?.addEventListener("click", async () => {
+    output.textContent = "";
+    btn.setAttribute("disabled", "true");
+    try {
+      const res = await fetch(`/api/repos/${repoOwner}/${repoName}/external-ci`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "External CI" }),
+      });
+
+      if (!res.ok) {
+        output.textContent = "Failed to generate token";
+        btn.removeAttribute("disabled");
+        return;
+      }
+
+      const data = await res.json();
+      output.textContent = `Token: ${data.token}`;
+    } catch (e) {
+      output.textContent = "Failed to generate token";
+    } finally {
+      btn.removeAttribute("disabled");
+    }
+  });
+</script>

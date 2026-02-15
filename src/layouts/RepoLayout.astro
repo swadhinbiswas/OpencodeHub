@@ -1,0 +1,53 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { getRepoAndUser } from "@/lib/auth";
+
+interface Props {
+    title: string;
+    activeTab:
+        | "code"
+        | "issues"
+        | "pulls"
+        | "actions"
+        | "projects"
+        | "wiki"
+        | "security"
+        | "insights"
+        | "settings";
+}
+
+const { title, activeTab } = Astro.props;
+const { owner, repo } = Astro.params;
+
+const repoInfo = await getRepoAndUser(Astro.request, owner!, repo!);
+
+if (!repoInfo) {
+    return Astro.redirect("/404");
+}
+
+const { repository } = repoInfo;
+
+const repoData = {
+    owner: repository.owner.username,
+    name: repository.name,
+    description: repository.description,
+    visibility: repository.visibility,
+    topics: repository.topics ? JSON.parse(repository.topics) : [],
+    watchers: repository.watchCount,
+    forks: repository.forkCount,
+    stars: repository.starCount,
+    openIssueCount: repository.openIssueCount || 0, // Should fetch real count if needed
+    openPrCount: repository.openPrCount || 0,
+    website: repository.website,
+    license: repository.licenseType,
+    updatedAt: repository.updatedAt,
+};
+---
+
+<BaseLayout title={title}>
+    <div class="container py-6">
+        <RepoHeader repo={repoData} activeTab={activeTab} />
+        <slot />
+    </div>
+</BaseLayout>

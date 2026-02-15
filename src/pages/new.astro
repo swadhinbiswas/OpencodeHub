@@ -103,6 +103,34 @@ if (!user) {
             />
           </div>
 
+          <div class="space-y-2">
+            <Label htmlFor="templateRepoId">Template repository</Label>
+            <select
+              id="templateRepoId"
+              name="templateRepoId"
+              class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:w-[300px]"
+            >
+              <option value="">None</option>
+            </select>
+            <div class="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="includeAllBranches"
+                name="includeAllBranches"
+                class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <label
+                for="includeAllBranches"
+                class="text-sm text-muted-foreground"
+              >
+                Include all branches from the template
+              </label>
+            </div>
+            <p class="text-sm text-muted-foreground" id="template-note">
+              Select a template repository to copy its contents.
+            </p>
+          </div>
+
           <div class="space-y-4">
             <Label>Visibility</Label>
             <div class="space-y-4">
@@ -294,6 +322,8 @@ if (!user) {
           hasIssues: true,
           hasWiki: true,
           hasActions: true,
+          templateRepoId: formData.get("templateRepoId") || undefined,
+          includeAllBranches: formData.get("includeAllBranches") === "on",
         };
 
         const response = await fetch("/api/repos", {
@@ -335,4 +365,42 @@ if (!user) {
       }
     });
   }
+
+  const templateSelect = document.getElementById(
+    "templateRepoId",
+  ) as HTMLSelectElement | null;
+  const templateNote = document.getElementById(
+    "template-note",
+  ) as HTMLElement | null;
+
+  async function loadTemplates() {
+    if (!templateSelect) return;
+    try {
+      const res = await fetch("/api/repos/templates");
+      if (!res.ok) return;
+      const data = await res.json();
+      const templates = data.templates || [];
+      templates.forEach((template: any) => {
+        const option = document.createElement("option");
+        option.value = template.id;
+        option.textContent = template.fullName;
+        templateSelect.appendChild(option);
+      });
+    } catch (error) {
+      console.error("Failed to load templates", error);
+    }
+  }
+
+  templateSelect?.addEventListener("change", () => {
+    if (!templateNote) return;
+    if (templateSelect.value) {
+      templateNote.textContent =
+        "Template selected. Initialization options below will be ignored.";
+    } else {
+      templateNote.textContent =
+        "Select a template repository to copy its contents.";
+    }
+  });
+
+  loadTemplates();
 </script>

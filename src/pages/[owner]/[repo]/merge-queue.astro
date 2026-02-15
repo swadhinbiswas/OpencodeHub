@@ -17,7 +17,9 @@ import {
   AlertCircle,
   Layers,
   User,
+  Wrench,
 } from "lucide-react";
+import { ConflictResolver } from "@/components/queue/ConflictResolver";
 
 const { owner: ownerName, repo: repoName } = Astro.params;
 const db = getDatabase();
@@ -67,9 +69,7 @@ const issueCountResult = await (db as any)
       eq(schema.issues.repositoryId, repoData.id),
       eq(schema.issues.state, "open"),
     ),
-  )
-  ;
-
+  );
 const openIssueCount = issueCountResult?.count || 0;
 
 const repo = {
@@ -207,16 +207,29 @@ function formatTime(date: Date): string {
                         )}
                         <span
                           class:list={[
-                            item.entry.ciStatus === "success"
-                              ? "text-green-600"
-                              : item.entry.ciStatus === "failure"
-                                ? "text-red-600"
-                                : "text-yellow-600",
+                            item.entry.status === "failed"
+                              ? "text-red-600"
+                              : item.entry.ciStatus === "success"
+                                ? "text-green-600"
+                                : item.entry.ciStatus === "failure"
+                                  ? "text-red-600"
+                                  : "text-yellow-600",
                           ]}
                         >
-                          CI {item.entry.ciStatus}
+                          {item.entry.executionBranch
+                            ? "Speculative Build"
+                            : `CI ${item.entry.ciStatus}`}
                         </span>
                       </div>
+
+                      {item.entry.executionBranch && (
+                        <div class="text-xs text-muted-foreground ml-1">
+                          on{" "}
+                          <code class="bg-muted px-1 rounded">
+                            {item.entry.executionBranch}
+                          </code>
+                        </div>
+                      )}
 
                       {/* Est. Merge Time */}
                       <div class="flex items-center gap-1 text-muted-foreground">
@@ -227,6 +240,15 @@ function formatTime(date: Date): string {
                       {/* Actions */}
                       {canWrite && (
                         <div class="flex items-center gap-1">
+                          {item.entry.status === "failed" && (
+                            <ConflictResolver
+                              client:load
+                              owner={repo.owner}
+                              repo={repo.name}
+                              queueItemId={item.entry.id}
+                              variant="icon"
+                            />
+                          )}
                           <button
                             class="p-1.5 rounded hover:bg-muted transition-colors"
                             title="Remove from queue"

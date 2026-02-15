@@ -1,0 +1,260 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import {
+    parseAIConfigFromStorage,
+    sanitizeAIConfigForClient,
+} from "@/lib/ai-config";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/login");
+
+// Parse existing config
+let aiConfig = {
+    provider: "openai",
+    model: "gpt-4-turbo",
+    apiKeys: {
+        openai: { isSet: false, masked: undefined as string | undefined },
+        groq: { isSet: false, masked: undefined as string | undefined },
+        bytez: { isSet: false, masked: undefined as string | undefined },
+    },
+};
+
+try {
+    if (user.aiConfig) {
+        aiConfig = sanitizeAIConfigForClient(parseAIConfigFromStorage(user.aiConfig));
+    }
+} catch (e) {}
+
+const sideNav = [
+    { name: "Profile", href: "/settings/profile" },
+    { name: "Account", href: "/settings/account" },
+    { name: "Security", href: "/settings/security" },
+    { name: "SSH Keys", href: "/settings/ssh-keys" },
+    {
+        name: "Notification Preferences",
+        href: "/settings/notification-preferences",
+    },
+    { name: "AI Settings", href: "/settings/ai", active: true },
+];
+---
+
+<BaseLayout title="AI Settings">
+    <div class="container max-w-screen-lg py-10">
+        <div
+            class="flex flex-col space-y-8 lg:flex-row lg:space-x-12 lg:space-y-0"
+        >
+            <aside class="-mx-4 lg:w-1/5">
+                <nav
+                    class="flex space-x-2 lg:flex-col lg:space-x-0 lg:space-y-1"
+                >
+                    {
+                        sideNav.map((item) => (
+                            <a
+                                href={item.href}
+                                class={`justify-start rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground ${
+                                    item.active
+                                        ? "bg-accent text-accent-foreground"
+                                        : "text-muted-foreground"
+                                }`}
+                            >
+                                {item.name}
+                            </a>
+                        ))
+                    }
+                </nav>
+            </aside>
+
+            <div class="flex-1 lg:max-w-2xl">
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="text-lg font-medium">AI Settings</h3>
+                        <p class="text-sm text-muted-foreground">
+                            Configure AI providers for code review and
+                            generation features.
+                        </p>
+                    </div>
+                    <hr class="border-white/10" />
+
+                    <form id="ai-settings-form" class="space-y-8">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Default Provider</CardTitle>
+                                <CardDescription>
+                                    Select which AI provider to use for
+                                    automated code reviews.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div class="space-y-2">
+                                    <Label htmlFor="provider"
+                                        >Active Provider</Label
+                                    >
+                                    <select
+                                        id="provider"
+                                        name="provider"
+                                        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <option
+                                            value="openai"
+                                            selected={aiConfig.provider ===
+                                                "openai"}
+                                            >OpenAI (Default)</option
+                                        >
+                                        <option
+                                            value="groq"
+                                            selected={aiConfig.provider ===
+                                                "groq"}
+                                            >Groq (Fast & Cheap)</option
+                                        >
+                                        <option
+                                            value="bytez"
+                                            selected={aiConfig.provider ===
+                                                "bytez"}
+                                            >Bytez (Many Models)</option
+                                        >
+                                        <option
+                                            value="local"
+                                            selected={aiConfig.provider ===
+                                                "local"}
+                                            >Local LLM (Coming Soon)</option
+                                        >
+                                    </select>
+                                </div>
+
+                                <div class="space-y-2">
+                                    <Label htmlFor="model">Model Name</Label>
+                                    <Input
+                                        id="model"
+                                        name="model"
+                                        placeholder="e.g. gpt-4-turbo, llama3-70b-8192"
+                                        value={aiConfig.model}
+                                    />
+                                    <p class="text-xs text-muted-foreground">
+                                        Leave blank to use provider default.
+                                        Recommended: `gpt-4-turbo` (OpenAI),
+                                        `llama3-70b-8192` (Groq).
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>API Keys</CardTitle>
+                                <CardDescription>
+                                    Your keys are stored securely and encrypted
+                                    in the database.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div class="space-y-2">
+                                    <Label htmlFor="openai-key"
+                                        >OpenAI API Key</Label
+                                    >
+                                    <Input
+                                        id="openai-key"
+                                        name="openaiKey"
+                                        type="password"
+                                        placeholder={aiConfig.apiKeys.openai.masked || "sk-..."}
+                                        value=""
+                                    />
+                                </div>
+
+                                <div class="space-y-2">
+                                    <Label htmlFor="groq-key"
+                                        >Groq API Key</Label
+                                    >
+                                    <Input
+                                        id="groq-key"
+                                        name="groqKey"
+                                        type="password"
+                                        placeholder={aiConfig.apiKeys.groq.masked || "gsk_..."}
+                                        value=""
+                                    />
+                                    <p class="text-xs text-muted-foreground">
+                                        Get a free key at <a
+                                            href="https://console.groq.com"
+                                            target="_blank"
+                                            class="underline hover:text-blue-400"
+                                            >console.groq.com</a
+                                        >
+                                    </p>
+                                </div>
+
+                                <div class="space-y-2">
+                                    <Label htmlFor="bytez-key"
+                                        >Bytez API Key</Label
+                                    >
+                                    <Input
+                                        id="bytez-key"
+                                        name="bytezKey"
+                                        type="password"
+                                        placeholder={aiConfig.apiKeys.bytez.masked || "bytez_..."}
+                                        value=""
+                                    />
+                                    <p class="text-xs text-muted-foreground">
+                                        Get a key at <a
+                                            href="https://bytez.com"
+                                            target="_blank"
+                                            class="underline hover:text-blue-400"
+                                            >bytez.com</a
+                                        >
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <div class="flex justify-end">
+                            <Button type="submit">Save Changes</Button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</BaseLayout>
+
+<script>
+    import { toast } from "sonner";
+
+    const form = document.getElementById("ai-settings-form") as HTMLFormElement;
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+
+        const payload = {
+            provider: formData.get("provider"),
+            model: formData.get("model"),
+            apiKeys: {
+                openai: formData.get("openaiKey"),
+                groq: formData.get("groqKey"),
+                bytez: formData.get("bytezKey"),
+            },
+        };
+
+        try {
+            const res = await fetch("/api/user/ai-config", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) throw new Error("Failed to save settings");
+
+            toast.success("AI settings saved successfully");
+        } catch (error) {
+            toast.error("Failed to save settings");
+        }
+    });
+</script>

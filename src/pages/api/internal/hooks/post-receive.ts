@@ -7,7 +7,10 @@ import { eq } from "drizzle-orm";
 
 export const POST: APIRoute = async ({ request, url }) => {
   // Verify internal hook secret for security
-  const hookSecret = process.env.INTERNAL_HOOK_SECRET || "dev-hook-secret-change-in-production";
+  const hookSecret = process.env.INTERNAL_HOOK_SECRET;
+  if (!hookSecret) {
+    return new Response("Server misconfigured", { status: 500 });
+  }
   const providedSecret = request.headers.get("X-Hook-Secret");
 
   if (providedSecret !== hookSecret) {
@@ -81,9 +84,53 @@ export const POST: APIRoute = async ({ request, url }) => {
     }
   }
 
+  // Resolve repo path for git operations
+  // ... existing code ...
+
+  // Fetch commits
+  let commits: any[] = [];
+  try {
+    const { resolveRepoPath } = await import("@/lib/git-storage");
+    const { getGit } = await import("@/lib/git");
+    const localRepoPath = await resolveRepoPath(repo.diskPath);
+    const git = getGit(localRepoPath);
+
+    // If new branch (oldrev is 000...), show from newrev
+    const range = body.oldrev === "0000000000000000000000000000000000000000"
+      ? body.newrev
+      : `${body.oldrev}..${body.newrev}`;
+
+    const log = await git.raw([
+      "log",
+      "--pretty=format:%H|%s|%an|%ae",
+      "-n", "20", // Limit to 20 commits
+      range
+    ]);
+
+    if (log) {
+      commits = log.split("\n").filter(Boolean).map(line => {
+        const [sha, message, authorName, authorEmail] = line.split("|");
+        return {
+          id: sha,
+          message,
+          url: `${process.env.SITE_URL || 'http://localhost:3000'}/${owner}/${repoName}/commit/${sha}`,
+          author: {
+            name: authorName,
+            email: authorEmail
+          }
+        };
+      });
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to parse commits");
+  }
+
   // Trigger Webhooks
   try {
     const { triggerWebhooks } = await import("@/lib/webhooks");
+    // Get pusher from body (passed by hook script) or default
+    const pusherName = (body as any).pusher || "git-user";
+
     await triggerWebhooks(repo.id, "push", {
       ref: body.refname,
       before: body.oldrev,
@@ -99,9 +146,9 @@ export const POST: APIRoute = async ({ request, url }) => {
         html_url: `${process.env.SITE_URL || 'http://localhost:3000'}/${repo.owner.username}/${repo.name}`,
       },
       pusher: {
-        name: "git-user", // TODO: Get from auth
+        name: pusherName,
       },
-      commits: [], // TODO: Parse new commits
+      commits: commits,
     });
     logger.info({ repoId: repo.id }, "Webhooks triggered");
   } catch (err) {

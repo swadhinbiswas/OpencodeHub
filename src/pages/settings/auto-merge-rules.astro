@@ -1,0 +1,478 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDatabase, schema } from "@/db";
+import { desc, eq } from "drizzle-orm";
+import { GitMerge, Plus, Trash2, Edit2, ShieldCheck, Clock, CheckCircle2 } from "lucide-react";
+
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+const db = getDatabase();
+const repoId = Astro.url.searchParams.get("repo") || "";
+
+let repositories: { id: string; name: string; fullName?: string; owner: string }[] = [];
+try {
+  const repos = await db.query.repositories.findMany({
+    where: eq(schema.repositories.ownerId, user.id),
+    columns: { id: true, name: true },
+    with: { owner: { columns: { username: true } } },
+  });
+  repositories = repos.map((r) => ({
+    id: r.id,
+    name: r.name,
+    owner: r.owner.username,
+    fullName: `${r.owner.username}/${r.name}`,
+  }));
+} catch (e) {}
+
+const selectedRepo = repositories.find((repo) => repo.id === repoId) || null;
+
+const parseList = (value?: string | null) => {
+  if (!value) return [] as string[];
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed as string[];
+  } catch (e) {}
+  return value.split(",").map((item) => item.trim()).filter(Boolean);
+};
+
+interface AutoMergeRule {
+  id: string;
+  name: string;
+  description?: string | null;
+  matchLabels?: string | null;
+  requiredLabels?: string | null;
+  requiredChecks?: string | null;
+  minApprovals?: number | null;
+  requireCodeOwner?: boolean | null;
+  allowDraft?: boolean | null;
+  minTimeInQueueMinutes?: number | null;
+  mergeMethod?: string | null;
+  isEnabled?: boolean | null;
+  matchCount?: number | null;
+}
+
+let rules: AutoMergeRule[] = [];
+try {
+  if (repoId) {
+    const dbRules = await db.query.autoMergeRules.findMany({
+      where: eq(schema.autoMergeRules.repositoryId, repoId),
+      orderBy: [desc(schema.autoMergeRules.createdAt)],
+    });
+    rules = dbRules as AutoMergeRule[];
+  }
+} catch (e) {}
+---
+
+<BaseLayout title="Auto-Merge Rules">
+  <div class="container py-8 max-w-5xl">
+    <div class="flex flex-col gap-6">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="p-2 rounded-lg bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30">
+            <GitMerge className="h-6 w-6 text-emerald-400" />
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold text-white">Auto-Merge Rules</h1>
+            <p class="text-sm text-gray-400">Control when auto-merge can proceed</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <select
+            id="repo-select"
+            class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300"
+          >
+            <option value="">Select Repository</option>
+            {repositories.map((repo) => (
+              <option value={repo.id} selected={repoId === repo.id}>
+                {repo.fullName || repo.name}
+              </option>
+            ))}
+          </select>
+
+          {repoId && (
+            <button
+              id="add-rule-btn"
+              class="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 rounded-lg text-sm hover:bg-emerald-500/20 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              Add Rule
+            </button>
+          )}
+        </div>
+      </div>
+
+      {!repoId ? (
+        <div class="text-center py-16 bg-white/5 rounded-xl border border-white/10">
+          <GitMerge className="h-16 w-16 text-emerald-400 mx-auto mb-4" />
+          <h3 class="text-lg font-semibold text-white mb-2">Select a Repository</h3>
+          <p class="text-gray-500">Choose a repository to manage auto-merge rules</p>
+        </div>
+      ) : (
+        <div class="relative">
+          <div class="absolute -inset-[1px] bg-gradient-to-r from-emerald-500/20 via-transparent to-cyan-500/20 rounded-xl opacity-50"></div>
+          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm overflow-hidden">
+            {rules.length === 0 ? (
+              <div class="text-center py-16">
+                <GitMerge className="h-12 w-12 text-emerald-400 mx-auto mb-4" />
+                <h3 class="text-lg font-semibold text-white mb-2">No Rules Yet</h3>
+                <p class="text-gray-500 mb-4">Create your first auto-merge policy</p>
+                <button
+                  id="add-first-rule-btn"
+                  class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 rounded-lg text-sm hover:bg-emerald-500/20 transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create First Rule
+                </button>
+              </div>
+            ) : (
+              <div class="divide-y divide-white/5">
+                {rules.map((rule) => (
+                  <div
+                    class="group flex items-start gap-4 p-4 transition-all hover:bg-white/[0.02]"
+                    data-rule-id={rule.id}
+                    data-rule-name={rule.name}
+                    data-rule-description={rule.description || ""}
+                    data-rule-match-labels={parseList(rule.matchLabels).join(", ")}
+                    data-rule-required-labels={parseList(rule.requiredLabels).join(", ")}
+                    data-rule-required-checks={parseList(rule.requiredChecks).join(", ")}
+                    data-rule-min-approvals={String(rule.minApprovals || 0)}
+                    data-rule-require-code-owner={rule.requireCodeOwner ? "true" : "false"}
+                    data-rule-allow-draft={rule.allowDraft ? "true" : "false"}
+                    data-rule-min-delay={String(rule.minTimeInQueueMinutes || 0)}
+                    data-rule-merge-method={rule.mergeMethod || ""}
+                    data-rule-enabled={rule.isEnabled === false ? "false" : "true"}
+                  >
+                    <div class="flex-shrink-0 p-2 rounded-lg bg-emerald-500/10">
+                      <ShieldCheck className="h-5 w-5 text-emerald-400" />
+                    </div>
+
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2">
+                        <span class="font-medium text-white">{rule.name}</span>
+                        {rule.isEnabled === false && (
+                          <span class="px-2 py-0.5 text-xs bg-gray-500/10 text-gray-400 rounded border border-gray-500/30">
+                            Disabled
+                          </span>
+                        )}
+                        {rule.mergeMethod && (
+                          <span class="px-2 py-0.5 text-xs bg-white/5 text-gray-400 rounded">
+                            {rule.mergeMethod}
+                          </span>
+                        )}
+                      </div>
+                      {rule.description && (
+                        <p class="text-sm text-gray-500 mt-1">{rule.description}</p>
+                      )}
+                      <div class="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-500">
+                        {parseList(rule.requiredLabels).length > 0 && (
+                          <span class="flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Labels: {parseList(rule.requiredLabels).join(", ")}</span>
+                        )}
+                        {parseList(rule.requiredChecks).length > 0 && (
+                          <span class="flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Checks: {parseList(rule.requiredChecks).join(", ")}</span>
+                        )}
+                        {(rule.minApprovals || 0) > 0 && (
+                          <span class="flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Approvals: {rule.minApprovals}</span>
+                        )}
+                        {(rule.minTimeInQueueMinutes || 0) > 0 && (
+                          <span class="flex items-center gap-1"><Clock className="h-3 w-3" />Delay: {rule.minTimeInQueueMinutes}m</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        class="edit-rule-btn px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-xs text-gray-300 hover:bg-white/10"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        class="delete-rule-btn px-2 py-1 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-300 hover:bg-red-500/20"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+</BaseLayout>
+
+<div id="rule-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60">
+  <div class="w-full max-w-2xl rounded-xl border border-white/10 bg-[#0d1117] p-6">
+    <div class="flex items-start justify-between mb-4">
+      <div>
+        <h3 id="rule-modal-title" class="text-lg font-semibold text-white">New Rule</h3>
+        <p class="text-sm text-gray-500">Define auto-merge eligibility</p>
+      </div>
+      <button id="rule-modal-close" class="text-gray-400 hover:text-white">×</button>
+    </div>
+
+    <form id="rule-form" class="space-y-4">
+      <input type="hidden" id="rule-id" />
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label class="text-xs text-gray-400">Name</label>
+          <input
+            id="rule-name"
+            class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            placeholder="Standard auto-merge"
+          />
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">Merge Method</label>
+          <select
+            id="rule-merge-method"
+            class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+          >
+            <option value="">Use PR setting</option>
+            <option value="merge">Merge</option>
+            <option value="squash">Squash</option>
+            <option value="rebase">Rebase</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="text-xs text-gray-400">Description</label>
+        <input
+          id="rule-description"
+          class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+          placeholder="Applies to core services"
+        />
+      </div>
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label class="text-xs text-gray-400">Match Labels (comma-separated)</label>
+          <input
+            id="rule-match-labels"
+            class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            placeholder="auto-merge,backend"
+          />
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">Required Labels</label>
+          <input
+            id="rule-required-labels"
+            class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            placeholder="approved"
+          />
+        </div>
+      </div>
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label class="text-xs text-gray-400">Required Checks</label>
+          <input
+            id="rule-required-checks"
+            class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            placeholder="ci/test,ci/lint"
+          />
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">Minimum Approvals</label>
+          <input
+            id="rule-min-approvals"
+            type="number"
+            min="0"
+            class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            value="0"
+          />
+        </div>
+      </div>
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label class="text-xs text-gray-400">Minimum Auto-Merge Delay (minutes)</label>
+          <input
+            id="rule-min-delay"
+            type="number"
+            min="0"
+            class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            value="0"
+          />
+        </div>
+        <div class="flex flex-col gap-2 mt-6">
+          <label class="inline-flex items-center gap-2 text-sm text-gray-300">
+            <input id="rule-require-code-owner" type="checkbox" class="rounded border-white/20" />
+            Require code owner approval
+          </label>
+          <label class="inline-flex items-center gap-2 text-sm text-gray-300">
+            <input id="rule-allow-draft" type="checkbox" class="rounded border-white/20" />
+            Allow drafts
+          </label>
+        </div>
+      </div>
+      <label class="inline-flex items-center gap-2 text-sm text-gray-300">
+        <input id="rule-enabled" type="checkbox" class="rounded border-white/20" checked />
+        Enable rule
+      </label>
+      <div class="flex items-center justify-end gap-2">
+        <button type="button" id="rule-cancel" class="px-3 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
+        <button type="submit" class="px-4 py-2 text-sm rounded-lg bg-emerald-500/20 text-emerald-200 border border-emerald-500/40">
+          Save Rule
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script
+  define:vars={{
+    selectedRepo,
+  }}
+>
+  const repoSelect = document.getElementById("repo-select");
+  const modal = document.getElementById("rule-modal");
+  const modalClose = document.getElementById("rule-modal-close");
+  const cancelBtn = document.getElementById("rule-cancel");
+  const addBtn = document.getElementById("add-rule-btn");
+  const addFirstBtn = document.getElementById("add-first-rule-btn");
+  const form = document.getElementById("rule-form");
+
+  const idField = document.getElementById("rule-id");
+  const nameField = document.getElementById("rule-name");
+  const descriptionField = document.getElementById("rule-description");
+  const matchLabelsField = document.getElementById("rule-match-labels");
+  const requiredLabelsField = document.getElementById("rule-required-labels");
+  const requiredChecksField = document.getElementById("rule-required-checks");
+  const minApprovalsField = document.getElementById("rule-min-approvals");
+  const minDelayField = document.getElementById("rule-min-delay");
+  const requireCodeOwnerField = document.getElementById("rule-require-code-owner");
+  const allowDraftField = document.getElementById("rule-allow-draft");
+  const mergeMethodField = document.getElementById("rule-merge-method");
+  const enabledField = document.getElementById("rule-enabled");
+  const title = document.getElementById("rule-modal-title");
+
+  const openModal = () => {
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+  };
+
+  const closeModal = () => {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  };
+
+  const resetForm = () => {
+    idField.value = "";
+    nameField.value = "";
+    descriptionField.value = "";
+    matchLabelsField.value = "";
+    requiredLabelsField.value = "";
+    requiredChecksField.value = "";
+    minApprovalsField.value = "0";
+    minDelayField.value = "0";
+    requireCodeOwnerField.checked = false;
+    allowDraftField.checked = false;
+    mergeMethodField.value = "";
+    enabledField.checked = true;
+    title.textContent = "New Rule";
+  };
+
+  repoSelect?.addEventListener("change", () => {
+    const value = repoSelect.value;
+    window.location.search = value ? `?repo=${value}` : "";
+  });
+
+  const openCreate = () => {
+    resetForm();
+    openModal();
+  };
+
+  addBtn?.addEventListener("click", openCreate);
+  addFirstBtn?.addEventListener("click", openCreate);
+  modalClose?.addEventListener("click", closeModal);
+  cancelBtn?.addEventListener("click", closeModal);
+
+  document.querySelectorAll(".edit-rule-btn").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      const row = event.currentTarget.closest("[data-rule-id]");
+      if (!row) return;
+
+      idField.value = row.dataset.ruleId;
+      nameField.value = row.dataset.ruleName || "";
+      descriptionField.value = row.dataset.ruleDescription || "";
+      matchLabelsField.value = row.dataset.ruleMatchLabels || "";
+      requiredLabelsField.value = row.dataset.ruleRequiredLabels || "";
+      requiredChecksField.value = row.dataset.ruleRequiredChecks || "";
+      minApprovalsField.value = row.dataset.ruleMinApprovals || "0";
+      minDelayField.value = row.dataset.ruleMinDelay || "0";
+      requireCodeOwnerField.checked = row.dataset.ruleRequireCodeOwner === "true";
+      allowDraftField.checked = row.dataset.ruleAllowDraft === "true";
+      mergeMethodField.value = row.dataset.ruleMergeMethod || "";
+      enabledField.checked = row.dataset.ruleEnabled !== "false";
+      title.textContent = "Edit Rule";
+      openModal();
+    });
+  });
+
+  document.querySelectorAll(".delete-rule-btn").forEach((btn) => {
+    btn.addEventListener("click", async (event) => {
+      if (!confirm("Delete this rule?")) return;
+      const row = event.currentTarget.closest("[data-rule-id]");
+      if (!row || !selectedRepo) return;
+
+      const res = await fetch(
+        `/api/repos/${selectedRepo.owner}/${selectedRepo.name}/auto-merge-rules/${row.dataset.ruleId}`,
+        { method: "DELETE" }
+      );
+
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        alert("Failed to delete rule");
+      }
+    });
+  });
+
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!selectedRepo) return;
+
+    const payload = {
+      name: nameField.value.trim(),
+      description: descriptionField.value.trim() || null,
+      matchLabels: matchLabelsField.value.trim(),
+      requiredLabels: requiredLabelsField.value.trim(),
+      requiredChecks: requiredChecksField.value.trim(),
+      minApprovals: Number(minApprovalsField.value) || 0,
+      minTimeInQueueMinutes: Number(minDelayField.value) || 0,
+      requireCodeOwner: requireCodeOwnerField.checked,
+      allowDraft: allowDraftField.checked,
+      mergeMethod: mergeMethodField.value || null,
+      isEnabled: enabledField.checked,
+    };
+
+    if (!payload.name) {
+      alert("Name is required");
+      return;
+    }
+
+    const ruleId = idField.value;
+    const url = ruleId
+      ? `/api/repos/${selectedRepo.owner}/${selectedRepo.name}/auto-merge-rules/${ruleId}`
+      : `/api/repos/${selectedRepo.owner}/${selectedRepo.name}/auto-merge-rules`;
+
+    const method = ruleId ? "PUT" : "POST";
+
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      window.location.reload();
+    } else {
+      alert("Failed to save rule");
+    }
+  });
+</script>

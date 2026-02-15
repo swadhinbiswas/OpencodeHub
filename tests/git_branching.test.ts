@@ -18,7 +18,8 @@ describe('Git Branching and Pull Requests', () => {
         await initRepository(REPO_PATH, {
             readme: true,
             defaultBranch: 'main',
-            ownerName: 'TestUser'
+            ownerName: 'TestUser',
+            skipHooks: true
         });
 
         // 2. Clone to client

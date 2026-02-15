@@ -1,0 +1,184 @@
+---
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { getDatabase, schema } from "@/db";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { canReadRepo } from "@/lib/permissions";
+import { and, eq, desc } from "drizzle-orm";
+import { wikiPages, wikiRevisions } from "@/db/schema";
+import { formatDistanceToNow } from "date-fns";
+
+const { owner: ownerName, repo: repoName, slug } = Astro.params;
+const db = getDatabase();
+
+// 1. Fetch Repo & Owner (Duplicate logic for now)
+const user = await db.query.users.findFirst({
+    where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+    where: and(
+        eq(schema.repositories.ownerId, user.id),
+        eq(schema.repositories.name, repoName!),
+    ),
+    with: {
+        owner: true,
+    },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canReadRepo(currentUser?.id, repoData);
+
+if (!hasAccess) {
+    return Astro.redirect("/404");
+}
+
+const repo = {
+    owner: repoData.owner.username,
+    name: repoData.name,
+    description: repoData.description,
+    visibility: repoData.visibility,
+    defaultBranch: repoData.defaultBranch,
+    stars: repoData.starCount,
+    forks: repoData.forkCount,
+    watchers: repoData.watchCount,
+    topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+    openIssueCount: repoData.openIssueCount,
+    openPrCount: repoData.openPrCount,
+};
+
+// Fetch Page and Revisions
+let page: any = null;
+let revisions: any[] = [];
+
+if (slug && schema.wikiPages) {
+    page = await db.query.wikiPages.findFirst({
+        where: and(
+            eq(wikiPages.repositoryId, repoData.id),
+            eq(wikiPages.slug, slug),
+        ),
+    });
+
+    if (page) {
+        revisions = await db.query.wikiRevisions.findMany({
+            where: eq(wikiRevisions.pageId, page.id),
+            orderBy: desc(wikiRevisions.createdAt),
+            with: {
+                author: true,
+            },
+        });
+    }
+}
+
+if (!page) return Astro.redirect("/404");
+---
+
+<BaseLayout
+    title={`History: ${page.title} · Wiki · ${repo.owner}/${repo.name}`}
+>
+    <div class="container py-6">
+        <RepoHeader repo={repo} activeTab="wiki" />
+
+        <div class="mt-8 max-w-4xl mx-auto">
+            <div class="mb-6 flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-white mb-1">
+                        History: {page.title}
+                    </h1>
+                    <p class="text-gray-400 text-sm">
+                        <a
+                            href={`/${repo.owner}/${repo.name}/wiki/${slug}`}
+                            class="text-blue-400 hover:underline"
+                        >
+                            ← Back to Page
+                        </a>
+                    </p>
+                </div>
+            </div>
+
+            <div class="relative">
+                <div
+                    class="absolute -inset-[1px] bg-gradient-to-b from-blue-500/20 to-transparent rounded-xl opacity-50"
+                >
+                </div>
+                <div
+                    class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm overflow-hidden"
+                >
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="border-b border-white/10 bg-white/5">
+                                    <th
+                                        class="px-6 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider"
+                                        >Author</th
+                                    >
+                                    <th
+                                        class="px-6 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider"
+                                        >Message</th
+                                    >
+                                    <th
+                                        class="px-6 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider"
+                                        >Date</th
+                                    >
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/5">
+                                {
+                                    revisions.length > 0 ? (
+                                        revisions.map((rev) => (
+                                            <tr class="hover:bg-white/5 transition-colors">
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <div class="flex items-center gap-2">
+                                                        <img
+                                                            src={
+                                                                rev.author
+                                                                    .avatarUrl
+                                                            }
+                                                            alt=""
+                                                            class="w-6 h-6 rounded-full"
+                                                        />
+                                                        <span class="text-sm text-gray-300 font-medium">
+                                                            {
+                                                                rev.author
+                                                                    .username
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4">
+                                                    <span class="text-sm text-gray-300">
+                                                        {rev.message ||
+                                                            "No message"}
+                                                    </span>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                                                    {formatDistanceToNow(
+                                                        rev.createdAt,
+                                                        { addSuffix: true },
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td
+                                                colspan="3"
+                                                class="px-6 py-8 text-center text-gray-500"
+                                            >
+                                                No history found
+                                            </td>
+                                        </tr>
+                                    )
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</BaseLayout>

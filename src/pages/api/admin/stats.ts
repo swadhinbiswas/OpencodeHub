@@ -7,7 +7,15 @@ import { withErrorHandler } from "@/lib/errors";
 import { success } from "@/lib/api";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
-export const GET: APIRoute = withErrorHandler(async () => {
+export const GET: APIRoute = withErrorHandler(async ({ locals }) => {
+    const user = locals.user;
+    if (!user?.isAdmin) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+            status: 403,
+            headers: { "Content-Type": "application/json" },
+        });
+    }
+
     const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // 1. Total Counts

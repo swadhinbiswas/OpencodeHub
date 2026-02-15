@@ -1,0 +1,114 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import RepoHeader from "../../../components/repo/RepoHeader.astro";
+import { getRepoStats } from "../../../lib/analytics";
+import { InsightsCharts } from "../../../components/insights/InsightsCharts";
+import { getDatabase } from "../../../db"; // Assuming this is needed for getRepository or if we fetch locally
+import { repositories } from "../../../db/schema/repositories";
+import { schema } from "../../../db";
+import { eq, and } from "drizzle-orm";
+
+const { owner, repo: repoName } = Astro.params;
+
+// Fetch Repository
+const db = getDatabase();
+
+const user = await db.query.users.findFirst({
+    where: eq(schema.users.username, owner!),
+});
+
+if (!user) {
+    return Astro.redirect("/404");
+}
+
+const repo = await db.query.repositories.findFirst({
+    where: and(
+        eq(repositories.ownerId, user.id),
+        eq(repositories.name, repoName!),
+    ),
+    with: {
+        owner: true,
+    },
+});
+
+if (!repo) {
+    return Astro.redirect("/404");
+}
+
+const repoData = {
+    owner: repo.owner.username,
+    name: repo.name,
+    description: repo.description,
+    visibility: repo.visibility,
+    defaultBranch: repo.defaultBranch,
+    stars: repo.starCount,
+    forks: repo.forkCount,
+    watchers: repo.watchCount,
+    language: repo.language || "Unknown",
+    license: repo.licenseType || "None",
+    topics: repo.topics ? JSON.parse(repo.topics) : [],
+    updatedAt: repo.updatedAt,
+    httpCloneUrl: repo.httpCloneUrl,
+    sshCloneUrl: repo.sshCloneUrl,
+    openIssueCount: repo.openIssueCount,
+    openPrCount: repo.openPrCount,
+    website: repo.website,
+};
+
+const stats = await getRepoStats(repo.id);
+---
+
+<BaseLayout title={`Insights - ${owner}/${repoName}`}>
+    <div class="container mx-auto px-4 py-8">
+        <RepoHeader repo={repoData} activeTab="insights" />
+
+        <div class="mt-8">
+            <div class="flex items-center justify-between mb-8">
+                <div>
+                    <h1 class="text-2xl font-bold tracking-tight">
+                        Engineering Insights
+                    </h1>
+                    <p class="text-muted-foreground mt-1">
+                        Metrics for the last 30 days. Top performing teams ship
+                        small diffs frequently.
+                    </p>
+                </div>
+                <div class="flex items-center gap-2">
+                    {/* Future: Date Range Picker */}
+                    <span
+                        class="text-sm text-muted-foreground bg-muted px-3 py-1 rounded-full"
+                        >Last 30 Days</span
+                    >
+                </div>
+            </div>
+
+            <InsightsCharts client:only="react" data={stats}>
+                <div
+                    slot="fallback"
+                    class="grid grid-cols-1 lg:grid-cols-2 gap-8"
+                >
+                    <div
+                        class="bg-[#0d1117]/80 border border-white/10 rounded-lg p-6 h-[450px] animate-pulse relative overflow-hidden"
+                    >
+                        <div class="h-6 w-32 bg-white/5 rounded mb-4"></div>
+                        <div class="h-4 w-48 bg-white/5 rounded mb-6"></div>
+                        <div
+                            class="absolute bottom-6 left-6 right-6 top-24 bg-white/5 rounded"
+                        >
+                        </div>
+                    </div>
+                    <div
+                        class="bg-[#0d1117]/80 border border-white/10 rounded-lg p-6 h-[450px] animate-pulse relative overflow-hidden"
+                    >
+                        <div class="h-6 w-48 bg-white/5 rounded mb-4"></div>
+                        <div class="h-4 w-48 bg-white/5 rounded mb-6"></div>
+                        <div
+                            class="absolute bottom-6 left-6 right-6 top-24 bg-white/5 rounded"
+                        >
+                        </div>
+                    </div>
+                </div>
+            </InsightsCharts>
+        </div>
+    </div>
+</BaseLayout>

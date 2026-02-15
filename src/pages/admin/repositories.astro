@@ -1,7 +1,8 @@
 ---
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { getDatabase, schema } from "@/db";
-import { desc, eq, like, or, sql } from "drizzle-orm";
+import { desc, eq, like, or, count } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +18,7 @@ import {
 const user = Astro.locals.user;
 if (!user?.isAdmin) return Astro.redirect("/");
 
-const db = getDatabase();
+const db = getDatabase() as NodePgDatabase<typeof schema>;
 const searchQuery = Astro.url.searchParams.get("q") || "";
 const page = parseInt(Astro.url.searchParams.get("page") || "1");
 const limit = 20;
@@ -44,14 +45,13 @@ const [repos, totalResult] = await Promise.all([
     },
   }),
   db
-    // @ts-expect-error: count argument mismatch
-    .select({ count: sql<number>`count(*)` })
+    .select({ count: count() })
     .from(schema.repositories)
     .where(whereClause)
-    ,
+    .limit(1),
 ]);
 
-const total = (totalResult as { count: number } | undefined)?.count || 0;
+const total = Number(totalResult[0]?.count) || 0;
 const totalPages = Math.ceil(total / limit);
 ---
 
@@ -121,7 +121,12 @@ const totalPages = Math.ceil(total / limit);
               <tbody>
                 {
                   repos.map((r) => (
-                    <tr class="border-b hover:bg-muted/50">
+                    <tr
+                      class="border-b hover:bg-muted/50"
+                      data-owner={r.owner.username}
+                      data-repo={r.name}
+                      data-archived={r.isArchived ? "true" : "false"}
+                    >
                       <td class="p-3">
                         <div class="font-medium">{r.name}</div>
                         <div class="text-xs text-muted-foreground truncate max-w-[200px]">
@@ -148,15 +153,15 @@ const totalPages = Math.ceil(total / limit);
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-8 w-8 p-0"
-                            title="Archive (Not Implemented)"
+                            className="h-8 w-8 p-0 archive-btn"
+                            title={r.isArchived ? "Unarchive" : "Archive"}
                           >
                             <Archive className="h-4 w-4" />
                           </Button>
                           <Button
                             size="sm"
                             variant="destructive"
-                            className="h-8 w-8 p-0"
+                            className="h-8 w-8 p-0 delete-btn"
                             title="Delete"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -205,3 +210,68 @@ const totalPages = Math.ceil(total / limit);
     </div>
   </div>
 </AdminLayout>
+
+<script>
+  document.querySelectorAll(".archive-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const row = btn.closest("tr");
+      const owner = row?.dataset.owner;
+      const repo = row?.dataset.repo;
+      const archived = row?.dataset.archived === "true";
+
+      if (!owner || !repo) return;
+
+      const actionLabel = archived ? "Unarchive" : "Archive";
+      if (!confirm(`${actionLabel} ${owner}/${repo}?`)) return;
+
+      btn.setAttribute("disabled", "true");
+
+      try {
+        const res = await fetch(`/api/repos/${owner}/${repo}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isArchived: !archived }),
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to update repository");
+        }
+
+        row.dataset.archived = archived ? "false" : "true";
+        btn.setAttribute("title", archived ? "Archive" : "Unarchive");
+      } catch (error) {
+        alert(error.message || "Failed to update repository");
+      } finally {
+        btn.removeAttribute("disabled");
+      }
+    });
+  });
+
+  document.querySelectorAll(".delete-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const row = btn.closest("tr");
+      const owner = row?.dataset.owner;
+      const repo = row?.dataset.repo;
+
+      if (!owner || !repo) return;
+      if (!confirm(`Delete ${owner}/${repo}? This cannot be undone.`)) return;
+
+      btn.setAttribute("disabled", "true");
+
+      try {
+        const res = await fetch(`/api/repos/${owner}/${repo}`, {
+          method: "DELETE",
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to delete repository");
+        }
+
+        row.remove();
+      } catch (error) {
+        alert(error.message || "Failed to delete repository");
+        btn.removeAttribute("disabled");
+      }
+    });
+  });
+</script>

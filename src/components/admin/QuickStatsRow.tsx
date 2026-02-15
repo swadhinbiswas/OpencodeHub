@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { GitCommit, GitMerge, CircleDot, Users, Clock, TrendingUp, Activity, Zap } from "lucide-react";
+import { GitCommit, GitMerge, CircleDot, Users, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface Props {

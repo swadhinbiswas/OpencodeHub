@@ -6,6 +6,9 @@ import { eq, and, sql, desc, gte, count } from "drizzle-orm";
 import { canReadRepo } from "@/lib/permissions";
 import { getContributors, getCommits } from "@/lib/git";
 import { resolveRepoPath } from "@/lib/git-storage";
+import { getRepoStats } from "@/lib/analytics";
+import { getCommitActivity } from "@/lib/git";
+import { InsightsCharts } from "@/components/insights/InsightsCharts";
 import {
     GitCommit,
     GitPullRequest,
@@ -62,16 +65,15 @@ const repo = {
 };
 
 // Fetch real issue count
-const issueCountResult = (await db
-    // @ts-expect-error: count argument mismatch
-    .select({ count: sql<number>`count(*)` })
+const issueCountResult = await db
+    .select({ count: count() })
     .from(schema.issues)
     .where(
         and(
             eq(schema.issues.repositoryId, repoData.id),
             eq(schema.issues.state, "open"),
         ),
-    )) as { count: number }[];
+    );
 
 repo.openIssueCount = issueCountResult[0]?.count || 0;
 
@@ -119,6 +121,7 @@ const [closedIssues] = await (db as any)
             gte(schema.issues.updatedAt, thirtyDaysAgo),
         ),
     );
+
 const [mergedPRs] = await (db as any)
     .select({ count: count() })
     .from(schema.pullRequests)
@@ -129,6 +132,22 @@ const [mergedPRs] = await (db as any)
             gte(schema.pullRequests.updatedAt, thirtyDaysAgo),
         ),
     );
+
+// 4. Charts Data
+const repoStats = await getRepoStats(repoData.id);
+const commitActivity = await getCommitActivity(
+    resolvedLocalPath,
+    "30 days ago",
+);
+
+// Merge commit history into repoStats
+const chartData = repoStats.map((stat) => {
+    const activity = commitActivity.find((c) => c.date === stat.date);
+    return {
+        ...stat,
+        commitCount: activity ? activity.count : 0,
+    };
+});
 ---
 
 <BaseLayout title={`Insights · ${repo.owner}/${repo.name}`}>
@@ -257,6 +276,8 @@ const [mergedPRs] = await (db as any)
                         </div>
                     </div>
                 </section>
+
+                <InsightsCharts client:only="react" data={chartData} />
 
                 <!-- Contributors Section -->
                 <section>

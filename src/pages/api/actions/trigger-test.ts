@@ -26,6 +26,13 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
     // Verify access
     // ... (omitted for brevity, trusting UI check for MVP)
 
+    // Fetch Repo for Default Branch
+    const repo = await db.query.repositories.findFirst({
+        where: eq(schema.repositories.id, repositoryId)
+    });
+
+    if (!repo) return notFound("Repository not found");
+
     // Create Workflow Record (if not exists)
     // Usually scanned from file, but we mock it.
     let workflowId = crypto.randomUUID();
@@ -48,7 +55,8 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
         name: "Manual Test Run",
         status: "queued",
         event: "workflow_dispatch",
-        headSha: "HEAD", // Placeholder
+        headSha: "HEAD",
+        headBranch: repo.defaultBranch,
         triggeredById: tokenPayload.userId
     });
 

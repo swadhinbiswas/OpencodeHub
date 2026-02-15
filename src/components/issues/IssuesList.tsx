@@ -11,7 +11,13 @@ import {
     ArrowUpDown,
     Plus,
     Sparkles,
-    Filter
+    Filter,
+    Layers,
+    CheckSquare,
+    FileText,
+    ChevronDown,
+    ChevronRight,
+    LayoutList
 } from "lucide-react";
 import { useState } from "react";
 
@@ -19,6 +25,7 @@ interface Issue {
     id: string;
     number: number;
     title: string;
+    type: string;
     state: "open" | "closed";
     createdAt: string;
     commentCount: number;
@@ -29,6 +36,16 @@ interface Issue {
     labels?: Array<{
         name: string;
         color: string;
+    }>;
+    parent?: {
+        number: number;
+        title: string;
+        state: "open" | "closed";
+    };
+    children?: Array<{
+        number: number;
+        title: string;
+        state: "open" | "closed";
     }>;
 }
 
@@ -62,11 +79,30 @@ function timeAgo(date: string): string {
 export default function IssuesList({ issues, openCount, closedCount, repoOwner, repoName }: Props) {
     const [filter, setFilter] = useState<"open" | "closed" | "all">("open");
     const [searchQuery, setSearchQuery] = useState("");
+    const [groupByEpic, setGroupByEpic] = useState(false);
+    const [expandedEpics, setExpandedEpics] = useState<Record<string, boolean>>({});
+
+    const toggleEpic = (id: string, e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setExpandedEpics(prev => ({ ...prev, [id]: !prev[id] }));
+    };
 
     const filteredIssues = issues.filter(issue => {
         const matchesFilter = filter === "all" || issue.state === filter;
         const matchesSearch = issue.title.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesFilter && matchesSearch;
+
+        // If grouping by epic, hide sub-tasks from top level (they appear inside epics)
+        // Unless they are orphans (parent not found in current list? actually logic is simpler: hide if has parent)
+        // But wait, if I hide if has parent, and the parent is NOT in the list (e.g. parent is closed but filter is open), then the sub-task disappears?
+        // Correct. Standard Epic view usually implies viewing the Epic to see children.
+        // But if filtering by "Open", we maybe want to see open tasks of a closed Epic?
+        // GitHub doesn't really have "Group by Epic" in issue list. Jira does.
+        // Let's stick to: If groupByEpic is on, show top-level items only (no parent).
+        // If an issue has a parent, it is hidden from top level.
+        const isTopLevel = !groupByEpic || !issue.parent;
+
+        return matchesFilter && matchesSearch && isTopLevel;
     });
 
     return (
@@ -94,6 +130,17 @@ export default function IssuesList({ issues, openCount, closedCount, repoOwner, 
 
                 {/* Action Buttons */}
                 <div className="flex gap-3">
+                    <button
+                        onClick={() => setGroupByEpic(!groupByEpic)}
+                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${groupByEpic
+                                ? "bg-purple-500/20 border-purple-500/50 text-purple-300"
+                                : "border-white/10 bg-white/5 text-gray-300 hover:bg-white/10"
+                            }`}
+                    >
+                        <Layers className="h-4 w-4" />
+                        <span className="hidden sm:inline">Group by Epic</span>
+                    </button>
+
                     <motion.a
                         href={`/${repoOwner}/${repoName}/labels`}
                         whileHover={{ scale: 1.02 }}
@@ -101,8 +148,9 @@ export default function IssuesList({ issues, openCount, closedCount, repoOwner, 
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-300 hover:bg-white/10 hover:border-white/20 transition-all"
                     >
                         <Tag className="h-4 w-4" />
-                        Labels
+                        <span className="hidden sm:inline">Labels</span>
                     </motion.a>
+
                     <motion.a
                         href={`/${repoOwner}/${repoName}/milestones`}
                         whileHover={{ scale: 1.02 }}
@@ -110,8 +158,9 @@ export default function IssuesList({ issues, openCount, closedCount, repoOwner, 
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-300 hover:bg-white/10 hover:border-white/20 transition-all"
                     >
                         <Calendar className="h-4 w-4" />
-                        Milestones
+                        <span className="hidden sm:inline">Milestones</span>
                     </motion.a>
+
                     <motion.a
                         href={`/${repoOwner}/${repoName}/issues/new`}
                         whileHover={{ scale: 1.05 }}
@@ -119,7 +168,7 @@ export default function IssuesList({ issues, openCount, closedCount, repoOwner, 
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-sm font-medium text-white shadow-lg shadow-green-500/25 hover:shadow-green-500/40 transition-all"
                     >
                         <Plus className="h-4 w-4" />
-                        New Issue
+                        <span className="hidden sm:inline">New Issue</span>
                     </motion.a>
                 </div>
             </motion.div>
@@ -141,8 +190,8 @@ export default function IssuesList({ issues, openCount, closedCount, repoOwner, 
                             <button
                                 onClick={() => setFilter("open")}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${filter === "open"
-                                        ? "bg-green-500/10 text-green-400 border border-green-500/30"
-                                        : "text-gray-400 hover:text-white hover:bg-white/5"
+                                    ? "bg-green-500/10 text-green-400 border border-green-500/30"
+                                    : "text-gray-400 hover:text-white hover:bg-white/5"
                                     }`}
                             >
                                 <AlertCircle className="h-4 w-4" />
@@ -151,8 +200,8 @@ export default function IssuesList({ issues, openCount, closedCount, repoOwner, 
                             <button
                                 onClick={() => setFilter("closed")}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${filter === "closed"
-                                        ? "bg-purple-500/10 text-purple-400 border border-purple-500/30"
-                                        : "text-gray-400 hover:text-white hover:bg-white/5"
+                                    ? "bg-purple-500/10 text-purple-400 border border-purple-500/30"
+                                    : "text-gray-400 hover:text-white hover:bg-white/5"
                                     }`}
                             >
                                 <CheckCircle2 className="h-4 w-4" />
@@ -161,14 +210,6 @@ export default function IssuesList({ issues, openCount, closedCount, repoOwner, 
                         </div>
 
                         <div className="flex items-center gap-3 text-sm text-gray-500">
-                            <button className="flex items-center gap-1 hover:text-white transition-colors">
-                                <User className="h-3.5 w-3.5" />
-                                Author
-                            </button>
-                            <button className="flex items-center gap-1 hover:text-white transition-colors">
-                                <Tag className="h-3.5 w-3.5" />
-                                Label
-                            </button>
                             <button className="flex items-center gap-1 hover:text-white transition-colors">
                                 <ArrowUpDown className="h-3.5 w-3.5" />
                                 Sort
@@ -181,83 +222,137 @@ export default function IssuesList({ issues, openCount, closedCount, repoOwner, 
                         <AnimatePresence mode="popLayout">
                             {filteredIssues.length > 0 ? (
                                 filteredIssues.map((issue, index) => (
-                                    <motion.a
-                                        key={issue.id}
-                                        href={`/${repoOwner}/${repoName}/issues/${issue.number}`}
-                                        initial={{ opacity: 0, x: -20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: 20 }}
-                                        transition={{ delay: index * 0.03 }}
-                                        className="flex items-start gap-3 p-4 hover:bg-white/[0.02] transition-colors group"
-                                    >
-                                        {/* Status Icon */}
-                                        <div className="mt-0.5">
-                                            {issue.state === "open" ? (
-                                                <div className="relative">
-                                                    <AlertCircle className="h-5 w-5 text-green-500" />
-                                                    <div className="absolute inset-0 bg-green-500 blur-md opacity-0 group-hover:opacity-30 transition-opacity" />
+                                    <div key={issue.id}>
+                                        <motion.a
+                                            href={`/${repoOwner}/${repoName}/issues/${issue.number}`}
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: 20 }}
+                                            transition={{ delay: index * 0.03 }}
+                                            className="flex items-start gap-3 p-4 hover:bg-white/[0.02] transition-colors group relative"
+                                        >
+                                            {/* Expand/Collapse for Epics */}
+                                            {groupByEpic && issue.type === 'epic' && issue.children && issue.children.length > 0 && (
+                                                <button
+                                                    onClick={(e) => toggleEpic(issue.id, e)}
+                                                    className="absolute left-1 top-4 p-1 text-gray-500 hover:text-white rounded hover:bg-white/10"
+                                                >
+                                                    {expandedEpics[issue.id] ? (
+                                                        <ChevronDown className="h-4 w-4" />
+                                                    ) : (
+                                                        <ChevronRight className="h-4 w-4" />
+                                                    )}
+                                                </button>
+                                            )}
+
+                                            {/* Status Icon */}
+                                            <div className={`mt-0.5 ${groupByEpic && issue.type === 'epic' ? 'ml-6' : ''}`}>
+                                                {issue.state === "open" ? (
+                                                    <div className="relative">
+                                                        <AlertCircle className="h-5 w-5 text-green-500" />
+                                                        <div className="absolute inset-0 bg-green-500 blur-md opacity-0 group-hover:opacity-30 transition-opacity" />
+                                                    </div>
+                                                ) : (
+                                                    <div className="relative">
+                                                        <CheckCircle2 className="h-5 w-5 text-purple-500" />
+                                                        <div className="absolute inset-0 bg-purple-500 blur-md opacity-0 group-hover:opacity-30 transition-opacity" />
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Type Icon */}
+                                            <div className="mt-0.5 text-gray-500">
+                                                {issue.type === "epic" ? (
+                                                    <Layers className="h-5 w-5 text-purple-400" />
+                                                ) : issue.type === "task" ? (
+                                                    <CheckSquare className="h-5 w-5 text-blue-400" />
+                                                ) : (
+                                                    <div />
+                                                )}
+                                            </div>
+
+                                            {/* Content */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="font-semibold text-white group-hover:text-cyan-400 transition-colors truncate">
+                                                        {issue.title}
+                                                    </span>
+                                                    {/* Labels */}
+                                                    {issue.labels?.map(label => (
+                                                        <span
+                                                            key={label.name}
+                                                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                                                            style={{
+                                                                backgroundColor: `${label.color}20`,
+                                                                color: label.color,
+                                                                border: `1px solid ${label.color}40`
+                                                            }}
+                                                        >
+                                                            {label.name}
+                                                        </span>
+                                                    ))}
                                                 </div>
-                                            ) : (
-                                                <div className="relative">
-                                                    <CheckCircle2 className="h-5 w-5 text-purple-500" />
-                                                    <div className="absolute inset-0 bg-purple-500 blur-md opacity-0 group-hover:opacity-30 transition-opacity" />
+                                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                    <span>#{issue.number}</span>
+                                                    <span>•</span>
+                                                    <span>opened {timeAgo(issue.createdAt)}</span>
+                                                    <span>•</span>
+                                                    <span className="flex items-center gap-1">
+                                                        {issue.author.avatarUrl ? (
+                                                            <img
+                                                                src={issue.author.avatarUrl}
+                                                                alt=""
+                                                                className="h-4 w-4 rounded-full"
+                                                            />
+                                                        ) : (
+                                                            <div className="h-4 w-4 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-[8px] text-white font-bold">
+                                                                {issue.author.username[0].toUpperCase()}
+                                                            </div>
+                                                        )}
+                                                        <span className="hover:text-cyan-400 transition-colors">
+                                                            {issue.author.username}
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* Comment Count */}
+                                            {issue.commentCount > 0 && (
+                                                <div className="flex items-center gap-1 text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
+                                                    <MessageSquare className="h-4 w-4" />
+                                                    {issue.commentCount}
                                                 </div>
                                             )}
-                                        </div>
+                                        </motion.a>
 
-                                        {/* Content */}
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="font-semibold text-white group-hover:text-cyan-400 transition-colors truncate">
-                                                    {issue.title}
-                                                </span>
-                                                {/* Labels */}
-                                                {issue.labels?.map(label => (
-                                                    <span
-                                                        key={label.name}
-                                                        className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-                                                        style={{
-                                                            backgroundColor: `${label.color}20`,
-                                                            color: label.color,
-                                                            border: `1px solid ${label.color}40`
-                                                        }}
+                                        {/* Render Children (Sub-tasks) */}
+                                        {groupByEpic && issue.type === 'epic' && expandedEpics[issue.id] && issue.children && (
+                                            <div className="bg-white/[0.01] border-t border-white/5">
+                                                {issue.children.map(child => (
+                                                    <a
+                                                        key={child.number}
+                                                        href={`/${repoOwner}/${repoName}/issues/${child.number}`}
+                                                        className="flex items-center gap-3 py-3 pr-4 pl-16 hover:bg-white/[0.02] transition-colors border-b last:border-0 border-white/5 group/child"
                                                     >
-                                                        {label.name}
-                                                    </span>
+                                                        <div className="mt-0.5">
+                                                            {child.state === "open" ? (
+                                                                <AlertCircle className="h-4 w-4 text-green-500" />
+                                                            ) : (
+                                                                <CheckCircle2 className="h-4 w-4 text-purple-500" />
+                                                            )}
+                                                        </div>
+                                                        <div className="mt-0.5 text-blue-400">
+                                                            <CheckSquare className="h-4 w-4" />
+                                                        </div>
+                                                        <span className="text-sm text-gray-300 group-hover/child:text-cyan-400 transition-colors truncate">
+                                                            {child.title}
+                                                        </span>
+                                                        <span className="text-xs text-gray-600 ml-auto">#{child.number}</span>
+                                                    </a>
                                                 ))}
                                             </div>
-                                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                <span>#{issue.number}</span>
-                                                <span>•</span>
-                                                <span>opened {timeAgo(issue.createdAt)}</span>
-                                                <span>•</span>
-                                                <span className="flex items-center gap-1">
-                                                    {issue.author.avatarUrl ? (
-                                                        <img
-                                                            src={issue.author.avatarUrl}
-                                                            alt=""
-                                                            className="h-4 w-4 rounded-full"
-                                                        />
-                                                    ) : (
-                                                        <div className="h-4 w-4 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-[8px] text-white font-bold">
-                                                            {issue.author.username[0].toUpperCase()}
-                                                        </div>
-                                                    )}
-                                                    <span className="hover:text-cyan-400 transition-colors">
-                                                        {issue.author.username}
-                                                    </span>
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Comment Count */}
-                                        {issue.commentCount > 0 && (
-                                            <div className="flex items-center gap-1 text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
-                                                <MessageSquare className="h-4 w-4" />
-                                                {issue.commentCount}
-                                            </div>
                                         )}
-                                    </motion.a>
+                                    </div>
                                 ))
                             ) : (
                                 <motion.div

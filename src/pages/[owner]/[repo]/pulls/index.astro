@@ -37,19 +37,17 @@ if (!hasAccess) {
 }
 
 // Fetch issue count
-const issueCountResult = (await db
-  // @ts-expect-error: count argument mismatch
-  .select({ count: sql<number>`count(*)` })
+const issueCountResult = await db
+  .select({ count: count() })
   .from(schema.issues)
   .where(
     and(
       eq(schema.issues.repositoryId, repoData.id),
       eq(schema.issues.state, "open"),
     ),
-  )
-  ) as { count: number }[];
+  );
 
-const openIssueCount = issueCountResult?.count || 0;
+const openIssueCount = issueCountResult[0]?.count || 0;
 
 // 2. Fetch Pull Requests
 const prsList = await db.query.pullRequests.findMany({

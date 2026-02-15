@@ -1,0 +1,73 @@
+/* OpenCodeHub Docs – Starlight theme polish */
+
+@import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&display=swap");
+
+:root {
+  /* Prefer Nerd Font if the user has it installed; fall back to Fira Code webfont. */
+  --sl-font:
+    "FiraCode Nerd Font", "FiraCode NF", "Fira Code", var(--sl-font-system);
+  --sl-font-mono:
+    "FiraCode Nerd Font", "FiraCode NF", "Fira Code", var(--sl-font-system-mono);
+}
+
+:root {
+  --och-accent-1: #2dd4bf;
+  --och-accent-2: #8be9fd;
+  --och-accent-3: #bd93f9;
+  --och-accent-4: #ff79c6;
+
+  --och-hero-surface: color-mix(in srgb, var(--sl-color-bg) 92%, transparent);
+}
+
+/* Slightly richer accent + nicer gradients */
+:root {
+  --sl-color-accent: var(--och-accent-1);
+  --sl-color-accent-high: color-mix(in srgb, var(--och-accent-1) 70%, white);
+}
+
+/* Link polish */
+.sl-markdown-content a {
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+}
+
+.sl-markdown-content a:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* Card hover polish (home page grids, etc.) */
+.sl-card {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+}
+
+.sl-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(
+    in srgb,
+    var(--och-accent-2) 40%,
+    var(--sl-color-gray-5)
+  );
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.25);
+}
+
+/* Softer nav background and nicer focus rings */
+:root {
+  --sl-color-bg-nav: color-mix(in srgb, var(--sl-color-bg) 92%, black);
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--och-accent-2) 65%, white);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

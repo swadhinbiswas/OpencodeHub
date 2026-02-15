@@ -12,7 +12,7 @@ import {
   Clock,
 } from "lucide-react";
 import { getDatabase, schema } from "@/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, count } from "drizzle-orm";
 import { listFiles, getLastCommit, getCommits, getBranches } from "@/lib/git";
 import { resolveRepoPath } from "@/lib/git-storage";
 import { canReadRepo } from "@/lib/permissions";
@@ -51,8 +51,7 @@ if (!hasAccess) {
 
 // Fetch issue count
 const issueCountResult = await db
-  // @ts-expect-error: count argument mismatch
-  .select({ count: sql<number>`count(*)` })
+  .select({ count: count() })
   .from(schema.issues)
   .where(
     and(
@@ -60,8 +59,7 @@ const issueCountResult = await db
       eq(schema.issues.state, "open"),
     ),
   );
-const openIssueCount =
-  (issueCountResult as { count: number } | undefined)?.count || 0;
+const openIssueCount = issueCountResult[0]?.count || 0;
 
 // Resolve disk path for cloud storage
 let repoPath: string;

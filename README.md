@@ -611,6 +611,17 @@ Click buttons to:
 - Add to merge queue
 - View full PR
 
+#### Discord & Microsoft Teams
+
+OpenCodeHub also supports incoming webhooks for Discord and Microsoft Teams.
+
+**Setup:**
+1. **Repository → Settings → Webhooks**
+2. Create a new webhook
+3. Select **Discord** or **Microsoft Teams** as the type
+4. Paste your webhook URL
+5. Select triggers (PR events, Push events, etc.)
+
 ---
 
 ## 💡 Workflow Examples
@@ -740,6 +751,10 @@ INTERNAL_HOOK_SECRET=<run: openssl rand -hex 32>
 SITE_URL=https://your-domain.com  # Must be HTTPS in production
 PORT=3000
 HOST=0.0.0.0
+
+# CI/CD Runner Security (CRITICAL)
+# Must match the secret used by your runners
+RUNNER_SECRET=<run: openssl rand -hex 32>
 ```
 
 ### Database Configuration

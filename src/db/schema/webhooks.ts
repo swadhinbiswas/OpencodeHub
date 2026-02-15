@@ -13,10 +13,15 @@ export const webhooks = pgTable("webhooks", {
     repositoryId: text("repository_id")
         .notNull()
         .references(() => repositories.id, { onDelete: "cascade" }),
+
+    // Provider and configuration
+    provider: text("provider").default("generic"), // teams, discord, slack, generic
+    name: text("name"), // Display name for the webhook
     url: text("url").notNull(),
     secret: text("secret"), // Encrypted or plain? For now plain/masked in UI
     events: text("events").notNull(), // JSON array of events ['push', 'pull_request']
     active: boolean("active").notNull().default(true),
+    enabled: boolean("enabled").notNull().default(true), // Alias for active
     contentType: text("content_type").notNull().default("json"), // json | form
 
     // Stats

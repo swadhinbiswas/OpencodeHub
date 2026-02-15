@@ -8,7 +8,8 @@ import { generateId } from "@/lib/utils";
 
 import { withErrorHandler } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { badRequest, created, success } from "@/lib/api";
+import { getUserFromRequest } from "@/lib/auth";
+import { badRequest, created, success, unauthorized, forbidden } from "@/lib/api";
 
 // ... existing imports ...
 
@@ -53,9 +54,27 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
 
     const data = validation.data;
 
+    // Verify authentication
+    const tokenPayload = await getUserFromRequest(request);
+    if (!tokenPayload) {
+        return unauthorized();
+    }
+
     const db = getDatabase() as NodePgDatabase<typeof schema>;
 
-    // Check active user? For now assuming admin/owner permission checked by middleware or UI context (TODO)
+    // Check repository exists and user has admin permissions
+    const repository = await db.query.repositories.findFirst({
+        where: eq(schema.repositories.id, repoId)
+    });
+
+    if (!repository) {
+        return badRequest("Repository not found");
+    }
+
+    const { canAdminRepo } = await import("@/lib/permissions");
+    if (!(await canAdminRepo(tokenPayload.userId, repository, { isAdmin: tokenPayload.isAdmin }))) {
+        return forbidden("You do not have permission to configure branch protection rules");
+    }
 
     const id = generateId("rule");
 
@@ -71,7 +90,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
         active: data.active ?? true,
         createdAt: new Date(),
         updatedAt: new Date(),
-        // createdById: user.id // TODO: Get user from context
+        // createdById: tokenPayload.userId
     });
 
     logger.info({ repoId, ruleId: id, pattern: data.pattern }, "Branch protection rule created");

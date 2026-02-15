@@ -401,7 +401,7 @@ export async function createRepo(options: {
 
   try {
     const result = await postWithAuth<{ data: RepoInfo }>("/api/repos", {
-      name: options.name,
+      name: options.name.toLowerCase(),
       description: options.description,
       visibility: options.visibility || "public",
       readme: options.init !== false,

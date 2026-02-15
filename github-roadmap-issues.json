@@ -1,0 +1,1141 @@
+[
+  {
+    "id": "G001",
+    "status": "partial",
+    "feature": "Monorepo support",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws1",
+      "status/partial",
+      "phase/1",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G001] Monorepo support",
+    "body": "<!-- roadmap-id:G001 -->\n\n## Metadata\n- Gap ID: G001\n- Status: Partial\n- Workstream: WS1\n- Phase: 1\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G002",
+    "status": "partial",
+    "feature": "Repository templates",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws1",
+      "status/partial",
+      "phase/1",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G002] Repository templates",
+    "body": "<!-- roadmap-id:G002 -->\n\n## Metadata\n- Gap ID: G002\n- Status: Partial\n- Workstream: WS1\n- Phase: 1\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G003",
+    "status": "partial",
+    "feature": "Cross-PR dependency detection",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws1",
+      "status/partial",
+      "phase/1",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G003] Cross-PR dependency detection",
+    "body": "<!-- roadmap-id:G003 -->\n\n## Metadata\n- Gap ID: G003\n- Status: Partial\n- Workstream: WS1\n- Phase: 1\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G004",
+    "status": "partial",
+    "feature": "Stack rebase & auto-update",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws1",
+      "status/partial",
+      "phase/1",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G004] Stack rebase & auto-update",
+    "body": "<!-- roadmap-id:G004 -->\n\n## Metadata\n- Gap ID: G004\n- Status: Partial\n- Workstream: WS1\n- Phase: 1\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G005",
+    "status": "partial",
+    "feature": "Stack-level approvals",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws1",
+      "status/partial",
+      "phase/1",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G005] Stack-level approvals",
+    "body": "<!-- roadmap-id:G005 -->\n\n## Metadata\n- Gap ID: G005\n- Status: Partial\n- Workstream: WS1\n- Phase: 1\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G006",
+    "status": "partial",
+    "feature": "Bulk merge (merge stacks)",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws1",
+      "status/partial",
+      "phase/1",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G006] Bulk merge (merge stacks)",
+    "body": "<!-- roadmap-id:G006 -->\n\n## Metadata\n- Gap ID: G006\n- Status: Partial\n- Workstream: WS1\n- Phase: 1\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G007",
+    "status": "partial",
+    "feature": "Auto-merge rules",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws1",
+      "status/partial",
+      "phase/1",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G007] Auto-merge rules",
+    "body": "<!-- roadmap-id:G007 -->\n\n## Metadata\n- Gap ID: G007\n- Status: Partial\n- Workstream: WS1\n- Phase: 1\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G008",
+    "status": "partial",
+    "feature": "Batch comments",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws1",
+      "status/partial",
+      "phase/1",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G008] Batch comments",
+    "body": "<!-- roadmap-id:G008 -->\n\n## Metadata\n- Gap ID: G008\n- Status: Partial\n- Workstream: WS1\n- Phase: 1\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G009",
+    "status": "partial",
+    "feature": "Code owner enforcement",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws1",
+      "status/partial",
+      "phase/1",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G009] Code owner enforcement",
+    "body": "<!-- roadmap-id:G009 -->\n\n## Metadata\n- Gap ID: G009\n- Status: Partial\n- Workstream: WS1\n- Phase: 1\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G010",
+    "status": "partial",
+    "feature": "Multi-reviewer rules",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws1",
+      "status/partial",
+      "phase/1",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G010] Multi-reviewer rules",
+    "body": "<!-- roadmap-id:G010 -->\n\n## Metadata\n- Gap ID: G010\n- Status: Partial\n- Workstream: WS1\n- Phase: 1\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G011",
+    "status": "partial",
+    "feature": "PR ↔ Issue linking",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws1",
+      "status/partial",
+      "phase/1",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G011] PR ↔ Issue linking",
+    "body": "<!-- roadmap-id:G011 -->\n\n## Metadata\n- Gap ID: G011\n- Status: Partial\n- Workstream: WS1\n- Phase: 1\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G012",
+    "status": "missing",
+    "feature": "File-level permissions",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws1",
+      "status/missing",
+      "phase/1",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G012] File-level permissions",
+    "body": "<!-- roadmap-id:G012 -->\n\n## Metadata\n- Gap ID: G012\n- Status: Missing\n- Workstream: WS1\n- Phase: 1\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G013",
+    "status": "missing",
+    "feature": "Custom PR states",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws1",
+      "status/missing",
+      "phase/1",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G013] Custom PR states",
+    "body": "<!-- roadmap-id:G013 -->\n\n## Metadata\n- Gap ID: G013\n- Status: Missing\n- Workstream: WS1\n- Phase: 1\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G014",
+    "status": "missing",
+    "feature": "Required reviewers per state",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws1",
+      "status/missing",
+      "phase/1",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G014] Required reviewers per state",
+    "body": "<!-- roadmap-id:G014 -->\n\n## Metadata\n- Gap ID: G014\n- Status: Missing\n- Workstream: WS1\n- Phase: 1\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G015",
+    "status": "missing",
+    "feature": "PR checks",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws1",
+      "status/missing",
+      "phase/1",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G015] PR checks",
+    "body": "<!-- roadmap-id:G015 -->\n\n## Metadata\n- Gap ID: G015\n- Status: Missing\n- Workstream: WS1\n- Phase: 1\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G016",
+    "status": "missing",
+    "feature": "Suggested changes",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws1",
+      "status/missing",
+      "phase/1",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G016] Suggested changes",
+    "body": "<!-- roadmap-id:G016 -->\n\n## Metadata\n- Gap ID: G016\n- Status: Missing\n- Workstream: WS1\n- Phase: 1\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G017",
+    "status": "missing",
+    "feature": "Review templates",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws1",
+      "status/missing",
+      "phase/1",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G017] Review templates",
+    "body": "<!-- roadmap-id:G017 -->\n\n## Metadata\n- Gap ID: G017\n- Status: Missing\n- Workstream: WS1\n- Phase: 1\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G018",
+    "status": "missing",
+    "feature": "Partial file approvals",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws1",
+      "status/missing",
+      "phase/1",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G018] Partial file approvals",
+    "body": "<!-- roadmap-id:G018 -->\n\n## Metadata\n- Gap ID: G018\n- Status: Missing\n- Workstream: WS1\n- Phase: 1\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G019",
+    "status": "missing",
+    "feature": "Custom issue fields",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws1",
+      "status/missing",
+      "phase/1",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G019] Custom issue fields",
+    "body": "<!-- roadmap-id:G019 -->\n\n## Metadata\n- Gap ID: G019\n- Status: Missing\n- Workstream: WS1\n- Phase: 1\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G020",
+    "status": "missing",
+    "feature": "Issue workflows",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws1",
+      "status/missing",
+      "phase/1",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G020] Issue workflows",
+    "body": "<!-- roadmap-id:G020 -->\n\n## Metadata\n- Gap ID: G020\n- Status: Missing\n- Workstream: WS1\n- Phase: 1\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G021",
+    "status": "missing",
+    "feature": "Cross-repo issues",
+    "ws": "WS1",
+    "phase": 1,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws1",
+      "status/missing",
+      "phase/1",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G021] Cross-repo issues",
+    "body": "<!-- roadmap-id:G021 -->\n\n## Metadata\n- Gap ID: G021\n- Status: Missing\n- Workstream: WS1\n- Phase: 1\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G022",
+    "status": "partial",
+    "feature": "External CI integration",
+    "ws": "WS2",
+    "phase": 2,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws2",
+      "status/partial",
+      "phase/2",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G022] External CI integration",
+    "body": "<!-- roadmap-id:G022 -->\n\n## Metadata\n- Gap ID: G022\n- Status: Partial\n- Workstream: WS2\n- Phase: 2\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G023",
+    "status": "partial",
+    "feature": "Merge checks & gates",
+    "ws": "WS2",
+    "phase": 2,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws2",
+      "status/partial",
+      "phase/2",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G023] Merge checks & gates",
+    "body": "<!-- roadmap-id:G023 -->\n\n## Metadata\n- Gap ID: G023\n- Status: Partial\n- Workstream: WS2\n- Phase: 2\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G024",
+    "status": "partial",
+    "feature": "Automation rules engine",
+    "ws": "WS2",
+    "phase": 2,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws2",
+      "status/partial",
+      "phase/2",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G024] Automation rules engine",
+    "body": "<!-- roadmap-id:G024 -->\n\n## Metadata\n- Gap ID: G024\n- Status: Partial\n- Workstream: WS2\n- Phase: 2\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G025",
+    "status": "partial",
+    "feature": "Snyk",
+    "ws": "WS2",
+    "phase": 2,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws2",
+      "status/partial",
+      "phase/2",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G025] Snyk",
+    "body": "<!-- roadmap-id:G025 -->\n\n## Metadata\n- Gap ID: G025\n- Status: Partial\n- Workstream: WS2\n- Phase: 2\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G026",
+    "status": "partial",
+    "feature": "Jira",
+    "ws": "WS2",
+    "phase": 2,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws2",
+      "status/partial",
+      "phase/2",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G026] Jira",
+    "body": "<!-- roadmap-id:G026 -->\n\n## Metadata\n- Gap ID: G026\n- Status: Partial\n- Workstream: WS2\n- Phase: 2\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G027",
+    "status": "missing",
+    "feature": "Workflow templates",
+    "ws": "WS2",
+    "phase": 2,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws2",
+      "status/missing",
+      "phase/2",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G027] Workflow templates",
+    "body": "<!-- roadmap-id:G027 -->\n\n## Metadata\n- Gap ID: G027\n- Status: Missing\n- Workstream: WS2\n- Phase: 2\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G028",
+    "status": "missing",
+    "feature": "Codecov",
+    "ws": "WS2",
+    "phase": 2,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws2",
+      "status/missing",
+      "phase/2",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G028] Codecov",
+    "body": "<!-- roadmap-id:G028 -->\n\n## Metadata\n- Gap ID: G028\n- Status: Missing\n- Workstream: WS2\n- Phase: 2\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G029",
+    "status": "missing",
+    "feature": "Coveralls",
+    "ws": "WS2",
+    "phase": 2,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws2",
+      "status/missing",
+      "phase/2",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G029] Coveralls",
+    "body": "<!-- roadmap-id:G029 -->\n\n## Metadata\n- Gap ID: G029\n- Status: Missing\n- Workstream: WS2\n- Phase: 2\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G030",
+    "status": "missing",
+    "feature": "SonarQube",
+    "ws": "WS2",
+    "phase": 2,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws2",
+      "status/missing",
+      "phase/2",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G030] SonarQube",
+    "body": "<!-- roadmap-id:G030 -->\n\n## Metadata\n- Gap ID: G030\n- Status: Missing\n- Workstream: WS2\n- Phase: 2\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G031",
+    "status": "missing",
+    "feature": "GitLab CI",
+    "ws": "WS2",
+    "phase": 2,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws2",
+      "status/missing",
+      "phase/2",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G031] GitLab CI",
+    "body": "<!-- roadmap-id:G031 -->\n\n## Metadata\n- Gap ID: G031\n- Status: Missing\n- Workstream: WS2\n- Phase: 2\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G032",
+    "status": "missing",
+    "feature": "CircleCI",
+    "ws": "WS2",
+    "phase": 2,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws2",
+      "status/missing",
+      "phase/2",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G032] CircleCI",
+    "body": "<!-- roadmap-id:G032 -->\n\n## Metadata\n- Gap ID: G032\n- Status: Missing\n- Workstream: WS2\n- Phase: 2\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G033",
+    "status": "missing",
+    "feature": "Buildkite",
+    "ws": "WS2",
+    "phase": 2,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws2",
+      "status/missing",
+      "phase/2",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G033] Buildkite",
+    "body": "<!-- roadmap-id:G033 -->\n\n## Metadata\n- Gap ID: G033\n- Status: Missing\n- Workstream: WS2\n- Phase: 2\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G034",
+    "status": "missing",
+    "feature": "Jenkins",
+    "ws": "WS2",
+    "phase": 2,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws2",
+      "status/missing",
+      "phase/2",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G034] Jenkins",
+    "body": "<!-- roadmap-id:G034 -->\n\n## Metadata\n- Gap ID: G034\n- Status: Missing\n- Workstream: WS2\n- Phase: 2\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G035",
+    "status": "missing",
+    "feature": "Linear",
+    "ws": "WS2",
+    "phase": 2,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws2",
+      "status/missing",
+      "phase/2",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G035] Linear",
+    "body": "<!-- roadmap-id:G035 -->\n\n## Metadata\n- Gap ID: G035\n- Status: Missing\n- Workstream: WS2\n- Phase: 2\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G036",
+    "status": "missing",
+    "feature": "Trello",
+    "ws": "WS2",
+    "phase": 2,
+    "priority": "low",
+    "labels": [
+      "roadmap/ws2",
+      "status/missing",
+      "phase/2",
+      "priority/low",
+      "docs-required"
+    ],
+    "title": "[G036] Trello",
+    "body": "<!-- roadmap-id:G036 -->\n\n## Metadata\n- Gap ID: G036\n- Status: Missing\n- Workstream: WS2\n- Phase: 2\n- Priority: low\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G037",
+    "status": "missing",
+    "feature": "ClickUp",
+    "ws": "WS2",
+    "phase": 2,
+    "priority": "low",
+    "labels": [
+      "roadmap/ws2",
+      "status/missing",
+      "phase/2",
+      "priority/low",
+      "docs-required"
+    ],
+    "title": "[G037] ClickUp",
+    "body": "<!-- roadmap-id:G037 -->\n\n## Metadata\n- Gap ID: G037\n- Status: Missing\n- Workstream: WS2\n- Phase: 2\n- Priority: low\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G038",
+    "status": "missing",
+    "feature": "Microsoft Teams",
+    "ws": "WS2",
+    "phase": 2,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws2",
+      "status/missing",
+      "phase/2",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G038] Microsoft Teams",
+    "body": "<!-- roadmap-id:G038 -->\n\n## Metadata\n- Gap ID: G038\n- Status: Missing\n- Workstream: WS2\n- Phase: 2\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G039",
+    "status": "missing",
+    "feature": "Discord",
+    "ws": "WS2",
+    "phase": 2,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws2",
+      "status/missing",
+      "phase/2",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G039] Discord",
+    "body": "<!-- roadmap-id:G039 -->\n\n## Metadata\n- Gap ID: G039\n- Status: Missing\n- Workstream: WS2\n- Phase: 2\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G040",
+    "status": "missing",
+    "feature": "AWS",
+    "ws": "WS2",
+    "phase": 5,
+    "priority": "low",
+    "labels": [
+      "roadmap/ws2",
+      "status/missing",
+      "phase/5",
+      "priority/low",
+      "docs-required"
+    ],
+    "title": "[G040] AWS",
+    "body": "<!-- roadmap-id:G040 -->\n\n## Metadata\n- Gap ID: G040\n- Status: Missing\n- Workstream: WS2\n- Phase: 5\n- Priority: low\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G041",
+    "status": "missing",
+    "feature": "Google Cloud",
+    "ws": "WS2",
+    "phase": 5,
+    "priority": "low",
+    "labels": [
+      "roadmap/ws2",
+      "status/missing",
+      "phase/5",
+      "priority/low",
+      "docs-required"
+    ],
+    "title": "[G041] Google Cloud",
+    "body": "<!-- roadmap-id:G041 -->\n\n## Metadata\n- Gap ID: G041\n- Status: Missing\n- Workstream: WS2\n- Phase: 5\n- Priority: low\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G042",
+    "status": "missing",
+    "feature": "Microsoft Azure",
+    "ws": "WS2",
+    "phase": 5,
+    "priority": "low",
+    "labels": [
+      "roadmap/ws2",
+      "status/missing",
+      "phase/5",
+      "priority/low",
+      "docs-required"
+    ],
+    "title": "[G042] Microsoft Azure",
+    "body": "<!-- roadmap-id:G042 -->\n\n## Metadata\n- Gap ID: G042\n- Status: Missing\n- Workstream: WS2\n- Phase: 5\n- Priority: low\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G043",
+    "status": "missing",
+    "feature": "Terraform/IaC hooks",
+    "ws": "WS2",
+    "phase": 5,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws2",
+      "status/missing",
+      "phase/5",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G043] Terraform/IaC hooks",
+    "body": "<!-- roadmap-id:G043 -->\n\n## Metadata\n- Gap ID: G043\n- Status: Missing\n- Workstream: WS2\n- Phase: 5\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G044",
+    "status": "partial",
+    "feature": "API change awareness",
+    "ws": "WS3",
+    "phase": 3,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws3",
+      "status/partial",
+      "phase/3",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G044] API change awareness",
+    "body": "<!-- roadmap-id:G044 -->\n\n## Metadata\n- Gap ID: G044\n- Status: Partial\n- Workstream: WS3\n- Phase: 3\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G045",
+    "status": "partial",
+    "feature": "Role-based access control (RBAC)",
+    "ws": "WS3",
+    "phase": 3,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws3",
+      "status/partial",
+      "phase/3",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G045] Role-based access control (RBAC)",
+    "body": "<!-- roadmap-id:G045 -->\n\n## Metadata\n- Gap ID: G045\n- Status: Partial\n- Workstream: WS3\n- Phase: 3\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G046",
+    "status": "partial",
+    "feature": "Secret scanning",
+    "ws": "WS3",
+    "phase": 3,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws3",
+      "status/partial",
+      "phase/3",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G046] Secret scanning",
+    "body": "<!-- roadmap-id:G046 -->\n\n## Metadata\n- Gap ID: G046\n- Status: Partial\n- Workstream: WS3\n- Phase: 3\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G047",
+    "status": "missing",
+    "feature": "Cross-repo change sets",
+    "ws": "WS3",
+    "phase": 3,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws3",
+      "status/missing",
+      "phase/3",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G047] Cross-repo change sets",
+    "body": "<!-- roadmap-id:G047 -->\n\n## Metadata\n- Gap ID: G047\n- Status: Missing\n- Workstream: WS3\n- Phase: 3\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G048",
+    "status": "missing",
+    "feature": "Breaking-change detection",
+    "ws": "WS3",
+    "phase": 3,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws3",
+      "status/missing",
+      "phase/3",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G048] Breaking-change detection",
+    "body": "<!-- roadmap-id:G048 -->\n\n## Metadata\n- Gap ID: G048\n- Status: Missing\n- Workstream: WS3\n- Phase: 3\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G049",
+    "status": "missing",
+    "feature": "Database migration detection",
+    "ws": "WS3",
+    "phase": 3,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws3",
+      "status/missing",
+      "phase/3",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G049] Database migration detection",
+    "body": "<!-- roadmap-id:G049 -->\n\n## Metadata\n- Gap ID: G049\n- Status: Missing\n- Workstream: WS3\n- Phase: 3\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G050",
+    "status": "missing",
+    "feature": "License compliance scanning",
+    "ws": "WS3",
+    "phase": 3,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws3",
+      "status/missing",
+      "phase/3",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G050] License compliance scanning",
+    "body": "<!-- roadmap-id:G050 -->\n\n## Metadata\n- Gap ID: G050\n- Status: Missing\n- Workstream: WS3\n- Phase: 3\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G051",
+    "status": "partial",
+    "feature": "Email notifications",
+    "ws": "WS4",
+    "phase": 4,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws4",
+      "status/partial",
+      "phase/4",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G051] Email notifications",
+    "body": "<!-- roadmap-id:G051 -->\n\n## Metadata\n- Gap ID: G051\n- Status: Partial\n- Workstream: WS4\n- Phase: 4\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G052",
+    "status": "partial",
+    "feature": "Merge frequency metrics",
+    "ws": "WS4",
+    "phase": 4,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws4",
+      "status/partial",
+      "phase/4",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G052] Merge frequency metrics",
+    "body": "<!-- roadmap-id:G052 -->\n\n## Metadata\n- Gap ID: G052\n- Status: Partial\n- Workstream: WS4\n- Phase: 4\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G053",
+    "status": "partial",
+    "feature": "Developer workload insights",
+    "ws": "WS4",
+    "phase": 4,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws4",
+      "status/partial",
+      "phase/4",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G053] Developer workload insights",
+    "body": "<!-- roadmap-id:G053 -->\n\n## Metadata\n- Gap ID: G053\n- Status: Partial\n- Workstream: WS4\n- Phase: 4\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G054",
+    "status": "partial",
+    "feature": "Smart notifications",
+    "ws": "WS4",
+    "phase": 4,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws4",
+      "status/partial",
+      "phase/4",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G054] Smart notifications",
+    "body": "<!-- roadmap-id:G054 -->\n\n## Metadata\n- Gap ID: G054\n- Status: Partial\n- Workstream: WS4\n- Phase: 4\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G055",
+    "status": "partial",
+    "feature": "Blocking alerts",
+    "ws": "WS4",
+    "phase": 4,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws4",
+      "status/partial",
+      "phase/4",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G055] Blocking alerts",
+    "body": "<!-- roadmap-id:G055 -->\n\n## Metadata\n- Gap ID: G055\n- Status: Partial\n- Workstream: WS4\n- Phase: 4\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G056",
+    "status": "partial",
+    "feature": "Plugin/extension system",
+    "ws": "WS4",
+    "phase": 4,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws4",
+      "status/partial",
+      "phase/4",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G056] Plugin/extension system",
+    "body": "<!-- roadmap-id:G056 -->\n\n## Metadata\n- Gap ID: G056\n- Status: Partial\n- Workstream: WS4\n- Phase: 4\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G057",
+    "status": "partial",
+    "feature": "API documentation",
+    "ws": "WS4",
+    "phase": 4,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws4",
+      "status/partial",
+      "phase/4",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G057] API documentation",
+    "body": "<!-- roadmap-id:G057 -->\n\n## Metadata\n- Gap ID: G057\n- Status: Partial\n- Workstream: WS4\n- Phase: 4\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G058",
+    "status": "missing",
+    "feature": "Hotspot file detection",
+    "ws": "WS4",
+    "phase": 4,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws4",
+      "status/missing",
+      "phase/4",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G058] Hotspot file detection",
+    "body": "<!-- roadmap-id:G058 -->\n\n## Metadata\n- Gap ID: G058\n- Status: Missing\n- Workstream: WS4\n- Phase: 4\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G059",
+    "status": "missing",
+    "feature": "Export metrics",
+    "ws": "WS4",
+    "phase": 4,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws4",
+      "status/missing",
+      "phase/4",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G059] Export metrics",
+    "body": "<!-- roadmap-id:G059 -->\n\n## Metadata\n- Gap ID: G059\n- Status: Missing\n- Workstream: WS4\n- Phase: 4\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G060",
+    "status": "missing",
+    "feature": "Custom dashboards",
+    "ws": "WS4",
+    "phase": 4,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws4",
+      "status/missing",
+      "phase/4",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G060] Custom dashboards",
+    "body": "<!-- roadmap-id:G060 -->\n\n## Metadata\n- Gap ID: G060\n- Status: Missing\n- Workstream: WS4\n- Phase: 4\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G061",
+    "status": "missing",
+    "feature": "Daily/weekly digests",
+    "ws": "WS4",
+    "phase": 4,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws4",
+      "status/missing",
+      "phase/4",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G061] Daily/weekly digests",
+    "body": "<!-- roadmap-id:G061 -->\n\n## Metadata\n- Gap ID: G061\n- Status: Missing\n- Workstream: WS4\n- Phase: 4\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G062",
+    "status": "partial",
+    "feature": "Repository mirroring",
+    "ws": "WS5",
+    "phase": 5,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws5",
+      "status/partial",
+      "phase/5",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G062] Repository mirroring",
+    "body": "<!-- roadmap-id:G062 -->\n\n## Metadata\n- Gap ID: G062\n- Status: Partial\n- Workstream: WS5\n- Phase: 5\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G063",
+    "status": "partial",
+    "feature": "Kubernetes deployment",
+    "ws": "WS5",
+    "phase": 5,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws5",
+      "status/partial",
+      "phase/5",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G063] Kubernetes deployment",
+    "body": "<!-- roadmap-id:G063 -->\n\n## Metadata\n- Gap ID: G063\n- Status: Partial\n- Workstream: WS5\n- Phase: 5\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G064",
+    "status": "partial",
+    "feature": "Horizontal scaling",
+    "ws": "WS5",
+    "phase": 5,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws5",
+      "status/partial",
+      "phase/5",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G064] Horizontal scaling",
+    "body": "<!-- roadmap-id:G064 -->\n\n## Metadata\n- Gap ID: G064\n- Status: Partial\n- Workstream: WS5\n- Phase: 5\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G065",
+    "status": "missing",
+    "feature": "Kubernetes-native",
+    "ws": "WS5",
+    "phase": 5,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws5",
+      "status/missing",
+      "phase/5",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G065] Kubernetes-native",
+    "body": "<!-- roadmap-id:G065 -->\n\n## Metadata\n- Gap ID: G065\n- Status: Missing\n- Workstream: WS5\n- Phase: 5\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G066",
+    "status": "missing",
+    "feature": "Backup & restore tools",
+    "ws": "WS5",
+    "phase": 5,
+    "priority": "high",
+    "labels": [
+      "roadmap/ws5",
+      "status/missing",
+      "phase/5",
+      "priority/high",
+      "docs-required"
+    ],
+    "title": "[G066] Backup & restore tools",
+    "body": "<!-- roadmap-id:G066 -->\n\n## Metadata\n- Gap ID: G066\n- Status: Missing\n- Workstream: WS5\n- Phase: 5\n- Priority: high\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  },
+  {
+    "id": "G067",
+    "status": "missing",
+    "feature": "Offline/air-gapped mode",
+    "ws": "WS5",
+    "phase": 5,
+    "priority": "medium",
+    "labels": [
+      "roadmap/ws5",
+      "status/missing",
+      "phase/5",
+      "priority/medium",
+      "docs-required"
+    ],
+    "title": "[G067] Offline/air-gapped mode",
+    "body": "<!-- roadmap-id:G067 -->\n\n## Metadata\n- Gap ID: G067\n- Status: Missing\n- Workstream: WS5\n- Phase: 5\n- Priority: medium\n\n## Problem\nCurrent state and gap from feature audit.\n\n## Scope\n- Backend/API changes\n- UI/UX changes\n- Data model/migrations\n- Docs updates (`docs/` + `docs-site/src/content/docs/`)\n\n## Acceptance Criteria\n- [ ] Feature behavior complete\n- [ ] Authorization/security checks in place\n- [ ] Unit/integration/e2e tests added\n- [ ] `lint` + `typecheck` + tests pass\n- [ ] Docs updated in both doc trees\n\n## Technical Notes\nRelevant files/modules, rollout/rollback plan, migration details.\n\n## Source\n- Checklist: `github-issues-checklist.md`\n- Roadmap: `notimplemented.md`"
+  }
+]

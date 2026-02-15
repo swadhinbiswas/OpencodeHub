@@ -4,6 +4,7 @@ import IssueDetail from "@/components/issues/IssueDetail";
 import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { renderMarkdown } from "@/lib/markdown";
+import { canWriteRepo } from "@/lib/permissions";
 import { and, eq } from "drizzle-orm";
 
 const { owner: ownerName, repo: repoName, number } = Astro.params;
@@ -36,10 +37,16 @@ const issue = await db.query.issues.findFirst({
   ),
   with: {
     author: true,
+    parent: true,
+    children: true,
+    status: true,
   },
 });
 
 if (!issue) return Astro.redirect("/404");
+
+const currentUser = Astro.locals.user;
+const canLink = await canWriteRepo(currentUser?.id, repoData);
 
 const bodyHtml = await renderMarkdown(issue.body || "");
 
@@ -56,13 +63,34 @@ const formattedIssue = {
   title: issue.title,
   body: issue.body || "",
   state: issue.state as "open" | "closed",
-  createdAt: issue.createdAt,
+  status: issue.status
+    ? {
+        id: issue.status.id,
+        name: issue.status.name,
+        color: issue.status.color,
+        type: issue.status.type,
+      }
+    : undefined,
+  type: issue.type,
+  createdAt: issue.createdAt.toISOString(),
   author: {
     username: issue.author.username,
     avatarUrl: issue.author.avatarUrl || undefined,
   },
   assignees: [], // TODO: Add assignees when schema supports it
   labels: [], // TODO: Add labels when schema relation is fixed
+  parent: issue.parent
+    ? {
+        number: issue.parent.number,
+        title: issue.parent.title,
+        state: issue.parent.state as "open" | "closed",
+      }
+    : undefined,
+  children: issue.children.map((child) => ({
+    number: child.number,
+    title: child.title,
+    state: child.state as "open" | "closed",
+  })),
 };
 ---
 
@@ -78,6 +106,7 @@ const formattedIssue = {
       bodyHtml={bodyHtml}
       repoOwner={ownerName!}
       repoName={repoName!}
+      canLink={canLink}
     />
   </div>
 </BaseLayout>

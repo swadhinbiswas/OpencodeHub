@@ -1,0 +1,191 @@
+---
+import RepoLayout from "@/layouts/RepoLayout.astro";
+import { getRepoAndUser } from "@/lib/auth";
+import { getDatabase } from "@/db";
+import { projects } from "@/db/schema/projects";
+import { eq, desc } from "drizzle-orm";
+import { Plus } from "lucide-react";
+
+const { owner, repo } = Astro.params;
+const repoInfo = await getRepoAndUser(Astro.request, owner!, repo!);
+
+if (!repoInfo) {
+    return Astro.redirect("/404");
+}
+
+const { repository, permission, user } = repoInfo;
+const db = getDatabase();
+
+const projectList = await db
+    .select()
+    .from(projects)
+    .where(eq(projects.repositoryId, repository.id))
+    .orderBy(desc(projects.updatedAt));
+---
+
+<RepoLayout title={`${repository.name} - Projects`} activeTab="projects">
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold text-white">Projects</h1>
+        {
+            permission !== "read" && (
+                <button
+                    id="new-project-btn"
+                    class="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                    <Plus className="h-4 w-4" />
+                    New Project
+                </button>
+            )
+        }
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {
+            projectList.map((project) => (
+                <a
+                    href={`/${owner}/${repo}/projects/${project.id}`}
+                    class="block p-6 bg-[#161b22] border border-gray-800 rounded-xl hover:border-gray-600 transition-colors group"
+                >
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-gray-500 font-mono text-sm">
+                            #{project.number}
+                        </span>
+                        <span class="text-gray-500 text-xs">
+                            {project.updatedAt.toLocaleDateString()}
+                        </span>
+                    </div>
+                    <h3 class="text-xl font-semibold text-white group-hover:text-blue-400 mb-2">
+                        {project.name}
+                    </h3>
+                    <p class="text-gray-400 text-sm line-clamp-3">
+                        {project.description || "No description provided."}
+                    </p>
+                </a>
+            ))
+        }
+
+        {
+            projectList.length === 0 && (
+                <div class="col-span-full text-center py-12 border border-dashed border-gray-800 rounded-xl">
+                    <p class="text-gray-500 text-lg">No projects found</p>
+                    <p class="text-gray-600 text-sm mt-2">
+                        Create a project to start tracking tasks
+                    </p>
+                </div>
+            )
+        }
+    </div>
+
+    <!-- New Project Modal -->
+    <dialog
+        id="new-project-modal"
+        class="bg-[#161b22] text-white p-6 rounded-xl border border-gray-700 backdrop:bg-black/50 w-full max-w-md"
+    >
+        <form method="dialog" class="space-y-4">
+            <h3 class="text-xl font-bold">Create New Project</h3>
+
+            <div>
+                <label class="block text-sm font-medium mb-1 text-gray-300"
+                    >Project Name</label
+                >
+                <input
+                    type="text"
+                    name="name"
+                    required
+                    class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                />
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1 text-gray-300"
+                    >Description</label
+                >
+                <textarea
+                    name="description"
+                    rows="3"
+                    class="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                ></textarea>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-6">
+                <button
+                    type="button"
+                    id="cancel-modal"
+                    class="px-4 py-2 text-gray-400 hover:text-white"
+                    >Cancel</button
+                >
+                <button
+                    type="submit"
+                    id="create-btn"
+                    class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg"
+                    >Create Project</button
+                >
+            </div>
+        </form>
+    </dialog>
+</RepoLayout>
+
+<script>
+    const modal = document.getElementById(
+        "new-project-modal",
+    ) as HTMLDialogElement;
+    const btn = document.getElementById("new-project-btn");
+    const cancel = document.getElementById("cancel-modal");
+    const form = modal?.querySelector("form");
+    const createBtn = document.getElementById("create-btn");
+
+    btn?.addEventListener("click", () => modal?.showModal());
+    cancel?.addEventListener("click", () => modal?.close());
+
+    // Handle click outside to close
+    modal?.addEventListener("click", (e) => {
+        if (e.target === modal) modal.close();
+    });
+
+    form?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData(form));
+
+        if (!data.name) return;
+
+        createBtn!.textContent = "Creating...";
+        createBtn!.setAttribute("disabled", "true");
+
+        try {
+            const res = await fetch(
+                window.location.pathname.replace(
+                    /\/projects\/?$/,
+                    "/api/projects",
+                ),
+                {
+                    // That path replacement is tricky because API path is different structure
+                    // It is /api/repos/[owner]/[repo]/projects
+                    // Current URL: /[owner]/[repo]/projects
+                    // So we can construct: /api/repos + current path
+                },
+            );
+            // Better:
+            const path = window.location.pathname; // /owner/repo/projects
+            const apiPath = `/api/repos${path.replace(/\/projects\/?$/, "")}/projects`; // /api/repos/owner/repo/projects
+
+            const response = await fetch(apiPath, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert("Failed to create project");
+                createBtn!.textContent = "Create Project";
+                createBtn!.removeAttribute("disabled");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("An error occurred");
+            createBtn!.textContent = "Create Project";
+            createBtn!.removeAttribute("disabled");
+        }
+    });
+</script>

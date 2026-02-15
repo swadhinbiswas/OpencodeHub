@@ -78,10 +78,34 @@ export async function triggerRepoWorkflows(repoId: string, commitSha: string, re
                 const config = await runner.parseWorkflow(tempWorkflowPath);
                 await fs.unlink(tempWorkflowPath); // Clean up
 
-                // Check Trigger
+                // Get changed files by diffing with parent commit
+                let changedPaths: string[] = [];
+                try {
+                    // Get parent commit(s)
+                    const parentOutput = await git.raw(["rev-parse", `${commitSha}^`]).catch(() => "");
+                    const parentSha = parentOutput.trim();
+
+                    if (parentSha) {
+                        // Get diff between parent and current commit
+                        const diffOutput = await git.raw([
+                            "diff", "--name-only", parentSha, commitSha
+                        ]);
+                        changedPaths = diffOutput.split("\n").filter(Boolean);
+                        logger.debug({ changedPaths, count: changedPaths.length }, "Changed files in push");
+                    } else {
+                        // Initial commit - all files are new
+                        const treeOutput = await git.raw(["ls-tree", "-r", "--name-only", commitSha]);
+                        changedPaths = treeOutput.split("\n").filter(Boolean);
+                        logger.debug({ changedPaths, count: changedPaths.length }, "Initial commit files");
+                    }
+                } catch (diffErr) {
+                    logger.warn({ err: diffErr }, "Could not get changed paths, skipping path filter");
+                }
+
+                // Check Trigger with path filtering
                 const shouldRun = runner.shouldTrigger(config, "push", {
                     ref: ref,
-                    // TODO: Implement path filtering by diffing with parent
+                    paths: changedPaths.length > 0 ? changedPaths : undefined,
                 });
 
                 if (shouldRun) {

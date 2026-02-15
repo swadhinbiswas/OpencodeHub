@@ -1,0 +1,73 @@
+---
+import RepoLayout from "@/layouts/RepoLayout.astro";
+import { getRepoAndUser } from "@/lib/auth";
+import { getDatabase } from "@/db";
+import { projects, projectColumns, projectCards } from "@/db/schema/projects";
+import { eq, asc } from "drizzle-orm";
+import { KanbanBoard } from "@/components/kanban/KanbanBoard";
+
+const { owner, repo, id } = Astro.params;
+const repoInfo = await getRepoAndUser(Astro.request, owner!, repo!);
+
+if (!repoInfo) {
+    return Astro.redirect("/404");
+}
+
+const { repository } = repoInfo;
+const db = getDatabase();
+
+const project = await db.query.projects.findFirst({
+    where: eq(projects.id, id!),
+});
+
+if (!project) return Astro.redirect("/404");
+
+const columns = await db.query.projectColumns.findMany({
+    where: eq(projectColumns.projectId, id!),
+    orderBy: asc(projectColumns.order),
+    with: {
+        cards: {
+            orderBy: asc(projectCards.order),
+        },
+    },
+});
+---
+
+<RepoLayout title={`${project.name} - Projects`} activeTab="projects">
+    <div
+        class="h-[calc(100vh-14rem)] bg-mainBackgroundColor overflow-hidden rounded-xl border border-gray-800"
+    >
+        <div
+            class="p-4 border-b border-gray-800 flex justify-between items-center bg-[#161b22]"
+        >
+            <div>
+                <h2
+                    class="text-xl font-bold text-white flex items-center gap-2"
+                >
+                    {project.name}
+                    <span
+                        class="text-xs text-gray-500 font-normal px-2 py-0.5 border border-gray-700 rounded-full"
+                    >
+                        #{project.number}
+                    </span>
+                </h2>
+                <p class="text-xs text-gray-400 mt-1">{project.description}</p>
+            </div>
+
+            <a
+                href={`/${owner}/${repo}/projects`}
+                class="text-sm text-blue-400 hover:underline"
+            >
+                Back to projects
+            </a>
+        </div>
+
+        <div class="h-full overflow-hidden p-0">
+            <KanbanBoard
+                client:only="react"
+                project={project}
+                initialColumns={columns}
+            />
+        </div>
+    </div>
+</RepoLayout>

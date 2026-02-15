@@ -29,7 +29,7 @@ if (!user) return Astro.redirect("/404");
 const repoData = await db.query.repositories.findFirst({
   where: and(
     eq(schema.repositories.ownerId, user.id),
-    eq(schema.repositories.name, repoName!)
+    eq(schema.repositories.name, repoName!),
   ),
   with: {
     owner: true,
@@ -73,19 +73,27 @@ const repo = {
 
 function getRoleIcon(role: string) {
   switch (role) {
-    case "maintainer": return Shield;
-    case "developer": return Code;
-    case "guest": return Eye;
-    default: return Users;
+    case "maintainer":
+      return Shield;
+    case "developer":
+      return Code;
+    case "guest":
+      return Eye;
+    default:
+      return Users;
   }
 }
 
 function getRoleDescription(role: string) {
   switch (role) {
-    case "maintainer": return "Can push, merge PRs, and manage settings";
-    case "developer": return "Can push to branches and create PRs";
-    case "guest": return "Read-only access";
-    default: return "Unknown role";
+    case "maintainer":
+      return "Can push, merge PRs, and manage settings";
+    case "developer":
+      return "Can push to branches and create PRs";
+    case "guest":
+      return "Read-only access";
+    default:
+      return "Unknown role";
   }
 }
 ---
@@ -121,6 +129,12 @@ function getRoleDescription(role: string) {
           class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           Actions
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/workflow`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Workflow
         </a>
       </nav>
 
@@ -182,64 +196,90 @@ function getRoleDescription(role: string) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {collaborators.length === 0 ? (
-              <div class="text-center py-8 text-muted-foreground">
-                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No collaborators yet</p>
-                <p class="text-sm">Invite someone to start collaborating!</p>
-              </div>
-            ) : (
-              <div class="space-y-4">
-                {collaborators.map((collab) => {
-                  const RoleIcon = getRoleIcon(collab.role);
-                  return (
-                    <div class="flex items-center justify-between p-4 rounded-lg border" data-user-id={collab.userId}>
-                      <div class="flex items-center gap-4">
-                        {collab.user?.avatarUrl ? (
-                          <img 
-                            src={collab.user.avatarUrl} 
-                            alt={collab.user.username}
-                            class="h-10 w-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div class="h-10 w-10 rounded-full bg-muted flex items-center justify-center font-medium">
-                            {collab.user?.username?.charAt(0).toUpperCase()}
+            {
+              collaborators.length === 0 ? (
+                <div class="text-center py-8 text-muted-foreground">
+                  <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No collaborators yet</p>
+                  <p class="text-sm">Invite someone to start collaborating!</p>
+                </div>
+              ) : (
+                <div class="space-y-4">
+                  {collaborators.map((collab) => {
+                    const RoleIcon = getRoleIcon(collab.role);
+                    return (
+                      <div
+                        class="flex items-center justify-between p-4 rounded-lg border"
+                        data-user-id={collab.userId}
+                      >
+                        <div class="flex items-center gap-4">
+                          {collab.user?.avatarUrl ? (
+                            <img
+                              src={collab.user.avatarUrl}
+                              alt={collab.user.username}
+                              class="h-10 w-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div class="h-10 w-10 rounded-full bg-muted flex items-center justify-center font-medium">
+                              {collab.user?.username?.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <a
+                              href={`/${collab.user?.username}`}
+                              class="font-medium hover:text-primary"
+                            >
+                              {collab.user?.displayName ||
+                                collab.user?.username}
+                            </a>
+                            <p class="text-sm text-muted-foreground">
+                              @{collab.user?.username}
+                            </p>
                           </div>
-                        )}
-                        <div>
-                          <a href={`/${collab.user?.username}`} class="font-medium hover:text-primary">
-                            {collab.user?.displayName || collab.user?.username}
-                          </a>
-                          <p class="text-sm text-muted-foreground">@{collab.user?.username}</p>
                         </div>
-                      </div>
-                      <div class="flex items-center gap-4">
-                        <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                          <RoleIcon className="h-4 w-4" />
-                          <select
-                            class="role-select bg-transparent border rounded px-2 py-1 text-sm"
+                        <div class="flex items-center gap-4">
+                          <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                            <RoleIcon className="h-4 w-4" />
+                            <select
+                              class="role-select bg-transparent border rounded px-2 py-1 text-sm"
+                              data-user-id={collab.userId}
+                              data-current-role={collab.role}
+                            >
+                              <option
+                                value="maintainer"
+                                selected={collab.role === "maintainer"}
+                              >
+                                Maintainer
+                              </option>
+                              <option
+                                value="developer"
+                                selected={collab.role === "developer"}
+                              >
+                                Developer
+                              </option>
+                              <option
+                                value="guest"
+                                selected={collab.role === "guest"}
+                              >
+                                Guest
+                              </option>
+                            </select>
+                          </div>
+                          <button
+                            class="remove-collab-btn text-destructive hover:bg-destructive/10 rounded p-2 transition-colors"
                             data-user-id={collab.userId}
-                            data-current-role={collab.role}
+                            data-username={collab.user?.username}
+                            title="Remove collaborator"
                           >
-                            <option value="maintainer" selected={collab.role === "maintainer"}>Maintainer</option>
-                            <option value="developer" selected={collab.role === "developer"}>Developer</option>
-                            <option value="guest" selected={collab.role === "guest"}>Guest</option>
-                          </select>
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
-                        <button
-                          class="remove-collab-btn text-destructive hover:bg-destructive/10 rounded p-2 transition-colors"
-                          data-user-id={collab.userId}
-                          data-username={collab.user?.username}
-                          title="Remove collaborator"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              )
+            }
           </CardContent>
         </Card>
 
@@ -310,22 +350,27 @@ function getRoleDescription(role: string) {
     const role = formData.get("role");
 
     try {
-      const response = await fetch(`/api/repos/${owner}/${repo}/collaborators`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, role }),
-      });
+      const response = await fetch(
+        `/api/repos/${owner}/${repo}/collaborators`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, role }),
+        },
+      );
 
       const data = await response.json();
-      
+
       if (!response.ok) {
-        throw new Error(data.message || data.error || "Failed to add collaborator");
+        throw new Error(
+          data.message || data.error || "Failed to add collaborator",
+        );
       }
 
       successEl.textContent = `Added ${username} as ${role}`;
       successEl.classList.remove("hidden");
       form.reset();
-      
+
       // Reload to show new collaborator
       setTimeout(() => window.location.reload(), 1000);
     } catch (error) {
@@ -341,11 +386,14 @@ function getRoleDescription(role: string) {
       const newRole = e.target.value;
 
       try {
-        const response = await fetch(`/api/repos/${owner}/${repo}/collaborators/${userId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ role: newRole }),
-        });
+        const response = await fetch(
+          `/api/repos/${owner}/${repo}/collaborators/${userId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ role: newRole }),
+          },
+        );
 
         if (!response.ok) {
           throw new Error("Failed to update role");
@@ -366,9 +414,12 @@ function getRoleDescription(role: string) {
       if (!confirm(`Remove ${username} from collaborators?`)) return;
 
       try {
-        const response = await fetch(`/api/repos/${owner}/${repo}/collaborators/${userId}`, {
-          method: "DELETE",
-        });
+        const response = await fetch(
+          `/api/repos/${owner}/${repo}/collaborators/${userId}`,
+          {
+            method: "DELETE",
+          },
+        );
 
         if (!response.ok) {
           throw new Error("Failed to remove collaborator");

@@ -35,6 +35,7 @@ interface RepoSettingsProps {
         hasWiki: boolean;
         hasActions: boolean;
         isArchived: boolean;
+        isTemplate: boolean;
     };
 }
 
@@ -52,6 +53,7 @@ export default function RepoSettings({ repo }: RepoSettingsProps) {
             hasIssues: formData.get("hasIssues") === "on",
             hasWiki: formData.get("hasWiki") === "on",
             hasActions: formData.get("hasActions") === "on",
+            isTemplate: formData.get("isTemplate") === "on",
         };
 
         try {
@@ -196,6 +198,16 @@ export default function RepoSettings({ repo }: RepoSettingsProps) {
                                     className="accent-primary h-4 w-4"
                                 />
                                 <Label htmlFor="hasActions">Actions / Pipelines</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    id="isTemplate"
+                                    name="isTemplate"
+                                    defaultChecked={repo.isTemplate}
+                                    className="accent-primary h-4 w-4"
+                                />
+                                <Label htmlFor="isTemplate">Template repository</Label>
                             </div>
                         </CardContent>
                         <CardFooter className="border-t px-6 py-4">

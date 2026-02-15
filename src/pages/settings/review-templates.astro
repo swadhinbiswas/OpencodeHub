@@ -1,0 +1,367 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDatabase, schema } from "@/db";
+import { desc, eq } from "drizzle-orm";
+import { FileText, Plus, Trash2, Edit2, Star } from "lucide-react";
+
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+const db = getDatabase();
+const repoId = Astro.url.searchParams.get("repo") || "";
+
+let repositories: { id: string; name: string; fullName?: string; owner: string }[] = [];
+try {
+  const repos = await db.query.repositories.findMany({
+    where: eq(schema.repositories.ownerId, user.id),
+    columns: { id: true, name: true },
+    with: { owner: { columns: { username: true } } },
+  });
+  repositories = repos.map((r) => ({
+    id: r.id,
+    name: r.name,
+    owner: r.owner.username,
+    fullName: `${r.owner.username}/${r.name}`,
+  }));
+} catch (e) {}
+
+const selectedRepo = repositories.find((repo) => repo.id === repoId) || null;
+
+interface ReviewTemplate {
+  id: string;
+  name: string;
+  description?: string | null;
+  category?: string | null;
+  content: string;
+  isDefault: boolean;
+  createdAt: string | Date;
+}
+
+let templates: ReviewTemplate[] = [];
+try {
+  if (repoId) {
+    const dbTemplates = await db.query.reviewTemplates.findMany({
+      where: eq(schema.reviewTemplates.repositoryId, repoId),
+      orderBy: [desc(schema.reviewTemplates.createdAt)],
+    });
+    templates = dbTemplates as ReviewTemplate[];
+  }
+} catch (e) {}
+---
+
+<BaseLayout title="Review Templates">
+  <div class="container py-8 max-w-5xl">
+    <div class="flex flex-col gap-6">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="p-2 rounded-lg bg-gradient-to-br from-amber-500/20 to-yellow-500/20 border border-amber-500/30">
+            <FileText className="h-6 w-6 text-amber-400" />
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold text-white">Review Templates</h1>
+            <p class="text-sm text-gray-400">Create reusable checklists for code reviews</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <select
+            id="repo-select"
+            class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300"
+          >
+            <option value="">Select Repository</option>
+            {repositories.map((repo) => (
+              <option value={repo.id} selected={repoId === repo.id}>
+                {repo.fullName || repo.name}
+              </option>
+            ))}
+          </select>
+
+          {repoId && (
+            <button
+              id="add-template-btn"
+              class="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-300 rounded-lg text-sm hover:bg-amber-500/20 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              Add Template
+            </button>
+          )}
+        </div>
+      </div>
+
+      {!repoId ? (
+        <div class="text-center py-16 bg-white/5 rounded-xl border border-white/10">
+          <FileText className="h-16 w-16 text-amber-400 mx-auto mb-4" />
+          <h3 class="text-lg font-semibold text-white mb-2">Select a Repository</h3>
+          <p class="text-gray-500">Choose a repository to manage review templates</p>
+        </div>
+      ) : (
+        <div class="relative">
+          <div class="absolute -inset-[1px] bg-gradient-to-r from-amber-500/20 via-transparent to-yellow-500/20 rounded-xl opacity-50"></div>
+          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm overflow-hidden">
+            {templates.length === 0 ? (
+              <div class="text-center py-16">
+                <FileText className="h-12 w-12 text-amber-400 mx-auto mb-4" />
+                <h3 class="text-lg font-semibold text-white mb-2">No Templates Yet</h3>
+                <p class="text-gray-500 mb-4">Create your first reusable review checklist</p>
+                <button
+                  id="add-first-template-btn"
+                  class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-300 rounded-lg text-sm hover:bg-amber-500/20 transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create First Template
+                </button>
+              </div>
+            ) : (
+              <div class="divide-y divide-white/5">
+                {templates.map((template) => (
+                  <div
+                    class="group flex items-start gap-4 p-4 transition-all hover:bg-white/[0.02]"
+                    data-template-id={template.id}
+                    data-template-name={template.name}
+                    data-template-description={template.description || ""}
+                    data-template-category={template.category || ""}
+                    data-template-content={encodeURIComponent(template.content)}
+                    data-template-default={template.isDefault ? "true" : "false"}
+                  >
+                    <div class="flex-shrink-0 p-2 rounded-lg bg-amber-500/10">
+                      <FileText className="h-5 w-5 text-amber-400" />
+                    </div>
+
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2">
+                        <span class="font-medium text-white">{template.name}</span>
+                        {template.isDefault && (
+                          <span class="px-2 py-0.5 text-xs bg-amber-500/10 text-amber-300 rounded border border-amber-500/30 flex items-center gap-1">
+                            <Star className="h-3 w-3" />
+                            Default
+                          </span>
+                        )}
+                        {template.category && (
+                          <span class="px-2 py-0.5 text-xs bg-white/5 text-gray-400 rounded">
+                            {template.category}
+                          </span>
+                        )}
+                      </div>
+                      {template.description && (
+                        <p class="text-sm text-gray-500 mt-1">{template.description}</p>
+                      )}
+                      <p class="text-xs text-gray-600 mt-2 line-clamp-2">
+                        {template.content.slice(0, 200)}{template.content.length > 200 ? "..." : ""}
+                      </p>
+                    </div>
+
+                    <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        class="edit-template-btn px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-xs text-gray-300 hover:bg-white/10"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        class="delete-template-btn px-2 py-1 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-300 hover:bg-red-500/20"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+</BaseLayout>
+
+<div id="template-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60">
+  <div class="w-full max-w-2xl rounded-xl border border-white/10 bg-[#0d1117] p-6">
+    <div class="flex items-start justify-between mb-4">
+      <div>
+        <h3 id="template-modal-title" class="text-lg font-semibold text-white">New Template</h3>
+        <p class="text-sm text-gray-500">Define a reusable review checklist</p>
+      </div>
+      <button id="template-modal-close" class="text-gray-400 hover:text-white">×</button>
+    </div>
+
+    <form id="template-form" class="space-y-4">
+      <input type="hidden" id="template-id" />
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label class="text-xs text-gray-400">Name</label>
+          <input
+            id="template-name"
+            class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            placeholder="Security checklist"
+          />
+        </div>
+        <div>
+          <label class="text-xs text-gray-400">Category</label>
+          <input
+            id="template-category"
+            class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            placeholder="security"
+          />
+        </div>
+      </div>
+      <div>
+        <label class="text-xs text-gray-400">Description</label>
+        <input
+          id="template-description"
+          class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+          placeholder="Checklist for sensitive changes"
+        />
+      </div>
+      <div>
+        <label class="text-xs text-gray-400">Template Content</label>
+        <textarea
+          id="template-content"
+          class="mt-1 w-full min-h-[200px] rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+          placeholder="## Review Checklist\n- [ ] ..."
+        ></textarea>
+      </div>
+      <label class="inline-flex items-center gap-2 text-sm text-gray-300">
+        <input id="template-default" type="checkbox" class="rounded border-white/20" />
+        Make this the default template
+      </label>
+      <div class="flex items-center justify-end gap-2">
+        <button type="button" id="template-cancel" class="px-3 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
+        <button type="submit" class="px-4 py-2 text-sm rounded-lg bg-amber-500/20 text-amber-200 border border-amber-500/40">
+          Save Template
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script
+  define:vars={{
+    selectedRepo,
+  }}
+>
+  const repoSelect = document.getElementById("repo-select");
+  const modal = document.getElementById("template-modal");
+  const modalClose = document.getElementById("template-modal-close");
+  const cancelBtn = document.getElementById("template-cancel");
+  const addBtn = document.getElementById("add-template-btn");
+  const addFirstBtn = document.getElementById("add-first-template-btn");
+  const form = document.getElementById("template-form");
+
+  const idField = document.getElementById("template-id");
+  const nameField = document.getElementById("template-name");
+  const categoryField = document.getElementById("template-category");
+  const descriptionField = document.getElementById("template-description");
+  const contentField = document.getElementById("template-content");
+  const defaultField = document.getElementById("template-default");
+  const title = document.getElementById("template-modal-title");
+
+  const openModal = () => {
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+  };
+
+  const closeModal = () => {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  };
+
+  const resetForm = () => {
+    idField.value = "";
+    nameField.value = "";
+    categoryField.value = "";
+    descriptionField.value = "";
+    contentField.value = "";
+    defaultField.checked = false;
+    title.textContent = "New Template";
+  };
+
+  repoSelect?.addEventListener("change", () => {
+    const value = repoSelect.value;
+    window.location.search = value ? `?repo=${value}` : "";
+  });
+
+  const openCreate = () => {
+    resetForm();
+    openModal();
+  };
+
+  addBtn?.addEventListener("click", openCreate);
+  addFirstBtn?.addEventListener("click", openCreate);
+  modalClose?.addEventListener("click", closeModal);
+  cancelBtn?.addEventListener("click", closeModal);
+
+  document.querySelectorAll(".edit-template-btn").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      const row = event.currentTarget.closest("[data-template-id]");
+      if (!row) return;
+
+      idField.value = row.dataset.templateId;
+      nameField.value = row.dataset.templateName || "";
+      categoryField.value = row.dataset.templateCategory || "";
+      descriptionField.value = row.dataset.templateDescription || "";
+      contentField.value = decodeURIComponent(row.dataset.templateContent || "");
+      defaultField.checked = row.dataset.templateDefault === "true";
+      title.textContent = "Edit Template";
+      openModal();
+    });
+  });
+
+  document.querySelectorAll(".delete-template-btn").forEach((btn) => {
+    btn.addEventListener("click", async (event) => {
+      if (!confirm("Delete this template?")) return;
+      const row = event.currentTarget.closest("[data-template-id]");
+      if (!row || !selectedRepo) return;
+
+      const res = await fetch(
+        `/api/repos/${selectedRepo.owner}/${selectedRepo.name}/review-templates/${row.dataset.templateId}`,
+        { method: "DELETE" }
+      );
+
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        alert("Failed to delete template");
+      }
+    });
+  });
+
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!selectedRepo) return;
+
+    const payload = {
+      name: nameField.value.trim(),
+      category: categoryField.value.trim() || null,
+      description: descriptionField.value.trim() || null,
+      content: contentField.value.trim(),
+      isDefault: defaultField.checked,
+    };
+
+    if (!payload.name || !payload.content) {
+      alert("Name and content are required");
+      return;
+    }
+
+    const templateId = idField.value;
+    const url = templateId
+      ? `/api/repos/${selectedRepo.owner}/${selectedRepo.name}/review-templates/${templateId}`
+      : `/api/repos/${selectedRepo.owner}/${selectedRepo.name}/review-templates`;
+
+    const method = templateId ? "PUT" : "POST";
+
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      window.location.reload();
+    } else {
+      alert("Failed to save template");
+    }
+  });
+</script>

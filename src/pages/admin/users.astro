@@ -1,7 +1,7 @@
 ---
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { getDatabase, schema } from "@/db";
-import { desc, eq, sql, like, or } from "drizzle-orm";
+import { desc, eq, like, or, count } from "drizzle-orm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,36 +47,36 @@ const [users, totalResult] = await Promise.all([
     offset,
   }),
   db
-    // @ts-expect-error: count argument mismatch
-    .select({ count: sql<number>`count(*)` })
+    .select({ count: count() })
     .from(schema.users)
     .where(whereCondition)
-    .get(),
+    .limit(1),
 ]);
 
-const total = (totalResult as { count: number } | undefined)?.count || 0;
+const total = Number(totalResult[0]?.count) || 0;
 const totalPages = Math.ceil(total / limit);
 
 // Stats
-const [totalUsers, activeUsers, adminUsers] = await Promise.all([
+const [totalUsersResult, activeUsersResult, adminUsersResult] = await Promise.all([
   db
-    // @ts-expect-error: count argument mismatch
-    .select({ count: sql<number>`count(*)` })
+    .select({ count: count() })
     .from(schema.users)
-    ,
+    .limit(1),
   db
-    // @ts-expect-error: count argument mismatch
-    .select({ count: sql<number>`count(*)` })
+    .select({ count: count() })
     .from(schema.users)
     .where(eq(schema.users.isActive, true))
-    ,
+    .limit(1),
   db
-    // @ts-expect-error: count argument mismatch
-    .select({ count: sql<number>`count(*)` })
+    .select({ count: count() })
     .from(schema.users)
     .where(eq(schema.users.isAdmin, true))
-    ,
+    .limit(1),
 ]);
+
+const totalUsers = Number(totalUsersResult[0]?.count) || 0;
+const activeUsers = Number(activeUsersResult[0]?.count) || 0;
+const adminUsers = Number(adminUsersResult[0]?.count) || 0;
 ---
 
 <AdminLayout title="User Management">
@@ -105,7 +105,7 @@ const [totalUsers, activeUsers, adminUsers] = await Promise.all([
             </div>
             <div>
               <p class="text-sm text-muted-foreground">Total Users</p>
-              <p class="text-2xl font-bold">{totalUsers?.count || 0}</p>
+              <p class="text-2xl font-bold">{totalUsers}</p>
             </div>
           </CardContent>
         </Card>
@@ -116,7 +116,7 @@ const [totalUsers, activeUsers, adminUsers] = await Promise.all([
             </div>
             <div>
               <p class="text-sm text-muted-foreground">Active</p>
-              <p class="text-2xl font-bold">{activeUsers?.count || 0}</p>
+              <p class="text-2xl font-bold">{activeUsers}</p>
             </div>
           </CardContent>
         </Card>
@@ -127,7 +127,7 @@ const [totalUsers, activeUsers, adminUsers] = await Promise.all([
             </div>
             <div>
               <p class="text-sm text-muted-foreground">Admins</p>
-              <p class="text-2xl font-bold">{adminUsers?.count || 0}</p>
+              <p class="text-2xl font-bold">{adminUsers}</p>
             </div>
           </CardContent>
         </Card>

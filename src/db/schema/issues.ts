@@ -7,6 +7,8 @@ import { relations } from "drizzle-orm";
 import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { repositories } from "./repositories";
 import { users } from "./users";
+import { issueStatuses } from "./issue-statuses";
+import { issueCustomFieldValues } from "./custom-fields";
 
 export const issues = pgTable("issues", {
   id: text("id").primaryKey(),
@@ -17,6 +19,9 @@ export const issues = pgTable("issues", {
   title: text("title").notNull(),
   body: text("body"),
   state: text("state").notNull().default("open"), // open, closed
+  statusId: text("status_id").references(() => issueStatuses.id), // Custom status
+  type: text("type").notNull().default("issue"), // issue, epic, task
+  parentId: text("parent_id"), // For sub-tasks or issues belonging to an epic
   authorId: text("author_id")
     .notNull()
     .references(() => users.id),
@@ -126,6 +131,19 @@ export const issuesRelations = relations(issues, ({ one, many }) => ({
   labels: many(issueLabels),
   assignees: many(issueAssignees),
   subscribers: many(issueSubscribers),
+  parent: one(issues, {
+    fields: [issues.parentId],
+    references: [issues.id],
+    relationName: "parentChild",
+  }),
+  children: many(issues, {
+    relationName: "parentChild",
+  }),
+  status: one(issueStatuses, {
+    fields: [issues.statusId],
+    references: [issueStatuses.id],
+  }),
+  customFieldValues: many(issueCustomFieldValues),
 }));
 
 export const issueCommentsRelations = relations(issueComments, ({ one }) => ({

@@ -33,9 +33,25 @@ export const POST: APIRoute = async ({ params, request }) => {
 
     const storagePath = getStorageRepoPath(owner, repoName);
 
+    // Extract user from Basic Auth if present
+    const authHeader = request.headers.get("Authorization");
+    let remoteUser = "git";
+    if (authHeader && authHeader.startsWith("Basic ")) {
+        try {
+            const buffer = Buffer.from(authHeader.slice(6), "base64");
+            const creds = buffer.toString("utf-8");
+            const [user] = creds.split(":");
+            if (user) remoteUser = user;
+        } catch (e) {
+            // Ignore auth parse errors
+        }
+    }
+
     try {
         // Process the pack stream
-        const responseStream = await handleReceivePack(repoPath, request.body!, storagePath);
+        const responseStream = await handleReceivePack(repoPath, request.body!, storagePath, {
+            REMOTE_USER: remoteUser
+        });
 
         // Release repo with modification flag true
         // Note: This might trigger re-upload of the packfile effectively checking consistency

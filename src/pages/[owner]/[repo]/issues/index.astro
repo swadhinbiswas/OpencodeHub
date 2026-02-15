@@ -19,7 +19,7 @@ if (!user) return Astro.redirect("/404");
 const repoData = await db.query.repositories.findFirst({
   where: and(
     eq(schema.repositories.ownerId, user.id),
-    eq(schema.repositories.name, repoName!)
+    eq(schema.repositories.name, repoName!),
   ),
   with: {
     owner: true,
@@ -47,6 +47,8 @@ const issuesList = await db.query.issues.findMany({
         label: true,
       },
     },
+    parent: true,
+    children: true,
   },
 });
 
@@ -73,22 +75,34 @@ const repo = {
 };
 
 // Format issues for React component
-const formattedIssues = issuesList.map(issue => ({
+const formattedIssues = issuesList.map((issue) => ({
   id: issue.id,
   number: issue.number,
   title: issue.title,
+  type: issue.type,
   state: issue.state as "open" | "closed",
-  createdAt: issue.createdAt,
+  createdAt: issue.createdAt.toISOString(),
   commentCount: issue.commentCount || 0,
   author: {
     username: issue.author.username,
     avatarUrl: issue.author.avatarUrl || undefined,
   },
-  labels: issue.labels?.map(il => ({
-    id: il.label?.id || '',
-    name: il.label?.name || '',
-    color: il.label?.color || '#6b7280',
-  })) || [],
+  labels:
+    issue.labels?.map((il) => ({
+      id: il.label?.id || "",
+      name: il.label?.name || "",
+      color: il.label?.color || "#6b7280",
+    })) || [],
+  parent: issue.parent ? {
+      number: issue.parent.number,
+      title: issue.parent.title,
+      state: issue.parent.state as "open" | "closed"
+  } : undefined,
+  children: issue.children?.map(child => ({
+      number: child.number,
+      title: child.title,
+      state: child.state as "open" | "closed"
+  })) || []
 }));
 ---
 
@@ -98,7 +112,7 @@ const formattedIssues = issuesList.map(issue => ({
 
     <!-- Enhanced Issues List with Aceternity UI -->
     <div class="mt-6">
-      <IssuesList 
+      <IssuesList
         client:load
         issues={formattedIssues}
         openCount={openCount}
