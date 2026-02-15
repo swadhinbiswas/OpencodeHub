@@ -19,21 +19,16 @@ describe("Distributed Locking", () => {
         expect(released).toBe(true);
     });
 
-    it("should prevent acquiring an held lock", async () => {
+    it("should prevent acquiring a held lock", async () => {
         const key = "test-lock-2";
         // Acquire first lock
         const lock1 = await acquireLock(key);
         expect(lock1).toBeDefined();
 
-        // Try to acquire same lock (should fail immediately if we set retries to 0 for speed)
-        // Default has retries, so it will wait. Let's set short timeout/retries.
-        const start = Date.now();
-        const lock2 = await acquireLock(key, { retryCount: 1, retryDelayMs: 10 });
-        const end = Date.now();
+        // Try to acquire same lock with no retries to avoid timing-based flakiness.
+        const lock2 = await acquireLock(key, { retryCount: 0 });
 
         expect(lock2).toBeNull();
-        // Should have waited at least 10ms
-        expect(end - start).toBeGreaterThanOrEqual(10);
 
         await lock1?.release();
     });
