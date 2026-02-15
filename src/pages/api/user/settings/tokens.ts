@@ -6,6 +6,10 @@ import { generateId } from "@/lib/utils";
 import { eq, and } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { z } from "zod";
+import {
+    getTokenPrefixForDisplay,
+    hashPersonalAccessToken,
+} from "@/lib/personal-access-token";
 
 const createTokenSchema = z.object({
     name: z.string().min(1).max(100),
@@ -26,8 +30,13 @@ export const GET: APIRoute = async ({ request }) => {
 
     // Mask tokens
     const maskedTokens = tokens.map(t => ({
-        ...t,
-        token: `och_${"•".repeat(20)}${t.token.slice(-4)}`,
+        id: t.id,
+        userId: t.userId,
+        name: t.name,
+        token: getTokenPrefixForDisplay(t.token),
+        expiresAt: t.expiresAt,
+        lastUsedAt: t.lastUsedAt,
+        createdAt: t.createdAt,
     }));
 
     return new Response(JSON.stringify({ tokens: maskedTokens }), {
@@ -63,7 +72,7 @@ export const POST: APIRoute = async ({ request }) => {
             id: generateId("pat"),
             userId: user.userId,
             name,
-            token,
+            token: hashPersonalAccessToken(token),
             expiresAt,
             createdAt: new Date(),
         });
