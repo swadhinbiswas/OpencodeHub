@@ -1,16 +1,17 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
+
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
 } from "@/components/ui/card";
 import { getDatabase, schema } from "@/db";
 import { eq, and } from "drizzle-orm";
-import { canAdminRepo } from "@/lib/permissions";
+import { canWriteRepo } from "@/lib/permissions";
 import RepoHeader from "@/components/repo/RepoHeader.astro";
 import { Server, Terminal, Copy } from "lucide-react";
 import crypto from "node:crypto";
@@ -20,34 +21,34 @@ const db = getDatabase();
 
 // Fetch Repo & Owner
 const user = await db.query.users.findFirst({
-  where: eq(schema.users.username, ownerName!),
+    where: eq(schema.users.username, ownerName!),
 });
 
 if (!user) return Astro.redirect("/404");
 
 const repoData = await db.query.repositories.findFirst({
-  where: and(
-    eq(schema.repositories.ownerId, user.id),
-    eq(schema.repositories.name, repoName!)
-  ),
-  with: {
-    owner: true,
-  },
+    where: and(
+        eq(schema.repositories.ownerId, user.id),
+        eq(schema.repositories.name, repoName!),
+    ),
+    with: {
+        owner: true,
+    },
 });
 
 if (!repoData) return Astro.redirect("/404");
 
 // Check permissions
 const currentUser = Astro.locals.user;
-const hasAccess = await canAdminRepo(currentUser?.id, repoData);
+const hasAccess = await canWriteRepo(currentUser?.id, repoData);
 
 if (!hasAccess) {
-  return Astro.redirect(`/${ownerName}/${repoName}`);
+    return Astro.redirect(`/${ownerName}/${repoName}`);
 }
 
 // Fetch Runners
 const runners = await db.query.pipelineRunners.findMany({
-    where: eq(schema.pipelineRunners.repositoryId, repoData.id)
+    where: eq(schema.pipelineRunners.repositoryId, repoData.id),
 });
 
 // Generate or Retrieve Registration Token
@@ -56,8 +57,8 @@ const runners = await db.query.pipelineRunners.findMany({
 let tokenSecret = await db.query.workflowSecrets.findFirst({
     where: and(
         eq(schema.workflowSecrets.repositoryId, repoData.id),
-        eq(schema.workflowSecrets.name, "ACTIONS_RUNNER_TOKEN")
-    )
+        eq(schema.workflowSecrets.name, "ACTIONS_RUNNER_TOKEN"),
+    ),
 });
 
 if (!tokenSecret) {
@@ -68,7 +69,7 @@ if (!tokenSecret) {
         repositoryId: repoData.id,
         name: "ACTIONS_RUNNER_TOKEN",
         encryptedValue: newToken, // Storing raw for MVP simplicity, usually encrypt!
-        createdById: currentUser?.id
+        createdById: currentUser?.id,
     });
     tokenSecret = { encryptedValue: newToken } as any;
 }
@@ -77,160 +78,230 @@ const registrationToken = `${ownerName}/${repoName}:${tokenSecret!.encryptedValu
 const serverUrl = Astro.url.origin;
 
 const repo = {
-  owner: repoData.owner.username,
-  name: repoData.name,
-  description: repoData.description,
-  visibility: repoData.visibility,
-  defaultBranch: repoData.defaultBranch,
-  stars: repoData.starCount,
-  forks: repoData.forkCount,
-  watchers: repoData.watchCount,
-  language: repoData.language || "Unknown",
-  license: repoData.licenseType || "None",
-  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
-  updatedAt: repoData.updatedAt,
-  openPrCount: repoData.openPrCount,
-  openIssueCount: 0 // Placeholder
+    owner: repoData.owner.username,
+    name: repoData.name,
+    description: repoData.description,
+    visibility: repoData.visibility,
+    defaultBranch: repoData.defaultBranch,
+    stars: repoData.starCount,
+    forks: repoData.forkCount,
+    watchers: repoData.watchCount,
+    language: repoData.language || "Unknown",
+    license: repoData.licenseType || "None",
+    topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+    updatedAt: repoData.updatedAt,
+    openPrCount: repoData.openPrCount,
+    openIssueCount: 0, // Placeholder
 };
 ---
 
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+></script>
+
 <BaseLayout title={`Runners · ${repo.owner}/${repo.name}`}>
-  <div class="container py-6">
-    <RepoHeader repo={repo} activeTab="settings" />
+    <div class="container py-6">
+        <RepoHeader repo={repo} activeTab="settings" />
 
-    <div class="grid gap-6 md:grid-cols-[240px_1fr]">
-      <!-- Settings Sidebar -->
-      <nav class="space-y-1">
-        <a href={`/${repo.owner}/${repo.name}/settings`} class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">
-          General
-        </a>
-        <a href="#" class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">
-          Collaborators
-        </a>
-        <a href="#" class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">
-          Webhooks
-        </a>
-        <a href={`/${repo.owner}/${repo.name}/settings/actions/runners`} class="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm font-medium text-foreground">
-          Actions
-        </a>
-        <div class="ml-4 border-l pl-4 flex flex-col space-y-1">
-            <a href="#" class="text-sm font-medium text-primary">Runners</a>
-        </div>
-      </nav>
+        <div class="grid gap-6 md:grid-cols-[240px_1fr]">
+            <!-- Settings Sidebar -->
+            <nav class="space-y-1">
+                <a
+                    href={`/${repo.owner}/${repo.name}/settings`}
+                    class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                    General
+                </a>
+                <a
+                    href="#"
+                    class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                    Collaborators
+                </a>
+                <a
+                    href="#"
+                    class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                    Webhooks
+                </a>
+                <a
+                    href={`/${repo.owner}/${repo.name}/settings/actions/runners`}
+                    class="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm font-medium text-foreground"
+                >
+                    Actions
+                </a>
+                <div class="ml-4 border-l pl-4 flex flex-col space-y-1">
+                    <a href="#" class="text-sm font-medium text-primary"
+                        >Runners</a
+                    >
+                </div>
+            </nav>
 
-      <!-- Content -->
-      <div class="space-y-6">
-        <div class="flex items-center justify-between">
-            <div>
-                 <h2 class="text-2xl font-bold tracking-tight">Runners</h2>
-                <p class="text-muted-foreground">Manage self-hosted runners.</p>
-            </div>
-             <Button className="gap-2">
-                 New runner
-             </Button>
-        </div>
-
-        <div class="flex justify-end">
-             <Button variant="outline" id="trigger-test-btn">
-                Trigger Test Job
-             </Button>
-        </div>
-
-        <Card>
-            <CardHeader>
-                <CardTitle>Self-hosted runners</CardTitle>
-                <CardDescription>
-                    Runners currently registered to this repository.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                {runners.length > 0 ? (
-                    <div class="space-y-4">
-                        {runners.map(runner => (
-                            <div class="flex items-center justify-between p-4 border rounded-lg bg-card text-card-foreground shadow-sm">
-                                <div class="flex items-center gap-4">
-                                    <div class={`p-2 rounded-full ${runner.status === 'online' ? 'bg-green-100 dark:bg-green-900/30 text-green-600' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}>
-                                        <Server className="h-5 w-5" />
-                                    </div>
-                                    <div>
-                                        <div class="font-medium flex items-center gap-2">
-                                            {runner.name}
-                                            <span class={`text-[10px] px-1.5 py-0.5 rounded-full border ${runner.status === 'online' ? 'border-green-200 text-green-600' : 'border-gray-200 text-gray-500'}`}>
-                                                {runner.status}
-                                            </span>
-                                        </div>
-                                        <div class="text-xs text-muted-foreground">
-                                            {runner.os} {runner.arch} · Last seen: {runner.lastSeenAt ? new Date(runner.lastSeenAt).toLocaleString() : 'Never'}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600">Remove</Button>
-                                </div>
-                            </div>
-                        ))}
+            <!-- Content -->
+            <div class="space-y-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-bold tracking-tight">
+                            Runners
+                        </h2>
+                        <p class="text-muted-foreground">
+                            Manage self-hosted runners.
+                        </p>
                     </div>
-                ) : (
-                    <div class="text-center py-6 text-muted-foreground">
-                        No runners configured. Add one to run workflows.
-                    </div>
-                )}
-            </CardContent>
-        </Card>
+                    <Button className="gap-2"> New runner </Button>
+                </div>
 
-        {/* Setup Instructions */}
-        <Card>
-            <CardHeader>
-                <CardTitle>Setup Runner</CardTitle>
-                <CardDescription>Run these commands on your host.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div class="bg-slate-950 text-slate-50 p-4 rounded-md font-mono text-sm overflow-x-auto relative group">
-                    <p class="mb-2 text-gray-400"># 1. Download Runner</p>
-                    <p class="select-all">curl -O {serverUrl}/runner.js</p>
-                    <br/>
-                    <p class="mb-2 text-gray-400"># 2. Register Runner</p>
-                    <p class="select-all break-all whitespace-pre-wrap">node runner.js register --url {serverUrl} --token {registrationToken}</p>
-                    <br/>
-                    <p class="mb-2 text-gray-400"># 3. Start Runner</p>
-                    <p class="select-all">node runner.js run</p>
-
-                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-gray-400 hover:text-white">
-                        <Copy className="h-4 w-4" />
+                <div class="flex justify-end">
+                    <Button variant="outline" id="trigger-test-btn">
+                        Trigger Test Job
                     </Button>
                 </div>
-            </CardContent>
-        </Card>
 
-      </div>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Self-hosted runners</CardTitle>
+                        <CardDescription>
+                            Runners currently registered to this repository.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {
+                            runners.length > 0 ? (
+                                <div class="space-y-4">
+                                    {runners.map((runner) => (
+                                        <div class="flex items-center justify-between p-4 border rounded-lg bg-card text-card-foreground shadow-sm">
+                                            <div class="flex items-center gap-4">
+                                                <div class="relative">
+                                                    <div
+                                                        class={`p-2.5 rounded-full ${runner.status === "online" ? "bg-green-500/10 text-green-500" : "bg-white/5 text-gray-500"}`}
+                                                    >
+                                                        <Server className="h-5 w-5" />
+                                                    </div>
+                                                    {runner.status ===
+                                                        "online" && (
+                                                        <span class="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+                                                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                                                            <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500 border-2 border-[#0d1117]" />
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <div class="font-medium text-white flex items-center gap-2">
+                                                        {runner.name}
+                                                        <span
+                                                            class={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${runner.status === "online" ? "border-green-500/20 bg-green-500/5 text-green-400" : "border-white/10 bg-white/5 text-gray-500"}`}
+                                                        >
+                                                            {runner.status}
+                                                        </span>
+                                                    </div>
+                                                    <div class="text-xs text-gray-400 mt-1 flex items-center gap-2">
+                                                        <span class="px-1.5 py-0.5 rounded bg-white/5 border border-white/5 font-mono text-[10px]">
+                                                            {runner.os}
+                                                        </span>
+                                                        <span class="px-1.5 py-0.5 rounded bg-white/5 border border-white/5 font-mono text-[10px]">
+                                                            {runner.arch}
+                                                        </span>
+                                                        <span>·</span>
+                                                        <span>
+                                                            Last seen:{" "}
+                                                            {runner.lastSeenAt
+                                                                ? new Date(
+                                                                      runner.lastSeenAt,
+                                                                  ).toLocaleString()
+                                                                : "Never"}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-red-500 hover:text-red-600"
+                                                >
+                                                    Remove
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div class="text-center py-6 text-muted-foreground">
+                                    No runners configured. Add one to run
+                                    workflows.
+                                </div>
+                            )
+                        }
+                    </CardContent>
+                </Card>
+
+                {/* Setup Instructions */}
+
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="text-lg font-medium text-white mb-1">
+                            Add a new runner
+                        </h3>
+                        <p class="text-sm text-gray-400">
+                            Configure a self-hosted runner to execute your
+                            workflows.
+                        </p>
+                    </div>
+
+                    <div class="border rounded-xl bg-card overflow-hidden">
+                        <div
+                            class="flex border-b border-white/5 bg-white/[0.02] p-4"
+                        >
+                            <h4
+                                class="text-sm font-medium text-white flex items-center gap-2"
+                            >
+                                <Terminal className="h-4 w-4" />
+                                CLI Setup
+                            </h4>
+                        </div>
+                        <div
+                            class="p-6 bg-slate-950 text-slate-50 font-mono text-sm space-y-4"
+                        >
+                            <p class="text-gray-400 font-sans">
+                                Run this command in your project directory:
+                            </p>
+                            <div
+                                class="p-4 rounded-lg bg-white/5 border border-white/10 select-all font-mono text-sm break-all"
+                            >
+                                och runner config --token {registrationToken} --url
+                                {serverUrl}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
 </BaseLayout>
 
 <script define:vars={{ repoId: repoData.id }}>
-    const triggerBtn = document.getElementById('trigger-test-btn');
-    triggerBtn?.addEventListener('click', async () => {
+    const triggerBtn = document.getElementById("trigger-test-btn");
+    triggerBtn?.addEventListener("click", async () => {
         try {
             triggerBtn.disabled = true;
-            triggerBtn.textContent = 'Triggering...';
-            
-            const res = await fetch('/api/actions/trigger-test', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ repositoryId: repoId })
+            triggerBtn.textContent = "Triggering...";
+
+            const res = await fetch("/api/actions/trigger-test", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ repositoryId: repoId }),
             });
-            
+
             if (res.ok) {
-                alert('Test job triggered! Check your runner logs.');
+                alert("Test job triggered! Check your runner logs.");
             } else {
                 const err = await res.text();
-                alert('Failed: ' + err);
+                alert("Failed: " + err);
             }
         } catch (e) {
-            alert('Error: ' + e.message);
+            alert("Error: " + e.message);
         } finally {
             triggerBtn.disabled = false;
-            triggerBtn.textContent = 'Trigger Test Job';
+            triggerBtn.textContent = "Trigger Test Job";
         }
     });
 </script>

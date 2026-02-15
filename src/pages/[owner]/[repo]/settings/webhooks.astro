@@ -127,6 +127,18 @@ const availableEvents = [
           Webhooks
         </a>
         <a
+          href={`/${repo.owner}/${repo.name}/settings/external-ci`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          External CI
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/reviews`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Reviews
+        </a>
+        <a
           href={`/${repo.owner}/${repo.name}/settings/actions/runners`}
           class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
         >

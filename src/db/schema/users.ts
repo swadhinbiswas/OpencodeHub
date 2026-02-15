@@ -4,7 +4,7 @@
  */
 
 import { relations } from "drizzle-orm";
-import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, pgTable, text, timestamp, primaryKey } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
@@ -25,6 +25,7 @@ export const users = pgTable("users", {
   lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  aiConfig: text("ai_config"), // JSON: { provider, apiKeys: { openai, groq, bytez } }
 });
 
 export const sessions = pgTable("sessions", {
@@ -111,6 +112,22 @@ export const personalAccessTokens = pgTable("personal_access_tokens", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const userFollowers = pgTable(
+  "user_followers",
+  {
+    followerId: text("follower_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    followeeId: text("followee_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.followerId, t.followeeId] }),
+  })
+);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
@@ -118,6 +135,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   oauthAccounts: many(oauthAccounts),
   gpgKeys: many(gpgKeys),
   personalAccessTokens: many(personalAccessTokens),
+  followers: many(userFollowers, { relationName: "user_followers_followee_id_users_id" }),
+  following: many(userFollowers, { relationName: "user_followers_follower_id_users_id" }),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -175,6 +194,19 @@ export const personalAccessTokensRelations = relations(personalAccessTokens, ({ 
   }),
 }));
 
+export const userFollowersRelations = relations(userFollowers, ({ one }) => ({
+  follower: one(users, {
+    fields: [userFollowers.followerId],
+    references: [users.id],
+    relationName: "user_followers_follower_id_users_id",
+  }),
+  followee: one(users, {
+    fields: [userFollowers.followeeId],
+    references: [users.id],
+    relationName: "user_followers_followee_id_users_id",
+  }),
+}));
+
 // Types
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -187,3 +219,5 @@ export type GPGKey = typeof gpgKeys.$inferSelect;
 export type NewGPGKey = typeof gpgKeys.$inferInsert;
 export type PersonalAccessToken = typeof personalAccessTokens.$inferSelect;
 export type NewPersonalAccessToken = typeof personalAccessTokens.$inferInsert;
+export type UserFollower = typeof userFollowers.$inferSelect;
+export type NewUserFollower = typeof userFollowers.$inferInsert;

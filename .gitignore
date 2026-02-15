@@ -34,6 +34,16 @@ coverage/
 tmp/
 temp/
 *.tmp
+*_debug.txt
+*_output.txt
+*_report.txt
+lint_output*
+lint_report*
+cookies.txt
+fix_get_calls.sh
+
+# Artifacts
+pci/
 
 # SSH keys (generated)
 *.pem
@@ -49,4 +59,3 @@ drizzle/meta/
 # Monaco Editor cache
 .monaco/
 .vercel
-scripts/

@@ -8,9 +8,13 @@ export default defineConfig({
     starlight({
       title: "OpenCodeHub Docs",
       logo: {
-        light: "../../public/logo-light.png",
-        dark: "../../public/logo-dark.png",
+        light: "./src/assets/logo-light.png",
+        dark: "./src/assets/logo-dark.png",
         replacesTitle: false,
+      },
+      customCss: ["./src/custom.css"],
+      components: {
+        Hero: "./src/components/StarlightHero.astro",
       },
       social: [
         {

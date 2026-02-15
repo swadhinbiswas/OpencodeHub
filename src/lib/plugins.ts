@@ -327,6 +327,39 @@ export class PluginManager {
     }
     return components;
   }
+
+  /**
+   * Load all plugins from a directory
+   */
+  async loadPluginsFromDirectory(directory: string): Promise<void> {
+    try {
+      const fs = await import("fs/promises");
+      const path = await import("path");
+
+      // Check if directory exists
+      try {
+        await fs.access(directory);
+      } catch {
+        logger.warn({ directory }, "Plugin directory does not exist, skipping");
+        return;
+      }
+
+      const entries = await fs.readdir(directory, { withFileTypes: true });
+
+      for (const entry of entries) {
+        if (entry.isDirectory() || (entry.isFile() && (entry.name.endsWith(".js") || entry.name.endsWith(".mjs")))) {
+          const pluginPath = path.join(directory, entry.name);
+          try {
+            await this.loadPlugin(pluginPath);
+          } catch (error) {
+            logger.error({ error, pluginPath }, "Failed to load plugin");
+          }
+        }
+      }
+    } catch (error) {
+      logger.error({ error, directory }, "Failed to scan plugin directory");
+    }
+  }
 }
 
 // Global plugin manager instance

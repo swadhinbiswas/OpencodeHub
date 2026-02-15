@@ -31,8 +31,11 @@ export const repositories = pgTable("repositories", {
   isFork: boolean("is_fork").default(false),
   forkedFromId: text("forked_from_id").references((): any => repositories.id),
   isArchived: boolean("is_archived").default(false),
+  isTemplate: boolean("is_template").default(false),
   isMirror: boolean("is_mirror").default(false),
   mirrorUrl: text("mirror_url"),
+  lastMirrorSyncAt: timestamp("last_mirror_sync_at"),
+  mirrorSyncStatus: text("mirror_sync_status"), // pending, syncing, success, failed
   hasIssues: boolean("has_issues").default(true),
   hasWiki: boolean("has_wiki").default(true),
   hasActions: boolean("has_actions").default(true),
@@ -152,16 +155,7 @@ export const repositoryCollaborators = pgTable("repository_collaborators", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const deployKeys = pgTable("deploy_keys", {
-  id: text("id").primaryKey(),
-  repositoryId: text("repository_id")
-    .notNull()
-    .references(() => repositories.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  key: text("key").notNull(),
-  readOnly: boolean("read_only").default(true),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+
 
 
 
@@ -184,7 +178,7 @@ export const repositoriesRelations = relations(
     stars: many(repositoryStars),
     watchers: many(repositoryWatchers),
     collaborators: many(repositoryCollaborators),
-    deployKeys: many(deployKeys),
+    // deployKeys relation moved to deploy-keys.ts
     // webhooks: many(webhooks), // Removing relation here to avoid circular dependency or import issues for now, or I need to import it.
   })
 );

@@ -54,6 +54,7 @@ export const auditLogs = pgTable("audit_logs", {
   id: text("id").primaryKey(),
   userId: text("user_id").references(() => users.id),
   repositoryId: text("repository_id").references(() => repositories.id),
+  organizationId: text("organization_id"),
   action: text("action").notNull(),
   actorType: text("actor_type").notNull().default("user"), // user, system, oauth_app
   actorId: text("actor_id"),

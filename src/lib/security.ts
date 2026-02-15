@@ -62,11 +62,14 @@ export async function runSecurityScan(
                 "--format",
                 "json",
                 "--security-checks",
-                "vuln,secret,config",
+                "vuln,secret,config,license",
+                "--output",
+                "/workspace/results.json",
                 "/workspace",
             ],
+
             HostConfig: {
-                Binds: [`${tempDir}:/workspace:ro`], // Read only mount
+                Binds: [`${tempDir}:/workspace`], // Read/Write mount for results
             },
             AttachStdout: true,
             AttachStderr: true,
@@ -76,71 +79,22 @@ export async function runSecurityScan(
 
         const stream = await container.logs({ follow: true, stdout: true, stderr: true });
 
-        // Collect output
-        // Docker logs stream is multiplexed. We need to demultiplex if using 'logs'
-        // But since we attached, we might need a stream?
-        // Actually simpler: just wait for run to finish and get logs?
-        // container.logs gives existing logs.
-        // Let's use container.wait() then get logs? Or stream.
-
-        // Simpler approach for Dockerode:
-        // attach stream is raw stream.
-
-        // Let's retry simple approach: container.wait() then container.logs()
+        // Wait for container to finish
         const waitData = await container.wait();
 
         if (waitData.StatusCode !== 0) {
-            // It might fail if vulnerabilities found? No, --exit-code default is 0.
-            // Only fails on error.
-            // However, if we want to fail pipeline on vuln, we set exit-code. Here we just want report.
-            // So non-zero means Tool Error.
+            // Non-zero exit code means tool error or vulnerability found (if exit-code set)
         }
 
-        // Get Logs (Output is in stdout)
-        // Note: Trivy JSON output goes to stdout.
-        const logsBuffer = await container.logs({ stdout: true, stderr: false });
-        // logsBuffer is a buffer with header bytes for each frame if TTY=false.
-        // If we didn't set Tty: true, we get multiplexed frames.
-        // We need to strip them.
-        // Or we use a simpler way: write to a file in the volume?
-        // "trivy fs ... --output /workspace/results.json"
-        // Since we mounted :ro, we can't write there.
-        // We can mount a results volume? Or just parse the buffer.
-
-        // Parsing buffer: The docker headers are 8 bytes.
-        // [StreamType (1 byte), 0, 0, 0, Size (4 bytes big endian)]
-        // We can clean it.
-
-        // ALTERNATIVE: Use `docker.run` (helper) which handles streams?
-        // Let's manually clean the buffer, it's reliable.
-
-        const rawOutput = logsBuffer.toString("utf-8");
-        // This will be mixed if we don't demux properly.
-        // Let's try to demultiplex.
-
-        let jsonOutput = "";
-
-        // Helper to demux
-        let currentIdx = 0;
-        while (currentIdx < logsBuffer.length) {
-            // const type = logsBuffer[currentIdx]; // 1=stdout, 2=stderr
-            const size = logsBuffer.readUInt32BE(currentIdx + 4);
-            const content = logsBuffer.subarray(currentIdx + 8, currentIdx + 8 + size);
-            // We only care about stdout (1)
-            if (logsBuffer[currentIdx] === 1) {
-                jsonOutput += content.toString("utf-8");
-            }
-            currentIdx += 8 + size;
-        }
-
-        await container.remove();
-
-        // 5. Parse Results
+        // 5. Parse Results from File
+        const resultsPath = join(tempDir, "results.json");
         let scanResults;
         try {
-            scanResults = JSON.parse(jsonOutput);
+            const fs = await import("fs/promises");
+            const fileContent = await fs.readFile(resultsPath, "utf-8");
+            scanResults = JSON.parse(fileContent);
         } catch (e) {
-            throw new Error(`Failed to parse Trivy output: ${e}. Output start: ${jsonOutput.substring(0, 100)}...`);
+            throw new Error(`Failed to read/parse Trivy results file: ${e}`);
         }
 
         // 6. Save Findings
@@ -151,6 +105,7 @@ export async function runSecurityScan(
                 const target = res.Target;
                 const resClass = res.Class; // os-pkgs, etc
 
+                // Handle Vulnerabilities
                 if (res.Vulnerabilities) {
                     for (const vuln of res.Vulnerabilities) {
                         const severity = vuln.Severity;
@@ -192,6 +147,34 @@ export async function runSecurityScan(
                             description: `Match: ${secret.Match}`,
                             target: target,
                             class: "secret"
+                        });
+                    }
+                }
+
+                // Handle Licenses
+                if (res.Licenses) {
+                    for (const license of res.Licenses) {
+                        // Trivy classifies licenses too (e.g. AGPL might be HIGH severity in enterprise config)
+                        // If severity is missing, default to LOW
+                        const severity = license.Severity || "LOW";
+                        if (severity === "CRITICAL") critical++;
+                        else if (severity === "HIGH") high++;
+                        else if (severity === "MEDIUM") medium++;
+                        else if (severity === "LOW") low++;
+                        else unknown++;
+
+                        await db.insert(schema.securityVulnerabilities).values({
+                            id: generateId(),
+                            scanId: scanId,
+                            vulnerabilityId: `LICENSE-${license.Name}`,
+                            pkgName: license.PkgName,
+                            installedVersion: "",
+                            fixedVersion: "",
+                            severity: severity,
+                            title: `License: ${license.Name}`,
+                            description: `Category: ${license.Category}`,
+                            target: target,
+                            class: "license"
                         });
                     }
                 }

@@ -1,0 +1,184 @@
+---
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { getDatabase, schema } from "@/db";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { canWriteRepo } from "@/lib/permissions";
+import { and, eq } from "drizzle-orm";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+// 1. Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+    where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+    where: and(
+        eq(schema.repositories.ownerId, user.id),
+        eq(schema.repositories.name, repoName!),
+    ),
+    with: {
+        owner: true,
+    },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions (need write access to create wiki pages)
+const currentUser = Astro.locals.user;
+if (!currentUser) return Astro.redirect("/login");
+
+const hasAccess = await canWriteRepo(currentUser.id, repoData);
+if (!hasAccess) return Astro.redirect("/404");
+
+const repo = {
+    owner: repoData.owner.username,
+    name: repoData.name,
+    description: repoData.description,
+    visibility: repoData.visibility,
+    defaultBranch: repoData.defaultBranch,
+    stars: repoData.starCount,
+    forks: repoData.forkCount,
+    watchers: repoData.watchCount,
+    topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+    openIssueCount: repoData.openIssueCount,
+    openPrCount: repoData.openPrCount,
+};
+---
+
+<BaseLayout title={`New Wiki Page · ${repo.owner}/${repo.name}`}>
+    <div class="container py-6">
+        <RepoHeader repo={repo} activeTab="wiki" />
+
+        <div class="max-w-4xl mx-auto mt-8">
+            <div class="relative">
+                <div
+                    class="absolute -inset-[1px] bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-xl opacity-50"
+                >
+                </div>
+                <div
+                    class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-8"
+                >
+                    <h1 class="text-2xl font-bold text-white mb-6">
+                        Create new wiki page
+                    </h1>
+
+                    <form id="create-wiki-form" class="space-y-6">
+                        <div>
+                            <label
+                                for="title"
+                                class="block text-sm font-medium text-gray-300 mb-2"
+                                >Title</label
+                            >
+                            <input
+                                type="text"
+                                id="title"
+                                name="title"
+                                required
+                                class="w-full px-4 py-2 rounded-lg bg-black/20 border border-white/10 text-white focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-gray-600"
+                                placeholder="Page Title (e.g. Installation Guide)"
+                            />
+                        </div>
+
+                        <div>
+                            <label
+                                for="content"
+                                class="block text-sm font-medium text-gray-300 mb-2"
+                                >Content (Markdown)</label
+                            >
+                            <div class="relative">
+                                <textarea
+                                    id="content"
+                                    name="content"
+                                    rows="15"
+                                    required
+                                    class="w-full px-4 py-3 rounded-lg bg-black/20 border border-white/10 text-white font-mono text-sm focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-gray-600 resize-y"
+                                    placeholder="# Header
+
+Write your content here..."
+                                ></textarea>
+                                <div
+                                    class="absolute bottom-3 right-3 text-xs text-gray-500"
+                                >
+                                    Markdown supported
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            class="flex items-center justify-end gap-3 pt-4 border-t border-white/5"
+                        >
+                            <a
+                                href={`/${repo.owner}/${repo.name}/wiki`}
+                                class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                            >
+                                Cancel
+                            </a>
+                            <button
+                                type="submit"
+                                class="px-6 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-sm font-medium text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                            >
+                                Create Page
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</BaseLayout>
+
+<script>
+    const form = document.getElementById("create-wiki-form") as HTMLFormElement;
+
+    form?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        // Disable button to prevent double submit
+        const submitBtn = form.querySelector(
+            'button[type="submit"]',
+        ) as HTMLButtonElement;
+        const oldText = submitBtn.innerText;
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Creating...";
+
+        const formData = new FormData(form);
+        const data = {
+            title: formData.get("title"),
+            content: formData.get("content"),
+        };
+
+        try {
+            // Get repo details from URL
+            const pathParts = window.location.pathname.split("/");
+            const owner = pathParts[1];
+            const repo = pathParts[2];
+
+            const res = await fetch(`/api/repos/${owner}/${repo}/wiki`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
+            });
+
+            if (res.ok) {
+                const result = await res.json();
+                // Redirect to new page
+                window.location.href = `/${owner}/${repo}/wiki/${result.page.slug}`;
+            } else {
+                alert("Failed to create wiki page");
+                submitBtn.disabled = false;
+                submitBtn.innerText = oldText;
+            }
+        } catch (err) {
+            console.error(err);
+            alert("An error occurred");
+            submitBtn.disabled = false;
+            submitBtn.innerText = oldText;
+        }
+    });
+</script>

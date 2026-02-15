@@ -2,9 +2,8 @@
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 
-// In a real app, middleware would protect this route
-// const user = Astro.locals.user;
-// if (!user || user.role !== 'admin') return Astro.redirect('/');
+const user = Astro.locals.user;
+if (!user?.isAdmin) return Astro.redirect("/");
 ---
 
 <AdminLayout title="OpenCodeHub Mission Control">

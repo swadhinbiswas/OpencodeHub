@@ -9,6 +9,8 @@ import { and, eq } from "drizzle-orm";
 import { withErrorHandler } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { unauthorized, badRequest, notFound, serverError, forbidden, success, conflict } from "@/lib/api";
+import { evaluateGates } from "@/lib/ci-gates";
+import { closeLinkedIssuesOnMerge } from "@/lib/pr-issue-linking";
 
 // ... existing imports ...
 
@@ -66,6 +68,19 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals }) => {
         return badRequest("Pull request is not open");
     }
 
+    // Verify CI Gates (Strict Merge Checks)
+    const gateResult = await evaluateGates(pr.id);
+
+    if (!gateResult.canMerge) {
+        const failedGates = gateResult.results
+            .filter(r => !r.passed)
+            .map(r => r.message)
+            .join("; ");
+        return conflict(`Merge blocked: ${failedGates}`);
+    }
+
+
+
     // Merge branch
     const repoPath = await resolveRepoPath(repo.diskPath);
     const result = await mergeBranch(repoPath, pr.baseBranch, pr.headBranch);
@@ -83,7 +98,49 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals }) => {
             })
             .where(eq(schema.pullRequests.id, pr.id));
 
+        await closeLinkedIssuesOnMerge(pr.id, user.id);
+
         logger.info({ userId: user.id, repoId: repo.id, prNumber: number }, "Pull request merged");
+
+        // Send email to author
+        if (pr.authorId !== user.id) {
+            const author = await db.query.users.findFirst({
+                where: eq(schema.users.id, pr.authorId),
+                columns: { email: true, username: true }
+            });
+
+            if (author && author.email) {
+                import("@/lib/email").then(({ sendPullRequestEmail }) => {
+                    const siteUrl = process.env.SITE_URL || "http://localhost:4321";
+                    const prUrl = `${siteUrl}/${ownerName}/${repoName}/pulls/${number}`;
+
+                    sendPullRequestEmail(author.email, "merged", {
+                        title: pr.title,
+                        number: parseInt(number),
+                        url: prUrl,
+                        repository: {
+                            name: repoName,
+                            owner: { username: ownerName }
+                        },
+                        author: { username: author.username }
+                    }).catch(err => logger.error({ err }, "Failed to send PR merge email"));
+                });
+            }
+        }
+
+        // Trigger automation
+        import("@/lib/automations").then(({ triggerAutomation }) => {
+            triggerAutomation(repo.id, "pr_merged", {
+                pullRequestId: pr.id,
+                userId: user.id,
+                metadata: {
+                    title: pr.title,
+                    number: parseInt(number),
+                    baseBranch: pr.baseBranch,
+                    headBranch: pr.headBranch
+                }
+            }).catch(err => logger.error({ err }, "Failed to trigger automation for PR merge"));
+        });
 
         return success({ success: true });
     } else {

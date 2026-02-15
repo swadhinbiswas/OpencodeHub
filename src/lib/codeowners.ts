@@ -4,6 +4,9 @@
  */
 
 import { minimatch } from "minimatch";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { and, eq, or } from "drizzle-orm";
+import { schema } from "@/db";
 
 export interface CodeOwnerRule {
     pattern: string;
@@ -165,6 +168,66 @@ export const CODEOWNERS_PATHS = [
     ".github/CODEOWNERS",
     "docs/CODEOWNERS",
 ];
+
+export async function expandOwnersToUsernames(options: {
+    db: NodePgDatabase<typeof schema>;
+    repository: typeof schema.repositories.$inferSelect;
+    owners: string[];
+}): Promise<Set<string>> {
+    const { db, repository, owners } = options;
+    const results = new Set<string>();
+
+    let org = null;
+    if (repository.ownerType === "organization") {
+        org = await db.query.organizations.findFirst({
+            where: eq(schema.organizations.id, repository.ownerId),
+        });
+    }
+
+    for (const owner of owners) {
+        const normalized = owner.startsWith("@") ? owner.slice(1) : owner;
+
+        if (!normalized.includes("/")) {
+            results.add(normalized);
+            continue;
+        }
+
+        const [orgPart, teamPart] = normalized.split("/");
+        if (!teamPart) continue;
+
+        let orgId = repository.ownerType === "organization" ? repository.ownerId : null;
+        if (orgPart && org && org.name !== orgPart) {
+            const orgByName = await db.query.organizations.findFirst({
+                where: eq(schema.organizations.name, orgPart),
+            });
+            orgId = orgByName?.id || orgId;
+        }
+
+        if (!orgId) continue;
+
+        const team = await db.query.teams.findFirst({
+            where: and(
+                eq(schema.teams.organizationId, orgId),
+                or(eq(schema.teams.slug, teamPart), eq(schema.teams.name, teamPart))
+            ),
+        });
+
+        if (!team) continue;
+
+        const members = await db.query.teamMembers.findMany({
+            where: eq(schema.teamMembers.teamId, team.id),
+            with: { user: true },
+        });
+
+        for (const member of members) {
+            if (member.user?.username) {
+                results.add(member.user.username);
+            }
+        }
+    }
+
+    return results;
+}
 
 /**
  * Validate CODEOWNERS content and return any errors

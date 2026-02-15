@@ -72,7 +72,7 @@ export const GET: APIRoute = async ({ params, request, url }) => {
             service: service as "git-upload-pack" | "git-receive-pack",
         });
 
-        return new Response(refs, {
+        return new Response(new Uint8Array(refs), {
             headers: {
                 "Content-Type": `application/x-${service}-advertisement`,
                 "Cache-Control": "no-cache",

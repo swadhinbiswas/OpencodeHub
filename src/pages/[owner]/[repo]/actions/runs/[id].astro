@@ -1,0 +1,343 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, and, asc } from "drizzle-orm";
+import { canReadRepo } from "@/lib/permissions";
+
+import {
+    CheckCircle2,
+    XCircle,
+    Clock,
+    PlayCircle,
+    Terminal,
+    ChevronRight,
+    Download,
+    RotateCw,
+} from "lucide-react";
+
+const { owner: ownerName, repo: repoName, id: runId } = Astro.params;
+const db = getDatabase();
+
+// 1. Fetch Repo & Owner
+const user = await db.query.users.findFirst({
+    where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+    where: and(
+        eq(schema.repositories.ownerId, user.id),
+        eq(schema.repositories.name, repoName!),
+    ),
+    with: {
+        owner: true,
+    },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canReadRepo(currentUser?.id, repoData);
+
+if (!hasAccess) return Astro.redirect("/404");
+
+// 2. Fetch Run
+const run = await db.query.workflowRuns.findFirst({
+    where: eq(schema.workflowRuns.id, runId!),
+    with: {
+        workflow: true,
+        triggeredBy: true,
+        jobs: {
+            orderBy: [asc(schema.workflowJobs.startedAt)],
+            with: {
+                steps: {
+                    orderBy: [asc(schema.workflowSteps.number)],
+                },
+            },
+        },
+    },
+});
+
+if (!run) return Astro.redirect("/404");
+
+// 3. Fetch Logs for the active/first job
+// For MVP, just loading all logs for all jobs might be heavy, but let's do it client side or specific endpoint?
+// Let's fetch logs for the first job rendered or use a separate API for logs.
+// For simplicity in this static file, let's fetch logs for ALL jobs in this run (careful with size).
+// Better: Fetch logs for the jobs.
+const jobIds = run.jobs.map((j) => j.id);
+let logs: any[] = [];
+if (jobIds.length > 0) {
+    // This is not ideal for large logs, but okay for MVP
+    // We can filter in memory or map.
+    // Drizzle `inArray` needed.
+    // Let's just fetch logs for the first job to show initially?
+    // Or just render a simple log viewer component that fetches.
+    // Let's fetch all for now, assuming small logs.
+    const allLogs = await db.query.workflowLogs.findMany({
+        where: (logs, { inArray }) => inArray(logs.jobId, jobIds),
+        orderBy: [asc(schema.workflowLogs.lineNumber)],
+    });
+    logs = allLogs;
+}
+
+const repo = {
+    owner: repoData.owner.username,
+    name: repoData.name,
+    description: repoData.description,
+    visibility: repoData.visibility,
+    defaultBranch: repoData.defaultBranch,
+    stars: repoData.starCount,
+    forks: repoData.forkCount,
+    watchers: repoData.watchCount,
+    language: repoData.language || "Unknown",
+    license: repoData.licenseType || "None",
+    topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+    updatedAt: repoData.updatedAt,
+    openPrCount: repoData.openPrCount,
+    openIssueCount: 0,
+};
+
+function duration(start: Date | null, end: Date | null) {
+    if (!start) return "";
+    const e = end || new Date();
+    const ms = e.getTime() - start.getTime();
+    if (ms < 1000) return "< 1s";
+    const s = Math.floor(ms / 1000);
+    if (s < 60) return `${s}s`;
+    return `${Math.floor(s / 60)}m ${s % 60}s`;
+}
+
+const statusColors = {
+    queued: "text-gray-400 bg-gray-500/10 border-gray-500/20",
+    in_progress:
+        "text-yellow-400 bg-yellow-500/10 border-yellow-500/20 animate-pulse",
+    completed: {
+        success: "text-green-400 bg-green-500/10 border-green-500/20",
+        failure: "text-red-400 bg-red-500/10 border-red-500/20",
+        cancelled: "text-gray-400 bg-gray-500/10 border-gray-500/20",
+    },
+};
+
+const getStatusColor = (status: string, conclusion?: string | null) => {
+    if (status !== "completed")
+        return (
+            statusColors[status as keyof typeof statusColors] ||
+            statusColors.queued
+        );
+    return (
+        statusColors.completed[
+            conclusion as keyof typeof statusColors.completed
+        ] || statusColors.completed.success
+    );
+};
+
+const activeJob = run.jobs[0];
+---
+
+
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<BaseLayout title={`Run #${run.runNumber} · ${repo.owner}/${repo.name}`}>
+    <div class="container py-6 h-[calc(100vh-64px)] flex flex-col">
+        <RepoHeader repo={repo} activeTab="actions" />
+
+        <!-- Header info -->
+        <div class="mt-6 mb-6">
+            <div class="flex items-center justify-between mb-2">
+                <h1
+                    class="text-xl font-semibold text-white flex items-center gap-3"
+                >
+                    <span class="text-gray-500">#{run.runNumber}</span>
+                    {run.name}
+                    <span
+                        class={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(run.status, run.conclusion)}`}
+                    >
+                        {
+                            run.status === "completed"
+                                ? run.conclusion
+                                : run.status
+                        }
+                    </span>
+                </h1>
+                <div class="flex gap-2">
+                    <button
+                        class="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 text-sm text-gray-300 hover:bg-white/10 transition-colors flex items-center gap-2"
+                    >
+                        <RotateCw className="h-4 w-4" />
+                        Re-run jobs
+                    </button>
+                </div>
+            </div>
+            <div class="flex items-center gap-4 text-sm text-gray-400">
+                <div class="flex items-center gap-1.5">
+                    <div
+                        class="h-5 w-5 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-[10px] text-white font-bold"
+                    >
+                        {run.triggeredBy?.username[0]?.toUpperCase()}
+                    </div>
+                    <span class="text-gray-300"
+                        >{run.triggeredBy?.username}</span
+                    >
+                    pushed to
+                    <code
+                        class="px-1.5 py-0.5 rounded bg-white/5 text-gray-300 font-mono text-xs"
+                        >{run.headBranch || "HEAD"}</code
+                    >
+                </div>
+                <span>•</span>
+                <span class="flex items-center gap-1.5">
+                    <Clock className="h-4 w-4" />
+                    {duration(run.startedAt, run.completedAt)}
+                </span>
+                <span>•</span>
+                <a
+                    href={`/${repo.owner}/${repo.name}/commit/${run.headSha}`}
+                    class="font-mono hover:text-cyan-400 transition-colors"
+                >
+                    {run.headSha.substring(0, 7)}
+                </a>
+            </div>
+        </div>
+
+        <!-- Layout -->
+        <div
+            class="flex-1 grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 min-h-0 border rounded-xl overflow-hidden bg-[#0d1117]/80 border-white/10"
+        >
+            <!-- Sidebar: Jobs -->
+            <div class="border-r border-white/10 bg-black/20 flex flex-col">
+                <div
+                    class="p-4 border-b border-white/10 font-medium text-sm text-gray-400"
+                >
+                    Jobs
+                </div>
+                <div class="flex-1 overflow-y-auto p-2 space-y-1">
+                    {
+                        run.jobs.map((job) => (
+                            <button
+                                class={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between group transition-colors ${job.id === activeJob?.id ? "bg-blue-500/10 text-blue-400" : "text-gray-400 hover:bg-white/5 hover:text-gray-200"}`}
+                                onclick={`document.querySelectorAll('.job-logs').forEach(el => el.classList.add('hidden')); document.getElementById('logs-${job.id}').classList.remove('hidden');`}
+                            >
+                                <div class="flex items-center gap-2">
+                                    {job.status === "completed" &&
+                                        job.conclusion === "success" && (
+                                            <CheckCircle2 className="h-4 w-4 text-green-400" />
+                                        )}
+                                    {job.status === "completed" &&
+                                        job.conclusion === "failure" && (
+                                            <XCircle className="h-4 w-4 text-red-400" />
+                                        )}
+                                    {job.status === "in_progress" && (
+                                        <div class="h-3 w-3 rounded-full border-2 border-yellow-400 border-t-transparent animate-spin" />
+                                    )}
+                                    {job.status === "queued" && (
+                                        <div class="h-3 w-3 rounded-full border-2 border-gray-500" />
+                                    )}
+
+                                    <span>{job.name}</span>
+                                </div>
+                                <span class="text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {duration(job.startedAt, job.completedAt)}
+                                </span>
+                            </button>
+                        ))
+                    }
+                </div>
+            </div>
+
+            <!-- Main: Logs -->
+        <div class="flex flex-col min-h-0 bg-[#0d1117] relative" x-data="{ autoScroll: true }">
+            {run.jobs.map((job, idx) => {
+                const jobLogs = logs.filter(l => l.jobId === job.id);
+                const isActive = idx === 0; // Default first active
+                
+                return (
+                    <div 
+                        id={`logs-${job.id}`} 
+                        class={`job-logs flex-1 flex flex-col min-h-0 ${!isActive ? 'hidden' : ''}`}
+                        x-effect="if(autoScroll && $el.classList.contains('hidden') === false) { $nextTick(() => $refs.logContainer.scrollTop = $refs.logContainer.scrollHeight) }"
+                    >
+                         <div class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#0d1117]/50 backdrop-blur sticky top-0 z-10">
+                            <h3 class="font-medium text-sm text-gray-200 flex items-center gap-2">
+                                <Terminal className="h-4 w-4 text-gray-500" />
+                                <span class="text-orange-400 font-mono">{job.name}</span>
+                            </h3>
+                            <div class="flex items-center gap-2">
+                                <button 
+                                    @click="autoScroll = !autoScroll"
+                                    :class="autoScroll ? 'text-green-400 bg-green-400/10 border-green-400/20' : 'text-gray-500 hover:text-gray-300 border-transparent'"
+                                    class="px-2 py-1 rounded text-xs border transition-colors flex items-center gap-1.5"
+                                >
+                                    <div class={`h-1.5 w-1.5 rounded-full ${autoScroll ? 'bg-green-400 animate-pulse' : 'bg-gray-500'}`}></div>
+                                    Follow
+                                </button>
+                                <div class="h-4 w-px bg-white/10 mx-1"></div>
+                                <button class="text-xs text-gray-500 hover:text-white transition-colors flex items-center gap-1">
+                                    <Download className="h-3 w-3" />
+                                    Raw
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div 
+                            x-ref="logContainer"
+                            class="flex-1 overflow-y-auto p-4 font-mono text-xs leading-relaxed scroll-smooth"
+                        >
+                            {jobLogs.length > 0 ? (
+                                <div class="space-y-0.5">
+                                    {jobLogs.map(log => (
+                                        <div class="flex gap-3 group hover:bg-white/5 -mx-4 px-4 py-0.5 transition-colors">
+                                            <span class="text-gray-600 select-none w-8 text-right shrink-0 opacity-50">{log.lineNumber}</span>
+                                            <span class="text-gray-300 group-hover:text-white break-all whitespace-pre-wrap">{log.message}</span>
+                                        </div>
+                                    ))}
+                                    {job.status === 'in_progress' && (
+                                        <div class="flex gap-3 px-4 py-2 animate-pulse">
+                                            <span class="w-8"></span>
+                                            <span class="h-3 w-2 bg-gray-500 block"></span>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div class="h-full flex flex-col items-center justify-center text-gray-500 space-y-4">
+                                    {job.status === 'queued' ? (
+                                        <>
+                                            <div class="relative">
+                                                <div class="h-10 w-10 rounded-full border-2 border-white/10"></div>
+                                                <div class="absolute inset-0 h-10 w-10 rounded-full border-2 border-t-orange-500 animate-spin"></div>
+                                            </div>
+                                            <div class="text-center">
+                                                <p class="text-sm font-medium text-gray-300">Queued</p>
+                                                <p class="text-xs mt-1">Waiting for an available runner...</p>
+                                            </div>
+                                        </>
+                                    ) : job.status === 'in_progress' ? (
+                                        <>
+                                             <div class="relative">
+                                                <div class="h-10 w-10 rounded-full border-2 border-white/10"></div>
+                                                <div class="absolute inset-0 h-10 w-10 rounded-full border-2 border-t-yellow-400 animate-spin"></div>
+                                            </div>
+                                            <div class="text-center">
+                                                <p class="text-sm font-medium text-gray-300">Initializing</p>
+                                                <p class="text-xs mt-1">Preparing execution environment...</p>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div class="text-center opacity-50">
+                                            <Terminal className="h-8 w-8 mx-auto mb-2" />
+                                            <p>No logs recorded.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+        </div>
+    </div>
+</BaseLayout>

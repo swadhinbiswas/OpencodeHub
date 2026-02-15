@@ -3,7 +3,7 @@ import { FlipWords } from "@/components/ui/flip-words";
 import { Spotlight } from "@/components/ui/spotlight";
 import { ColourfulText } from "@/components/ui/colourful-text";
 import { motion } from "framer-motion";
-import { ArrowRight, Github, Star, GitBranch, Zap } from "lucide-react";
+import { ArrowRight, GitGraph, Star, GitBranch, Zap } from "lucide-react";
 
 export default function HeroSection() {
     const words = ["Teams", "Developers", "Enterprises", "Startups"];
@@ -84,7 +84,7 @@ export default function HeroSection() {
                         href="/explore"
                         className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-8 py-3.5 text-sm font-medium text-foreground backdrop-blur-sm hover:bg-white/10 hover:border-white/20 transition-all"
                     >
-                        <Github className="h-4 w-4" />
+                        <GitGraph className="h-4 w-4" />
                         Explore Repositories
                     </a>
                 </motion.div>

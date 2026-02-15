@@ -232,3 +232,12 @@ export function getRepoPath(username: string, slug: string): string {
   const reposPath = process.env.GIT_REPOS_PATH || "./data/repos";
   return `${reposPath}/${username}/${slug}.git`;
 }
+
+/**
+ * Extract Jira ticket keys from text
+ */
+export function extractJiraKeys(text: string): string[] {
+  const jiraRegex = /([A-Z][A-Z0-9]+-[0-9]+)/g;
+  const matches = text.match(jiraRegex);
+  return matches ? [...new Set(matches)] : [];
+}

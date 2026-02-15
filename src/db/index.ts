@@ -62,6 +62,7 @@ export function getDatabase():
     const pool = new pg.Pool({
       connectionString: cleanUrl,
       ssl: { rejectUnauthorized: false },
+      max: parseInt(process.env.DATABASE_POOL_SIZE || "10", 10),
     });
     db = drizzlePg(pool, { schema });
     logger.info({ driver: "postgres" }, "Database connected (PostgreSQL)");

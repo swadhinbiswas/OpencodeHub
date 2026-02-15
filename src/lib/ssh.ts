@@ -134,6 +134,11 @@ export function createSSHServer(config: SSHServerConfig): InstanceType<typeof Se
             const channel = accept();
             const gitProcess = spawn(operation, [fullRepoPath], {
               stdio: ["pipe", "pipe", "pipe"],
+              env: {
+                ...process.env,
+                REMOTE_USER: userId || "anonymous",
+                GL_ID: userId || "anonymous", // GitLab compatibility
+              }
             });
 
             // Track refs for push hook

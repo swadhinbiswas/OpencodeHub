@@ -1,0 +1,400 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, and, desc } from "drizzle-orm";
+import { canAdminRepo } from "@/lib/permissions";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { ShieldCheck, Users, Plus, Trash2, Edit2 } from "lucide-react";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+const ownerUser = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!ownerUser) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, ownerUser.id),
+    eq(schema.repositories.name, repoName!),
+  ),
+  with: { owner: true },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+const currentUser = Astro.locals.user;
+const hasAccess = await canAdminRepo(currentUser?.id, repoData, {
+  isAdmin: currentUser?.isAdmin ?? undefined,
+});
+
+if (!hasAccess) {
+  return Astro.redirect(`/${ownerName}/${repoName}`);
+}
+
+const requirements = await db.query.reviewRequirements.findFirst({
+  where: eq(schema.reviewRequirements.repositoryId, repoData.id),
+});
+
+const reviewerRules = await db.query.reviewerRules.findMany({
+  where: eq(schema.reviewerRules.repositoryId, repoData.id),
+  orderBy: [desc(schema.reviewerRules.createdAt)],
+});
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  openIssueCount: repoData.openIssueCount,
+  openPrCount: repoData.openPrCount,
+  hasIssues: repoData.hasIssues,
+  hasWiki: repoData.hasWiki,
+  hasActions: repoData.hasActions,
+};
+---
+
+<BaseLayout title={`Review Settings · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="settings" />
+
+    <div class="grid gap-6 md:grid-cols-[240px_1fr]">
+      <nav class="space-y-1">
+        <a
+          href={`/${repo.owner}/${repo.name}/settings`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          General
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/collaborators`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Collaborators
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/webhooks`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Webhooks
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/external-ci`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          External CI
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/reviews`}
+          class="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm font-medium text-foreground"
+        >
+          Reviews
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/actions`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Actions
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/deploy-keys`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Deploy keys
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/workflow`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Workflow
+        </a>
+      </nav>
+
+      <div class="space-y-6">
+        <div class="rounded-xl border border-white/10 bg-[#0d1117]/80 p-6">
+          <div class="flex items-center gap-2 mb-4">
+            <ShieldCheck className="h-5 w-5 text-emerald-400" />
+            <h2 class="text-lg font-semibold text-white">Review Requirements</h2>
+          </div>
+          <form id="requirements-form" class="space-y-4">
+            <div class="grid gap-4 md:grid-cols-2">
+              <div>
+                <label class="text-xs text-gray-400">Minimum Approvals</label>
+                <input
+                  id="min-approvals"
+                  type="number"
+                  min="0"
+                  class="mt-1 w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                  value={requirements?.minApprovals ?? 1}
+                />
+              </div>
+            </div>
+            <label class="flex items-center gap-2 text-sm text-gray-300">
+              <input id="require-codeowner" type="checkbox" class="rounded border-white/20" checked={requirements?.requireCodeOwner || false} />
+              Require Code Owner approval
+            </label>
+            <label class="flex items-center gap-2 text-sm text-gray-300">
+              <input id="dismiss-stale" type="checkbox" class="rounded border-white/20" checked={requirements?.dismissStaleReviews || false} />
+              Dismiss stale reviews on new commits
+            </label>
+            <label class="flex items-center gap-2 text-sm text-gray-300">
+              <input id="rereview-on-push" type="checkbox" class="rounded border-white/20" checked={requirements?.requireReReviewOnPush || false} />
+              Require re-review when new commits are pushed
+            </label>
+            <button type="submit" class="px-4 py-2 rounded-md bg-emerald-500/20 text-emerald-200 border border-emerald-500/40">
+              Save Requirements
+            </button>
+            <div id="requirements-msg" class="text-xs text-muted-foreground"></div>
+          </form>
+        </div>
+
+        <div class="rounded-xl border border-white/10 bg-[#0d1117]/80 p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <Users className="h-5 w-5 text-cyan-400" />
+              <h2 class="text-lg font-semibold text-white">Reviewer Rules</h2>
+            </div>
+            <button id="add-rule-btn" class="flex items-center gap-2 px-3 py-2 rounded-md bg-cyan-500/10 text-cyan-200 border border-cyan-500/30 text-sm">
+              <Plus className="h-4 w-4" />
+              Add Rule
+            </button>
+          </div>
+
+          <div class="space-y-3">
+            {reviewerRules.length === 0 ? (
+              <div class="text-sm text-gray-500">No reviewer rules configured.</div>
+            ) : (
+              reviewerRules.map((rule) => (
+                <div
+                  class="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 px-3 py-2 text-sm"
+                  data-rule-id={rule.id}
+                  data-rule-name={rule.name}
+                  data-rule-type={rule.ruleType}
+                  data-rule-target={rule.targetId || ""}
+                  data-rule-count={String(rule.count || "")}
+                  data-rule-path={rule.pathPattern || ""}
+                  data-rule-required={rule.isRequired ? "true" : "false"}
+                  data-rule-enabled={rule.isEnabled ? "true" : "false"}
+                >
+                  <div>
+                    <div class="text-white font-medium">{rule.name}</div>
+                    <div class="text-xs text-gray-400">
+                      {rule.ruleType}{rule.pathPattern ? ` · ${rule.pathPattern}` : ""}
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button class="edit-rule-btn px-2 py-1 rounded-md border border-white/10 text-xs text-gray-300">
+                      <Edit2 className="h-3 w-3" />
+                    </button>
+                    <button class="delete-rule-btn px-2 py-1 rounded-md border border-red-500/30 text-xs text-red-300">
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<div id="rule-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60">
+  <div class="w-full max-w-lg rounded-xl border border-white/10 bg-[#0d1117] p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 id="rule-modal-title" class="text-lg font-semibold text-white">New Rule</h3>
+      <button id="rule-modal-close" class="text-gray-400 hover:text-white">×</button>
+    </div>
+    <form id="rule-form" class="space-y-3">
+      <input type="hidden" id="rule-id" />
+      <div>
+        <label class="text-xs text-gray-400">Name</label>
+        <input id="rule-name" class="mt-1 w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" />
+      </div>
+      <div>
+        <label class="text-xs text-gray-400">Rule Type</label>
+        <select id="rule-type" class="mt-1 w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white">
+          <option value="user">User</option>
+          <option value="team">Team</option>
+          <option value="random">Random</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs text-gray-400">Target ID (user/team id)</label>
+        <input id="rule-target" class="mt-1 w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" />
+      </div>
+      <div>
+        <label class="text-xs text-gray-400">Reviewer Count</label>
+        <input id="rule-count" type="number" min="1" class="mt-1 w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" />
+      </div>
+      <div>
+        <label class="text-xs text-gray-400">Path Pattern</label>
+        <input id="rule-path" class="mt-1 w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" placeholder="src/**" />
+      </div>
+      <label class="flex items-center gap-2 text-sm text-gray-300">
+        <input id="rule-required" type="checkbox" class="rounded border-white/20" checked />
+        Required reviewer
+      </label>
+      <label class="flex items-center gap-2 text-sm text-gray-300">
+        <input id="rule-enabled" type="checkbox" class="rounded border-white/20" checked />
+        Enabled
+      </label>
+      <div class="flex justify-end gap-2">
+        <button type="button" id="rule-cancel" class="px-3 py-2 text-sm text-gray-400">Cancel</button>
+        <button type="submit" class="px-4 py-2 text-sm rounded-md bg-cyan-500/20 text-cyan-200 border border-cyan-500/30">Save Rule</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script define:vars={{ repoOwner: repo.owner, repoName: repo.name }}>
+  const requirementsForm = document.getElementById("requirements-form");
+  const requirementsMsg = document.getElementById("requirements-msg");
+
+  requirementsForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    requirementsMsg.textContent = "";
+
+    const payload = {
+      minApprovals: Number(document.getElementById("min-approvals").value) || 0,
+      requireCodeOwner: document.getElementById("require-codeowner").checked,
+      dismissStaleReviews: document.getElementById("dismiss-stale").checked,
+      requireReReviewOnPush: document.getElementById("rereview-on-push").checked,
+      requireTeamLead: false,
+    };
+
+    const res = await fetch(`/api/repos/${repoOwner}/${repoName}/review-requirements`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    requirementsMsg.textContent = res.ok ? "Saved" : "Failed to save";
+  });
+
+  const modal = document.getElementById("rule-modal");
+  const modalClose = document.getElementById("rule-modal-close");
+  const cancelBtn = document.getElementById("rule-cancel");
+  const addBtn = document.getElementById("add-rule-btn");
+
+  const idField = document.getElementById("rule-id");
+  const nameField = document.getElementById("rule-name");
+  const typeField = document.getElementById("rule-type");
+  const targetField = document.getElementById("rule-target");
+  const countField = document.getElementById("rule-count");
+  const pathField = document.getElementById("rule-path");
+  const requiredField = document.getElementById("rule-required");
+  const enabledField = document.getElementById("rule-enabled");
+  const title = document.getElementById("rule-modal-title");
+
+  const openModal = () => {
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+  };
+
+  const closeModal = () => {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  };
+
+  const resetForm = () => {
+    idField.value = "";
+    nameField.value = "";
+    typeField.value = "user";
+    targetField.value = "";
+    countField.value = "";
+    pathField.value = "";
+    requiredField.checked = true;
+    enabledField.checked = true;
+    title.textContent = "New Rule";
+  };
+
+  addBtn?.addEventListener("click", () => {
+    resetForm();
+    openModal();
+  });
+  modalClose?.addEventListener("click", closeModal);
+  cancelBtn?.addEventListener("click", closeModal);
+
+  document.querySelectorAll(".edit-rule-btn").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      const row = event.currentTarget.closest("[data-rule-id]");
+      if (!row) return;
+
+      idField.value = row.dataset.ruleId;
+      nameField.value = row.dataset.ruleName || "";
+      typeField.value = row.dataset.ruleType || "user";
+      targetField.value = row.dataset.ruleTarget || "";
+      countField.value = row.dataset.ruleCount || "";
+      pathField.value = row.dataset.rulePath || "";
+      requiredField.checked = row.dataset.ruleRequired !== "false";
+      enabledField.checked = row.dataset.ruleEnabled !== "false";
+      title.textContent = "Edit Rule";
+      openModal();
+    });
+  });
+
+  document.querySelectorAll(".delete-rule-btn").forEach((btn) => {
+    btn.addEventListener("click", async (event) => {
+      if (!confirm("Delete this rule?")) return;
+      const row = event.currentTarget.closest("[data-rule-id]");
+      if (!row) return;
+
+      const res = await fetch(`/api/repos/${repoOwner}/${repoName}/reviewer-rules/${row.dataset.ruleId}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        alert("Failed to delete rule");
+      }
+    });
+  });
+
+  document.getElementById("rule-form")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const payload = {
+      name: nameField.value.trim(),
+      ruleType: typeField.value,
+      targetId: targetField.value.trim(),
+      count: Number(countField.value) || null,
+      pathPattern: pathField.value.trim(),
+      isRequired: requiredField.checked,
+      isEnabled: enabledField.checked,
+    };
+
+    if (!payload.name) {
+      alert("Name is required");
+      return;
+    }
+
+    const ruleId = idField.value;
+    const url = ruleId
+      ? `/api/repos/${repoOwner}/${repoName}/reviewer-rules/${ruleId}`
+      : `/api/repos/${repoOwner}/${repoName}/reviewer-rules`;
+
+    const method = ruleId ? "PUT" : "POST";
+
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      window.location.reload();
+    } else {
+      alert("Failed to save rule");
+    }
+  });
+</script>

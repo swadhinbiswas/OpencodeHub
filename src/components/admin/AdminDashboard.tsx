@@ -7,7 +7,7 @@ import SystemStatus from "./SystemStatus";
 import QuickStatsRow from "./QuickStatsRow";
 import AlertBanner from "./AlertBanner";
 import RecentActivity from "./RecentActivity";
-import { Github } from "lucide-react";
+import { GitGraph } from "lucide-react";
 
 // Error boundary for WebGL/Globe issues
 class GlobeErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -139,7 +139,7 @@ export default function AdminDashboard() {
                     {/* Right Column: Log Stream */}
                     <div className="col-span-3 flex flex-col gap-4 pointer-events-auto overflow-hidden">
                         <div className="flex justify-end shrink-0">
-                            <Github className="h-8 w-8 text-white opacity-30 hover:opacity-70 transition-opacity cursor-pointer" />
+                            <GitGraph className="h-8 w-8 text-white opacity-30 hover:opacity-70 transition-opacity cursor-pointer" />
                         </div>
 
                         <div className="glass-panel rounded-xl flex-1 overflow-hidden min-h-0 relative">

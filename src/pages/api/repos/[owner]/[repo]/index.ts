@@ -32,6 +32,7 @@ const updateRepoSchema = z.object({
   hasWiki: z.boolean().optional(),
   hasActions: z.boolean().optional(),
   isArchived: z.boolean().optional(),
+  isTemplate: z.boolean().optional(),
   topics: z.array(z.string()).optional(),
   website: z.string().optional(),
 });
@@ -102,6 +103,14 @@ export const GET: APIRoute = withErrorHandler(async ({ params, request }) => {
     }
   }
 
+  // Calculate permissions properly
+  const hasPush = tokenPayload
+    ? await canWriteRepo(tokenPayload.userId, repository, { isAdmin: tokenPayload.isAdmin })
+    : false;
+  const hasAdmin = tokenPayload
+    ? await canAdminRepo(tokenPayload.userId, repository, { isAdmin: tokenPayload.isAdmin })
+    : false;
+
   // Get additional data
   const data = {
     id: repository.id,
@@ -135,8 +144,8 @@ export const GET: APIRoute = withErrorHandler(async ({ params, request }) => {
     updatedAt: repository.updatedAt,
     owner: repository.owner,
     permissions: {
-      admin: isOwner || isAdmin,
-      push: isOwner || isAdmin, // TODO: check collaborator permission
+      admin: hasAdmin,
+      push: hasPush,
       pull: true,
     },
   };
@@ -196,6 +205,7 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request }) => {
 
   // Map fields to update
   const { name, description, visibility, defaultBranch, hasIssues, hasWiki, hasActions, isArchived, topics } = parsed.data;
+  const { isTemplate } = parsed.data;
 
   if (name !== undefined) updateData.name = name;
   if (description !== undefined) updateData.description = description;
@@ -205,6 +215,13 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request }) => {
   if (hasWiki !== undefined) updateData.hasWiki = hasWiki;
   if (hasActions !== undefined) updateData.hasActions = hasActions;
   if (isArchived !== undefined) updateData.isArchived = isArchived;
+  if (isTemplate !== undefined) {
+    const hasAdminPermission = await canAdminRepo(tokenPayload.userId, repository, { isAdmin: tokenPayload.isAdmin });
+    if (!hasAdminPermission) {
+      return forbidden('You do not have permission to update template status');
+    }
+    updateData.isTemplate = isTemplate;
+  }
   if (topics !== undefined) updateData.topics = JSON.stringify(topics);
 
   // Update repository
@@ -242,6 +259,7 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request }) => {
     hasWiki: updatedRepo!.hasWiki,
     hasActions: updatedRepo!.hasActions,
     isArchived: updatedRepo!.isArchived,
+    isTemplate: updatedRepo!.isTemplate,
     topics: updatedRepo!.topics ? JSON.parse(updatedRepo!.topics) : [],
     owner: updatedRepo!.owner,
     updatedAt: updatedRepo!.updatedAt,

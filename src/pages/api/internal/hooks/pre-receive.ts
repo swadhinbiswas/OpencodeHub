@@ -3,22 +3,32 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { logger } from "@/lib/logger";
 import type { APIRoute } from "astro";
 import { eq, and } from "drizzle-orm";
-// import micromatch from "micromatch"; // We might need this for glob matching, but for now exact match or manual regex
+import micromatch from "micromatch";
 
 export const POST: APIRoute = async ({ request, url }) => {
+    const hookSecret = process.env.INTERNAL_HOOK_SECRET;
+    if (!hookSecret) {
+        return new Response("Server misconfigured", { status: 500 });
+    }
+    const providedSecret = request.headers.get("X-Hook-Secret");
+    if (providedSecret !== hookSecret) {
+        return new Response("Unauthorized", { status: 401 });
+    }
+
     const repoPath = url.searchParams.get("repo");
     if (!repoPath) {
         return new Response("Missing repo path", { status: 400 });
     }
 
-    let body: { oldrev: string; newrev: string; refname: string };
+    let body: { oldrev: string; newrev: string; refname: string; pusher?: string };
     try {
         body = await request.json();
     } catch (e) {
         return new Response("Invalid JSON", { status: 400 });
     }
 
-    const { refname, newrev, oldrev } = body;
+    const { refname, newrev, oldrev, pusher } = body;
+    const userId = pusher; // The SSH server sends REMOTE_USER as userId
     // const isForcePush = ... // Hard to detect strictly from here without more Git context, but typically oldrev mismatch?
     // Actually, force push is when newrev is not a descendant of oldrev. We can check that if we have git access.
     // For now, let's focus on branch existence and roles.
@@ -137,6 +147,101 @@ export const POST: APIRoute = async ({ request, url }) => {
                 logger.error({ err: e }, "Failed to check force push status");
                 // Fail safe or open? Fail safe -> Block
                 return new Response("Failed to verify push safety.", { status: 500 });
+            }
+        }
+    }
+
+    // 3. Path-based Write Protection
+    const strictPathPermissions = await db.query.repositoryPathPermissions.findMany({
+        where: eq(schema.repositoryPathPermissions.repositoryId, repo.id)
+    });
+
+    if (strictPathPermissions.length > 0) {
+        if (!userId || userId === "anonymous") {
+            return new Response("Write access denied: User identity required for protected repository.", { status: 403 });
+        }
+
+        let changedFiles: string[] = [];
+        try {
+            const { simpleGit } = await import("simple-git");
+            const git = simpleGit(repoPath);
+
+            // Determine base revision for diff
+            let baseRev = oldrev;
+
+            // Handle new branch creation (oldrev is zero)
+            if (baseRev === "0000000000000000000000000000000000000000") {
+                const defaultBranch = repo.defaultBranch || "main";
+
+                // If creating default branch itself, diff against empty tree
+                if (branchName === defaultBranch) {
+                    baseRev = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"; // Empty tree hash
+                } else {
+                    // Try to find the split point (merge-base) between new branch and default
+                    // But newrev is the tip.
+                    // Simply diffing against default branch on server is reasonable for permissions.
+                    // "What are you changing relative to main?"
+                    try {
+                        // We need to resolve the default branch ref to SHA
+                        const resolved = await git.revparse([defaultBranch]);
+                        baseRev = resolved.trim();
+                    } catch (e) {
+                        // Default branch might not exist yet or error
+                        baseRev = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+                    }
+                }
+            }
+
+            // Calculate changed files
+            // If deleting branch, newrev is zero, we skip check (deletion handled by branch protection)
+            if (newrev !== "0000000000000000000000000000000000000000") {
+                // Use --name-only to get file list
+                const diff = await git.diff([
+                    "--name-only",
+                    baseRev,
+                    newrev
+                ]);
+                changedFiles = diff.split('\n').filter(Boolean);
+            }
+
+        } catch (e) {
+            logger.error({ err: e }, "Failed to get changed files for path protection");
+            // Fail open or closed? Security usually Fail Closed.
+            return new Response("Internal Server Error during permission check", { status: 500 });
+        }
+
+        if (changedFiles.length > 0) {
+            // Check permissions
+            // 1. Get user's teams
+            const userTeams = await db.query.teamMembers.findMany({
+                where: eq(schema.teamMembers.userId, userId),
+                with: { team: true }
+            });
+            const userTeamIds = userTeams.map(tm => tm.teamId);
+
+            // 2. Identify rules that grant access to this user
+            const userAllowedRules = strictPathPermissions.filter(rule =>
+                (rule.userId === userId) || (rule.teamId && userTeamIds.includes(rule.teamId))
+            );
+
+            // 3. Check each file
+            for (const file of changedFiles) {
+                // Find all rules that 'protect' this file (match the path)
+                const protectingRules = strictPathPermissions.filter(rule =>
+                    micromatch.isMatch(file, rule.pathPattern)
+                );
+
+                if (protectingRules.length > 0) {
+                    // File is protected. User must match at least one ALLOWED rule that covers this file.
+                    // (i.e. one of userAllowedRules must match the file)
+                    const hasAccess = userAllowedRules.some(allowed =>
+                        micromatch.isMatch(file, allowed.pathPattern)
+                    );
+
+                    if (!hasAccess) {
+                        return new Response(`Permission denied for ${file}. Protected path.`, { status: 403 });
+                    }
+                }
             }
         }
     }

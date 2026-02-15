@@ -24,6 +24,7 @@ describe("Git Integration", () => {
       repoName: "integration-test",
       ownerName: "tester",
       readme: true,
+      skipHooks: true,
     });
 
     const exists = await fs

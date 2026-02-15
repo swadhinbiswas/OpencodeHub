@@ -76,8 +76,32 @@ export async function recordPrMetrics(
         ? Math.floor((new Date(firstApproval.createdAt).getTime() - createdAt.getTime()) / 1000)
         : null;
 
-    // Count commits on the PR (using git log if needed, but for now use stored count)
-    const commitCount = 1; // TODO: Fetch actual commit count from git or add to schema
+    // Count commits on the PR by querying git
+    let commitCount = 1;
+    try {
+        const repo = await db.query.repositories.findFirst({
+            where: eq(schema.repositories.id, pr.repositoryId),
+        });
+
+        if (repo) {
+            const { resolveRepoPath } = await import("./git-storage");
+            const { getGit } = await import("./git");
+
+            const localPath = await resolveRepoPath(repo.diskPath);
+            const git = getGit(localPath);
+
+            // Count commits between base and head (for merged PRs, use merge base)
+            if (pr.baseSha && pr.headSha) {
+                const countOutput = await git.raw([
+                    "rev-list", "--count", `${pr.baseSha}..${pr.headSha}`
+                ]).catch(() => "1");
+                commitCount = parseInt(countOutput.trim(), 10) || 1;
+            }
+        }
+    } catch (err) {
+        // Fall back to 1 if git operations fail
+        commitCount = 1;
+    }
 
     const metricsData = {
         pullRequestId,

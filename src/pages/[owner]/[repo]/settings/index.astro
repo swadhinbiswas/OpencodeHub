@@ -56,8 +56,8 @@ if (!hasAccess) {
 const repo = {
   owner: repoData.owner.username,
   name: repoData.name,
-  description: repoData.description,
-  visibility: repoData.visibility,
+  description: repoData.description || undefined,
+  visibility: repoData.visibility as "public" | "private" | "internal",
   defaultBranch: repoData.defaultBranch,
   stars: repoData.starCount,
   forks: repoData.forkCount,
@@ -70,10 +70,11 @@ const repo = {
   sshCloneUrl: repoData.sshCloneUrl,
   openIssueCount: repoData.openIssueCount,
   openPrCount: repoData.openPrCount,
-  hasIssues: repoData.hasIssues,
-  hasWiki: repoData.hasWiki,
-  hasActions: repoData.hasActions,
+  hasIssues: repoData.hasIssues ?? false,
+  hasWiki: repoData.hasWiki ?? false,
+  hasActions: repoData.hasActions ?? false,
   isArchived: repoData.isArchived ?? false,
+  isTemplate: repoData.isTemplate ?? false,
 };
 ---
 
@@ -103,6 +104,18 @@ const repo = {
           Webhooks
         </a>
         <a
+          href={`/${repo.owner}/${repo.name}/settings/external-ci`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          External CI
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/reviews`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Reviews
+        </a>
+        <a
           href={`/${repo.owner}/${repo.name}/settings/actions`}
           class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
         >
@@ -113,6 +126,12 @@ const repo = {
           class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           Deploy keys
+        </a>
+        <a
+          href={`/${repo.owner}/${repo.name}/settings/workflow`}
+          class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Workflow
         </a>
       </nav>
 

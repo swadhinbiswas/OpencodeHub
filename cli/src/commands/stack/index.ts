@@ -1,3 +1,4 @@
+
 /**
  * Stack Commands
  * Manage stacked PRs from the CLI
@@ -14,6 +15,13 @@ import { simpleGit } from "simple-git";
 import { applyTlsConfig } from "../../lib/api.js";
 import { getConfig } from "../../lib/config.js";
 import { getRepoInfoFromGit } from "../../lib/git.js";
+import {
+  setParentBranch,
+  getParentBranch,
+  getStackTopology,
+  flattenStack,
+  recursiveRebase
+} from "../../lib/stack-manager.js";
 
 const git = simpleGit();
 
@@ -49,22 +57,25 @@ stackCommands
 
     try {
       // Get current branch
-      const currentBranch = await git.revparse(["--abbrev-ref", "HEAD"]);
+      const currentBranch = (await git.revparse(["--abbrev-ref", "HEAD"])).trim();
 
       // Create new branch
       const newBranch = `stack/${name}`;
       await git.checkoutLocalBranch(newBranch);
 
+      // Save parent metadata
+      await setParentBranch(git, newBranch, currentBranch);
+
       spinner.succeed(
-        `Created branch ${chalk.green(newBranch)} (stacked on ${chalk.cyan(currentBranch.trim())})`,
+        `Created branch ${chalk.green(newBranch)} (stacked on ${chalk.cyan(currentBranch)})`,
       );
 
       console.log("\n" + chalk.dim("Next steps:"));
       console.log(chalk.dim("  • Make your changes"));
       console.log(
         chalk.dim("  • Run ") +
-          chalk.cyan("och stack submit") +
-          chalk.dim(" to push and create PRs"),
+        chalk.cyan("och stack submit") +
+        chalk.dim(" to push and create PRs"),
       );
     } catch (error) {
       spinner.fail("Failed to create branch");
@@ -92,19 +103,27 @@ stackCommands
     const spinner = ora("Analyzing stack...").start();
 
     try {
-      // Get all stack branches
-      const branches = await git.branchLocal();
-      const currentBranch = (
-        await git.revparse(["--abbrev-ref", "HEAD"])
-      ).trim();
-      const stackBranches = branches.all.filter((b) => b.startsWith("stack/"));
+      // Get stack topology
+      const roots = await getStackTopology(git);
+      const allNodes = flattenStack(roots);
 
-      if (stackBranches.length === 0) {
+      // Filter for branches starting with 'stack/' or just use the topology?
+      // Let's use topology but only push branches that we manage.
+      // Assuming user is on a branch in the stack, we probably want to submit *this* stack.
+      const currentBranch = (await git.revparse(["--abbrev-ref", "HEAD"])).trim();
+
+      // Filter nodes related to current branch? existing logic submitted ALL 'stack/' branches.
+      // Let's stick to submitting topologically sorted list of 'stack/' branches.
+      const sortedStackBranches = allNodes
+        .map(n => n.branch)
+        .filter(b => b.startsWith("stack/"));
+
+      if (sortedStackBranches.length === 0) {
         spinner.fail("No stack branches found");
         console.log(
           chalk.dim("Run ") +
-            chalk.cyan("och stack create <name>") +
-            chalk.dim(" to start a stack."),
+          chalk.cyan("och stack create <name>") +
+          chalk.dim(" to start a stack."),
         );
         process.exit(1);
       }
@@ -132,7 +151,7 @@ stackCommands
       };
 
       try {
-        for (const branch of stackBranches) {
+        for (const branch of sortedStackBranches) {
           try {
             console.log(chalk.dim(`  Pushing ${branch} to origin...`));
             const result = spawnSync(
@@ -167,19 +186,20 @@ stackCommands
       spinner.text = "Creating PRs...";
 
       // Build branch metadata for PR creation
-      const branchData = stackBranches.map((branch, index) => {
+      const branchData = [];
+      for (const branch of sortedStackBranches) {
         const name = branch.replace("stack/", "");
-        const parentBranch = index === 0 ? "main" : stackBranches[index - 1];
+        const parent = await getParentBranch(git, branch) || "main";
 
-        return {
+        branchData.push({
           name: branch,
           title: options.message
             ? `${options.message}: ${name}`
             : `[Stack] ${name}`,
-          description: `Part of stacked PR workflow.\n\nBranch: \`${branch}\`\nBased on: \`${parentBranch}\``,
-          parentBranch,
-        };
-      });
+          description: `Part of stacked PR workflow.\n\nBranch: \`${branch}\`\nBased on: \`${parent}\``,
+          parentBranch: parent,
+        });
+      }
 
       // Create PRs via API
       try {
@@ -229,8 +249,8 @@ stackCommands
       console.log(chalk.dim("  • Get reviews on your PRs"));
       console.log(
         chalk.dim("  • Run ") +
-          chalk.cyan("och stack sync") +
-          chalk.dim(" to keep in sync"),
+        chalk.cyan("och stack sync") +
+        chalk.dim(" to keep in sync"),
       );
     } catch (error) {
       spinner.fail("Failed to submit stack");
@@ -243,236 +263,115 @@ stackCommands
 
 // View current stack
 stackCommands
-  .command("view")
+  .command("log")
   .alias("ls")
-  .alias("log")
-  .description("View current stack visualization (like gt log)")
+  .alias("view")
+  .description("Visual stack graph")
   .action(async () => {
     try {
-      const currentBranch = await git.revparse(["--abbrev-ref", "HEAD"]);
-      const branches = await git.branchLocal();
+      const roots = await getStackTopology(git);
 
-      console.log(chalk.bold("\n📚 Current Stack\n"));
+      console.log(chalk.bold("\n📚 Stack Topology\n"));
 
-      // Find stack branches
-      const stackBranches = branches.all.filter((b) => b.startsWith("stack/"));
-
-      if (stackBranches.length === 0) {
-        console.log(chalk.dim("  No stack branches found."));
-        console.log(
-          chalk.dim("  Run ") +
-            chalk.cyan("och stack create <name>") +
-            chalk.dim(" to start a stack."),
-        );
+      if (roots.length === 0) {
+        console.log(chalk.dim("No stack found."));
         return;
       }
 
-      // Display stack
-      console.log(
-        chalk.dim("  ┌─ ") + chalk.green("main") + chalk.dim(" (base)"),
-      );
+      const printNode = (node: any, prefix: string, isLast: boolean, isRoot: boolean) => {
+        const marker = isRoot ? "" : (isLast ? "└─" : "├─");
+        const branchColor = node.isCurrent ? chalk.green.bold : chalk.cyan;
+        const status = node.isCurrent ? chalk.yellow(" (current)") : "";
 
-      for (let i = 0; i < stackBranches.length; i++) {
-        const branch = stackBranches[i];
-        const isCurrent = currentBranch.trim() === branch;
-        const prefix = i === stackBranches.length - 1 ? "└─" : "├─";
+        console.log(`${prefix}${marker} ${branchColor(node.branch)}${status}`);
 
-        if (isCurrent) {
-          console.log(chalk.dim("  │"));
-          console.log(
-            chalk.dim(`  ${prefix} `) +
-              chalk.yellow.bold("● " + branch) +
-              chalk.yellow(" (current)"),
-          );
-        } else {
-          console.log(chalk.dim("  │"));
-          console.log(chalk.dim(`  ${prefix} `) + chalk.cyan("○ " + branch));
+        const newPrefix = isRoot ? "" : (prefix + (isLast ? "   " : "│  "));
+
+        for (let i = 0; i < node.children.length; i++) {
+          printNode(node.children[i], newPrefix, i === node.children.length - 1, false);
+        }
+      };
+
+      for (const root of roots) {
+        // If root has children or is interesting (e.g. main)
+        if (root.children.length > 0 || root.branch === 'main') {
+          printNode(root, "", true, true);
+          console.log("");
         }
       }
 
-      console.log("");
     } catch (error) {
-      console.error(chalk.red("Failed to view stack"));
+      console.error(chalk.red("Failed to view stack"), error);
       process.exit(1);
     }
   });
 
-// Sync stack with remote
+// Sync stack (Recursive Rebase)
 stackCommands
   .command("sync")
-  .description("Bidirectional sync with remote")
-  .option("-p, --push", "Push local changes to remote")
-  .option("-l, --pull", "Pull remote changes to local")
-  .option("-f, --force", "Force push (use with caution)")
-  .action(async (options) => {
+  .description("Recursively rebase stack on updated main")
+  .action(async () => {
     const spinner = ora("Syncing stack...").start();
 
     try {
-      // Fetch latest
-      spinner.text = "Fetching from remote...";
+      // 1. Update main
+      spinner.text = "Fetching origin/main...";
       await git.fetch();
-
-      const branches = await git.branchLocal();
-      const stackBranches = branches.all.filter((b) => b.startsWith("stack/"));
-
-      if (stackBranches.length === 0) {
-        spinner.info("No stack branches found");
-        return;
+      try {
+        await git.checkout("main");
+        await git.pull();
+      } catch (e) {
+        // Maybe main doesn't exist locally or something
       }
 
-      const currentBranch = await git.revparse(["--abbrev-ref", "HEAD"]);
+      // 2. Refresh topology
+      const roots = await getStackTopology(git);
+      const flatStack = flattenStack(roots);
 
-      // Default: do both push and pull if neither specified
-      const doPush = options.push || (!options.push && !options.pull);
-      const doPull = options.pull || (!options.push && !options.pull);
+      // Filter out main itself from loop
+      const stackBranches = flatStack.filter(n => n.branch !== 'main');
+
+      if (stackBranches.length === 0) {
+        spinner.info("No stack branches to sync.");
+        return;
+      }
 
       let syncedCount = 0;
-      const errors: string[] = [];
 
-      for (const branch of stackBranches) {
-        spinner.text = `Syncing ${branch}...`;
+      // 3. Recursive Rebase
+      // We iterate breadth-first or topologically (flattenStack is DFS preorder usually, which ensures parents processed before children)
+      // Actually flattenStack implementation above is DFS preorder. Parent -> Child -> ...
+      for (const node of stackBranches) {
+        const parentBranch = node.parent;
+        if (!parentBranch) continue;
+
+        spinner.text = `Rebasing ${node.branch} onto ${parentBranch}...`;
 
         try {
-          await git.checkout(branch);
-
-          if (doPull) {
-            // Pull with rebase
-            try {
-              await git.pull(["--rebase", "origin", branch]);
-            } catch (e) {
-              // Branch might not exist on remote yet
-            }
-          }
-
-          if (doPush) {
-            const pushArgs = ["-u", "origin", branch];
-            if (options.force) {
-              pushArgs.unshift("--force-with-lease");
-            }
-            await git.push(pushArgs);
-          }
-
+          // We rebase 'node.branch' onto 'parentBranch'
+          // Since we processed 'parentBranch' already (if it was in stack), 'parentBranch' tip is updated.
+          // So 'git rebase parentBranch' works perfectly.
+          await git.checkout(node.branch);
+          await git.rebase([parentBranch]);
           syncedCount++;
-        } catch (error) {
-          errors.push(
-            `${branch}: ${error instanceof Error ? error.message : "Unknown error"}`,
-          );
+        } catch (e) {
+          spinner.fail(`Conflict rebasing ${node.branch} onto ${parentBranch}`);
+          console.log(chalk.yellow("\nResolve conflicts manually, then continue with:"));
+          console.log(chalk.cyan(`  git rebase --continue`));
+          // We have to stop here because children depend on this
+          process.exit(1);
         }
       }
 
-      // Return to original branch
-      await git.checkout(currentBranch.trim());
+      // 4. Force Push updates (Optional, or explicit?)
+      // Graphite defaults to not pushing unless requested or 'gt submit'.
+      // But 'och stack sync' implies syncing WITH remote often.
+      // Let's keep it local only for safety, user updates remote via 'och stack submit'.
 
-      if (errors.length > 0) {
-        spinner.warn(`Synced ${syncedCount}/${stackBranches.length} branches`);
-        console.log(chalk.yellow("\nIssues:"));
-        errors.forEach((e) => console.log(chalk.dim(`  • ${e}`)));
-      } else {
-        spinner.succeed(`Synced ${syncedCount} branches successfully`);
-      }
+      spinner.succeed(`Recursively rebased ${syncedCount} branches. Run 'och stack submit' to push updates.`);
+
     } catch (error) {
       spinner.fail("Failed to sync stack");
-      console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
-      );
-      console.log(chalk.dim("\nIf there are conflicts, resolve them and run:"));
-      console.log(chalk.cyan("  git rebase --continue"));
-      process.exit(1);
-    }
-  });
-
-// Stack status
-stackCommands
-  .command("status")
-  .alias("st")
-  .description("Show sync status for all stack branches")
-  .action(async () => {
-    const spinner = ora("Checking status...").start();
-
-    try {
-      await git.fetch();
-
-      const branches = await git.branchLocal();
-      const stackBranches = branches.all.filter((b) => b.startsWith("stack/"));
-      const currentBranch = await git.revparse(["--abbrev-ref", "HEAD"]);
-
-      spinner.stop();
-
-      if (stackBranches.length === 0) {
-        console.log(chalk.dim("\nNo stack branches found."));
-        return;
-      }
-
-      console.log(chalk.bold("\n📊 Stack Status\n"));
-
-      for (const branch of stackBranches) {
-        const isCurrent = currentBranch.trim() === branch;
-
-        // Get ahead/behind
-        let ahead = 0;
-        let behind = 0;
-        let hasRemote = true;
-
-        try {
-          const log = await git.raw([
-            "rev-list",
-            "--left-right",
-            "--count",
-            `${branch}...origin/${branch}`,
-          ]);
-          [ahead, behind] = log.trim().split("\t").map(Number);
-        } catch {
-          hasRemote = false;
-        }
-
-        // Build status line
-        let status = "";
-        if (!hasRemote) {
-          status = chalk.yellow("⚠ not pushed");
-        } else if (ahead > 0 && behind > 0) {
-          status = chalk.red(`↑${ahead} ↓${behind} diverged`);
-        } else if (ahead > 0) {
-          status = chalk.cyan(`↑${ahead} ahead`);
-        } else if (behind > 0) {
-          status = chalk.magenta(`↓${behind} behind`);
-        } else {
-          status = chalk.green("✓ synced");
-        }
-
-        const marker = isCurrent ? chalk.yellow("● ") : chalk.dim("○ ");
-        console.log(
-          `  ${marker}${isCurrent ? chalk.bold(branch) : branch}  ${status}`,
-        );
-      }
-
-      console.log("");
-    } catch (error) {
-      spinner.fail("Failed to get status");
-      console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
-      );
-      process.exit(1);
-    }
-  });
-
-// Rebase entire stack
-stackCommands
-  .command("rebase")
-  .description("Rebase entire stack on base branch")
-  .option("-b, --base <branch>", "Base branch to rebase on", "main")
-  .action(async (options) => {
-    const spinner = ora(`Rebasing stack on ${options.base}...`).start();
-
-    try {
-      // Fetch latest
-      await git.fetch();
-
-      // Rebase
-      await git.rebase([options.base]);
-
-      spinner.succeed(`Stack rebased on ${chalk.green(options.base)}`);
-    } catch (error) {
-      spinner.fail("Failed to rebase stack");
       console.error(
         chalk.red(error instanceof Error ? error.message : "Unknown error"),
       );

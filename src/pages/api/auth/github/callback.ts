@@ -4,11 +4,12 @@ import { createSession } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import type { APIRoute } from "astro";
 import { and, eq } from "drizzle-orm";
+import { github } from "@/lib/oauth";
+import { OAuth2RequestError } from "arctic";
+import { getSiteUrl } from "@/lib/site-url";
 
 const GITHUB_CLIENT_ID = import.meta.env.OAUTH_GITHUB_CLIENT_ID;
 const GITHUB_CLIENT_SECRET = import.meta.env.OAUTH_GITHUB_CLIENT_SECRET;
-const SITE_URL = import.meta.env.SITE_URL || "http://localhost:4321";
-
 interface GitHubUser {
     id: number;
     login: string;
@@ -22,45 +23,22 @@ interface GitHubUser {
 }
 
 export const GET: APIRoute = async ({ url, cookies, redirect }) => {
+    const SITE_URL = getSiteUrl();
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
-    const storedState = cookies.get("oauth_state")?.value;
+    const storedState = cookies.get("github_oauth_state")?.value;
 
     // Clear state cookie
-    cookies.delete("oauth_state", { path: "/" });
+    cookies.delete("github_oauth_state", { path: "/" });
 
-    if (!code || !state || state !== storedState) {
+    if (!code || !state || !storedState || state !== storedState) {
         return redirect("/login?error=oauth_failed");
     }
 
-    if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET) {
-        return redirect("/login?error=oauth_not_configured");
-    }
-
     try {
-        // Exchange code for access token
-        const tokenResponse = await fetch("https://github.com/login/oauth/access_token", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Accept: "application/json",
-            },
-            body: JSON.stringify({
-                client_id: GITHUB_CLIENT_ID,
-                client_secret: GITHUB_CLIENT_SECRET,
-                code,
-                redirect_uri: `${SITE_URL}/api/auth/github/callback`,
-            }),
-        });
+        const tokens = await github.validateAuthorizationCode(code);
+        const accessToken = tokens.accessToken();
 
-        const tokenData = await tokenResponse.json();
-
-        if (tokenData.error) {
-            logger.error({ error: tokenData.error }, "GitHub OAuth token error");
-            return redirect("/login?error=oauth_failed");
-        }
-
-        const accessToken = tokenData.access_token;
 
         // Get user info from GitHub
         const userResponse = await fetch("https://api.github.com/user", {
@@ -193,8 +171,8 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
         }
 
         // Create session
-        const sessionToken = await createSession(userId);
-        cookies.set("session", sessionToken, {
+        const session = await createSession(userId);
+        cookies.set("och_session", session.token, {
             httpOnly: true,
             secure: import.meta.env.PROD,
             sameSite: "lax",
@@ -206,6 +184,11 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
 
         return redirect("/");
     } catch (error) {
+        if (error instanceof OAuth2RequestError) {
+            return new Response(null, {
+                status: 400
+            });
+        }
         logger.error({ error }, "GitHub OAuth error");
         return redirect("/login?error=oauth_failed");
     }

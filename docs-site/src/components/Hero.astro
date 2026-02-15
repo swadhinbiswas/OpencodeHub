@@ -1,0 +1,534 @@
+---
+const { title, tagline } = Astro.props;
+---
+
+<div class="hero-container" data-och-hero>
+  <div class="hero-background">
+    <div class="gradient-orb orb-1"></div>
+    <div class="gradient-orb orb-2"></div>
+    <div class="gradient-orb orb-3"></div>
+    <div class="stars"></div>
+    <svg
+      class="bg-grid"
+      viewBox="0 0 1200 600"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <defs>
+        <linearGradient id="ochGrid" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#8be9fd" stop-opacity="0.22"></stop>
+          <stop offset="0.5" stop-color="#bd93f9" stop-opacity="0.18"></stop>
+          <stop offset="1" stop-color="#ff79c6" stop-opacity="0.14"></stop>
+        </linearGradient>
+        <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+          <path
+            d="M 48 0 L 0 0 0 48"
+            fill="none"
+            stroke="url(#ochGrid)"
+            stroke-width="1"></path>
+        </pattern>
+      </defs>
+      <rect width="1200" height="600" fill="url(#grid)" opacity="0.35"></rect>
+    </svg>
+  </div>
+
+  <div class="hero-content">
+    <div class="hero-text">
+      <h1 class="hero-title">
+        <span class="title-line fade-in-up" style="animation-delay: 0.1s;"
+          >{title ?? "OpenCodeHub"}</span
+        >
+        <span
+          class="title-line fade-in-up gradient-text"
+          style="animation-delay: 0.3s;">Documentation</span
+        >
+      </h1>
+
+      <p class="hero-tagline fade-in-up" style="animation-delay: 0.5s;">
+        {tagline}
+      </p>
+
+      <div class="hero-actions fade-in-up" style="animation-delay: 0.7s;">
+        <a href="/getting-started/installation/" class="hero-button primary">
+          <span>Get Started</span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path
+              d="M6 12L10 8L6 4"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"></path>
+          </svg>
+        </a>
+        <a
+          href="https://github.com/swadhinbiswas/OpencodeHub"
+          class="hero-button secondary"
+          target="_blank"
+          rel="noopener"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
+            ></path>
+          </svg>
+          <span>View on GitHub</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="hero-visual fade-in-up" style="animation-delay: 0.9s;">
+      <div class="mascot-container">
+        <img
+          src="/logo-light.png"
+          alt="OpenCodeHub Logo"
+          class="mascot floating logo-light"
+        />
+        <img
+          src="/logo-dark.png"
+          alt="OpenCodeHub Logo"
+          class="mascot floating logo-dark"
+        />
+        <svg
+          class="logo-spark"
+          viewBox="0 0 320 320"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path
+            d="M44 196 C88 120, 132 232, 176 156 S264 184, 276 124"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-linejoin="round"></path>
+          <path
+            d="M62 116 L86 116 M74 104 L74 128"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            stroke-linecap="round"></path>
+          <path
+            d="M248 216 L272 216 M260 204 L260 228"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            stroke-linecap="round"></path>
+        </svg>
+        <div class="glow-effect"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (() => {
+    const heroEl = document.querySelector("[data-och-hero]");
+    if (!(heroEl instanceof HTMLElement)) return;
+
+    const reduce = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)",
+    )?.matches;
+    if (reduce) return;
+
+    const setVars = (clientX: number, clientY: number) => {
+      const r = heroEl.getBoundingClientRect();
+      const x = (clientX - r.left) / r.width;
+      const y = (clientY - r.top) / r.height;
+      heroEl.style.setProperty("--mx", String((x - 0.5) * 2));
+      heroEl.style.setProperty("--my", String((y - 0.5) * 2));
+    };
+
+    const onMove = (e: MouseEvent | TouchEvent) => {
+      if ("touches" in e && e.touches?.[0])
+        setVars(e.touches[0].clientX, e.touches[0].clientY);
+      else setVars((e as MouseEvent).clientX, (e as MouseEvent).clientY);
+    };
+
+    const onLeave = () => {
+      heroEl.style.setProperty("--mx", "0");
+      heroEl.style.setProperty("--my", "0");
+    };
+
+    heroEl.addEventListener("mousemove", onMove, { passive: true });
+    heroEl.addEventListener("touchmove", onMove, { passive: true });
+    heroEl.addEventListener("mouseleave", onLeave, { passive: true });
+  })();
+</script>
+
+<style>
+  .hero-container {
+    position: relative;
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 4rem 2rem;
+  }
+
+  .hero-background {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    z-index: 0;
+  }
+
+  .bg-grid {
+    position: absolute;
+    inset: -20% -20% -20% -20%;
+    width: 140%;
+    height: 140%;
+    transform: translate(calc(var(--mx, 0) * -10px), calc(var(--my, 0) * -10px))
+      rotate(-2deg);
+    transition: transform 120ms ease;
+    opacity: 0.3;
+    pointer-events: none;
+  }
+
+  .gradient-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.3;
+    animation: float 20s ease-in-out infinite;
+  }
+
+  .orb-1 {
+    width: 500px;
+    height: 500px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    top: -10%;
+    left: -10%;
+    animation-delay: 0s;
+    transform: translate(calc(var(--mx, 0) * 16px), calc(var(--my, 0) * 10px));
+  }
+
+  .orb-2 {
+    width: 400px;
+    height: 400px;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    top: 40%;
+    right: -5%;
+    animation-delay: -7s;
+    transform: translate(calc(var(--mx, 0) * -12px), calc(var(--my, 0) * 14px));
+  }
+
+  .orb-3 {
+    width: 350px;
+    height: 350px;
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    bottom: -10%;
+    left: 30%;
+    animation-delay: -14s;
+    transform: translate(calc(var(--mx, 0) * 10px), calc(var(--my, 0) * -14px));
+  }
+
+  .stars {
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(2px 2px at 20% 30%, white, transparent),
+      radial-gradient(2px 2px at 60% 70%, white, transparent),
+      radial-gradient(1px 1px at 50% 50%, white, transparent),
+      radial-gradient(1px 1px at 80% 10%, white, transparent),
+      radial-gradient(2px 2px at 90% 60%, white, transparent),
+      radial-gradient(1px 1px at 33% 80%, white, transparent),
+      radial-gradient(1px 1px at 70% 25%, white, transparent);
+    background-size: 200% 200%;
+    animation: twinkle 8s ease-in-out infinite;
+    opacity: 0.5;
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+  }
+
+  .hero-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .hero-title {
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 800;
+    line-height: 1.1;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .title-line {
+    display: block;
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradient-shift 8s ease infinite;
+  }
+
+  .hero-tagline {
+    font-size: clamp(1rem, 2vw, 1.25rem);
+    line-height: 1.6;
+    color: var(--sl-color-gray-2);
+    margin: 0;
+    max-width: 600px;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .hero-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1.75rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1rem;
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-button::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 2px;
+    background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .hero-button.primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  }
+
+  .hero-button.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+  }
+
+  .hero-button.secondary {
+    background: var(--sl-color-bg-nav);
+    color: var(--sl-color-white);
+    border: 2px solid var(--sl-color-gray-5);
+  }
+
+  .hero-button.secondary:hover {
+    transform: translateY(-2px);
+    border-color: var(--sl-color-gray-4);
+    background: var(--sl-color-gray-6);
+  }
+
+  .hero-button.secondary:hover::before {
+    opacity: 1;
+  }
+
+  .hero-visual {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .mascot-container {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+    aspect-ratio: 1;
+  }
+
+  .mascot {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 20px 40px rgba(102, 126, 234, 0.3));
+    cursor: pointer;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .logo-light {
+    display: block;
+  }
+
+  .logo-dark {
+    display: none;
+  }
+
+  html[data-theme="dark"] .logo-light {
+    display: none;
+  }
+
+  html[data-theme="dark"] .logo-dark {
+    display: block;
+  }
+
+  .mascot:hover {
+    transform: scale(1.05) rotate(5deg);
+  }
+
+  .glow-effect {
+    position: absolute;
+    inset: 10%;
+    background: radial-gradient(
+      circle,
+      rgba(102, 126, 234, 0.3) 0%,
+      transparent 70%
+    );
+    border-radius: 50%;
+    filter: blur(40px);
+    animation: pulse 3s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .logo-spark {
+    position: absolute;
+    inset: -10%;
+    width: 120%;
+    height: 120%;
+    color: color-mix(in srgb, #8be9fd 60%, #bd93f9);
+    opacity: 0.55;
+    pointer-events: none;
+    transform: translate(calc(var(--mx, 0) * 10px), calc(var(--my, 0) * 10px));
+    transition: transform 120ms ease;
+  }
+
+  .logo-spark path {
+    stroke-dasharray: 220;
+    stroke-dashoffset: 220;
+    animation: draw 1.6s ease forwards 0.7s;
+  }
+
+  @keyframes draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  /* Animations */
+  @keyframes float {
+    0%,
+    100% {
+      transform: translate(0, 0) rotate(0deg);
+    }
+    33% {
+      transform: translate(30px, -30px) rotate(5deg);
+    }
+    66% {
+      transform: translate(-20px, 20px) rotate(-5deg);
+    }
+  }
+
+  @keyframes floating {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+
+  @keyframes gradient-shift {
+    0%,
+    100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+
+  @keyframes twinkle {
+    0%,
+    100% {
+      opacity: 0.3;
+    }
+    50% {
+      opacity: 0.8;
+    }
+  }
+
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 0.3;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.6;
+      transform: scale(1.1);
+    }
+  }
+
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .fade-in-up {
+    animation: fade-in-up 0.8s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+
+  .floating {
+    animation: floating 6s ease-in-out infinite;
+  }
+
+  @media (max-width: 768px) {
+    .hero-content {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+      text-align: center;
+    }
+
+    .hero-actions {
+      justify-content: center;
+    }
+
+    .hero-visual {
+      order: -1;
+    }
+
+    .mascot-container {
+      max-width: 250px;
+    }
+
+    .hero-tagline {
+      margin-left: auto;
+      margin-right: auto;
+    }
+  }
+</style>

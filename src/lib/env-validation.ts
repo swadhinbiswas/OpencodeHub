@@ -31,6 +31,24 @@ const envVars: EnvConfig[] = [
         validator: (v) => v.length >= 16,
         errorMessage: "INTERNAL_HOOK_SECRET must be set for git hook security",
     },
+    {
+        name: "CRON_SECRET",
+        required: true,
+        validator: (v) => v.length >= 16,
+        errorMessage: "CRON_SECRET must be set for cron endpoint security",
+    },
+    {
+        name: "RUNNER_SECRET",
+        required: true,
+        validator: (v) => v.length >= 32,
+        errorMessage: "RUNNER_SECRET must be at least 32 characters",
+    },
+    {
+        name: "AI_CONFIG_ENCRYPTION_KEY",
+        required: false,
+        validator: (v) => v.length >= 32,
+        errorMessage: "AI_CONFIG_ENCRYPTION_KEY should be at least 32 characters",
+    },
 
     // Application URLs (Critical)
     {
@@ -188,6 +206,12 @@ export function validateEnvironment(exitOnError: boolean = true): boolean {
         }
         if (process.env.INTERNAL_HOOK_SECRET?.includes("dev") || process.env.INTERNAL_HOOK_SECRET?.includes("change")) {
             errors.push("❌ INTERNAL_HOOK_SECRET appears to contain default value. Change it for production!");
+        }
+        if (process.env.CRON_SECRET?.includes("default") || process.env.CRON_SECRET?.includes("dev")) {
+            errors.push("❌ CRON_SECRET appears to contain default/weak value. Change it for production!");
+        }
+        if (!process.env.AI_CONFIG_ENCRYPTION_KEY) {
+            errors.push("❌ AI_CONFIG_ENCRYPTION_KEY is required in production for encrypted secret storage");
         }
 
         // Ensure HTTPS in production

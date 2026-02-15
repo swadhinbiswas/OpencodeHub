@@ -1021,7 +1021,9 @@ export class PipelineRunner extends EventEmitter {
   private substituteExpressions(str: string, context: WorkflowContext): string {
     return str.replace(/\$\{\{\s*([^}]+)\s*\}\}/g, (_, expr) => {
       const value = this.resolveContextValue(expr.trim(), context);
-      return value !== undefined ? String(value) : "";
+      if (value === undefined) return "";
+      // Escape double quotes to prevent breaking out of shell strings if used inside quotes
+      return String(value).replace(/"/g, '\\"');
     });
   }
 

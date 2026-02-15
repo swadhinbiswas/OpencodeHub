@@ -24,11 +24,12 @@ const { stack } = Astro.props;
 
 // Determine stack status color
 const isFullyMerged = stack.prs.every(pr => pr.isMerged);
-const hasFailures = false; // TODO: Check CI status if available
+const hasFailures = stack.prs.some(pr => pr.status === 'failure' || pr.status === 'error');
+const isDraft = stack.prs.some(pr => pr.status === 'draft');
 
-const statusColor = isFullyMerged ? "text-green-400" : hasFailures ? "text-red-400" : "text-blue-400";
-const statusBorder = isFullyMerged ? "border-green-500/30" : hasFailures ? "border-red-500/30" : "border-blue-500/30";
-const statusBg = isFullyMerged ? "bg-green-500/10" : hasFailures ? "bg-red-500/10" : "bg-blue-500/10";
+const statusColor = isFullyMerged ? "text-green-400" : hasFailures ? "text-red-400" : isDraft ? "text-gray-400" : "text-blue-400";
+const statusBorder = isFullyMerged ? "border-green-500/30" : hasFailures ? "border-red-500/30" : isDraft ? "border-gray-500/30" : "border-blue-500/30";
+const statusBg = isFullyMerged ? "bg-green-500/10" : hasFailures ? "bg-red-500/10" : isDraft ? "bg-gray-500/10" : "bg-blue-500/10";
 ---
 
 <div class="relative group">
@@ -47,7 +48,7 @@ const statusBg = isFullyMerged ? "bg-green-500/10" : hasFailures ? "bg-red-500/1
                 </div>
             </div>
             <div class={`text-xs px-2 py-0.5 rounded-full border ${statusBorder} ${statusColor} ${statusBg}`}>
-                {isFullyMerged ? "Merged" : "Active"}
+                {isFullyMerged ? "Merged" : hasFailures ? "Failed" : isDraft ? "Draft" : "Active"}
             </div>
         </div>
 

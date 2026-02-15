@@ -245,9 +245,75 @@ async function executeAction(
             if (context.pullRequestId && action.params.assignee) {
                 const assignee = action.params.assignee as string;
 
-                // Handle @codeowners
+                // Handle @codeowners - assign reviewers based on CODEOWNERS file
                 if (assignee === "@codeowners") {
-                    // TODO: Implement CODEOWNERS lookup
+                    try {
+                        // Get PR details with changed files
+                        const pr = await db.query.pullRequests.findFirst({
+                            where: eq(schema.pullRequests.id, context.pullRequestId),
+                            with: { repository: true },
+                        });
+
+                        if (pr && pr.repository) {
+                            // Dynamically import to avoid circular deps
+                            const { resolveRepoPath } = await import("./git-storage");
+                            const { getFileContent } = await import("./git");
+                            const { CODEOWNERS_PATHS, getSuggestedReviewers } = await import("./codeowners");
+                            const { compareBranches } = await import("./git");
+
+                            const repoPath = await resolveRepoPath(pr.repository.diskPath);
+
+                            // Try to find CODEOWNERS file
+                            let codeOwnersContent: string | null = null;
+                            for (const path of CODEOWNERS_PATHS) {
+                                try {
+                                    const result = await getFileContent(repoPath, path, pr.baseBranch);
+                                    if (result && !result.isBinary) {
+                                        codeOwnersContent = result.content;
+                                        break;
+                                    }
+                                } catch {
+                                    // File doesn't exist at this path
+                                }
+                            }
+
+                            if (codeOwnersContent) {
+                                // Get changed files
+                                const { diffs } = await compareBranches(repoPath, pr.baseBranch, pr.headBranch);
+                                const changedFiles = diffs.map(d => d.file);
+
+                                // Get PR author username for exclusion
+                                const prAuthor = await db.query.users.findFirst({
+                                    where: eq(schema.users.id, pr.authorId),
+                                });
+
+                                // Get suggested reviewers
+                                const { owners } = await getSuggestedReviewers(
+                                    codeOwnersContent,
+                                    changedFiles,
+                                    prAuthor ? [prAuthor.username] : []
+                                );
+
+                                // Add each owner as reviewer
+                                for (const owner of owners) {
+                                    const user = await db.query.users.findFirst({
+                                        where: eq(schema.users.username, owner),
+                                    });
+
+                                    if (user) {
+                                        await db.insert(schema.pullRequestReviewers).values({
+                                            id: generateId(),
+                                            pullRequestId: context.pullRequestId,
+                                            userId: user.id,
+                                            requestedAt: new Date(),
+                                        }).onConflictDoNothing();
+                                    }
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        logger.warn({ error }, "Failed to assign CODEOWNERS reviewers");
+                    }
                     break;
                 }
 
@@ -332,6 +398,47 @@ async function executeAction(
             break;
         }
 
+        case "notify_discord": {
+            if (context.pullRequestId && action.params.webhookUrl) {
+                const { sendDiscordMessage } = await import("./integrations/discord");
+                const pr = await db.query.pullRequests.findFirst({
+                    where: eq(schema.pullRequests.id, context.pullRequestId),
+                    with: { repository: true, author: true },
+                });
+
+                if (pr && pr.repository) {
+                    await sendDiscordMessage(action.params.webhookUrl as string, {
+                        content: `**${pr.title}** (#${pr.number}) in ${pr.repository.name}\nState: ${pr.state}`,
+                        username: "OpenCodeHub"
+                    });
+                }
+            }
+            break;
+        }
+
+        case "notify_teams": {
+            if (context.pullRequestId && action.params.webhookUrl) {
+                const { sendTeamsMessage } = await import("./integrations/teams");
+                const pr = await db.query.pullRequests.findFirst({
+                    where: eq(schema.pullRequests.id, context.pullRequestId),
+                    with: { repository: true, author: true },
+                });
+
+                if (pr && pr.repository) {
+                    await sendTeamsMessage(action.params.webhookUrl as string, {
+                        "@type": "MessageCard",
+                        "@context": "http://schema.org/extensions",
+                        themeColor: "0078d4",
+                        summary: `PR Update: ${pr.title}`,
+                        sections: [{
+                            text: `**${pr.title}** (#${pr.number}) in ${pr.repository.name}\nStatus: ${pr.state}`
+                        }]
+                    });
+                }
+            }
+            break;
+        }
+
         case "close_pr": {
             if (context.pullRequestId) {
                 await db
@@ -342,6 +449,42 @@ async function executeAction(
                         updatedAt: new Date(),
                     })
                     .where(eq(schema.pullRequests.id, context.pullRequestId));
+            }
+            break;
+        }
+
+        case "assign_user": {
+            if (context.pullRequestId && action.params.user) {
+                const username = action.params.user as string;
+                // Find user
+                const user = await db.query.users.findFirst({
+                    where: eq(schema.users.username, username.replace("@", "")),
+                });
+
+                if (user) {
+                    const { generateId } = await import("./utils");
+                    await db.insert(schema.pullRequestAssignees).values({
+                        id: generateId(),
+                        pullRequestId: context.pullRequestId,
+                        userId: user.id
+                    }).onConflictDoNothing();
+                }
+            }
+            break;
+        }
+
+        case "request_changes": {
+            if (context.pullRequestId && action.params.body) {
+                const { generateId } = await import("./utils");
+                // Create a review
+                await db.insert(schema.pullRequestReviews).values({
+                    id: generateId(),
+                    pullRequestId: context.pullRequestId,
+                    reviewerId: context.userId || "system", // Or a bot user info if available
+                    state: "changes_requested",
+                    body: action.params.body as string,
+                    submittedAt: new Date()
+                });
             }
             break;
         }

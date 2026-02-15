@@ -36,12 +36,12 @@ export const POST: APIRoute = async ({ locals, request }) => {
     }
 
     // Only allow admins to see stats
-    // if (!user.isAdmin) {
-    //   return new Response(JSON.stringify({ error: "Forbidden" }), {
-    //     status: 403,
-    //     headers: { "Content-Type": "application/json" },
-    //   });
-    // }
+    if (!user.isAdmin) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+            status: 403,
+            headers: { "Content-Type": "application/json" },
+        });
+    }
 
     const stats = getConnectionStats();
 

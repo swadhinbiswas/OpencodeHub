@@ -5,9 +5,15 @@ import { Readable } from "stream";
 
 const ARTIFACTS_DIR = path.join(process.cwd(), "artifacts");
 
-export const GET: APIRoute = async ({ params }) => {
+export const GET: APIRoute = async ({ params, locals }) => {
   const { runId, name } = params;
   if (!runId || !name) return new Response("Missing params", { status: 400 });
+
+  // Security: Require authenticated user to download artifacts
+  const user = locals.user;
+  if (!user) {
+    return new Response("Unauthorized", { status: 401 });
+  }
 
   const filePath = path.join(ARTIFACTS_DIR, runId, name);
 

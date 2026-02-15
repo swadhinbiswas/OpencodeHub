@@ -95,19 +95,17 @@ if (baseBranch !== headBranch) {
 }
 
 // Fetch open issue count (for header)
-const issueCountResult = (await db
-  // @ts-expect-error: count argument mismatch
-  .select({ count: sql<number>`count(*)` })
+const issueCountResult = await db
+  .select({ count: count() })
   .from(schema.issues)
   .where(
     and(
       eq(schema.issues.repositoryId, repoData.id),
       eq(schema.issues.state, "open"),
     ),
-  )
-  ) as { count: number }[];
+  );
 
-const openIssueCount = issueCountResult?.count || 0;
+const openIssueCount = issueCountResult[0]?.count || 0;
 
 const repo = {
   owner: repoData.owner.username,
@@ -344,6 +342,21 @@ const repo = {
   const form = document.getElementById("create-pr-form");
   const createBtn = document.getElementById("create-pr-btn");
   const errorDiv = document.getElementById("form-error");
+  const bodyInput = document.getElementById("body");
+
+  // Fetch PR template
+  if (bodyInput && !bodyInput.value) {
+    fetch(
+      `/api/repos/${repoOwner}/${repoName}/pulls/templates?branch=${baseBranch}`,
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.content) {
+          bodyInput.value = data.content;
+        }
+      })
+      .catch((err) => console.error("Failed to load PR template", err));
+  }
 
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();

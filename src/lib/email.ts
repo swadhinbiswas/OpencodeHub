@@ -13,80 +13,80 @@ const SMTP_FROM = import.meta.env.SMTP_FROM || "noreply@opencodehub.local";
 const SITE_URL = import.meta.env.SITE_URL || "http://localhost:4321";
 
 export interface EmailOptions {
-    to: string;
-    subject: string;
-    text?: string;
-    html?: string;
+  to: string;
+  subject: string;
+  text?: string;
+  html?: string;
 }
 
 let transporter: any = null;
 
 async function getTransporter() {
-    if (transporter) return transporter;
+  if (transporter) return transporter;
 
-    if (!SMTP_HOST) {
-        logger.warn("SMTP not configured, emails will be logged only");
-        return null;
-    }
+  if (!SMTP_HOST) {
+    logger.warn("SMTP not configured, emails will be logged only");
+    return null;
+  }
 
-    try {
-        const nodemailer = await import("nodemailer");
-        transporter = nodemailer.createTransport({
-            host: SMTP_HOST,
-            port: SMTP_PORT,
-            secure: SMTP_PORT === 465,
-            auth: SMTP_USER ? {
-                user: SMTP_USER,
-                pass: SMTP_PASSWORD,
-            } : undefined,
-        });
+  try {
+    const nodemailer = await import("nodemailer");
+    transporter = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: SMTP_PORT,
+      secure: SMTP_PORT === 465,
+      auth: SMTP_USER ? {
+        user: SMTP_USER,
+        pass: SMTP_PASSWORD,
+      } : undefined,
+    });
 
-        // Verify connection
-        await transporter.verify();
-        logger.info("SMTP connection verified");
-        return transporter;
-    } catch (error) {
-        logger.error({ error }, "Failed to create SMTP transporter");
-        return null;
-    }
+    // Verify connection
+    await transporter.verify();
+    logger.info("SMTP connection verified");
+    return transporter;
+  } catch (error) {
+    logger.error({ error }, "Failed to create SMTP transporter");
+    return null;
+  }
 }
 
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
-    try {
-        const transport = await getTransporter();
+  try {
+    const transport = await getTransporter();
 
-        if (!transport) {
-            // Log email for development/testing
-            logger.info({
-                to: options.to,
-                subject: options.subject
-            }, "Email would be sent (SMTP not configured)");
-            return true;
-        }
-
-        await transport.sendMail({
-            from: SMTP_FROM,
-            to: options.to,
-            subject: options.subject,
-            text: options.text,
-            html: options.html,
-        });
-
-        logger.info({ to: options.to, subject: options.subject }, "Email sent");
-        return true;
-    } catch (error) {
-        logger.error({ error, to: options.to }, "Failed to send email");
-        return false;
+    if (!transport) {
+      // Log email for development/testing
+      logger.info({
+        to: options.to,
+        subject: options.subject
+      }, "Email would be sent (SMTP not configured)");
+      return true;
     }
+
+    await transport.sendMail({
+      from: SMTP_FROM,
+      to: options.to,
+      subject: options.subject,
+      text: options.text,
+      html: options.html,
+    });
+
+    logger.info({ to: options.to, subject: options.subject }, "Email sent");
+    return true;
+  } catch (error) {
+    logger.error({ error, to: options.to }, "Failed to send email");
+    return false;
+  }
 }
 
 export async function sendPasswordResetEmail(email: string, token: string): Promise<boolean> {
-    const resetUrl = `${SITE_URL}/reset-password?token=${token}`;
+  const resetUrl = `${SITE_URL}/reset-password?token=${token}`;
 
-    return sendEmail({
-        to: email,
-        subject: "Reset your OpenCodeHub password",
-        text: `
+  return sendEmail({
+    to: email,
+    subject: "Reset your OpenCodeHub password",
+    text: `
 You requested a password reset for your OpenCodeHub account.
 
 Click the link below to reset your password:
@@ -96,7 +96,7 @@ This link will expire in 1 hour.
 
 If you didn't request this, you can safely ignore this email.
     `.trim(),
-        html: `
+    html: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -136,16 +136,16 @@ If you didn't request this, you can safely ignore this email.
 </body>
 </html>
     `.trim(),
-    });
+  });
 }
 
 export async function sendVerificationEmail(email: string, token: string): Promise<boolean> {
-    const verifyUrl = `${SITE_URL}/verify-email?token=${token}`;
+  const verifyUrl = `${SITE_URL}/verify-email?token=${token}`;
 
-    return sendEmail({
-        to: email,
-        subject: "Verify your OpenCodeHub email",
-        text: `
+  return sendEmail({
+    to: email,
+    subject: "Verify your OpenCodeHub email",
+    text: `
 Welcome to OpenCodeHub!
 
 Please verify your email by clicking the link below:
@@ -153,7 +153,7 @@ ${verifyUrl}
 
 This link will expire in 24 hours.
     `.trim(),
-        html: `
+    html: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -193,5 +193,69 @@ This link will expire in 24 hours.
 </body>
 </html>
     `.trim(),
-    });
+  });
+}
+
+export async function sendPullRequestEmail(
+  to: string,
+  type: "opened" | "merged" | "closed" | "review_requested",
+  pr: {
+    title: string;
+    number: number;
+    url: string;
+    repository: { name: string; owner: { username: string } };
+    author: { username: string };
+  }
+): Promise<boolean> {
+  const subjectPrefix = `[${pr.repository.owner.username}/${pr.repository.name}]`;
+  let action = "";
+  switch (type) {
+    case "opened": action = "opened"; break;
+    case "merged": action = "merged"; break;
+    case "closed": action = "closed"; break;
+    case "review_requested": action = "requested your review on"; break;
+  }
+
+  return sendEmail({
+    to,
+    subject: `${subjectPrefix} PR #${pr.number} ${action}: ${pr.title}`,
+    html: `
+            <div style="font-family: sans-serif; color: #333;">
+                <h3>Pull Request ${action}</h3>
+                <p>
+                    <strong>${pr.author.username}</strong> ${action} pull request 
+                    <a href="${pr.url}">#${pr.number}: ${pr.title}</a>
+                </p>
+            </div>
+        `
+  });
+}
+
+export async function sendIssueEmail(
+  to: string,
+  type: "opened" | "closed" | "assigned",
+  issue: {
+    title: string;
+    number: number;
+    url: string;
+    repository: { name: string; owner: { username: string } };
+    author: { username: string };
+  }
+): Promise<boolean> {
+  const subjectPrefix = `[${issue.repository.owner.username}/${issue.repository.name}]`;
+  let action = type;
+
+  return sendEmail({
+    to,
+    subject: `${subjectPrefix} Issue #${issue.number} ${action}: ${issue.title}`,
+    html: `
+            <div style="font-family: sans-serif; color: #333;">
+                <h3>Issue ${action}</h3>
+                <p>
+                    <strong>${issue.author.username}</strong> ${action} issue 
+                    <a href="${issue.url}">#${issue.number}: ${issue.title}</a>
+                </p>
+            </div>
+        `
+  });
 }

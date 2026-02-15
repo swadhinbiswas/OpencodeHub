@@ -35,10 +35,15 @@ const createRepoSchema = z.object({
   licenseType: z.string().optional(),
   gitignoreTemplate: z.string().optional(),
   readme: z.boolean().default(true),
+  templateRepoId: z.string().optional(),
+  includeAllBranches: z.boolean().default(false),
 });
 
 import { withErrorHandler } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { logActivity } from "@/lib/activity";
+import { initializeDefaultTemplates } from "@/lib/review-templates";
+import { createFromTemplate } from "@/lib/repo-templates";
 
 // ... existing imports ...
 
@@ -174,8 +179,10 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
   const parsed = await parseBody(request, createRepoSchema);
   if ('error' in parsed) return parsed.error;
 
+  /* Force lowercase for consistency */
+  const name = parsed.data.name.toLowerCase();
+
   const {
-    name,
     description,
     visibility,
     defaultBranch,
@@ -185,12 +192,14 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
     licenseType,
     gitignoreTemplate,
     readme,
+    templateRepoId,
+    includeAllBranches,
   } = parsed.data;
 
   // Validate repo name
   if (!isValidRepoName(name)) {
     return badRequest(
-      'Invalid repository name. Use only letters, numbers, dots, hyphens, and underscores.'
+      'Invalid repository name. Use only lowercase letters, numbers, dots, hyphens, and underscores.'
     );
   }
 
@@ -218,70 +227,114 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
     return unauthorized();
   }
 
-  // Create repository record
   const repoId = generateId('repo');
   const timestamp = new Date();
   const siteUrl = process.env.SITE_URL || 'http://localhost:3000';
   const sshPort = process.env.GIT_SSH_PORT || '2222';
   const diskPath = await getDiskPath(user.username, slug);
+  const sshCloneUrl = `ssh://git@localhost:${sshPort}/${user.username}/${slug}.git`;
+  const httpCloneUrl = `${siteUrl}/${user.username}/${slug}.git`;
 
-  await db.insert(repositories).values({
-    id: repoId,
-    name,
-    slug,
-    description,
-    ownerId: tokenPayload.userId,
-    ownerType: 'user',
-    visibility,
-    defaultBranch,
-    diskPath,
-    sshCloneUrl: `ssh://git@localhost:${sshPort}/${user.username}/${slug}.git`,
-    httpCloneUrl: `${siteUrl}/${user.username}/${slug}.git`,
-    hasIssues,
-    hasWiki,
-    hasActions,
-    licenseType,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  });
-
-  // Initialize git repository immediately (fast, ~100ms)
-  // Upload to S3 happens asynchronously to not block response
-  try {
-    // Get local path for git operations (temp path for cloud storage, direct path for local)
-    const localGitPath = await initRepoInStorage(user.username, slug);
-
-    await initRepository(localGitPath, {
-      defaultBranch,
-      readme: false, // No README on creation to keep it fast
-      gitignoreTemplate,
-      licenseType,
-      repoName: name,
-      ownerName: user.displayName || user.username,
+  if (templateRepoId) {
+    const templateRepo = await db.query.repositories.findFirst({
+      where: eq(repositories.id, templateRepoId),
+      with: { owner: true },
     });
 
-    // If using cloud storage, upload asynchronously (don't wait)
-    const isCloud = await isCloudStorage();
-
-    if (isCloud) {
-      logger.info('Uploading to cloud storage (async)...');
-      // Fire-and-forget async upload
-      finalizeRepoInit(user.username, slug)
-        .then(() => logger.info({ repoId, diskPath }, 'Repository uploaded to S3'))
-        .catch((err) => logger.error({ err, repoId }, 'Background S3 upload failed'));
+    if (!templateRepo || !templateRepo.isTemplate) {
+      return badRequest('Template repository not found');
     }
 
-    logger.info({ repoId, diskPath }, 'Repository initialized and ready (S3 upload in progress if cloud)');
-  } catch (error) {
-    // Rollback database entry if git init fails
-    await db.delete(repositories).where(eq(repositories.id, repoId));
-    logger.error({ err: error, repoId, diskPath }, 'Git init error');
-    return serverError('Failed to initialize repository');
+    const canUseTemplate =
+      tokenPayload.isAdmin ||
+      templateRepo.ownerId === tokenPayload.userId ||
+      templateRepo.visibility === 'public' ||
+      templateRepo.visibility === 'internal';
+
+    if (!canUseTemplate) {
+      return forbidden('You do not have permission to use this template');
+    }
+
+    const result = await createFromTemplate({
+      templateRepoId,
+      newOwnerId: tokenPayload.userId,
+      newOwnerUsername: user.username,
+      newName: name,
+      newDescription: description,
+      visibility,
+      includeAllBranches,
+      diskPath,
+      sshCloneUrl,
+      httpCloneUrl,
+      hasIssues,
+      hasWiki,
+      hasActions,
+      licenseType,
+    });
+
+    if (!result.success || !result.repositoryId) {
+      logger.error({ err: result.error, templateRepoId }, 'Template repo creation failed');
+      return serverError(result.error || 'Failed to create from template');
+    }
+  } else {
+    await db.insert(repositories).values({
+      id: repoId,
+      name,
+      slug,
+      description,
+      ownerId: tokenPayload.userId,
+      ownerType: 'user',
+      visibility,
+      defaultBranch,
+      diskPath,
+      sshCloneUrl,
+      httpCloneUrl,
+      hasIssues,
+      hasWiki,
+      hasActions,
+      licenseType,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    // Initialize git repository immediately (fast, ~100ms)
+    // Upload to S3 happens asynchronously to not block response
+    try {
+      // Get local path for git operations (temp path for cloud storage, direct path for local)
+      const localGitPath = await initRepoInStorage(user.username, slug);
+
+      await initRepository(localGitPath, {
+        defaultBranch,
+        readme: false, // No README on creation to keep it fast
+        gitignoreTemplate,
+        licenseType,
+        repoName: name,
+        ownerName: user.displayName || user.username,
+      });
+
+      // If using cloud storage, upload asynchronously (don't wait)
+      const isCloud = await isCloudStorage();
+
+      if (isCloud) {
+        logger.info('Uploading to cloud storage (async)...');
+        // Fire-and-forget async upload
+        finalizeRepoInit(user.username, slug)
+          .then(() => logger.info({ repoId, diskPath }, 'Repository uploaded to S3'))
+          .catch((err) => logger.error({ err, repoId }, 'Background S3 upload failed'));
+      }
+
+      logger.info({ repoId, diskPath }, 'Repository initialized and ready (S3 upload in progress if cloud)');
+    } catch (error) {
+      // Rollback database entry if git init fails
+      await db.delete(repositories).where(eq(repositories.id, repoId));
+      logger.error({ err: error, repoId, diskPath }, 'Git init error');
+      return serverError('Failed to initialize repository');
+    }
   }
 
   // Get created repo with owner
   const createdRepo = await db.query.repositories.findFirst({
-    where: eq(repositories.id, repoId),
+    where: and(eq(repositories.ownerId, tokenPayload.userId), eq(repositories.name, name)),
     with: {
       owner: {
         columns: {
@@ -295,6 +348,24 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
   });
 
   logger.info({ repoId: createdRepo!.id, userId: user.id }, "Repository created");
+
+  // Log activity
+  await logActivity(
+    user.id,
+    "create_repo",
+    "created",
+    "repository",
+    createdRepo!.id,
+    createdRepo!.id,
+    { name: createdRepo!.name, description: createdRepo!.description }
+  );
+
+  // Seed default review templates (best effort)
+  try {
+    await initializeDefaultTemplates(createdRepo!.id, user.id);
+  } catch (error) {
+    logger.warn({ repoId: createdRepo!.id, error }, "Failed to initialize review templates");
+  }
 
   return created({
     id: createdRepo!.id,

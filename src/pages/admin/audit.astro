@@ -1,7 +1,7 @@
 ---
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { getDatabase, schema } from "@/db";
-import { desc, sql, like, eq, or } from "drizzle-orm";
+import { desc, like, eq, or, count } from "drizzle-orm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,14 +69,13 @@ const [logs, totalResult] = await Promise.all([
     },
   }),
   db
-    // @ts-expect-error: count argument mismatch
-    .select({ count: sql<number>`count(*)` })
+    .select({ count: count() })
     .from(schema.auditLogs)
     .where(whereClause)
-    ,
+    .limit(1),
 ]);
 
-const total = (totalResult as { count: number } | undefined)?.count || 0;
+const total = Number(totalResult[0]?.count) || 0;
 const totalPages = Math.ceil(total / limit);
 
 // Action categories for icons

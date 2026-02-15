@@ -168,10 +168,16 @@ class PackStreamProcessor extends Writable {
 /**
  * Handles git-receive-pack (Push)
  */
+// ... imports
+
+/**
+ * Handles git-receive-pack (Push)
+ */
 export async function handleReceivePack(
     repoPath: string,
     reqBody: Readable | ReadableStream,
-    dbRepoPath: string
+    dbRepoPath: string,
+    env: NodeJS.ProcessEnv = {}
 ): Promise<Readable> {
     const storage = await getStorage();
     const inputStream = isReadable(reqBody) ? reqBody : Readable.fromWeb(reqBody as any);
@@ -225,13 +231,55 @@ export async function handleReceivePack(
         try { await fs.unlink(sourcePack); } catch { }
 
         await updateRefs(repoPath, commandLines);
+
+        // Execute post-receive hook
+        await executeHook(repoPath, "post-receive", commandLines, env);
+
     } else if (commandLines.length > 0) {
         logger.info(`[ReceivePack] No pack, updating refs only.`);
         await updateRefs(repoPath, commandLines);
+
+        // Execute post-receive hook
+        await executeHook(repoPath, "post-receive", commandLines, env);
     }
 
     return reportStatus(commandLines);
 }
+
+/**
+ * Execute a git hook script
+ */
+async function executeHook(repoPath: string, hookName: string, args: string[], env: NodeJS.ProcessEnv) {
+    const hookPath = join(repoPath, "hooks", hookName);
+    try {
+        await fs.access(hookPath, fs.constants.X_OK);
+    } catch {
+        return; // Hook doesn't exist or not executable
+    }
+
+    const input = args.join(""); // Args are already newline terminated from commandLines? 
+    // commandLines elements from splitReceivePackStream usually have newline? 
+    // Let's check commandLines population.
+    // Yes, they are lines.
+
+    return new Promise<void>((resolve) => {
+        const child = spawn(hookPath, [], {
+            cwd: repoPath,
+            env: { ...process.env, ...env },
+            stdio: ["pipe", "ignore", "ignore"] // We don't care about output for now
+        });
+
+        child.stdin.write(input);
+        child.stdin.end();
+
+        child.on("close", () => resolve());
+        child.on("error", (err) => {
+            logger.error({ err, hook: hookName }, "Failed to execute hook");
+            resolve();
+        });
+    });
+}
+
 
 // Stateful PktLine Parser
 class PktLineDemuxer extends Transform {

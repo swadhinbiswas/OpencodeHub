@@ -9,10 +9,14 @@ import { getDatabase, schema } from "@/db";
 import { logger } from "@/lib/logger";
 import { generateId } from "./utils";
 import { getStackForPr } from "./stacks";
+import { acquireRepo, releaseRepo } from "./git-storage";
+import { simpleGit } from "simple-git";
+import OpenAI from "openai";
 
 // Supported AI providers
-export type AIProvider = "openai" | "anthropic" | "local";
-export type AIModel = "gpt-4" | "gpt-4-turbo" | "claude-3-opus" | "claude-3-sonnet" | "local";
+// Supported AI providers
+export type AIProvider = "openai" | "anthropic" | "groq" | "bytez" | "local";
+export type AIModel = string; // Allow any string for model flexibility
 
 export interface AIReviewConfig {
     provider: AIProvider;
@@ -93,10 +97,40 @@ async function runAIReview(
         // Get PR and diff
         const pr = await db.query.pullRequests.findFirst({
             where: eq(schema.pullRequests.id, pullRequestId),
+            with: {
+                repository: {
+                    with: { owner: true }
+                }
+            }
         });
 
         if (!pr) {
             throw new Error("PR not found");
+        }
+
+        // Fetch Diff
+        let diff = "";
+        try {
+            const repoPath = await acquireRepo(pr.repository.owner.username, pr.repository.name);
+            const git = simpleGit(repoPath);
+            await git.fetch();
+            // Get diff between base and head
+            // Ideally we want the merge base to head
+            const mergeBase = await git.raw(["merge-base", `origin/${pr.baseBranch}`, `origin/${pr.headBranch}`]);
+            diff = await git.diff([mergeBase.trim(), `origin/${pr.headBranch}`]);
+            await releaseRepo(pr.repository.owner.username, pr.repository.name, false);
+        } catch (e) {
+            logger.error("Failed to fetch diff for AI review", e);
+            throw new Error("Could not fetch diff from git");
+        }
+
+        if (!diff) {
+            diff = "No changes detected.";
+        }
+
+        // Truncate diff if too large (poor man's token limit)
+        if (diff.length > 50000) {
+            diff = diff.substring(0, 50000) + "\n\n...[Diff truncated due to length]...";
         }
 
         // Get stack context if enabled
@@ -117,7 +151,7 @@ async function runAIReview(
         }
 
         // Generate review prompt
-        const prompt = generateReviewPrompt(pr, stackContext);
+        const prompt = generateReviewPrompt(pr, stackContext, diff);
 
         // Call AI provider
         const result = await callAIProvider(config, prompt);
@@ -183,7 +217,8 @@ async function runAIReview(
  */
 function generateReviewPrompt(
     pr: typeof schema.pullRequests.$inferSelect,
-    stackContext: string | null
+    stackContext: string | null,
+    diff: string
 ): string {
     let prompt = `You are a senior code reviewer. Review the following pull request and provide actionable feedback.
 
@@ -214,7 +249,7 @@ ${stackContext}
 3. Provide a brief summary at the end
 
 ## Response Format
-Respond in JSON format:
+Respond in JSON format only:
 {
   "summary": "Brief overall assessment",
   "suggestions": [
@@ -232,15 +267,17 @@ Respond in JSON format:
 }
 
 Review the code carefully:
-`;
 
-    // Note: In production, you would include the actual diff here
-    // For now, we're using a placeholder
-    prompt += "\n[DIFF PLACEHOLDER - In production, include actual file changes]";
+## Diff
+${diff}
+`;
 
     return prompt;
 }
 
+/**
+ * Call the AI provider
+ */
 /**
  * Call the AI provider
  */
@@ -254,35 +291,53 @@ async function callAIProvider(
     promptTokens: number;
     completionTokens: number;
 }> {
-    // In production, implement actual API calls
-    // For now, return a mock response
 
-    logger.info({ provider: config.provider, model: config.model, promptLength: prompt.length }, "Calling AI provider");
+    // Import dynamically to avoid circular dependencies if any
+    const { getAIAdapter } = await import("./ai");
 
-    // Mock response for testing
-    const mockResponse = {
-        summary: "This PR looks good overall with a few minor suggestions.",
-        suggestions: [
-            {
-                path: "src/example.ts",
-                line: 10,
-                severity: "info",
-                type: "style",
-                title: "Consider using const",
-                message: "This variable is never reassigned, consider using const instead of let",
-                suggestedFix: "const value = getData();",
-                explanation: "Using const makes code intent clearer"
-            }
-        ]
-    };
+    try {
+        const adapter = getAIAdapter(config.provider);
 
-    return {
-        content: JSON.stringify(mockResponse),
-        summary: mockResponse.summary,
-        tokensUsed: 150,
-        promptTokens: 100,
-        completionTokens: 50,
-    };
+        // Construct system/user prompt split
+        // For now, we'll extract the system instruction manually or just pass it as system
+        // The generateReviewPrompt function returns a single string. 
+        // We should ideally refactor generateReviewPrompt, but for now let's split it or pass as user.
+        // Actually, the current generateReviewPrompt returns a single massive string.
+        // let's just use a generic system prompt and the full prompt as user.
+
+        const systemPrompt = "You are an expert code reviewer. Response MUST be valid JSON matching the requested format.";
+
+        const result = await adapter.complete({
+            system: systemPrompt,
+            user: prompt
+        }, {
+            provider: config.provider,
+            model: config.model,
+            apiKey: config.apiKey,
+            baseUrl: config.baseUrl
+        });
+
+        // Parse summary from content
+        let summary = "AI Review Completed";
+        try {
+            const parsed = JSON.parse(result.content);
+            if (parsed.summary) summary = parsed.summary;
+        } catch (e) { }
+
+        return {
+            content: result.content,
+            summary,
+            tokensUsed: result.usage.totalTokens,
+            promptTokens: result.usage.inputTokens,
+            completionTokens: result.usage.outputTokens,
+        };
+
+    } catch (error: any) {
+        logger.error({ error: error.message, provider: config.provider }, "AI Provider call failed");
+
+        // Fallback or rethrow? Rethrow to fail the review properly.
+        throw error;
+    }
 }
 
 /**

@@ -54,7 +54,6 @@ export const GET: APIRoute = withErrorHandler(async ({ params, request }) => {
                     author: true,
                 },
             },
-            stack: true,
             addedBy: true,
         },
         orderBy: [asc(schema.mergeQueue.position)],

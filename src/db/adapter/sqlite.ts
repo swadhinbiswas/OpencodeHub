@@ -54,6 +54,8 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
       ? options.select.join(", ")
       : "*";
 
+    if (!/^[a-zA-Z0-9_]+$/.test(table)) throw new Error("Invalid table name");
+
     let sql = `SELECT ${selectClause} FROM ${table}`;
     const params: unknown[] = [];
 
@@ -296,9 +298,8 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
     if (schema.indexes) {
       for (const idx of schema.indexes) {
         const uniqueStr = idx.unique ? "UNIQUE " : "";
-        const idxSql = `CREATE ${uniqueStr}INDEX IF NOT EXISTS ${
-          idx.name
-        } ON ${table} (${idx.columns.join(", ")})`;
+        const idxSql = `CREATE ${uniqueStr}INDEX IF NOT EXISTS ${idx.name
+          } ON ${table} (${idx.columns.join(", ")})`;
         this.db.exec(idxSql);
       }
     }
@@ -336,8 +337,7 @@ export class SQLiteAdapter extends BaseDatabaseAdapter {
           if (change.index) {
             const uniqueStr = change.index.unique ? "UNIQUE " : "";
             this.db.exec(
-              `CREATE ${uniqueStr}INDEX ${
-                change.index.name
+              `CREATE ${uniqueStr}INDEX ${change.index.name
               } ON ${table} (${change.index.columns.join(", ")})`
             );
           }

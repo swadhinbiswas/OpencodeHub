@@ -1,108 +1,48 @@
-/**
- * Rate Limiting Middleware
- * Prevents brute force attacks and DoS by limiting requests per IP
- */
 
-interface RateLimitEntry {
-    count: number;
-    resetTime: number;
-}
-
-class RateLimiter {
-    private store: Map<string, RateLimitEntry> = new Map();
-    private cleanupInterval: NodeJS.Timeout;
-
-    constructor() {
-        // Cleanup expired entries every 60 seconds
-        this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
-    }
-
-    private cleanup() {
-        const now = Date.now();
-        for (const [key, entry] of this.store.entries()) {
-            if (now > entry.resetTime) {
-                this.store.delete(key);
-            }
-        }
-    }
-
-    check(
-        identifier: string,
-        limit: number,
-        windowMs: number
-    ): { allowed: boolean; remaining: number; resetTime: number } {
-        const now = Date.now();
-        const entry = this.store.get(identifier);
-
-        if (!entry || now > entry.resetTime) {
-            // New window
-            const resetTime = now + windowMs;
-            this.store.set(identifier, { count: 1, resetTime });
-            return { allowed: true, remaining: limit - 1, resetTime };
-        }
-
-        if (entry.count >= limit) {
-            // Limit exceeded
-            return { allowed: false, remaining: 0, resetTime: entry.resetTime };
-        }
-
-        // Increment count
-        entry.count++;
-        this.store.set(identifier, entry);
-        return {
-            allowed: true,
-            remaining: limit - entry.count,
-            resetTime: entry.resetTime,
-        };
-    }
-
-    destroy() {
-        clearInterval(this.cleanupInterval);
-    }
-}
-
-// Singleton instance
-const rateLimiter = new RateLimiter();
-
-// Rate limit configurations
-export const RATE_LIMITS = {
-    // Authentication endpoints - stricter limits
-    auth: {
-        limit: parseInt(process.env.RATE_LIMIT_AUTH || "5"),
-        windowMs: 15 * 60 * 1000, // 15 minutes
-    },
-    // API endpoints - moderate limits
-    api: {
-        limit: parseInt(process.env.RATE_LIMIT_API || "100"),
-        windowMs: 60 * 1000, // 1 minute
-    },
-    // Git operations - higher limits
-    git: {
-        limit: parseInt(process.env.RATE_LIMIT_GIT || "200"),
-        windowMs: 60 * 1000, // 1 minute
-    },
-    // General requests
-    general: {
-        limit: parseInt(process.env.RATE_LIMIT_GENERAL || "60"),
-        windowMs: 60 * 1000, // 1 minute
-    },
-};
+import { logger } from "@/lib/logger";
+import { RATE_LIMITS } from "@/lib/rate-limit-config";
+import { rateLimiter, isDistributed } from "@/lib/rate-limit";
 
 /**
  * Get client identifier from request
- * Uses IP address, falling back to forwarded headers
+ * Uses Astro clientAddress, then forwarded headers
  */
-function getClientIdentifier(request: Request): string {
+function getClientIdentifier(request: Request, context?: { clientAddress?: string }): string {
+    if (context?.clientAddress && context.clientAddress !== "unknown") {
+        return context.clientAddress;
+    }
+
     // Check X-Forwarded-For header (if behind proxy)
     const forwarded = request.headers.get("x-forwarded-for");
     if (forwarded) {
-        return forwarded.split(",")[0].trim();
+        // Take the first IP in the chain (original client)
+        const ip = forwarded.split(",")[0].trim();
+        // Validate it looks like an IP
+        if (ip && ip.length > 0 && ip !== "unknown") {
+            return ip;
+        }
     }
 
     // Check X-Real-IP header
     const realIp = request.headers.get("x-real-ip");
     if (realIp) {
         return realIp;
+    }
+
+    // Check CF-Connecting-IP (Cloudflare)
+    const cfIp = request.headers.get("cf-connecting-ip");
+    if (cfIp) {
+        return cfIp;
+    }
+
+    // Vercel/Fly.io headers
+    const vercelIp = request.headers.get("x-vercel-forwarded-for");
+    if (vercelIp) {
+        return vercelIp.split(",")[0].trim();
+    }
+    const flyIp = request.headers.get("fly-client-ip");
+    if (flyIp) {
+        return flyIp;
     }
 
     // Fallback to connection remote address (if available in context)
@@ -129,26 +69,35 @@ export function createRateLimitMiddleware(
             return null; // Continue to next handler
         }
 
-        const identifier = getClientIdentifier(request);
+        const identifier = getClientIdentifier(request, context);
         const key = `${tier}:${identifier}`;
 
-        const result = rateLimiter.check(key, config.limit, config.windowMs);
+        const result = await rateLimiter.check(key, config.limit, config.windowMs);
 
         // Set rate limit headers
         const headers = new Headers({
             "X-RateLimit-Limit": config.limit.toString(),
             "X-RateLimit-Remaining": result.remaining.toString(),
             "X-RateLimit-Reset": new Date(result.resetTime).toISOString(),
+            "X-RateLimit-Policy": isDistributed ? "distributed" : "per-instance",
         });
 
         if (!result.allowed) {
             const retryAfter = Math.ceil((result.resetTime - Date.now()) / 1000);
             headers.set("Retry-After", retryAfter.toString());
 
+            logger.warn({
+                identifier,
+                tier,
+                limit: config.limit,
+                resetTime: result.resetTime
+            }, "Rate limit exceeded");
+
             return new Response(
                 JSON.stringify({
                     error: "Too many requests",
                     message: `Rate limit exceeded. Please try again in ${retryAfter} seconds.`,
+                    retryAfter,
                 }),
                 {
                     status: 429,
@@ -162,7 +111,8 @@ export function createRateLimitMiddleware(
 
         // Attach headers to context for later use
         if (context) {
-            context.rateLimitHeaders = headers;
+            context.request.headers.append("X-RateLimit-Limit", headers.get("X-RateLimit-Limit")!);
+            context.request.headers.append("X-RateLimit-Remaining", headers.get("X-RateLimit-Remaining")!);
         }
 
         return null; // Continue to next handler
@@ -179,5 +129,3 @@ export async function applyRateLimit(
     const middleware = createRateLimitMiddleware(tier);
     return middleware(request);
 }
-
-export default rateLimiter;

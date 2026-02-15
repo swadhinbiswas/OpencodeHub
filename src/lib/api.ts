@@ -202,3 +202,16 @@ export function paginationMeta(
     totalPages: Math.ceil(total / pagination.perPage),
   };
 }
+
+import type { APIRoute } from "astro";
+
+export const withErrorHandler = (handler: APIRoute): APIRoute => {
+  return async (context) => {
+    try {
+      return await handler(context);
+    } catch (err) {
+      console.error(err);
+      return serverError(err instanceof Error ? err.message : "Unknown error");
+    }
+  };
+};

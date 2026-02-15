@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { canReadRepo, canWriteRepo } from "@/lib/permissions";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql, count } from "drizzle-orm";
 import { AlertCircle, CheckCircle, Shield, Play, Loader2 } from "lucide-react";
 
 const { owner: ownerName, repo: repoName } = Astro.params;
@@ -37,9 +37,8 @@ if (!hasAccess) return Astro.redirect("/404");
 // Fetch counts
 const openIssueCount =
     (
-        (await db
-            // @ts-expect-error: count argument mismatch
-            .select({ count: sql<number>`count(*)` })
+        await db
+            .select({ count: count() })
             .from(schema.issues)
             .where(
                 and(
@@ -47,8 +46,7 @@ const openIssueCount =
                     eq(schema.issues.state, "open"),
                 ),
             )
-            ) as { count: number }[]
-    )?.count || 0;
+    )[0]?.count || 0;
 
 const repoInfo = {
     owner: repoData.owner.username,
@@ -77,6 +75,14 @@ const latestScan = await db.query.securityScans.findFirst({
         vulnerabilities: true,
     },
 });
+
+const secretResults = await db.query.secretScanResults.findMany({
+    where: eq(schema.secretScanResults.repositoryId, repoData.id),
+    orderBy: [desc(schema.secretScanResults.createdAt)],
+    limit: 50,
+});
+
+const openSecretCount = secretResults.filter((result) => result.status === "open").length;
 
 const vulns = latestScan?.vulnerabilities || [];
 // Sort vulns by severity
@@ -287,11 +293,100 @@ vulns.sort(
                 </div>
             )
         }
+
+        <div class="mt-8 space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">Secret Scanning</h2>
+                    <p class="text-muted-foreground text-sm">
+                        Detect leaked credentials and API keys in repository files.
+                    </p>
+                </div>
+                {canWrite && (
+                    <Button id="secret-scan-btn" variant="outline">
+                        Run Secret Scan
+                    </Button>
+                )}
+            </div>
+
+            <div class="grid gap-4 md:grid-cols-3">
+                <div class="border rounded-lg p-4 bg-card">
+                    <div class="text-sm font-medium text-muted-foreground">Open alerts</div>
+                    <div class="text-2xl font-bold text-red-600">
+                        {openSecretCount}
+                    </div>
+                </div>
+                <div class="border rounded-lg p-4 bg-card">
+                    <div class="text-sm font-medium text-muted-foreground">Total findings</div>
+                    <div class="text-2xl font-bold text-foreground">
+                        {secretResults.length}
+                    </div>
+                </div>
+                <div class="border rounded-lg p-4 bg-card">
+                    <div class="text-sm font-medium text-muted-foreground">Latest scan</div>
+                    <div class="text-sm text-muted-foreground">
+                        {secretResults[0]?.createdAt
+                            ? new Date(secretResults[0].createdAt).toLocaleString()
+                            : "Not run yet"}
+                    </div>
+                </div>
+            </div>
+
+            <div class="border rounded-lg overflow-hidden">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-muted/50 text-muted-foreground border-b">
+                        <tr>
+                            <th class="px-4 py-3 font-medium">Type</th>
+                            <th class="px-4 py-3 font-medium">File</th>
+                            <th class="px-4 py-3 font-medium">Line</th>
+                            <th class="px-4 py-3 font-medium">Snippet</th>
+                            <th class="px-4 py-3 font-medium">Severity</th>
+                            <th class="px-4 py-3 font-medium">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y">
+                        {secretResults.length === 0 ? (
+                            <tr>
+                                <td colspan="6" class="px-4 py-6 text-center text-muted-foreground">
+                                    No secrets detected yet.
+                                </td>
+                            </tr>
+                        ) : (
+                            secretResults.map((secret) => (
+                                <tr class="hover:bg-muted/5">
+                                    <td class="px-4 py-3 font-medium">{secret.secretType}</td>
+                                    <td class="px-4 py-3 text-xs font-mono">{secret.file}</td>
+                                    <td class="px-4 py-3 text-xs font-mono">{secret.line ?? "-"}</td>
+                                    <td class="px-4 py-3 text-xs font-mono">{secret.snippet ?? "-"}</td>
+                                    <td class="px-4 py-3">
+                                        <span class={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
+                                            secret.severity === "critical"
+                                                ? "bg-red-100 text-red-800 border-red-200"
+                                                : secret.severity === "high"
+                                                    ? "bg-orange-100 text-orange-800 border-orange-200"
+                                                    : secret.severity === "medium"
+                                                        ? "bg-yellow-100 text-yellow-800 border-yellow-200"
+                                                        : "bg-blue-100 text-blue-800 border-blue-200"
+                                        }`}>
+                                            {secret.severity}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-xs">
+                                        {secret.status}
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </BaseLayout>
 
 <script define:vars={{ repoOwner: repoInfo.owner, repoName: repoInfo.name }}>
     const scanBtn = document.getElementById("scan-btn");
+    const secretScanBtn = document.getElementById("secret-scan-btn");
 
     scanBtn?.addEventListener("click", async () => {
         scanBtn.setAttribute("disabled", "true");
@@ -319,6 +414,31 @@ vulns.sort(
             alert("Error starting scan");
             scanBtn.removeAttribute("disabled");
             scanBtn.textContent = "Run Scan";
+        }
+    });
+
+    secretScanBtn?.addEventListener("click", async () => {
+        secretScanBtn.setAttribute("disabled", "true");
+        secretScanBtn.textContent = "Scanning...";
+
+        try {
+            const res = await fetch(
+                `/api/repos/${repoOwner}/${repoName}/security/secret-scan`,
+                { method: "POST" }
+            );
+
+            if (res.ok) {
+                window.location.reload();
+            } else {
+                alert("Failed to start secret scan");
+                secretScanBtn.removeAttribute("disabled");
+                secretScanBtn.textContent = "Run Secret Scan";
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error starting secret scan");
+            secretScanBtn.removeAttribute("disabled");
+            secretScanBtn.textContent = "Run Secret Scan";
         }
     });
 </script>

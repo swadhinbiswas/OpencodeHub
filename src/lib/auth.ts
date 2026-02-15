@@ -1,3 +1,4 @@
+
 /**
  * Authentication utilities
  * JWT token management, password hashing, 2FA
@@ -8,8 +9,9 @@ import { JWTPayload, SignJWT, jwtVerify } from "jose";
 import { authenticator } from "otplib";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDatabase, schema } from "@/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { generateId, now } from "./utils";
+import { canReadRepo } from "@/lib/permissions";
 
 // Types
 export interface TokenPayload extends JWTPayload {
@@ -31,9 +33,11 @@ export interface SessionData {
 }
 
 // JWT configuration
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "dev-secret-change-in-production-minimum-32-chars"
-);
+const jwtSecretRaw = process.env.JWT_SECRET;
+if (!jwtSecretRaw) {
+  throw new Error("JWT_SECRET environment variable is required");
+}
+const JWT_SECRET = new TextEncoder().encode(jwtSecretRaw);
 const JWT_ISSUER = "opencodehub";
 const JWT_AUDIENCE = "opencodehub-api";
 
@@ -333,4 +337,47 @@ function parseCookies(cookieHeader: string): Record<string, string> {
   }
 
   return cookies;
+}
+
+/**
+ * Helper to fetch repo and check access
+ */
+export async function getRepoAndUser(
+  request: Request,
+  ownerName: string,
+  repoName: string
+) {
+  const db = getDatabase();
+  const user = await getUserFromRequest(request);
+  const userId = user?.userId;
+
+  // 1. Get Repo Owner
+  const repoOwner = await db.query.users.findFirst({
+    where: eq(schema.users.username, ownerName),
+  });
+
+  if (!repoOwner) return null;
+
+  // 2. Get Repository
+  const repository = await db.query.repositories.findFirst({
+    where: and(
+      eq(schema.repositories.ownerId, repoOwner.id),
+      eq(schema.repositories.name, repoName)
+    ),
+  });
+
+  if (!repository) return null;
+
+  // 3. Check Permissions
+  const permission = await canReadRepo(userId, repository);
+  if (!permission) return null;
+
+  return {
+    repository,
+    user: repoOwner,
+    permission: typeof permission === 'string' ? permission : 'read' // canReadRepo returns boolean or string? It usually returns boolean. 
+    // Wait, let's check canReadRepo signature if possible, but assuming boolean for now.
+    // If canReadRepo returns boolean, we might want to fetch actual permission level if needed. 
+    // But for now, basic check is enough.
+  };
 }

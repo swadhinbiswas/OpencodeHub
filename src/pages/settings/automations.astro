@@ -298,7 +298,7 @@ function parseActions(actionsJson: string): { type: string; label: string }[] {
                             {trigger.label}
                           </span>
                           <ArrowRight className="h-4 w-4 text-gray-500" />
-                          {actions.slice(0, 3).map((action, i) => (
+                          {actions.slice(0, 3).map((action) => (
                             <span class="px-2 py-1 rounded bg-yellow-500/10 text-yellow-300 text-xs">
                               {action.label}
                             </span>

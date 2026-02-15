@@ -1,0 +1,100 @@
+name: Sync Roadmap Issues
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - github-roadmap-issues.json
+      - .github/workflows/sync-roadmap-issues.yml
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create Missing Roadmap Issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            const path = require('node:path');
+
+            const issuesPath = path.join(process.env.GITHUB_WORKSPACE, 'github-roadmap-issues.json');
+            const payload = JSON.parse(fs.readFileSync(issuesPath, 'utf8'));
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const labelColors = {
+              'roadmap/ws1': '0e8a16',
+              'roadmap/ws2': '1d76db',
+              'roadmap/ws3': 'b60205',
+              'roadmap/ws4': '5319e7',
+              'roadmap/ws5': 'fbca04',
+              'roadmap/ws6': '0052cc',
+              'status/partial': 'fbca04',
+              'status/missing': 'd93f0b',
+              'priority/high': 'b60205',
+              'priority/medium': 'fbca04',
+              'priority/low': '0e8a16',
+              'docs-required': '0052cc',
+            };
+
+            const ensureLabel = async (name) => {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                await github.rest.issues.createLabel({
+                  owner,
+                  repo,
+                  name,
+                  color: labelColors[name] || '6e7781',
+                });
+              }
+            };
+
+            const existingIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'all',
+              per_page: 100,
+            });
+
+            const existingTitleSet = new Set(
+              existingIssues
+                .filter((issue) => !issue.pull_request)
+                .map((issue) => issue.title)
+            );
+
+            let created = 0;
+            let skipped = 0;
+
+            for (const item of payload) {
+              if (existingTitleSet.has(item.title)) {
+                skipped += 1;
+                continue;
+              }
+
+              for (const label of item.labels) {
+                await ensureLabel(label);
+              }
+
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title: item.title,
+                body: item.body,
+                labels: item.labels,
+              });
+
+              created += 1;
+            }
+
+            core.notice(`Roadmap issue sync complete. Created: ${created}, Skipped existing: ${skipped}`);
