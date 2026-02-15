@@ -9,25 +9,23 @@ import { eq } from "drizzle-orm";
 import { getDatabase, schema } from "@/db";
 import { personalAccessTokens } from "@/db/schema/users";
 import { getUserFromRequest } from "@/lib/auth";
-import { parseBody, unauthorized, badRequest, notFound, success, serverError } from "@/lib/api";
+import { parseBody, unauthorized, badRequest, notFound, success } from "@/lib/api";
 import { z } from "zod";
 import crypto from "crypto";
 import { hashPersonalAccessToken, getTokenPrefixForDisplay } from "@/lib/personal-access-token";
 
 // Generate a secure token like GitHub's format: ochat_xxxxxxxxxxxx
-function generateToken(): { token: string; prefix: string } {
+function generateToken(): { token: string } {
     const prefix = "och_";
     const randomPart = crypto.randomBytes(32).toString("base64url");
     return {
         token: `${prefix}${randomPart}`,
-        prefix: `${prefix}${randomPart.slice(0, 8)}`,
     };
 }
 
 const createTokenSchema = z.object({
     name: z.string().min(1).max(100),
     expiresIn: z.enum(["7d", "30d", "90d", "1y", "never"]).optional().default("30d"),
-    scopes: z.array(z.string()).optional().default(["repo", "user"]),
 });
 
 import { logger } from "@/lib/logger";
@@ -72,7 +70,7 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
     const parsed = await parseBody(request, createTokenSchema);
     if ("error" in parsed) return parsed.error;
 
-    const { name, expiresIn, scopes } = parsed.data;
+    const { name, expiresIn } = parsed.data;
 
     // Calculate expiry date
     let expiresAt: Date | null = null;
@@ -96,7 +94,7 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
     }
 
     // Generate token
-    const { token, prefix } = generateToken();
+    const { token } = generateToken();
     const tokenId = `pat_${crypto.randomBytes(8).toString("hex")}`;
 
     const db = getDatabase() as NodePgDatabase<typeof schema>;
