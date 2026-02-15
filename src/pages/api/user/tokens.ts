@@ -12,6 +12,7 @@ import { getUserFromRequest } from "@/lib/auth";
 import { parseBody, unauthorized, badRequest, notFound, success, serverError } from "@/lib/api";
 import { z } from "zod";
 import crypto from "crypto";
+import { hashPersonalAccessToken, getTokenPrefixForDisplay } from "@/lib/personal-access-token";
 
 // Generate a secure token like GitHub's format: ochat_xxxxxxxxxxxx
 function generateToken(): { token: string; prefix: string } {
@@ -21,11 +22,6 @@ function generateToken(): { token: string; prefix: string } {
         token: `${prefix}${randomPart}`,
         prefix: `${prefix}${randomPart.slice(0, 8)}`,
     };
-}
-
-// Hash token for storage (we only store the hash, not the actual token)
-function hashToken(token: string): string {
-    return crypto.createHash("sha256").update(token).digest("hex");
 }
 
 const createTokenSchema = z.object({
@@ -58,7 +54,7 @@ export const GET: APIRoute = withErrorHandler(async ({ request }) => {
         tokens: tokens.map((t) => ({
             id: t.id,
             name: t.name,
-            tokenPrefix: t.token.startsWith("och_") ? t.token.slice(0, 12) + "..." : "***",
+            tokenPrefix: getTokenPrefixForDisplay(t.token),
             expiresAt: t.expiresAt,
             lastUsedAt: t.lastUsedAt,
             createdAt: t.createdAt,
@@ -111,7 +107,7 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
         id: tokenId,
         userId: tokenPayload.userId,
         name,
-        token: token, // The full token - user sees it once
+        token: hashPersonalAccessToken(token),
         expiresAt,
         createdAt: new Date(),
     });

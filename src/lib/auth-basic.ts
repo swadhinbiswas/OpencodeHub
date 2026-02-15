@@ -1,7 +1,8 @@
 import { getDatabase, schema } from "@/db";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
+import { hashPersonalAccessToken, verifyPersonalAccessTokenValue } from "@/lib/personal-access-token";
 
 export async function validateBasicAuth(
   header: string
@@ -23,12 +24,18 @@ export async function validateBasicAuth(
 
   // Check if password looks like a Personal Access Token (och_xxx format)
   if (password.startsWith("och_")) {
+    const hashedToken = hashPersonalAccessToken(password);
     const pat = await db.query.personalAccessTokens.findFirst({
-      where: (tokens, { and, eq }) =>
-        and(eq(tokens.userId, user.id), eq(tokens.token, password)),
+      where: and(
+        eq(schema.personalAccessTokens.userId, user.id),
+        or(
+          eq(schema.personalAccessTokens.token, hashedToken),
+          eq(schema.personalAccessTokens.token, password)
+        )
+      ),
     });
 
-    if (pat) {
+    if (pat && verifyPersonalAccessTokenValue(pat.token, password)) {
       // Update last used at
       await db
         .update(schema.personalAccessTokens)

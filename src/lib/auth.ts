@@ -9,9 +9,10 @@ import { JWTPayload, SignJWT, jwtVerify } from "jose";
 import { authenticator } from "otplib";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDatabase, schema } from "@/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 import { generateId, now } from "./utils";
 import { canReadRepo } from "@/lib/permissions";
+import { hashPersonalAccessToken, verifyPersonalAccessTokenValue } from "@/lib/personal-access-token";
 
 // Types
 export interface TokenPayload extends JWTPayload {
@@ -286,15 +287,24 @@ async function verifyPersonalAccessToken(token: string): Promise<TokenPayload | 
     const db = getDatabase() as NodePgDatabase<typeof schema>;
     const { personalAccessTokens } = schema;
 
-    // Find the token
+    const hashedToken = hashPersonalAccessToken(token);
+
+    // Find token by current hashed format or legacy raw storage.
     const pat = await db.query.personalAccessTokens.findFirst({
-      where: eq(personalAccessTokens.token, token),
+      where: or(
+        eq(personalAccessTokens.token, hashedToken),
+        eq(personalAccessTokens.token, token)
+      ),
       with: {
         user: true,
       },
     });
 
     if (!pat) {
+      return null;
+    }
+
+    if (!verifyPersonalAccessTokenValue(pat.token, token)) {
       return null;
     }
 

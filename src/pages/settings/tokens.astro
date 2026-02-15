@@ -21,7 +21,9 @@ try {
 import TokensManager from "@/components/settings/TokensManager";
 
 const serializableTokens = tokens.map((t) => ({
-  ...t,
+  id: t.id,
+  name: t.name,
+  tokenPrefix: t.token.startsWith("och_") ? `${t.token.slice(0, 12)}...` : "och_********",
   createdAt: t.createdAt.toISOString(),
   expiresAt: t.expiresAt ? t.expiresAt.toISOString() : null,
   lastUsedAt: t.lastUsedAt ? t.lastUsedAt.toISOString() : null,
