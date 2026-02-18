@@ -85,7 +85,7 @@ try {
       actions: r.actions,
       isEnabled: r.isEnabled ?? true,
       runCount: r.runCount || 0,
-      lastRunAt: r.lastRunAt || undefined,
+      lastRunAt: r.lastRunAt ? r.lastRunAt.toISOString() : undefined,
     }));
 
     // Get recent executions
@@ -106,7 +106,7 @@ try {
             ruleName: e.rule?.name || "Unknown",
             triggerEvent: e.triggerEvent,
             status: e.status,
-            createdAt: e.createdAt,
+            createdAt: e.createdAt.toISOString(),
             durationMs: e.durationMs || undefined,
           }));
       }
@@ -266,6 +266,10 @@ function parseActions(actionsJson: string): { type: string; label: string }[] {
                     <div
                       class="group flex items-start gap-4 p-4 transition-all hover:bg-white/[0.02]"
                       data-rule-id={rule.id}
+                      data-rule-name={rule.name}
+                      data-rule-trigger={rule.trigger}
+                      data-rule-description={rule.description || ""}
+                      data-rule-actions={rule.actions}
                     >
                       {/* Trigger Icon */}
                       <div class="flex-shrink-0 p-2 rounded-lg bg-white/5">
@@ -322,6 +326,7 @@ function parseActions(actionsJson: string): { type: string; label: string }[] {
                           class="p-1.5 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
                           title={rule.isEnabled ? "Disable" : "Enable"}
                           data-action="toggle"
+                          data-enabled={rule.isEnabled ? "true" : "false"}
                         >
                           {rule.isEnabled ? (
                             <Pause className="h-4 w-4" />
@@ -448,14 +453,64 @@ function parseActions(actionsJson: string): { type: string; label: string }[] {
     window.location.href = url.toString();
   });
 
-  // Add rule button
-  document.getElementById("add-rule-btn")?.addEventListener("click", () => {
-    // For now, show a placeholder - full modal would be implemented
-    alert("Automation builder coming soon! Use templates below to get started.");
+  async function createRuleFromPrompts() {
+    if (!repoId) return;
+
+    const name = prompt("Automation name", "New Automation Rule");
+    if (!name) return;
+
+    const description = prompt("Description (optional)", "") || "";
+    const trigger = prompt(
+      "Trigger event (e.g. pr_opened, pr_approved, ci_failed)",
+      "pr_opened",
+    );
+    if (!trigger) return;
+
+    const actionType = prompt(
+      "Action type (e.g. assign_reviewer, add_to_merge_queue, trigger_ai_review)",
+      "trigger_ai_review",
+    );
+    if (!actionType) return;
+
+    const payload = {
+      repositoryId: repoId,
+      name,
+      description,
+      trigger,
+      actions: JSON.stringify([{ type: actionType, params: {} }]),
+    };
+
+    const res = await fetch("/api/automation-rules", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      alert("Failed to create automation");
+      return;
+    }
+
+    window.location.reload();
+  }
+
+  // Add rule buttons
+  document.getElementById("add-rule-btn")?.addEventListener("click", async () => {
+    try {
+      await createRuleFromPrompts();
+    } catch (e) {
+      console.error("Failed to create automation:", e);
+      alert("Failed to create automation");
+    }
   });
 
-  document.getElementById("add-first-rule-btn")?.addEventListener("click", () => {
-    alert("Automation builder coming soon! Use templates below to get started.");
+  document.getElementById("add-first-rule-btn")?.addEventListener("click", async () => {
+    try {
+      await createRuleFromPrompts();
+    } catch (e) {
+      console.error("Failed to create automation:", e);
+      alert("Failed to create automation");
+    }
   });
 
   // Template buttons
@@ -496,6 +551,89 @@ function parseActions(actionsJson: string): { type: string; label: string }[] {
         }
       } catch (e) {
         console.error("Failed to create automation:", e);
+      }
+    });
+  });
+
+  // Rule row action handlers (toggle/edit/delete)
+  document.querySelectorAll("[data-rule-id]").forEach((row) => {
+    const ruleId = row.getAttribute("data-rule-id");
+    if (!ruleId) return;
+
+    row.querySelector('[data-action="toggle"]')?.addEventListener("click", async () => {
+      const toggleBtn = row.querySelector('[data-action="toggle"]');
+      const enabled = toggleBtn?.getAttribute("data-enabled") === "true";
+
+      try {
+        const res = await fetch(`/api/automation-rules?id=${encodeURIComponent(ruleId)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isEnabled: !enabled }),
+        });
+        if (res.ok) {
+          window.location.reload();
+        } else {
+          alert("Failed to update automation");
+        }
+      } catch (e) {
+        console.error("Failed to toggle automation:", e);
+      }
+    });
+
+    row.querySelector('[data-action="edit"]')?.addEventListener("click", async () => {
+      const currentName = row.getAttribute("data-rule-name") || "";
+      const currentDescription = row.getAttribute("data-rule-description") || "";
+      const currentTrigger = row.getAttribute("data-rule-trigger") || "pr_opened";
+      const actionsRaw = row.getAttribute("data-rule-actions") || "[]";
+
+      let currentActionType = "trigger_ai_review";
+      try {
+        const parsed = JSON.parse(actionsRaw);
+        if (Array.isArray(parsed) && parsed[0]?.type) currentActionType = parsed[0].type;
+      } catch {}
+
+      const name = prompt("Automation name", currentName);
+      if (!name) return;
+      const description = prompt("Description (optional)", currentDescription) || "";
+      const trigger = prompt("Trigger event", currentTrigger);
+      if (!trigger) return;
+      const actionType = prompt("Action type", currentActionType);
+      if (!actionType) return;
+
+      try {
+        const res = await fetch(`/api/automation-rules?id=${encodeURIComponent(ruleId)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            description,
+            trigger,
+            actions: JSON.stringify([{ type: actionType, params: {} }]),
+          }),
+        });
+        if (res.ok) {
+          window.location.reload();
+        } else {
+          alert("Failed to update automation");
+        }
+      } catch (e) {
+        console.error("Failed to edit automation:", e);
+      }
+    });
+
+    row.querySelector('[data-action="delete"]')?.addEventListener("click", async () => {
+      if (!confirm("Delete this automation rule?")) return;
+      try {
+        const res = await fetch(`/api/automation-rules?id=${encodeURIComponent(ruleId)}`, {
+          method: "DELETE",
+        });
+        if (res.ok) {
+          window.location.reload();
+        } else {
+          alert("Failed to delete automation");
+        }
+      } catch (e) {
+        console.error("Failed to delete automation:", e);
       }
     });
   });
