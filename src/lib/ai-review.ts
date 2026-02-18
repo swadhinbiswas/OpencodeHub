@@ -35,6 +35,14 @@ export interface AIReviewConfig {
     includeStackContext?: boolean;
 }
 
+type ProviderCallResult = {
+    content: string;
+    summary: string;
+    tokensUsed: number;
+    promptTokens: number;
+    completionTokens: number;
+};
+
 export interface ReviewSuggestion {
     path: string;
     line?: number;
@@ -162,8 +170,41 @@ async function runAIReview(
         // Generate review prompt
         const prompt = generateReviewPrompt(pr, stackContext, diff);
 
-        // Call AI provider
-        const result = await callAIProvider(config, prompt);
+        let result: ProviderCallResult | null = null;
+
+        // External agents may run asynchronously and callback later.
+        if (config.provider === "external_agent") {
+            const external = await dispatchExternalAgentReview({
+                config,
+                prompt,
+                reviewId,
+                pullRequestId,
+                pr,
+                diff,
+                stackContext,
+            });
+
+            if (external.acceptedAsync) {
+                await db.update(schema.aiReviews)
+                    .set({
+                        status: "running",
+                        summary: "External agent accepted review request; awaiting callback",
+                        stackContext,
+                        completedAt: null,
+                    })
+                    .where(eq(schema.aiReviews.id, reviewId));
+                return;
+            }
+
+            result = external.result;
+        } else {
+            // Call built-in AI provider synchronously
+            result = await callAIProvider(config, prompt);
+        }
+
+        if (!result) {
+            throw new Error("AI provider returned no result");
+        }
 
         // Parse and save suggestions
         const suggestions = parseAIResponse(result.content);
@@ -219,6 +260,93 @@ async function runAIReview(
             })
             .where(eq(schema.aiReviews.id, reviewId));
     }
+}
+
+async function dispatchExternalAgentReview(options: {
+    config: AIReviewConfig;
+    prompt: string;
+    reviewId: string;
+    pullRequestId: string;
+    pr: any;
+    diff: string;
+    stackContext: string | null;
+}): Promise<{
+    acceptedAsync: boolean;
+    result: ProviderCallResult | null;
+}> {
+    const webhookUrl = options.config.baseUrl || process.env.EXTERNAL_AGENT_WEBHOOK_URL;
+    if (!webhookUrl) {
+        throw new Error("External agent webhook URL not configured");
+    }
+
+    const callbackSecret =
+        process.env.EXTERNAL_AGENT_CALLBACK_SECRET || process.env.INTERNAL_HOOK_SECRET;
+    const siteUrl = process.env.SITE_URL;
+    const callbackUrl =
+        callbackSecret && siteUrl
+            ? `${siteUrl.replace(/\/$/, "")}/api/repos/${encodeURIComponent(options.pr.repository.owner.username)}/${encodeURIComponent(options.pr.repository.name)}/pulls/${options.pr.number}/ai-review/callback`
+            : undefined;
+
+    const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            ...(options.config.apiKey ? { Authorization: `Bearer ${options.config.apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+            source: "opencodehub",
+            reviewId: options.reviewId,
+            pullRequestId: options.pullRequestId,
+            repository: {
+                owner: options.pr.repository.owner.username,
+                name: options.pr.repository.name,
+                id: options.pr.repository.id,
+            },
+            pullRequest: {
+                number: options.pr.number,
+                title: options.pr.title,
+                headBranch: options.pr.headBranch,
+                baseBranch: options.pr.baseBranch,
+            },
+            prompt: options.prompt,
+            diff: options.diff,
+            stackContext: options.stackContext,
+            callback: callbackUrl
+                ? {
+                    url: callbackUrl,
+                    token: callbackSecret,
+                }
+                : undefined,
+        }),
+    });
+
+    if (response.status === 202) {
+        return { acceptedAsync: true, result: null };
+    }
+
+    if (!response.ok) {
+        throw new Error(`External agent error: ${response.status} ${await response.text()}`);
+    }
+
+    const payload = await response.json();
+    const content =
+        typeof payload?.content === "string"
+            ? payload.content
+            : JSON.stringify({
+                summary: payload?.summary || "External agent review completed",
+                suggestions: payload?.suggestions || [],
+            });
+
+    return {
+        acceptedAsync: false,
+        result: {
+            content,
+            summary: payload?.summary || "External agent review completed",
+            tokensUsed: Number(payload?.usage?.totalTokens || payload?.tokensUsed || 0),
+            promptTokens: Number(payload?.usage?.inputTokens || 0),
+            completionTokens: Number(payload?.usage?.outputTokens || 0),
+        },
+    };
 }
 
 /**

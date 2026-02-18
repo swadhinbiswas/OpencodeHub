@@ -149,7 +149,10 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
             aiConfig = {
                 provider,
                 model: userConfig.model || aiConfig.model,
-                apiKey: keyProvider ? userConfig.apiKeys?.[keyProvider] : undefined,
+                apiKey: keyProvider
+                    ? userConfig.apiKeys?.[keyProvider]
+                        || (provider === "external_agent" ? process.env.EXTERNAL_AGENT_API_KEY : undefined)
+                    : undefined,
                 baseUrl:
                     provider === "external_agent"
                         ? (userConfig.externalAgentWebhookUrl || aiConfig.baseUrl)
