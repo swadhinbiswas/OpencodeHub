@@ -4,6 +4,7 @@ import { logger } from "@/lib/logger";
 import type { APIRoute } from "astro";
 import { eq, and } from "drizzle-orm";
 import micromatch from "micromatch";
+import { resolveRepoPath } from "@/lib/git-storage";
 
 export const POST: APIRoute = async ({ request, url }) => {
     const hookSecret = process.env.INTERNAL_HOOK_SECRET;
@@ -29,14 +30,13 @@ export const POST: APIRoute = async ({ request, url }) => {
 
     const { refname, newrev, oldrev, pusher } = body;
     const userId = pusher; // The SSH server sends REMOTE_USER as userId
-    // const isForcePush = ... // Hard to detect strictly from here without more Git context, but typically oldrev mismatch?
-    // Actually, force push is when newrev is not a descendant of oldrev. We can check that if we have git access.
-    // For now, let's focus on branch existence and roles.
+    const isSystemPush = userId === "system" || userId === "internal-bot";
 
-    const branchName = refname.replace("refs/heads/", "");
-    if (!branchName) {
-        return new Response("OK", { status: 200 }); // Not a branch push (e.g. tag), or ignore for now
+    // We enforce branch protection only for branch refs.
+    if (!refname.startsWith("refs/heads/")) {
+        return new Response("OK", { status: 200 });
     }
+    const branchName = refname.slice("refs/heads/".length);
 
     const db = getDatabase() as NodePgDatabase<typeof schema>;
 
@@ -68,6 +68,14 @@ export const POST: APIRoute = async ({ request, url }) => {
     if (!repo) {
         return new Response("Repo not found", { status: 404 });
     }
+    const localRepoPath = await resolveRepoPath(repo.diskPath);
+    const pusherUser = userId
+        ? await db.query.users.findFirst({
+            where: eq(schema.users.id, userId),
+            columns: { id: true, isAdmin: true },
+        })
+        : null;
+    const isPrivilegedPush = isSystemPush || !!pusherUser?.isAdmin;
 
     // Fetch protection rules
     const rules = await db.query.branchProtection.findMany({
@@ -94,6 +102,10 @@ export const POST: APIRoute = async ({ request, url }) => {
 
     // 1. Require PR
     if (matchingRule.requiresPr) {
+        if (isPrivilegedPush) {
+            return new Response("OK", { status: 200 });
+        }
+
         // If newrev allows force push (0000 -> sha is Create, Sha -> 0000 is Delete)
         const isDelete = newrev === "0000000000000000000000000000000000000000";
 
@@ -123,6 +135,10 @@ export const POST: APIRoute = async ({ request, url }) => {
 
     // 2. Prevent Force Push
     if (!matchingRule.allowForcePushes) {
+        if (isPrivilegedPush) {
+            return new Response("OK", { status: 200 });
+        }
+
         // We need to check if it's a force push.
         // git rev-list oldrev ^newrev (if output non-empty, it's non-fast-forward?)
         // Actually simpler: `git merge-base --is-ancestor oldrev newrev`
@@ -135,7 +151,7 @@ export const POST: APIRoute = async ({ request, url }) => {
                 // This is expensive for an API request? Maybe. But necessary.
                 // We can use simple-git.
                 const { simpleGit } = await import("simple-git");
-                const git = simpleGit(repoPath);
+                const git = simpleGit(localRepoPath);
                 try {
                     // merge-base --is-ancestor oldrev newrev
                     await git.raw(["merge-base", "--is-ancestor", oldrev, newrev]);
@@ -164,7 +180,7 @@ export const POST: APIRoute = async ({ request, url }) => {
         let changedFiles: string[] = [];
         try {
             const { simpleGit } = await import("simple-git");
-            const git = simpleGit(repoPath);
+            const git = simpleGit(localRepoPath);
 
             // Determine base revision for diff
             let baseRev = oldrev;
