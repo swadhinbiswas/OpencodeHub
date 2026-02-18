@@ -9,6 +9,7 @@ import { withErrorHandler } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { canReadRepo, canWriteRepo } from "@/lib/permissions";
 import { badRequest, forbidden, notFound, parseBody, success, unauthorized } from "@/lib/api";
+import { checkPathPermissions } from "@/lib/path-scoping";
 
 const batchReviewSchema = z.object({
   state: z.enum(["APPROVED", "CHANGES_REQUESTED", "COMMENTED"]).default("COMMENTED"),
@@ -66,6 +67,20 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
   if (!pr) return notFound("Pull request not found");
   if (pr.authorId === userId && parsed.data.state !== "COMMENTED") {
     return badRequest("Authors cannot approve or request changes on their own PR");
+  }
+
+  const scopedPaths = Array.from(
+    new Set(
+      parsed.data.comments
+        .map((comment) => comment.path?.trim())
+        .filter((path): path is string => Boolean(path))
+    )
+  );
+  if (scopedPaths.length > 0) {
+    const permission = await checkPathPermissions(userId, repo.id, scopedPaths, "write");
+    if (!permission.allowed) {
+      return forbidden(permission.reason || "Insufficient path permissions for one or more review comments");
+    }
   }
 
   const reviewId = nanoid();

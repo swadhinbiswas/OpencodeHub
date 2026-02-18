@@ -8,9 +8,10 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { eq, and, desc, isNull } from "drizzle-orm";
 import { getDatabase, schema } from "@/db";
 import { getUserFromRequest } from "@/lib/auth";
-import { parseBody, unauthorized, badRequest, notFound, success, serverError } from "@/lib/api";
+import { parseBody, unauthorized, badRequest, notFound, success, forbidden } from "@/lib/api";
 import { z } from "zod";
 import crypto from "crypto";
+import { checkPathPermissions } from "@/lib/path-scoping";
 
 const createCommentSchema = z.object({
     body: z.string().min(1),
@@ -109,6 +110,18 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
 
     if (!pr || pr.repository?.ownerId !== owner) {
         return notFound("Pull request not found");
+    }
+
+    if (parsed.data.path) {
+        const permission = await checkPathPermissions(
+            tokenPayload.userId,
+            pr.repositoryId,
+            [parsed.data.path],
+            "write"
+        );
+        if (!permission.allowed) {
+            return forbidden(permission.reason || "Insufficient path permissions for this comment");
+        }
     }
 
     const now = new Date();
