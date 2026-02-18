@@ -6,5 +6,7 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+    include: ["src/**/*.test.ts", "tests/**/*.test.ts", "cli/src/**/*.test.ts"],
+    exclude: ["tests/e2e/**", "cli/dist/**", "node_modules/**"],
   },
 });
