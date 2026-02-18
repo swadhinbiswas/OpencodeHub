@@ -27,23 +27,45 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
     if (!await canWriteRepo(user.id, repo)) return forbidden();
 
     const body = await request.json();
-    const { url, secret, events, active } = body;
+    const {
+        url,
+        secret,
+        events,
+        active,
+        contentType: rawContentType,
+        content_type,
+        name,
+        provider,
+    } = body;
 
     if (!url || !events) {
         return badRequest("Missing required fields");
     }
+    if (!Array.isArray(events) || events.length === 0) {
+        return badRequest("events must be a non-empty array");
+    }
+
+    const normalizedContentType = rawContentType || content_type || "json";
+    if (!["json", "form"].includes(normalizedContentType)) {
+        return badRequest("Invalid contentType. Supported values: json, form");
+    }
+    const isActive = active === undefined ? true : Boolean(active);
 
     const id = generateId();
     await db.insert(schema.webhooks).values({
         id,
         repositoryId: repoId,
+        provider: provider || "generic",
+        name: name || null,
         url,
-        secret,
+        secret: secret || null,
         events: JSON.stringify(events),
-        active: active, // Changed from isActive
-        // contentType: content_type // Add this to schema if needed, defaulting to json for now as it's not in my previous schema definition but was in plan
+        active: isActive,
+        enabled: isActive,
+        contentType: normalizedContentType,
         createdAt: new Date(),
         updatedAt: new Date(),
+        createdById: user.id,
     });
 
     logger.info({ userId: user.id, repoId, webhookId: id }, "Webhook created");
