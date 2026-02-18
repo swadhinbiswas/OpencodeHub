@@ -2,6 +2,10 @@ import { OpenAIAdapter } from "./openai";
 import { GroqAdapter } from "./groq";
 import { BytezAdapter } from "./bytez";
 import { AnthropicAdapter } from "./anthropic";
+import { OpenRouterAdapter } from "./openrouter";
+import { TogetherAdapter } from "./together";
+import { GoogleAdapter } from "./google";
+import { ExternalAgentAdapter } from "./external-agent";
 import type { AIAdapter } from "./types";
 
 export function getAIAdapter(provider: string): AIAdapter {
@@ -12,6 +16,14 @@ export function getAIAdapter(provider: string): AIAdapter {
             return new GroqAdapter();
         case "bytez":
             return new BytezAdapter();
+        case "openrouter":
+            return new OpenRouterAdapter();
+        case "together":
+            return new TogetherAdapter();
+        case "google":
+            return new GoogleAdapter();
+        case "external_agent":
+            return new ExternalAgentAdapter();
         case "anthropic":
             return new AnthropicAdapter();
         default:

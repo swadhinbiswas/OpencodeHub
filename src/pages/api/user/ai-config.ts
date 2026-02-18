@@ -20,7 +20,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
         const { provider, apiKeys, model } = data;
 
         // Basic validation
-        if (!["openai", "groq", "bytez", "local"].includes(provider)) {
+        if (!["openai", "groq", "bytez", "openrouter", "together", "google", "external_agent", "local", "anthropic"].includes(provider)) {
             return new Response(JSON.stringify({ error: "Invalid provider" }), { status: 400 });
         }
 
@@ -37,9 +37,18 @@ export const POST: APIRoute = async ({ request, locals }) => {
             model: model || existing.model,
             apiKeys: {
                 openai: typeof apiKeys?.openai === "string" && apiKeys.openai.trim() !== "" ? apiKeys.openai.trim() : undefined,
+                anthropic: typeof apiKeys?.anthropic === "string" && apiKeys.anthropic.trim() !== "" ? apiKeys.anthropic.trim() : undefined,
                 groq: typeof apiKeys?.groq === "string" && apiKeys.groq.trim() !== "" ? apiKeys.groq.trim() : undefined,
                 bytez: typeof apiKeys?.bytez === "string" && apiKeys.bytez.trim() !== "" ? apiKeys.bytez.trim() : undefined,
+                openrouter: typeof apiKeys?.openrouter === "string" && apiKeys.openrouter.trim() !== "" ? apiKeys.openrouter.trim() : undefined,
+                together: typeof apiKeys?.together === "string" && apiKeys.together.trim() !== "" ? apiKeys.together.trim() : undefined,
+                google: typeof apiKeys?.google === "string" && apiKeys.google.trim() !== "" ? apiKeys.google.trim() : undefined,
+                externalAgent: typeof apiKeys?.externalAgent === "string" && apiKeys.externalAgent.trim() !== "" ? apiKeys.externalAgent.trim() : undefined,
             },
+            externalAgentWebhookUrl:
+                typeof data?.externalAgentWebhookUrl === "string" && data.externalAgentWebhookUrl.trim() !== ""
+                    ? data.externalAgentWebhookUrl.trim()
+                    : undefined,
         });
 
         await db.update(schema.users)

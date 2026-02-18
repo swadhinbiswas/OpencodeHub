@@ -111,10 +111,12 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
         provider: AIProvider;
         model: string;
         apiKey?: string;
+        baseUrl?: string;
     } = {
         provider: ((process.env.AI_PROVIDER as AIProvider | undefined) || "openai"),
         model: "gpt-4-turbo",
         apiKey: undefined,
+        baseUrl: process.env.EXTERNAL_AGENT_WEBHOOK_URL,
     };
 
     if (currentUser?.aiConfig) {
@@ -125,17 +127,33 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
                 userConfig.provider === "anthropic" ||
                 userConfig.provider === "groq" ||
                 userConfig.provider === "bytez" ||
+                userConfig.provider === "openrouter" ||
+                userConfig.provider === "together" ||
+                userConfig.provider === "google" ||
+                userConfig.provider === "external_agent" ||
                 userConfig.provider === "local"
                     ? userConfig.provider
                     : "openai";
             const keyProvider =
-                provider === "openai" || provider === "groq" || provider === "bytez"
+                provider === "openai" ||
+                provider === "anthropic" ||
+                provider === "groq" ||
+                provider === "bytez" ||
+                provider === "openrouter" ||
+                provider === "together" ||
+                provider === "google"
                     ? provider
+                    : provider === "external_agent"
+                        ? "externalAgent"
                     : undefined;
             aiConfig = {
                 provider,
                 model: userConfig.model || aiConfig.model,
                 apiKey: keyProvider ? userConfig.apiKeys?.[keyProvider] : undefined,
+                baseUrl:
+                    provider === "external_agent"
+                        ? (userConfig.externalAgentWebhookUrl || aiConfig.baseUrl)
+                        : undefined,
             };
         } catch (e) {
             logger.error("Failed to parse user AI config", e);
@@ -149,6 +167,7 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
             provider: aiConfig.provider,
             model: aiConfig.model,
             apiKey: aiConfig.apiKey,
+            baseUrl: aiConfig.baseUrl,
             includeStackContext: true,
         }
     );

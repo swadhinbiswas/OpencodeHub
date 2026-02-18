@@ -1,5 +1,14 @@
 export interface AIConfig {
-    provider: "openai" | "groq" | "bytez" | "local" | "anthropic";
+    provider:
+        | "openai"
+        | "groq"
+        | "bytez"
+        | "openrouter"
+        | "together"
+        | "google"
+        | "external_agent"
+        | "local"
+        | "anthropic";
     model: string;
     apiKey?: string;
     baseUrl?: string;
