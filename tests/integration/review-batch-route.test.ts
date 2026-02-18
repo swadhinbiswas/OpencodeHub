@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { canReadRepoMock, canWriteRepoMock, triggerAutomationMock, fakeSchema } = vi.hoisted(() => ({
+const { canReadRepoMock, canWriteRepoMock, triggerAutomationMock, checkPathPermissionsMock, fakeSchema } = vi.hoisted(() => ({
   canReadRepoMock: vi.fn(async () => true),
   canWriteRepoMock: vi.fn(async () => true),
   triggerAutomationMock: vi.fn(async () => undefined),
+  checkPathPermissionsMock: vi.fn(async () => ({ allowed: true, deniedPaths: [] })),
   fakeSchema: {
     users: { username: {} },
     repositories: { ownerId: {}, name: {}, id: {} },
@@ -27,6 +28,10 @@ vi.mock("@/lib/permissions", () => ({
 
 vi.mock("@/lib/automations", () => ({
   triggerAutomation: triggerAutomationMock,
+}));
+
+vi.mock("@/lib/path-scoping", () => ({
+  checkPathPermissions: checkPathPermissionsMock,
 }));
 
 import { POST as batchReviewPost } from "@/pages/api/repos/[owner]/[repo]/pulls/[number]/reviews/batch";
@@ -88,6 +93,7 @@ describe("batch review route", () => {
     canReadRepoMock.mockResolvedValue(true);
     canWriteRepoMock.mockResolvedValue(true);
     triggerAutomationMock.mockClear();
+    checkPathPermissionsMock.mockResolvedValue({ allowed: true, deniedPaths: [] });
   });
 
   it("returns 401 when user is not authenticated", async () => {
@@ -161,6 +167,38 @@ describe("batch review route", () => {
     );
     expect(reviewInserts).toHaveLength(1);
     expect(commentInserts).toHaveLength(2);
+  });
+
+  it("returns 403 when path-scoped permissions deny any review comment path", async () => {
+    mockDb = makeDb();
+    checkPathPermissionsMock.mockResolvedValue({
+      allowed: false,
+      deniedPaths: ["secure/secret.ts"],
+      reason: "Insufficient permissions for paths: secure/secret.ts",
+    });
+
+    const response = await batchReviewPost({
+      params: { owner: "acme", repo: "demo", number: "42" },
+      request: new Request("http://localhost/api/repos/acme/demo/pulls/42/reviews/batch", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          state: "COMMENTED",
+          comments: [{ body: "secure change", path: "secure/secret.ts", line: 10 }],
+        }),
+      }),
+      locals: { user: { id: "reviewer-1" } },
+    } as any);
+
+    const body = await readJson(response);
+    expect(response.status).toBe(403);
+    expect(body?.error?.code).toBe("FORBIDDEN");
+    expect(checkPathPermissionsMock).toHaveBeenCalledWith(
+      "reviewer-1",
+      "repo-1",
+      ["secure/secret.ts"],
+      "write"
+    );
   });
 
   it("rolls back created rows when comment insert fails mid-batch", async () => {
