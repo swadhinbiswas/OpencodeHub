@@ -8,6 +8,8 @@ import { withErrorHandler } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { unauthorized, badRequest, notFound, success, forbidden } from "@/lib/api";
 import { autoLinkPR } from "@/lib/pr-issue-linking";
+import { canMerge } from "@/lib/merge-queue";
+import { checkCodeOwnerApprovalsForPR } from "@/lib/pr-codeowner";
 
 // GET: Get PR details
 export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
@@ -93,7 +95,10 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request, locals
 
     if (!pr) return notFound("Pull request not found");
 
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+        return badRequest("Invalid request body");
+    }
     const { title, body: description, state } = body;
 
     const updateData: any = { updatedAt: new Date() };
@@ -170,6 +175,20 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request, locals
                 }
             }
 
+            if (customState.requireCodeOwner) {
+                const codeOwnerResult = await checkCodeOwnerApprovalsForPR(db, pr.id);
+                if (!codeOwnerResult.ok) {
+                    return badRequest(codeOwnerResult.reason || "Code owner approval required");
+                }
+            }
+
+            if (customState.allowMerge) {
+                const readiness = await canMerge(pr.id);
+                if (!readiness.canMerge) {
+                    return badRequest(readiness.reason || "Merge requirements not met");
+                }
+            }
+
             updateData.stateId = customState.id;
             updateData.customStateChangedAt = new Date();
             // Custom states are generally 'open' in the high-level sense
@@ -181,14 +200,22 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request, locals
         } else if (state === "closed") {
             updateData.state = "closed";
             updateData.closedAt = new Date();
+            updateData.closedById = user.id;
+            updateData.stateId = null;
+            updateData.customStateChangedAt = new Date();
             stateChanged = true;
         } else if (state === "open") {
             updateData.state = "open";
             updateData.closedAt = null;
+            updateData.closedById = null;
+            updateData.stateId = null;
+            updateData.customStateChangedAt = new Date();
             if (pr.isMerged) {
                 return badRequest("Cannot re-open a merged pull request");
             }
             stateChanged = true;
+        } else {
+            return badRequest("Invalid pull request state");
         }
     }
 
