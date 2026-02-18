@@ -20,40 +20,60 @@ const adapterLoaders: Record<
     return PostgresAdapter;
   },
   mysql: async () => {
-    throw new Error("MySQL adapter not implemented");
+    const { MySQLAdapter } = await import("./mysql");
+    return MySQLAdapter;
   },
-  mongodb: async () => { throw new Error("MongoDB adapter not implemented"); },
+  mongodb: async () => {
+    const { MongoDBAdapter } = await import("./mongodb");
+    return MongoDBAdapter;
+  },
   turso: async () => {
-    throw new Error("Turso adapter not implemented");
+    const { TursoAdapter } = await import("./turso");
+    return TursoAdapter;
   },
   planetscale: async () => {
-    throw new Error("Planetscale adapter not implemented");
+    const { MySQLAdapter } = await import("./mysql");
+    return MySQLAdapter;
   },
-  redis: async () => { throw new Error("Redis adapter not implemented"); },
+  redis: async () => {
+    const { RedisAdapter } = await import("./redis");
+    return RedisAdapter;
+  },
   firestore: async () => {
-    throw new Error("Firestore adapter not implemented");
+    const { FirestoreAdapter } = await import("./firestore");
+    return FirestoreAdapter;
   },
   dynamodb: async () => {
-    throw new Error("DynamoDB adapter not implemented");
+    const { DynamoDBAdapter } = await import("./dynamodb");
+    return DynamoDBAdapter;
   },
   neo4j: async () => {
-    throw new Error("Neo4j adapter not implemented");
+    const { Neo4jAdapter } = await import("./neo4j");
+    return Neo4jAdapter;
   },
-  cockroachdb: async () => { throw new Error("CockroachDB adapter not implemented"); },
+  cockroachdb: async () => {
+    const { PostgresAdapter } = await import("./postgres");
+    return PostgresAdapter;
+  },
   cassandra: async () => {
-    throw new Error("Cassandra adapter not implemented");
+    const { CassandraAdapter } = await import("./cassandra");
+    return CassandraAdapter;
   },
   scylladb: async () => {
-    throw new Error("ScyllaDB adapter not implemented");
+    const { ScyllaDBAdapter } = await import("./scylladb");
+    return ScyllaDBAdapter;
   },
   surrealdb: async () => {
-    throw new Error("SurrealDB adapter not implemented");
+    const { SurrealDBAdapter } = await import("./surrealdb");
+    return SurrealDBAdapter;
   },
   tidb: async () => {
-    throw new Error("TiDB adapter not implemented");
+    const { MySQLAdapter } = await import("./mysql");
+    return MySQLAdapter;
   },
   mariadb: async () => {
-    throw new Error("MariaDB adapter not implemented");
+    const { MySQLAdapter } = await import("./mysql");
+    return MySQLAdapter;
   },
   custom: async () => {
     throw new Error("Custom adapter must be provided explicitly");
@@ -103,11 +123,17 @@ export function parseConnectionString(url: string): Partial<DatabaseConfig> {
       "mongodb+srv": "mongodb",
       redis: "redis",
       rediss: "redis",
+      firestore: "firestore",
+      dynamodb: "dynamodb",
       bolt: "neo4j",
       neo4j: "neo4j",
       "neo4j+s": "neo4j",
+      cql: "cassandra",
       cassandra: "cassandra",
       scylla: "scylladb",
+      scylladb: "scylladb",
+      surreal: "surrealdb",
+      cockroachdb: "cockroachdb",
       surrealdb: "surrealdb",
       ws: "surrealdb",
       wss: "surrealdb",
