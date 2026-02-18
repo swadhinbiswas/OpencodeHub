@@ -8,6 +8,9 @@ import { eq, and, desc } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDatabase, schema } from "@/db";
 import { getUserFromRequest } from "@/lib/auth";
+import { canWriteRepo } from "@/lib/permissions";
+import { compareBranches, getCommit } from "@/lib/git";
+import { resolveRepoPath } from "@/lib/git-storage";
 import { parseBody, success } from "@/lib/api";
 import { withErrorHandler, Errors } from "@/lib/errors";
 import { logger } from "@/lib/logger";
@@ -128,6 +131,17 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
         throw Errors.notFound("Repository not found");
     }
 
+    if (!(await canWriteRepo(tokenPayload.userId, repo, { isAdmin: tokenPayload.isAdmin }))) {
+        throw Errors.forbidden();
+    }
+
+    const repoPath = await resolveRepoPath(repo.diskPath);
+    const lastPr = await db.query.pullRequests.findFirst({
+        where: eq(schema.pullRequests.repositoryId, repositoryId),
+        orderBy: [desc(schema.pullRequests.number)],
+    });
+    let nextPrNumber = (lastPr?.number || 0) + 1;
+
     const now = new Date();
     const stackId = `stack_${crypto.randomBytes(8).toString("hex")}`;
 
@@ -150,7 +164,23 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
 
     for (const branch of branches) {
         const prId = `pr_${crypto.randomBytes(8).toString("hex")}`;
-        const prNumber = Date.now() % 100000; // Simple PR number
+        const prNumber = nextPrNumber++;
+        const prBaseBranch = branch.parentBranch || baseBranch;
+
+        const headCommit = await getCommit(repoPath, branch.name);
+        if (!headCommit) {
+            throw Errors.badRequest(`Head branch ${branch.name} not found`);
+        }
+
+        const baseCommit = await getCommit(repoPath, prBaseBranch);
+        if (!baseCommit) {
+            throw Errors.badRequest(`Base branch ${prBaseBranch} not found`);
+        }
+
+        const { diffs } = await compareBranches(repoPath, prBaseBranch, branch.name);
+        const additions = diffs.reduce((sum, diff) => sum + diff.additions, 0);
+        const deletions = diffs.reduce((sum, diff) => sum + diff.deletions, 0);
+        const changedFiles = diffs.length;
 
         // Create the PR with required schema fields
         await db.insert(schema.pullRequests).values({
@@ -162,9 +192,12 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
             state: "open",
             authorId: tokenPayload.userId,
             headBranch: branch.name,
-            headSha: "", // Required field - will be populated when PR is created via Git
-            baseBranch: branch.parentBranch || baseBranch,
-            baseSha: "", // Required field - will be populated when PR is created via Git
+            headSha: headCommit.sha,
+            baseBranch: prBaseBranch,
+            baseSha: baseCommit.sha,
+            additions,
+            deletions,
+            changedFiles,
             isDraft: false,
             createdAt: now,
             updatedAt: now,
@@ -185,7 +218,7 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
             number: prNumber,
             title: branch.title,
             branch: branch.name,
-            baseBranch: branch.parentBranch || baseBranch,
+            baseBranch: prBaseBranch,
             stackOrder,
         });
 
