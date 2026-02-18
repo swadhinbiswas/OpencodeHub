@@ -4,7 +4,7 @@
  * Uses distributed locking for multi-instance safety
  */
 
-import { eq, and, asc, desc, lt, gt } from "drizzle-orm";
+import { eq, and, asc, desc, inArray, lt, gt } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDatabase, schema } from "@/db";
 import { generateId } from "./utils";
@@ -333,25 +333,13 @@ export async function canMerge(pullRequestId: string): Promise<{ canMerge: boole
         }
     }
 
-    // Check local CI status (using workflow_runs table)
-    // We want the latest run for this PR's head SHA
-    const latestRun = await db.query.workflowRuns.findFirst({
+    const runsForHead = await db.query.workflowRuns.findMany({
         where: and(
             eq(schema.workflowRuns.pullRequestId, pr.id),
-            eq(schema.workflowRuns.headSha, pr.headSha) // Ensure it's for the latest commit
-            // eq(schema.workflowRuns.headBranch, pr.headBranch) // Optional extra check
+            eq(schema.workflowRuns.headSha, pr.headSha)
         ),
-        orderBy: (runs, { desc }) => [desc(runs.createdAt)],
+        orderBy: [desc(schema.workflowRuns.createdAt)],
     });
-
-    if (latestRun && latestRun.status !== "success") {
-        if (latestRun.status === "running" || latestRun.status === "queued") {
-            return { canMerge: false, reason: "CI is still running" };
-        }
-        if (latestRun.status === "failed") {
-            return { canMerge: false, reason: "CI checks failed" };
-        }
-    }
 
     // Check Branch Protection Rules
     const rules = await db.query.branchProtection.findMany({
@@ -378,144 +366,147 @@ export async function canMerge(pullRequestId: string): Promise<{ canMerge: boole
         matchingRule ? (matchingRule.requiredApprovals ?? 1) : 0
     );
 
-    // Check for approvals
-    const approvals = await db.query.pullRequestReviews.findMany({
-        where: and(
-            eq(schema.pullRequestReviews.pullRequestId, pr.id),
-            eq(schema.pullRequestReviews.state, "approved")
-        ),
+    // Evaluate by each reviewer's latest review state.
+    const allReviews = await db.query.pullRequestReviews.findMany({
+        where: eq(schema.pullRequestReviews.pullRequestId, pr.id),
+        orderBy: [desc(schema.pullRequestReviews.submittedAt)],
     });
+    const latestReviewsByUser = new Map<string, typeof allReviews[number]>();
+    for (const review of allReviews) {
+        if (!latestReviewsByUser.has(review.reviewerId)) {
+            latestReviewsByUser.set(review.reviewerId, review);
+        }
+    }
+    const latestApprovedReviews = Array.from(latestReviewsByUser.values()).filter((review) => review.state === "approved");
+    const latestBlockingReviews = Array.from(latestReviewsByUser.values()).filter((review) => review.state === "changes_requested");
 
-    if (approvals.length < requiredApprovals) {
+    if (latestApprovedReviews.length < requiredApprovals) {
         return {
             canMerge: false,
-            reason: `At least ${requiredApprovals} approval(s) required (has ${approvals.length})`
+            reason: `At least ${requiredApprovals} approval(s) required (has ${latestApprovedReviews.length})`
         };
     }
 
-    // Check for blocking reviews (changes requested)
-    const blockingReviews = await db.query.pullRequestReviews.findMany({
-        where: and(
-            eq(schema.pullRequestReviews.pullRequestId, pr.id),
-            eq(schema.pullRequestReviews.state, "changes_requested")
-        ),
-    });
-
-    if (blockingReviews.length > 0) {
+    if (latestBlockingReviews.length > 0) {
         return { canMerge: false, reason: "Changes requested by reviewer" };
     }
 
-    // --- CODE OWNERS ENFORCEMENT ---
-    if (reviewRequirements?.requireCodeOwner) {
-    const repo = await db.query.repositories.findFirst({
-        where: eq(schema.repositories.id, pr.repositoryId)
+    // Enforce explicitly required reviewers (multi-reviewer rule depth).
+    const requiredReviewers = await db.query.pullRequestReviewers.findMany({
+        where: and(
+            eq(schema.pullRequestReviewers.pullRequestId, pr.id),
+            eq(schema.pullRequestReviewers.isRequired, true)
+        ),
     });
-
-    if (repo && repo.diskPath) {
-        try {
-            const localRepoPath = await resolveRepoPath(repo.diskPath);
-            // 1. Get changed files
-            const { getChangedFiles } = await import("./git");
-            const changedFiles = await getChangedFiles(localRepoPath, pr.baseBranch, pr.headBranch);
-
-            if (changedFiles.length > 0) {
-                const fileApprovals = await db.query.fileApprovals.findMany({
-                    where: eq(schema.fileApprovals.pullRequestId, pr.id),
-                });
-
-                if (fileApprovals.length > 0) {
-                    const approvalMap = new Map<string, boolean>();
-
-                    for (const approval of fileApprovals) {
-                        if (approval.commitSha === pr.headSha) {
-                            approvalMap.set(approval.path, true);
-                        }
-                    }
-
-                    for (const file of changedFiles) {
-                        if (!approvalMap.get(file)) {
-                            return {
-                                canMerge: false,
-                                reason: `File approval required for ${file}`
-                            };
-                        }
-                    }
-                }
-
-                // 2. Read CODEOWNERS
-                const { parseCodeOwners, findOwnersForFiles, getSuggestedReviewers, expandOwnersToUsernames } = await import("./codeowners");
-                // Try reading from typical locations
-                const fs = await import("fs/promises");
-                const path = await import("path");
-
-                let codeOwnersContent = null;
-                const possiblePaths = ["CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS"];
-
-                for (const p of possiblePaths) {
-                    try {
-                        codeOwnersContent = await fs.readFile(path.join(localRepoPath, p), "utf-8");
-                        break;
-                    } catch (e) {
-                        // Ignore missing file
-                    }
-                }
-
-                if (codeOwnersContent) {
-                    const codeOwners = parseCodeOwners(codeOwnersContent);
-                    const requiredOwners = findOwnersForFiles(codeOwners, changedFiles);
-
-                    // If file has owners, we must ensure at least one of them approved?
-                    // Or do we need approval from ALL affected files' owners?
-                    // GitHub behavior: for each matching pattern, at least one owner must approve.
-                    // Here `findOwnersForFiles` returns unique owners of ANY matching file.
-                    // Strict implementation: 
-                    // For each file, find its owners. If it has owners, at least one of THEM must have approved.
-
-                    // Let's iterate files to be strict.
-                    for (const file of changedFiles) {
-                        const owners = await import("./codeowners").then(m => m.findOwnersForFile(codeOwners, file));
-                        if (owners.length === 0) continue;
-
-                        // Check if ANY of these owners approved
-                        // We need the approver IDs. `approvals` contains the review objects.
-                        // But reviews link to userIds. We need to map owners (usernames/teams) to userIds.
-
-                        // This is complex because owners are usernames.
-                        // We need to resolve usernames to IDs.
-
-                        // Optimization: Get all approver usernames first.
-                        const approverUserIds = approvals.map(r => r.reviewerId);
-                        const approverUsers = await db.query.users.findMany({
-                            where: (users, { inArray }) => inArray(users.id, approverUserIds)
-                        });
-                        const approverUsernames = new Set(approverUsers.map(u => u.username));
-
-                        const expandedOwners = await expandOwnersToUsernames({
-                            db,
-                            repository: repo,
-                            owners,
-                        });
-
-                        const hasOwnerApproval = Array.from(expandedOwners).some((owner) =>
-                            approverUsernames.has(owner)
-                        );
-
-                        if (!hasOwnerApproval) {
-                            return {
-                                canMerge: false,
-                                reason: `Missing Code Owner approval for ${file} (requires: ${owners.join(", ")})`
-                            };
-                        }
-                    }
-                }
+    if (requiredReviewers.length > 0) {
+        const missingRequiredApprovals: string[] = [];
+        for (const reviewer of requiredReviewers) {
+            const latestReview = latestReviewsByUser.get(reviewer.userId);
+            if (!latestReview || latestReview.state !== "approved") {
+                missingRequiredApprovals.push(reviewer.userId);
             }
-        } catch (e) {
-            logger.error({ error: e, prId: pr.id }, "Failed to check Code Owners");
-            // Don't block on system error, or do? Safer to log and proceed if it's just a check failure?
-            // "Fail open" or "Fail closed"? 
-            // Better to fail open (allow merge) if just git error, but warn.
+        }
+
+        if (missingRequiredApprovals.length > 0) {
+            return {
+                canMerge: false,
+                reason: `Required reviewer approvals missing (${missingRequiredApprovals.length})`
+            };
         }
     }
+
+    const statusChecks = await db.query.requiredStatusChecks.findMany({
+        where: and(
+            eq(schema.requiredStatusChecks.repositoryId, pr.repositoryId),
+            eq(schema.requiredStatusChecks.isRequired, true)
+        ),
+    });
+    const requiredChecksForBranch = statusChecks.filter((check) => {
+        if (check.branch === pr.baseBranch) return true;
+        if (check.branch.endsWith("*")) {
+            return pr.baseBranch.startsWith(check.branch.slice(0, -1));
+        }
+        return false;
+    });
+
+    if (requiredChecksForBranch.length > 0) {
+        if (runsForHead.length === 0) {
+            return { canMerge: false, reason: "Required status checks not found for latest commit" };
+        }
+
+        const successfulRunNames = new Set(
+            runsForHead
+                .filter((run) => {
+                    if (run.status === "success") return true;
+                    if (run.status === "completed" && run.conclusion === "success") return true;
+                    return false;
+                })
+                .map((run) => run.name)
+        );
+
+        for (const requiredCheck of requiredChecksForBranch) {
+            if (!successfulRunNames.has(requiredCheck.checkName)) {
+                return {
+                    canMerge: false,
+                    reason: `Required status check "${requiredCheck.checkName}" has not succeeded`
+                };
+            }
+        }
+    } else {
+        // Fallback: if there is a latest run for this head, it must not be failing.
+        const latestRun = runsForHead[0];
+        if (latestRun) {
+            const running = latestRun.status === "running" || latestRun.status === "queued" || latestRun.status === "in_progress";
+            const failed =
+                latestRun.status === "failed" ||
+                (latestRun.status === "completed" && latestRun.conclusion === "failure");
+            if (running) return { canMerge: false, reason: "CI is still running" };
+            if (failed) return { canMerge: false, reason: "CI checks failed" };
+        }
+    }
+
+    const externalConfigs = await db.query.externalCIConfigs.findMany({
+        where: and(
+            eq(schema.externalCIConfigs.repositoryId, pr.repositoryId),
+            eq(schema.externalCIConfigs.isEnabled, true),
+            eq(schema.externalCIConfigs.syncStatus, true)
+        ),
+    });
+
+    if (externalConfigs.length > 0) {
+        const configIds = externalConfigs.map((config) => config.id);
+        const externalBuilds = await db.query.externalBuilds.findMany({
+            where: and(
+                eq(schema.externalBuilds.pullRequestId, pr.id),
+                inArray(schema.externalBuilds.configId, configIds)
+            ),
+            orderBy: [desc(schema.externalBuilds.createdAt)],
+        });
+
+        for (const config of externalConfigs) {
+            const latestBuild = externalBuilds.find((build) => build.configId === config.id);
+            if (!latestBuild) {
+                return {
+                    canMerge: false,
+                    reason: `External CI "${config.name}" has not reported status for this pull request`
+                };
+            }
+            const status = (latestBuild.status || "").toLowerCase();
+            if (status === "pending" || status === "running" || status === "queued" || status === "in_progress") {
+                return { canMerge: false, reason: `External CI "${config.name}" is still running` };
+            }
+            if (status !== "success" && status !== "passed") {
+                return { canMerge: false, reason: `External CI "${config.name}" did not pass` };
+            }
+        }
+    }
+
+    if ((reviewRequirements?.requireCodeOwner ?? false) || (matchingRule?.requireCodeOwnerReviews ?? false)) {
+        const { checkCodeOwnerApprovalsForPR } = await import("./pr-codeowner");
+        const codeOwnerCheck = await checkCodeOwnerApprovalsForPR(db, pr.id);
+        if (!codeOwnerCheck.ok) {
+            return { canMerge: false, reason: codeOwnerCheck.reason || "Code owner approval required" };
+        }
     }
 
     if (reviewRequirements?.requireReReviewOnPush) {
