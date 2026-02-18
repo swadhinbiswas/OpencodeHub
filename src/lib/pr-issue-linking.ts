@@ -42,29 +42,48 @@ export function parseIssueReferences(text: string): {
     number: number;
     type: "closes" | "fixes" | "relates";
 }[] {
-    const references: { number: number; type: "closes" | "fixes" | "relates" }[] = [];
+    const referenceTypeByNumber = new Map<number, "closes" | "fixes" | "relates">();
+    const setReference = (number: number, type: "closes" | "fixes" | "relates") => {
+        const existing = referenceTypeByNumber.get(number);
+        if (!existing) {
+            referenceTypeByNumber.set(number, type);
+            return;
+        }
+
+        // Preserve stronger semantic link types over generic "relates".
+        if (existing === "relates" && (type === "closes" || type === "fixes")) {
+            referenceTypeByNumber.set(number, type);
+        }
+    };
 
     // Pattern: (keyword) #number or (keyword) repo#number
+    const scopedIssueRef = "(?:[A-Za-z0-9_.-]+\\/[A-Za-z0-9_.-]+)?#(\\d+)";
     for (const keyword of CLOSING_KEYWORDS) {
-        const regex = new RegExp(`${keyword}\\s+#(\\d+)`, "gi");
+        const regex = new RegExp(`\\b${keyword}\\b\\s+${scopedIssueRef}\\b`, "gi");
         let match;
         while ((match = regex.exec(text)) !== null) {
             const type = keyword.startsWith("fix") ? "fixes" : "closes";
-            references.push({ number: parseInt(match[1]), type });
+            const number = Number.parseInt(match[1], 10);
+            if (Number.isInteger(number)) {
+                setReference(number, type);
+            }
         }
     }
 
-    // Pattern: just #number (relates)
-    const relatesRegex = /#(\d+)/g;
+    // Pattern: just #number or owner/repo#number (relates)
+    const relatesRegex = new RegExp(`${scopedIssueRef}\\b`, "g");
     let match;
     while ((match = relatesRegex.exec(text)) !== null) {
-        const num = parseInt(match[1]);
-        if (!references.some(r => r.number === num)) {
-            references.push({ number: num, type: "relates" });
+        const number = Number.parseInt(match[1], 10);
+        if (Number.isInteger(number)) {
+            setReference(number, "relates");
         }
     }
 
-    return references;
+    return Array.from(referenceTypeByNumber.entries()).map(([number, type]) => ({
+        number,
+        type,
+    }));
 }
 
 /**
