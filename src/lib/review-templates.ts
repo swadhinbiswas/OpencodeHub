@@ -28,8 +28,6 @@ export const reviewTemplates = pgTable("review_templates", {
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-// Note: Relations would go in schema file, for now keeping logic here
-
 // Types
 export type ReviewTemplate = typeof reviewTemplates.$inferSelect;
 
