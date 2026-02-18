@@ -1,7 +1,6 @@
 
 import { simpleGit, SimpleGit } from "simple-git";
 import { acquireRepo, releaseRepo } from "./git-storage";
-import { logger } from "./logger";
 
 export type RewriteOperation =
     | { type: "pick"; hash: string }
@@ -36,8 +35,6 @@ export async function rewriteBranchHistory(
 
         // Example: [pick A, squash B, pick C] -> Result: A+B, C.
 
-        let previousCommitWasSquash = false;
-
         for (let i = 0; i < operations.length; i++) {
             const op = operations[i];
 
@@ -47,33 +44,26 @@ export async function rewriteBranchHistory(
                 if (op.type === "pick") {
                     // git cherry-pick <hash>
                     await git.raw(["cherry-pick", op.hash]);
-                    previousCommitWasSquash = false;
                 }
                 else if (op.type === "reword") {
                     await git.raw(["cherry-pick", op.hash]);
                     await git.commit(op.newMessage, { "--amend": null });
-                    previousCommitWasSquash = false;
                 }
                 else if (op.type === "squash") {
                     // Squash: cherry-pick -n, then commit --amend (to previous)
                     // If first commit is squash, it fails (cannot squash into nothing).
                     // We assume valid input from UI.
 
+                    const previousMessage = await readCommitMessage(git, "HEAD");
+                    const squashMessage = await readCommitMessage(git, op.hash);
+
                     // 1. Apply changes without commit
                     // cherry-pick -n <hash>
                     await git.raw(["cherry-pick", "-n", op.hash]);
 
                     // 2. Amend previous commit
-                    // This reuses previous message + new message?
-                    // simple 'git commit --amend --no-edit' keeps old message.
-                    // Let's just append for now or keep old.
-                    // Ideally we concatenate messages.
-
-                    // Only getting subject here, bodies are harder without parsing.
-                    // MVP: Keep previous message (fixup behavior) or just generic amend
-                    await git.commit("", { "--amend": null, "--no-edit": null });
-
-                    previousCommitWasSquash = true;
+                    const combinedMessage = combineCommitMessages(previousMessage, squashMessage);
+                    await git.commit(combinedMessage, { "--amend": null });
                 }
             } catch (e: any) {
                 if (e.message.includes("conflict")) {
@@ -95,4 +85,14 @@ export async function rewriteBranchHistory(
     } finally {
         await releaseRepo(repoOwner, repoName, true); // True because we pushed
     }
+}
+
+async function readCommitMessage(git: SimpleGit, rev: string): Promise<string> {
+    return (await git.raw(["show", "-s", "--format=%B", rev])).trim();
+}
+
+function combineCommitMessages(previousMessage: string, squashMessage: string): string {
+    if (!previousMessage) return squashMessage || "squashed commit";
+    if (!squashMessage || previousMessage === squashMessage) return previousMessage;
+    return `${previousMessage}\n\n${squashMessage}`.trim();
 }
