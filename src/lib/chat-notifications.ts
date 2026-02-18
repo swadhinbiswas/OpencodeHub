@@ -6,8 +6,10 @@
 import { pgTable, text, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
 import { getDatabase, schema } from "@/db";
 import { eq, and, gte, inArray, desc } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { logger } from "./logger";
 import { repositories } from "@/db/schema/repositories";
+import { sendEmail as sendPlatformEmail } from "./email";
 
 // ============================================================================
 // SCHEMA
@@ -637,4 +639,250 @@ export async function generateDigestEmail(options: DigestOptions): Promise<{
 </html>`;
 
     return { subject, html, itemCount };
+}
+
+function parseDigestTimeToUtcMinutes(value: string | null | undefined): number {
+    const fallback = "09:00";
+    const [hourRaw, minuteRaw] = (value || fallback).split(":");
+    const hour = Number.parseInt(hourRaw || "9", 10);
+    const minute = Number.parseInt(minuteRaw || "0", 10);
+    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return 9 * 60;
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return 9 * 60;
+    return hour * 60 + minute;
+}
+
+function normalizeDigestDay(value: number | null | undefined): number {
+    if (!Number.isInteger(value)) return 1;
+    const day = Number(value);
+    if (day < 1 || day > 7) return 1;
+    return day;
+}
+
+function normalizeDigestTimeZone(value: string | null | undefined): string {
+    if (!value || typeof value !== "string") return "UTC";
+    try {
+        Intl.DateTimeFormat("en-US", { timeZone: value }).format(new Date());
+        return value;
+    } catch {
+        return "UTC";
+    }
+}
+
+function getIsoWeekdayFromShortName(value: string): number {
+    const normalized = value.toLowerCase();
+    const map: Record<string, number> = {
+        mon: 1,
+        tue: 2,
+        wed: 3,
+        thu: 4,
+        fri: 5,
+        sat: 6,
+        sun: 7,
+    };
+    return map[normalized] ?? 1;
+}
+
+function getZonedDateParts(date: Date, timeZone: string): {
+    year: number;
+    month: number;
+    day: number;
+    hour: number;
+    minute: number;
+    isoWeekday: number;
+} {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        weekday: "short",
+        hourCycle: "h23",
+    });
+    const parts = formatter.formatToParts(date);
+    const getPart = (type: Intl.DateTimeFormatPartTypes): string =>
+        parts.find((part) => part.type === type)?.value || "";
+
+    return {
+        year: Number.parseInt(getPart("year"), 10),
+        month: Number.parseInt(getPart("month"), 10),
+        day: Number.parseInt(getPart("day"), 10),
+        hour: Number.parseInt(getPart("hour"), 10),
+        minute: Number.parseInt(getPart("minute"), 10),
+        isoWeekday: getIsoWeekdayFromShortName(getPart("weekday")),
+    };
+}
+
+function getDateKey(year: number, month: number, day: number): number {
+    return year * 10000 + month * 100 + day;
+}
+
+function getMondayWeekStartKey(year: number, month: number, day: number, isoWeekday: number): number {
+    const diffToMonday = isoWeekday - 1;
+    const mondayUtc = new Date(Date.UTC(year, month - 1, day));
+    mondayUtc.setUTCDate(mondayUtc.getUTCDate() - diffToMonday);
+    return getDateKey(
+        mondayUtc.getUTCFullYear(),
+        mondayUtc.getUTCMonth() + 1,
+        mondayUtc.getUTCDate()
+    );
+}
+
+export function shouldSendDigestNow(
+    digestType: "daily" | "weekly" | "none",
+    digestTime: string | null | undefined,
+    digestDay: number | null | undefined,
+    lastSentAt: Date | null | undefined,
+    now: Date,
+    timezone: string | null | undefined = "UTC"
+): boolean {
+    if (digestType === "none") return false;
+
+    const timeZone = normalizeDigestTimeZone(timezone);
+    const nowParts = getZonedDateParts(now, timeZone);
+    const nowMinutes = nowParts.hour * 60 + nowParts.minute;
+    const dueMinutes = parseDigestTimeToUtcMinutes(digestTime);
+    if (nowMinutes < dueMinutes) return false;
+
+    if (digestType === "daily") {
+        if (!lastSentAt) return true;
+        const lastSentParts = getZonedDateParts(lastSentAt, timeZone);
+        return getDateKey(lastSentParts.year, lastSentParts.month, lastSentParts.day)
+            !== getDateKey(nowParts.year, nowParts.month, nowParts.day);
+    }
+
+    const configuredDay = normalizeDigestDay(digestDay); // 1 = Monday
+    if (nowParts.isoWeekday !== configuredDay) return false;
+
+    if (!lastSentAt) return true;
+    const lastSentParts = getZonedDateParts(lastSentAt, timeZone);
+    const lastSentDateKey = getDateKey(lastSentParts.year, lastSentParts.month, lastSentParts.day);
+    const weekStartKey = getMondayWeekStartKey(nowParts.year, nowParts.month, nowParts.day, nowParts.isoWeekday);
+    return lastSentDateKey < weekStartKey;
+}
+
+export interface DigestRunOptions {
+    now?: Date;
+    dryRun?: boolean;
+}
+
+export interface DigestRunResult {
+    checked: number;
+    due: number;
+    sent: number;
+    skippedNoEmail: number;
+    skippedEmpty: number;
+    failed: number;
+}
+
+export async function runDueDigests(options: DigestRunOptions = {}): Promise<DigestRunResult> {
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
+    const now = options.now ?? new Date();
+    const dryRun = options.dryRun ?? false;
+
+    const result: DigestRunResult = {
+        checked: 0,
+        due: 0,
+        sent: 0,
+        skippedNoEmail: 0,
+        skippedEmpty: 0,
+        failed: 0,
+    };
+
+    const settings = await db.query.emailDigestSettings.findMany({
+        where: and(
+            inArray(schema.emailDigestSettings.digestType, ["daily", "weekly"])
+        ),
+    });
+
+    result.checked = settings.length;
+
+    for (const setting of settings) {
+        const digestType = (setting.digestType as "daily" | "weekly" | "none") || "none";
+        if (digestType === "none") continue;
+        const due = shouldSendDigestNow(
+            digestType,
+            setting.digestTime,
+            setting.digestDay,
+            setting.lastSentAt,
+            now,
+            setting.timezone
+        );
+        if (!due) continue;
+        result.due++;
+
+        try {
+            const user = await db.query.users.findFirst({
+                where: eq(schema.users.id, setting.userId),
+                columns: { id: true, email: true, isActive: true },
+            });
+
+            if (!user || !user.isActive || !user.email) {
+                result.skippedNoEmail++;
+                if (!dryRun) {
+                    await db
+                        .update(schema.emailDigestSettings)
+                        .set({ lastSentAt: now, updatedAt: now })
+                        .where(eq(schema.emailDigestSettings.id, setting.id));
+                }
+                continue;
+            }
+
+            const prefs = await db.query.notificationPreferences.findMany({
+                where: and(
+                    eq(schema.notificationPreferences.userId, user.id),
+                    eq(schema.notificationPreferences.emailEnabled, true)
+                ),
+                columns: { eventType: true },
+            });
+            const includeEvents = prefs.map((p) => p.eventType as NotificationEvent);
+
+            const digest = await generateDigestEmail({
+                userId: user.id,
+                period: digestType,
+                includeEvents,
+            });
+
+            if (digest.itemCount === 0) {
+                result.skippedEmpty++;
+                if (!dryRun) {
+                    await db
+                        .update(schema.emailDigestSettings)
+                        .set({ lastSentAt: now, updatedAt: now })
+                        .where(eq(schema.emailDigestSettings.id, setting.id));
+                }
+                continue;
+            }
+
+            if (!dryRun) {
+                const sent = await sendPlatformEmail({
+                    to: user.email,
+                    subject: digest.subject,
+                    html: digest.html,
+                    text: `${digest.subject}\n\nYou have ${digest.itemCount} new notification(s).`,
+                });
+                if (!sent) {
+                    result.failed++;
+                    continue;
+                }
+
+                await db
+                    .update(schema.emailDigestSettings)
+                    .set({ lastSentAt: now, updatedAt: now })
+                    .where(eq(schema.emailDigestSettings.id, setting.id));
+            }
+
+            result.sent++;
+        } catch (error) {
+            result.failed++;
+            logger.error({
+                userId: setting.userId,
+                digestSettingId: setting.id,
+                error: error instanceof Error ? error.message : "Unknown error",
+            }, "Digest send failed");
+        }
+    }
+
+    return result;
 }

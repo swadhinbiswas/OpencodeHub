@@ -154,6 +154,8 @@ let quietHours = {
 let digestSettings = {
     digestType: "none" as "none" | "daily" | "weekly",
     digestTime: "09:00",
+    digestDay: 1,
+    timezone: "UTC",
 };
 
 try {
@@ -195,6 +197,8 @@ try {
         digestSettings = {
             digestType: dbDigest.digestType as "none" | "daily" | "weekly",
             digestTime: dbDigest.digestTime || "09:00",
+            digestDay: dbDigest.digestDay ?? 1,
+            timezone: dbDigest.timezone || "UTC",
         };
     }
 } catch (e) {
@@ -500,6 +504,33 @@ for (const event of eventTypes) {
                         </div>
                     </button>
                 </div>
+
+                <div id="digest-config" class:list={["mt-4 grid grid-cols-2 gap-4", digestSettings.digestType === "none" && "opacity-50 pointer-events-none"]}>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Send Time (local)</label>
+                        <input
+                            type="time"
+                            id="digest-time"
+                            value={digestSettings.digestTime}
+                            class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white"
+                        />
+                    </div>
+                    <div id="digest-day-wrap" class:list={[digestSettings.digestType !== "weekly" && "opacity-50 pointer-events-none"]}>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Weekly Day</label>
+                        <select
+                            id="digest-day"
+                            class="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white"
+                        >
+                            <option value="1" selected={digestSettings.digestDay === 1}>Monday</option>
+                            <option value="2" selected={digestSettings.digestDay === 2}>Tuesday</option>
+                            <option value="3" selected={digestSettings.digestDay === 3}>Wednesday</option>
+                            <option value="4" selected={digestSettings.digestDay === 4}>Thursday</option>
+                            <option value="5" selected={digestSettings.digestDay === 5}>Friday</option>
+                            <option value="6" selected={digestSettings.digestDay === 6}>Saturday</option>
+                            <option value="7" selected={digestSettings.digestDay === 7}>Sunday</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -543,6 +574,21 @@ for (const event of eventTypes) {
         document
             .querySelector("[data-digest].bg-blue-500\\/10")
             ?.getAttribute("data-digest") || "none";
+    const digestConfig = document.getElementById("digest-config");
+    const digestDayWrap = document.getElementById("digest-day-wrap");
+    const refreshDigestConfigState = () => {
+        if (selectedDigest === "none") {
+            digestConfig?.classList.add("opacity-50", "pointer-events-none");
+        } else {
+            digestConfig?.classList.remove("opacity-50", "pointer-events-none");
+        }
+
+        if (selectedDigest === "weekly") {
+            digestDayWrap?.classList.remove("opacity-50", "pointer-events-none");
+        } else {
+            digestDayWrap?.classList.add("opacity-50", "pointer-events-none");
+        }
+    };
     document.querySelectorAll("[data-digest]").forEach((btn) => {
         btn.addEventListener("click", () => {
             document.querySelectorAll("[data-digest]").forEach((b) => {
@@ -569,8 +615,10 @@ for (const event of eventTypes) {
             );
             const digest = btn.getAttribute("data-digest");
             if (digest) selectedDigest = digest;
+            refreshDigestConfigState();
         });
     });
+    refreshDigestConfigState();
 
     // Save button
     document.getElementById("save-btn")?.addEventListener("click", async () => {
@@ -644,6 +692,12 @@ for (const event of eventTypes) {
         const allowUrgent = document.getElementById(
             "allow-urgent",
         ) as HTMLInputElement | null;
+        const digestTime = document.getElementById(
+            "digest-time",
+        ) as HTMLInputElement | null;
+        const digestDay = document.getElementById(
+            "digest-day",
+        ) as HTMLSelectElement | null;
 
         const data = {
             preferences,
@@ -655,6 +709,9 @@ for (const event of eventTypes) {
             },
             digestSettings: {
                 digestType: selectedDigest,
+                digestTime: digestTime?.value || "09:00",
+                digestDay: Number.parseInt(digestDay?.value || "1", 10),
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
             },
         };
 
