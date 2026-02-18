@@ -2,7 +2,7 @@
 import { getDatabase } from "../db";
 import { type NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as schema from "../db/schema";
-import { eq, and, gte, desc, sql } from "drizzle-orm";
+import { eq, and, gte, desc, inArray } from "drizzle-orm";
 import { pullRequests, pullRequestReviews } from "../db/schema/pull-requests";
 
 const db = getDatabase() as NodePgDatabase<typeof schema>;
@@ -36,20 +36,17 @@ export async function getRepoStats(repoId: string, days = 30): Promise<DailyStat
         )
         .orderBy(desc(pullRequests.mergedAt));
 
-    // Also fetch reviews for review velocity
-    const reviews = await db
-        .select({
-            prId: pullRequestReviews.pullRequestId,
-            submittedAt: pullRequestReviews.submittedAt,
-        })
-        .from(pullRequestReviews)
-        .innerJoin(pullRequests, eq(pullRequestReviews.pullRequestId, pullRequests.id))
-        .where(
-            and(
-                eq(pullRequests.repositoryId, repoId),
-                gte(pullRequestReviews.submittedAt, startDate)
-            )
-        );
+    const prIds = prs.map((pr) => pr.id);
+    const reviews = prIds.length
+        ? await db
+            .select({
+                prId: pullRequestReviews.pullRequestId,
+                submittedAt: pullRequestReviews.submittedAt,
+                createdAt: pullRequestReviews.createdAt,
+            })
+            .from(pullRequestReviews)
+            .where(inArray(pullRequestReviews.pullRequestId, prIds))
+        : [];
 
     // Group by day
     const statsMap = new Map<string, { totalCycle: number; totalMerge: number; totalReview: number; reviewCounts: number }>();
@@ -62,6 +59,17 @@ export async function getRepoStats(repoId: string, days = 30): Promise<DailyStat
         statsMap.set(dateStr, { totalCycle: 0, totalMerge: 0, totalReview: 0, reviewCounts: 0 });
     }
 
+    const firstReviewByPr = new Map<string, Date>();
+
+    for (const review of reviews) {
+        const reviewTime = review.submittedAt || review.createdAt;
+        if (!reviewTime) continue;
+        const current = firstReviewByPr.get(review.prId);
+        if (!current || reviewTime < current) {
+            firstReviewByPr.set(review.prId, reviewTime);
+        }
+    }
+
     // Calculate Metrics
     prs.forEach((pr) => {
         if (!pr.mergedAt || !pr.createdAt) return;
@@ -72,24 +80,22 @@ export async function getRepoStats(repoId: string, days = 30): Promise<DailyStat
         if (dayStats) {
             dayStats.totalCycle += hours;
             dayStats.totalMerge += 1;
+
+            const firstReviewAt = firstReviewByPr.get(pr.id);
+            if (firstReviewAt && firstReviewAt >= pr.createdAt) {
+                const reviewHours = (firstReviewAt.getTime() - pr.createdAt.getTime()) / (1000 * 60 * 60);
+                dayStats.totalReview += reviewHours;
+                dayStats.reviewCounts += 1;
+            }
         }
     });
-
-    // Calculate Review Velocity (rough approx: merged PRs or any PR with review?)
-    // Let's use the reviews we fetched.
-    // We need to match review to its PR creation time.
-    // This is a bit complex in one go. For MVP, let's simplify review velocity:
-    // Average time for *merged* PRs to get their first review?
-    // Let's iterate reviews and match to PRs if we have them. 
-    // Ideally we need `pullRequests` creation time for the reviews.
-    // Let's stick to Cycle Time and Merge Frequency for MVP robustness.
 
     return Array.from(statsMap.entries())
         .map(([date, data]) => ({
             date,
             cycleTime: data.totalMerge ? Math.round((data.totalCycle / data.totalMerge) * 100) / 100 : 0,
             mergeCount: data.totalMerge,
-            reviewTime: 0 // Placeholder
+            reviewTime: data.reviewCounts ? Math.round((data.totalReview / data.reviewCounts) * 100) / 100 : 0
         }))
         .sort((a, b) => a.date.localeCompare(b.date));
 }
