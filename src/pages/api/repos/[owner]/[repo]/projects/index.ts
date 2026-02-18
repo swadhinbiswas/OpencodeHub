@@ -42,6 +42,10 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
         return unauthorized("Write access required to create projects");
     }
 
+    if (!user) {
+        return unauthorized();
+    }
+
     try {
         const body = await request.json();
         const { name, description } = body;
