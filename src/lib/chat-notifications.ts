@@ -5,7 +5,7 @@
 
 import { pgTable, text, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
 import { getDatabase, schema } from "@/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gte, inArray, desc } from "drizzle-orm";
 import { logger } from "./logger";
 import { repositories } from "@/db/schema/repositories";
 
@@ -521,10 +521,81 @@ export async function generateDigestEmail(options: DigestOptions): Promise<{
     html: string;
     itemCount: number;
 }> {
-    // In production, fetch actual activity from database
+    const db = getDatabase();
+    const now = new Date();
+    const from = new Date(now);
+    if (options.period === "daily") {
+        from.setDate(from.getDate() - 1);
+    } else {
+        from.setDate(from.getDate() - 7);
+    }
+
+    const whereClauses = [
+        eq(schema.notifications.userId, options.userId),
+        gte(schema.notifications.createdAt, from),
+        eq(schema.notifications.isArchived, false),
+    ];
+
+    if (options.includeEvents.length > 0) {
+        whereClauses.push(inArray(schema.notifications.type, options.includeEvents));
+    }
+
+    const notifications = await db.query.notifications.findMany({
+        where: and(...whereClauses),
+        orderBy: [desc(schema.notifications.createdAt)],
+        with: {
+            repository: true,
+            actor: true,
+        },
+        limit: 50,
+    });
+
     const periodLabel = options.period === "daily" ? "Daily" : "Weekly";
+    const itemCount = notifications.length;
+    const unreadCount = notifications.filter((n) => !n.isRead).length;
+    const eventCounts = new Map<string, number>();
+    for (const n of notifications) {
+        eventCounts.set(n.type, (eventCounts.get(n.type) || 0) + 1);
+    }
+
+    const escapeHtml = (value: string) =>
+        value
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
 
     const subject = `Your ${periodLabel} OpenCodeHub Digest`;
+
+    const summaryItems = Array.from(eventCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([event, count]) => `<li><strong>${count}</strong> ${escapeHtml(formatEventName(event as NotificationEvent))}</li>`)
+        .join("");
+
+    const itemRows = notifications
+        .slice(0, 20)
+        .map((n) => {
+            const title = escapeHtml(n.title);
+            const body = escapeHtml(n.body || "");
+            const repo = n.repository?.name ? ` in ${escapeHtml(n.repository.name)}` : "";
+            const actor = n.actor?.username ? ` by ${escapeHtml(n.actor.username)}` : "";
+            const url = n.url || "#";
+            const createdAt = n.createdAt.toISOString().replace("T", " ").slice(0, 16);
+
+            return `
+            <div class="item">
+                <div class="item-icon">•</div>
+                <div class="item-content">
+                    <div><a href="${escapeHtml(url)}" style="color:#111;text-decoration:none;"><strong>${title}</strong></a></div>
+                    <div style="color:#666;font-size:13px;">${escapeHtml(formatEventName(n.type as NotificationEvent))}${repo}${actor}</div>
+                    ${body ? `<div style="color:#444;font-size:13px;margin-top:4px;">${body}</div>` : ""}
+                    <div style="color:#999;font-size:12px;margin-top:4px;">${createdAt}</div>
+                </div>
+            </div>`;
+        })
+        .join("");
+
     const html = `
 <!DOCTYPE html>
 <html>
@@ -547,18 +618,15 @@ export async function generateDigestEmail(options: DigestOptions): Promise<{
     <div class="container">
         <div class="header">
             <h1>${periodLabel} Digest</h1>
-            <p>Your activity summary</p>
+            <p>${itemCount} notification${itemCount === 1 ? "" : "s"} (${unreadCount} unread)</p>
         </div>
         <div class="section">
             <h2>📬 Activity Summary</h2>
-            <p>This is a placeholder digest. In production, this would include:</p>
-            <ul>
-                <li>New pull requests requiring your review</li>
-                <li>PRs awaiting your response</li>
-                <li>Issues assigned to you</li>
-                <li>CI/CD build status</li>
-                <li>Security alerts</li>
-            </ul>
+            ${summaryItems ? `<ul>${summaryItems}</ul>` : "<p>No notifications for this period.</p>"}
+        </div>
+        <div class="section">
+            <h2>📝 Recent Items</h2>
+            ${itemRows || "<p>No recent items.</p>"}
         </div>
         <div class="footer">
             <p>You're receiving this because you subscribed to ${options.period} digests.</p>
@@ -568,5 +636,5 @@ export async function generateDigestEmail(options: DigestOptions): Promise<{
 </body>
 </html>`;
 
-    return { subject, html, itemCount: 0 };
+    return { subject, html, itemCount };
 }
