@@ -11,7 +11,7 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDatabase, schema } from "@/db";
 import { eq, and, or } from "drizzle-orm";
 import { generateId, now } from "./utils";
-import { canReadRepo } from "@/lib/permissions";
+import { getRepoPermission } from "@/lib/permissions";
 import { hashPersonalAccessToken, verifyPersonalAccessTokenValue } from "@/lib/personal-access-token";
 
 // Types
@@ -358,8 +358,8 @@ export async function getRepoAndUser(
   repoName: string
 ) {
   const db = getDatabase();
-  const user = await getUserFromRequest(request);
-  const userId = user?.userId;
+  const tokenUser = await getUserFromRequest(request);
+  const userId = tokenUser?.userId;
 
   // 1. Get Repo Owner
   const repoOwner = await db.query.users.findFirst({
@@ -374,20 +374,28 @@ export async function getRepoAndUser(
       eq(schema.repositories.ownerId, repoOwner.id),
       eq(schema.repositories.name, repoName)
     ),
+    with: {
+      owner: true,
+    },
   });
 
   if (!repository) return null;
 
   // 3. Check Permissions
-  const permission = await canReadRepo(userId, repository);
-  if (!permission) return null;
+  const permission = await getRepoPermission(userId, repository, {
+    isAdmin: tokenUser?.isAdmin,
+  });
+  if (permission === "none") return null;
+
+  const requester = userId
+    ? await db.query.users.findFirst({
+      where: eq(schema.users.id, userId),
+    })
+    : null;
 
   return {
     repository,
-    user: repoOwner,
-    permission: typeof permission === 'string' ? permission : 'read' // canReadRepo returns boolean or string? It usually returns boolean. 
-    // Wait, let's check canReadRepo signature if possible, but assuming boolean for now.
-    // If canReadRepo returns boolean, we might want to fetch actual permission level if needed. 
-    // But for now, basic check is enough.
+    user: requester,
+    permission,
   };
 }
