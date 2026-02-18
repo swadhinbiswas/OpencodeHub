@@ -298,13 +298,6 @@ async function callAIProvider(
     try {
         const adapter = getAIAdapter(config.provider);
 
-        // Construct system/user prompt split
-        // For now, we'll extract the system instruction manually or just pass it as system
-        // The generateReviewPrompt function returns a single string. 
-        // We should ideally refactor generateReviewPrompt, but for now let's split it or pass as user.
-        // Actually, the current generateReviewPrompt returns a single massive string.
-        // let's just use a generic system prompt and the full prompt as user.
-
         const systemPrompt = "You are an expert code reviewer. Response MUST be valid JSON matching the requested format.";
 
         const result = await adapter.complete({
