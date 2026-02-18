@@ -1,7 +1,7 @@
 ---
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { getDatabase, schema } from "@/db";
-import { sql, desc } from "drizzle-orm";
+import { sql, desc, gte } from "drizzle-orm";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
@@ -23,6 +23,8 @@ if (!user?.isAdmin) {
 }
 
 const db = getDatabase();
+const thirtyDaysAgo = new Date();
+thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
 // Gather metrics
 const [
@@ -33,7 +35,7 @@ const [
   totalCommits,
   recentActivities,
   reposByLanguage,
-  userGrowth
+  recentUsers
 ] = await Promise.all([
   db.select({ count: sql<number>`count(*)` }).from(schema.users).get(),
   db.select({ count: sql<number>`count(*)` }).from(schema.repositories).get(),
@@ -53,9 +55,26 @@ const [
     .groupBy(schema.repositories.language)
     .limit(10)
     .all(),
-  // User growth - simplified for build compatibility
-  Promise.resolve([])
+  db.query.users.findMany({
+    where: gte(schema.users.createdAt, thirtyDaysAgo),
+    columns: { createdAt: true },
+  })
 ]);
+
+const userGrowthMap = new Map<string, number>();
+for (let i = 0; i < 30; i++) {
+  const d = new Date();
+  d.setDate(d.getDate() - i);
+  const key = d.toISOString().split("T")[0];
+  userGrowthMap.set(key, 0);
+}
+for (const u of recentUsers) {
+  const key = u.createdAt.toISOString().split("T")[0];
+  userGrowthMap.set(key, (userGrowthMap.get(key) || 0) + 1);
+}
+const userGrowth = Array.from(userGrowthMap.entries())
+  .map(([date, count]) => ({ date, count }))
+  .sort((a, b) => a.date.localeCompare(b.date));
 
 // Storage estimate (count repos * average size)
 const storageKB = await db.select({ total: sql<number>`sum(size)` })
