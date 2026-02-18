@@ -327,8 +327,14 @@ export async function triggerSonarAnalysis(options: {
     if (!config || !config.serverUrl || !config.projectKey) return false;
 
     try {
-        // In real implementation, this would trigger sonar-scanner
-        // For now, create a pending report
+        const status = config.apiToken
+            ? await fetchSonarQubeStatus({
+                serverUrl: config.serverUrl,
+                projectKey: config.projectKey,
+                token: config.apiToken,
+            })
+            : null;
+
         const report = {
             id: crypto.randomUUID(),
             repositoryId: options.repositoryId,
@@ -340,7 +346,11 @@ export async function triggerSonarAnalysis(options: {
             linesTotal: null,
             branchCoverage: null,
             delta: null,
-            status: "pending",
+            status: status
+                ? status.status === "OK"
+                    ? "success"
+                    : "failure"
+                : "pending",
             reportUrl: `${config.serverUrl}/dashboard?id=${config.projectKey}`,
             createdAt: new Date(),
         };
@@ -348,7 +358,25 @@ export async function triggerSonarAnalysis(options: {
         // @ts-expect-error - Drizzle multi-db union type issue
         await db.insert(schema.coverageReports).values(report);
 
-        logger.info({ projectKey: config.projectKey }, "SonarQube analysis triggered");
+        if (status?.issues?.length) {
+            const issues = status.issues.map((issue) => ({
+                ...issue,
+                id: crypto.randomUUID(),
+                repositoryId: options.repositoryId,
+                pullRequestId: options.pullRequestId || null,
+                commitSha: options.commitSha,
+                provider: "sonarqube",
+                createdAt: new Date(),
+            }));
+
+            // @ts-expect-error - Drizzle multi-db union type issue
+            await db.insert(schema.codeQualityIssues).values(issues);
+        }
+
+        logger.info(
+            { projectKey: config.projectKey, qualityGate: status?.status || "pending" },
+            "SonarQube analysis processed"
+        );
         return true;
     } catch (error) {
         logger.error({ error }, "Failed to trigger SonarQube analysis");
@@ -433,8 +461,6 @@ export async function runSnykScan(options: {
     const issues: CodeQualityIssue[] = [];
 
     try {
-        // In real implementation, this would call Snyk API
-        // For now, simulate a scan result
         const response = await fetch(`https://api.snyk.io/v1/test`, {
             method: "POST",
             headers: {
@@ -443,11 +469,36 @@ export async function runSnykScan(options: {
             },
             body: JSON.stringify({
                 target: { remoteUrl: "", branch: "" },
+                targetFile: options.targetFile,
             }),
         });
 
         if (!response.ok) {
-            logger.warn("Snyk API call failed, using mock data");
+            const errorText = await response.text().catch(() => "");
+            throw new Error(`Snyk API call failed: ${response.status} ${errorText}`);
+        }
+
+        const data = await response.json();
+        const vulnerabilities = (data?.vulnerabilities || []) as any[];
+
+        for (const vuln of vulnerabilities) {
+            const id = crypto.randomUUID();
+            issues.push({
+                id,
+                repositoryId: options.repositoryId,
+                pullRequestId: options.pullRequestId || null,
+                commitSha: options.commitSha,
+                provider: "snyk",
+                issueType: vuln.type || "vulnerability",
+                severity: (vuln.severity || "medium").toLowerCase(),
+                message: vuln.title || vuln.id || "Snyk vulnerability",
+                file: vuln.from?.[1] || options.targetFile || null,
+                line: null,
+                rule: vuln.id || null,
+                effort: vuln.fixedIn?.[0] || null,
+                status: "open",
+                createdAt: new Date(),
+            } as CodeQualityIssue);
         }
 
         // Store issues
