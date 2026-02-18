@@ -321,6 +321,10 @@ function normalizeStatus(provider: string, rawStatus: string): string {
  */
 async function syncStatusToPR(prId: string, checkName: string, status: string): Promise<void> {
     const db = getDatabase();
+    const pr = await db.query.pullRequests.findFirst({
+        where: eq(schema.pullRequests.id, prId),
+    });
+    if (!pr) return;
 
     const conclusion = status === "success" ? "success"
         : status === "failure" ? "failure"
@@ -340,6 +344,7 @@ async function syncStatusToPR(prId: string, checkName: string, status: string): 
         // @ts-expect-error - Drizzle multi-db union type issue
         await db.update(schema.pullRequestChecks)
             .set({
+                headSha: pr.headSha,
                 status: status === "running" ? "in_progress" : "completed",
                 conclusion,
                 updatedAt: new Date(),
@@ -351,7 +356,7 @@ async function syncStatusToPR(prId: string, checkName: string, status: string): 
             id: crypto.randomUUID(),
             pullRequestId: prId,
             name: checkName,
-            headSha: "",
+            headSha: pr.headSha,
             status: status === "running" ? "in_progress" : "completed",
             conclusion,
             createdAt: new Date(),
