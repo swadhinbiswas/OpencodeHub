@@ -124,11 +124,19 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request, locals
                     orderBy: [desc(schema.pullRequestReviews.submittedAt)]
                 });
 
+                // Keep only each reviewer's latest review state
+                const latestReviewByReviewer = new Map<string, typeof reviews[number]>();
+                for (const review of reviews) {
+                    if (!latestReviewByReviewer.has(review.reviewerId)) {
+                        latestReviewByReviewer.set(review.reviewerId, review);
+                    }
+                }
+
                 // Check each requirement
                 for (const req of requiredReviewers) {
                     if (req.userId) {
                         // User requirement
-                        const userReview = reviews.find(r => r.reviewerId === req.userId);
+                        const userReview = latestReviewByReviewer.get(req.userId);
                         if (!userReview || userReview.state !== "approved") {
                             // Fetch user details for error message
                             const requiredUser = await db.query.users.findFirst({
@@ -137,7 +145,28 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request, locals
                             return badRequest(`Approval required from @${requiredUser?.username || "user"}`);
                         }
                     }
-                    // TODO: Handle Team requirements if needed
+                    if (req.teamId) {
+                        const [team, members] = await Promise.all([
+                            db.query.teams.findFirst({
+                                where: eq(schema.teams.id, req.teamId),
+                            }),
+                            db.query.teamMembers.findMany({
+                                where: eq(schema.teamMembers.teamId, req.teamId),
+                            }),
+                        ]);
+
+                        const requiredCount = Math.max(1, req.requiredCount ?? 1);
+                        const approvedFromTeam = members.filter((member) => {
+                            const latestReview = latestReviewByReviewer.get(member.userId);
+                            return latestReview?.state === "approved";
+                        }).length;
+
+                        if (approvedFromTeam < requiredCount) {
+                            return badRequest(
+                                `Approval required from team ${team?.name || "team"} (${approvedFromTeam}/${requiredCount})`
+                            );
+                        }
+                    }
                 }
             }
 
