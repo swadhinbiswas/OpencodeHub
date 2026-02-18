@@ -13,19 +13,20 @@ import {
 import {
     parseAIConfigFromStorage,
     sanitizeAIConfigForClient,
+    type PublicAIConfig,
 } from "@/lib/ai-config";
 
 const user = Astro.locals.user;
 if (!user) return Astro.redirect("/login");
 
 // Parse existing config
-let aiConfig = {
+let aiConfig: PublicAIConfig = {
     provider: "openai",
     model: "gpt-4-turbo",
     apiKeys: {
-        openai: { isSet: false, masked: undefined as string | undefined },
-        groq: { isSet: false, masked: undefined as string | undefined },
-        bytez: { isSet: false, masked: undefined as string | undefined },
+        openai: { isSet: false },
+        groq: { isSet: false },
+        bytez: { isSet: false },
     },
 };
 
