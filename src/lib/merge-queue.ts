@@ -13,6 +13,7 @@ import { recordPrMetrics } from "./developer-metrics";
 import { emitQueueEvent } from "./realtime";
 import { withLock, isDistributedLocking } from "./distributed-lock";
 import { logger } from "./logger";
+import { resolveRepoPath } from "./git-storage";
 
 // Types
 export interface MergeQueueItem {
@@ -166,7 +167,8 @@ async function createSpeculativeBranch(
     prs: { headBranch: string; number: number }[]
 ): Promise<{ branchName: string; success: boolean; message?: string }> {
     const { createBranch, mergeBranch, deleteBranch } = await import("./git");
-    const simpleGit = (await import("simple-git")).simpleGit(repoDiskPath);
+    const localRepoPath = await resolveRepoPath(repoDiskPath);
+    const simpleGit = (await import("simple-git")).simpleGit(localRepoPath);
 
     // Generate unique temp branch name
     const timestamp = Date.now();
@@ -188,7 +190,7 @@ async function createSpeculativeBranch(
             } catch (e) {
                 // Conflict detected
                 await simpleGit.checkout(baseBranch);
-                await deleteBranch(repoDiskPath, branchName);
+                await deleteBranch(localRepoPath, branchName);
                 return {
                     branchName,
                     success: false,
@@ -411,9 +413,10 @@ export async function canMerge(pullRequestId: string): Promise<{ canMerge: boole
 
     if (repo && repo.diskPath) {
         try {
+            const localRepoPath = await resolveRepoPath(repo.diskPath);
             // 1. Get changed files
             const { getChangedFiles } = await import("./git");
-            const changedFiles = await getChangedFiles(repo.diskPath, pr.baseBranch, pr.headBranch);
+            const changedFiles = await getChangedFiles(localRepoPath, pr.baseBranch, pr.headBranch);
 
             if (changedFiles.length > 0) {
                 const fileApprovals = await db.query.fileApprovals.findMany({
@@ -450,7 +453,7 @@ export async function canMerge(pullRequestId: string): Promise<{ canMerge: boole
 
                 for (const p of possiblePaths) {
                     try {
-                        codeOwnersContent = await fs.readFile(path.join(repo.diskPath, p), "utf-8");
+                        codeOwnersContent = await fs.readFile(path.join(localRepoPath, p), "utf-8");
                         break;
                     } catch (e) {
                         // Ignore missing file
@@ -587,9 +590,13 @@ export async function processNextInQueue(repositoryId: string): Promise<{
             return { processed: false, entry: nextItem, reason: "PR or repo not found" };
         }
 
-        const prAuthor = await db.query.users.findFirst({
-            where: eq(schema.users.id, pr.authorId)
-        });
+            const prAuthor = await db.query.users.findFirst({
+                where: eq(schema.users.id, pr.authorId)
+            });
+            const mergedById = nextItem.addedById || pr.authorId;
+            const mergedByUser = await db.query.users.findFirst({
+                where: eq(schema.users.id, mergedById)
+            });
 
         // Mark as merging
         await db.update(schema.mergeQueue)
@@ -602,10 +609,11 @@ export async function processNextInQueue(repositoryId: string): Promise<{
         try {
             // Import git merge function
             const { mergeBranch, deleteBranch } = await import("./git");
+            const localRepoPath = await resolveRepoPath(repo.diskPath);
 
             // Perform the actual merge
             const mergeResult = await mergeBranch(
-                repo.diskPath,
+                localRepoPath,
                 pr.baseBranch,
                 pr.headBranch,
                 `Merge pull request #${pr.number} from ${pr.headBranch}\n\n${pr.title}`
@@ -630,8 +638,10 @@ export async function processNextInQueue(repositoryId: string): Promise<{
                     state: "merged",
                     isMerged: true, // Keep this as it's a separate flag
                     mergedAt: new Date(),
-                    mergedById: pr.authorId, // In non-queue, this is the merger. In queue, let's blame author or bot?
+                    mergedById,
                     mergeCommitSha: mergeResult.sha, // Assuming mergeResult.sha contains the merge commit SHA
+                    mergeSha: mergeResult.sha,
+                    mergeMethod: nextItem.mergeMethod || "merge",
                     updatedAt: new Date()
                 })
                 .where(eq(schema.pullRequests.id, pr.id));
@@ -654,7 +664,7 @@ export async function processNextInQueue(repositoryId: string): Promise<{
 
             try {
                 const { closeLinkedIssuesOnMerge } = await import("./pr-issue-linking");
-                await closeLinkedIssuesOnMerge(pr.id, pr.authorId);
+                await closeLinkedIssuesOnMerge(pr.id, mergedById);
             } catch (e) {
                 logger.error({ error: e, prId: pr.id }, "Failed to close linked issues on merge");
             }
@@ -662,7 +672,7 @@ export async function processNextInQueue(repositoryId: string): Promise<{
             // Delete the head branch if requested
             if (nextItem.deleteOnMerge) {
                 try {
-                    await deleteBranch(repo.diskPath, pr.headBranch);
+                    await deleteBranch(localRepoPath, pr.headBranch);
                 } catch (e) {
                     // Branch deletion is optional, don't fail the merge
                 }
@@ -681,7 +691,7 @@ export async function processNextInQueue(repositoryId: string): Promise<{
                         state: "merged",
                         merged: true,
                         title: pr.title,
-                        user: { login: prAuthor?.username || "unknown" },
+                        user: { login: mergedByUser?.username || prAuthor?.username || "unknown" },
                         head: { ref: pr.headBranch, sha: mergeResult.sha }, // Approximate
                         base: { ref: pr.baseBranch },
                     },
