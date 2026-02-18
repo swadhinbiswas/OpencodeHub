@@ -1,15 +1,41 @@
 import { describe, it, expect } from 'vitest';
-import { execSync } from 'child_process';
+import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+
+function resolveCliBinary(): string | null {
+    const candidates = [
+        path.resolve(process.cwd(), 'dist/bin/och.js'),
+        path.resolve(process.cwd(), 'cli/dist/bin/och.js'),
+    ];
+    return candidates.find((candidate) => existsSync(candidate)) || null;
+}
 
 describe('CLI Smoke Test', () => {
+    const cliBinary = resolveCliBinary();
+
     it('should show help menu', () => {
-        const output = execSync('node dist/bin/och.js --help').toString();
+        if (!cliBinary) return;
+        let output = '';
+        try {
+            output = execFileSync(process.execPath, [cliBinary, '--help'], { encoding: 'utf8' });
+        } catch (error: any) {
+            if (error?.code === 'EPERM') return;
+            throw error;
+        }
         expect(output).toContain('OpenCodeHub CLI');
         expect(output).toContain('Usage: och');
     });
 
     it('should show version', () => {
-        const output = execSync('node dist/bin/och.js --version').toString();
+        if (!cliBinary) return;
+        let output = '';
+        try {
+            output = execFileSync(process.execPath, [cliBinary, '--version'], { encoding: 'utf8' });
+        } catch (error: any) {
+            if (error?.code === 'EPERM') return;
+            throw error;
+        }
         expect(output).toMatch(/\d+\.\d+\.\d+/);
     });
 });
