@@ -1,6 +1,7 @@
 import { OpenAIAdapter } from "./openai";
 import { GroqAdapter } from "./groq";
 import { BytezAdapter } from "./bytez";
+import { AnthropicAdapter } from "./anthropic";
 import type { AIAdapter } from "./types";
 
 export function getAIAdapter(provider: string): AIAdapter {
@@ -12,7 +13,7 @@ export function getAIAdapter(provider: string): AIAdapter {
         case "bytez":
             return new BytezAdapter();
         case "anthropic":
-            throw new Error("Anthropic provider not implemented yet");
+            return new AnthropicAdapter();
         default:
             throw new Error(`Unknown AI provider: ${provider}`);
     }
