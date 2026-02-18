@@ -21,7 +21,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "git:init": "node scripts/init-git-server.js",
+    "git:init": "node scripts/init-git-server.cjs",
     "git:start": "bun scripts/ssh-server.ts",
     "worker:start": "bun scripts/worker.ts",
     "runner:start": "bun src/runner/index.ts",
