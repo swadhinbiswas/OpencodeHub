@@ -46,10 +46,9 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
         return notFound("Repository not found");
     }
 
-    // Only write access can approve/request changes?
-    // Usually anyone with read access can comment, but approvals might require write access depending on rules.
-    // For now, let's allow anyone with read access to review, but maybe distinguish later.
-    // GitHub allows read-access users to review.
+    if (state !== "COMMENTED" && !(await canWriteRepo(user.id, repo))) {
+        return forbidden("Write access required to approve or request changes");
+    }
 
     const pr = await db.query.pullRequests.findFirst({
         where: and(
