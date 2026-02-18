@@ -1,6 +1,6 @@
 # Missing / Not-Implemented Tracker
 
-Date: 2026-02-15
+Date: 2026-02-18
 Scope: `src/`, `cli/`, `packages/`, and existing audit docs.
 
 ## Summary
@@ -50,25 +50,50 @@ Scope: `src/`, `cli/`, `packages/`, and existing audit docs.
 | Implemented (2026-02-15) | SonarQube trigger now fetches quality gate + persists issues when available | `src/lib/code-quality.ts` |
 | Implemented (2026-02-15) | Snyk scan now parses API vulnerabilities and persists issue records | `src/lib/code-quality.ts` |
 | Implemented (2026-02-15) | Admin metrics user growth now computed from real user creation dates | `src/pages/admin/_metrics-disabled.txt` |
+| Implemented (2026-02-18) | Runner auth tokens now stored hashed + verified with timing-safe checks | `src/lib/runner-secrets.ts`, `src/pages/api/actions/runners/register.ts`, `src/pages/api/actions/runners/poll.ts`, `src/pages/api/actions/runners/job/[id]/complete.ts`, `src/db/schema/pipeline-runners.ts` |
+| Implemented (2026-02-18) | Runner poll endpoint now performs race-safe job claims | `src/pages/api/actions/runners/poll.ts` |
+| Implemented (2026-02-18) | Runner completion endpoint now enforces repository/job ownership checks | `src/pages/api/actions/runners/job/[id]/complete.ts` |
+| Implemented (2026-02-18) | Manual action trigger endpoint now enforces write permissions and stable run numbering | `src/pages/api/actions/trigger-test.ts` |
+| Implemented (2026-02-18) | Workflow secrets are now encrypted-at-rest with legacy plaintext migration on access | `src/lib/workflow-secret-crypto.ts`, `src/pages/[owner]/[repo]/settings/actions/runners.astro`, `src/pages/api/actions/runners/register.ts` |
+| Implemented (2026-02-18) | Runner registration token TTL enforcement and automatic rotation on settings access | `src/pages/api/actions/runners/register.ts`, `src/pages/[owner]/[repo]/settings/actions/runners.astro`, `.env.example` |
+| Implemented (2026-02-18) | One-time runner registration tokens with consumption on first use and revoke API | `src/lib/runner-registration-token.ts`, `src/pages/api/actions/runners/register.ts`, `src/pages/api/actions/runners/registration-tokens.ts`, `src/pages/[owner]/[repo]/settings/actions/runners.astro` |
+| Implemented (2026-02-18) | Repository custom issue fields settings API wired to existing UI | `src/pages/api/repos/[owner]/[repo]/settings/fields.ts`, `src/pages/api/repos/[owner]/[repo]/settings/fields/[id].ts` |
+| Implemented (2026-02-18) | Advanced analytics APIs for hotspots and metrics export | `src/pages/api/repos/[owner]/[repo]/analytics/hotspots.ts`, `src/pages/api/repos/[owner]/[repo]/analytics/export.ts` |
+| Implemented (2026-02-18) | Custom dashboard APIs (list/create/get/delete/add widget) | `src/pages/api/analytics/dashboards/index.ts`, `src/pages/api/analytics/dashboards/[id].ts`, `src/pages/api/analytics/dashboards/[id]/widgets.ts` |
+| Implemented (2026-02-18) | Cross-repo change sets API + state updates | `src/pages/api/change-sets/index.ts`, `src/pages/api/change-sets/[id].ts`, `src/lib/dependency-awareness.ts` |
+| Implemented (2026-02-18) | Breaking-change detection now uses real PR diff/files with persisted findings | `src/lib/dependency-awareness.ts`, `src/pages/api/repos/[owner]/[repo]/pulls/[number]/impact.ts` |
+| Implemented (2026-02-18) | Migration detection endpoint integrated into PR impact scan | `src/lib/dependency-awareness.ts`, `src/pages/api/repos/[owner]/[repo]/pulls/[number]/impact.ts` |
+| Implemented (2026-02-18) | Terraform/IaC hook triggering via repo API and automation actions | `src/lib/iac-hooks.ts`, `src/pages/api/repos/[owner]/[repo]/iac/hooks.ts`, `src/lib/automations.ts`, `src/db/schema/automations.ts` |
+| Implemented (2026-02-18) | Cloud deploy hooks for AWS/GCP/Azure/Kubernetes exposed via repo API and automations | `src/lib/cloud-hooks.ts`, `src/pages/api/repos/[owner]/[repo]/cloud/deploy.ts`, `src/lib/automations.ts`, `src/db/schema/automations.ts` |
 
 ## D) Existing Broad Audit (High-Level)
 
-`doc/feature_audit.md` already tracks feature-level implementation state across 122 features:
-- Implemented: 47
-- Partial: 29
-- Missing: 46
+`doc/feature_audit.md` tracks feature-level implementation state:
+- Implemented: 70
+- Partial: 55
+- Missing: 0
 
 Use that document for roadmap-level planning and this tracker for code-level execution items.
 
+## E) Remaining Production Gaps (Not Yet Solved)
+
+| Priority | Area | Gap |
+|---|---|---|
+| Implemented (2026-02-18) | Runner API authentication model | Added explicit audit trail/history for token issuance/revocation/consumption via `audit_logs` + API + settings UI. |
+| Implemented (2026-02-18) | Runner job dispatch | Poll/complete APIs + runner client now support multi-step job execution with step-level state transitions (`queued` → `in_progress` → `completed`) and incremental step dispatch. |
+| Implemented (2026-02-18) | Queue worker fidelity | Replaced sleep-based CI simulation with real pull-request check-state gating (`pull_request_checks`) and queue-item progression based on ingested CI outcomes. |
+| Implemented (2026-02-18) | Actions logs retrieval | Added paginated per-job logs API + lazy loading and incremental “Load more” UI to avoid broad run-wide log fetches. |
+| Implemented (2026-02-18) | External ecosystem parity hardening | Added provider-specific webhook route tests and operations runbook for CI, issue trackers, and quality providers (`tests/integration/provider-webhook-routes.test.ts`, `tests/unit/external-ci-providers.test.ts`, `doc/external-ecosystem-runbook.md`). |
+
+## F) Feature Audit Reconciliation (2026-02-18)
+
+- `doc/feature_audit.md` legacy missing count was `46`.
+- After code reconciliation + implementation passes, explicit `❌ missing` entries are now `0`.
+- Remaining gaps are implementation depth and production-hardening tasks, not binary feature absence.
+
 ## Suggested Next Implementation Order
 
-1. Close hard runtime blockers first:
-   - Choose supported DB drivers and remove/guard unsupported ones (`src/db/adapter/index.ts`).
-   - Implement or disable `anthropic` provider path in `src/lib/ai/index.ts`.
-2. Resolve TODOs that affect correctness/security:
-   - Issue create permission check.
-   - Team reviewer enforcement in PR state transitions.
-3. Replace placeholders with production paths:
-   - Automations builder UI flow.
-   - Digest generation from real activity data.
-   - PR file dependency detection.
+1. Implement encryption-at-rest for `workflow_secrets` and migration for existing rows.
+2. Add runner registration token lifecycle controls (rotation, expiry, revoke).
+3. Upgrade runner execution protocol to support full multi-step jobs with step status updates.
+4. Replace queue-worker simulation paths with real pipeline status integration.
