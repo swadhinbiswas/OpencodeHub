@@ -32,13 +32,13 @@ export const GET: APIRoute = async ({ request }) => {
         // Generate QR Code
         const qrCodeUrl = await QRCode.toDataURL(uri);
 
-        // We don't save the secret yet, the client must verify it first
-        // But we need to verify it in the POST request. 
-        // Stateless approach: Send secret to client, client sends it back with code? 
-        // Security risk? Kind of. 
-        // Better: Store in DB temporarily? Or just return it and let client send it back signed?
-        // Simple approach for now: Return secret to client, client sends it back in POST to "enable".
-        // The secret is sensitive but it's being sent to the authenticated user.
+        await (db as NodePgDatabase<typeof schema>)
+            .update(users)
+            .set({
+                twoFactorEnabled: false,
+                twoFactorSecret: secret,
+            })
+            .where(eq(users.id, user.userId));
 
         return success({
             enabled: false,
@@ -63,17 +63,26 @@ export const POST: APIRoute = async ({ request }) => {
         const db = getDatabase() as NodePgDatabase<typeof schema>;
 
         if (action === "enable") {
-            if (!token || !secret) return badRequest("Token and secret are required");
+            if (!token) return badRequest("Authentication code is required");
 
-            // Verify the token against the provided secret
-            const isValid = verify2FAToken(token, secret);
+            const currentUser = await db.query.users.findFirst({
+                where: eq(users.id, user.userId)
+            });
+            if (!currentUser) return unauthorized();
+
+            const effectiveSecret = currentUser.twoFactorSecret || secret;
+            if (!effectiveSecret) return badRequest("No pending 2FA setup found");
+
+            // Verify the token against server-side pending secret.
+            // `secret` from request is accepted only as a compatibility fallback.
+            const isValid = verify2FAToken(token, effectiveSecret);
             if (!isValid) return badRequest("Invalid authentication code");
 
             // Enable 2FA
             await db.update(users)
                 .set({
                     twoFactorEnabled: true,
-                    twoFactorSecret: secret
+                    twoFactorSecret: effectiveSecret
                 })
                 .where(eq(users.id, user.userId));
 
@@ -82,8 +91,6 @@ export const POST: APIRoute = async ({ request }) => {
         }
 
         if (action === "disable") {
-            // To disable, we should require a valid token (or password) for security
-            // For now, requiring the current 2FA token
             if (!token) return badRequest("Authentication code required to disable 2FA");
 
             const currentUser = await db.query.users.findFirst({
