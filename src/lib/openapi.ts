@@ -122,6 +122,30 @@ export const openApiSpec = {
                 },
                 required: ["reviewId"],
             },
+            SuggestionApplyRequest: {
+                type: "object",
+                properties: {
+                    commentIds: {
+                        type: "array",
+                        minItems: 1,
+                        maxItems: 50,
+                        items: { type: "string" },
+                    },
+                },
+                required: ["commentIds"],
+            },
+            StackApprovalRequest: {
+                type: "object",
+                properties: {
+                    reviewers: {
+                        type: "array",
+                        minItems: 1,
+                        maxItems: 50,
+                        items: { type: "string", description: "Reviewer username" },
+                    },
+                },
+                required: ["reviewers"],
+            },
         },
     },
     paths: {
@@ -324,6 +348,27 @@ export const openApiSpec = {
                     { name: "owner", in: "path", required: true, schema: { type: "string" } },
                     { name: "repo", in: "path", required: true, schema: { type: "string" } },
                     { name: "number", in: "path", required: true, schema: { type: "integer" } },
+                    {
+                        name: "x-opencodehub-timestamp",
+                        in: "header",
+                        required: false,
+                        schema: { type: "string" },
+                        description: "Unix timestamp (seconds or milliseconds) for signed callbacks.",
+                    },
+                    {
+                        name: "x-opencodehub-signature",
+                        in: "header",
+                        required: false,
+                        schema: { type: "string" },
+                        description: "HMAC signature in format sha256=<hex> over '<timestamp>.<rawBody>'.",
+                    },
+                    {
+                        name: "x-opencodehub-event-id",
+                        in: "header",
+                        required: false,
+                        schema: { type: "string" },
+                        description: "Unique event id used for replay protection.",
+                    },
                 ],
                 requestBody: {
                     required: true,
@@ -357,6 +402,77 @@ export const openApiSpec = {
                     },
                     401: { description: "Unauthorized callback", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     404: { description: "Review target not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/repos/{owner}/{repo}/pulls/{number}/suggestions/apply": {
+            post: {
+                tags: ["Pull Requests"],
+                summary: "Apply one or more review suggestions",
+                description: "Applies suggestion comments to the PR branch after repository and path-scoped permission checks.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "number", in: "path", required: true, schema: { type: "integer" } },
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/SuggestionApplyRequest" },
+                        },
+                    },
+                },
+                responses: {
+                    200: { description: "Suggestion(s) applied" },
+                    400: { description: "Invalid comment ids or payload", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository or pull request not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/repos/{owner}/{repo}/stacks/{stackId}/approvals": {
+            get: {
+                tags: ["Stacks"],
+                summary: "Get stack approval status",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "stackId", in: "path", required: true, schema: { type: "string" } },
+                ],
+                responses: {
+                    200: { description: "Stack approval status returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository or stack not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+            post: {
+                tags: ["Stacks"],
+                summary: "Request approvals across all PRs in a stack",
+                description: "Requests stack approvals for eligible reviewers. Reviewers without repository access are skipped.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "stackId", in: "path", required: true, schema: { type: "string" } },
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/StackApprovalRequest" },
+                        },
+                    },
+                },
+                responses: {
+                    200: { description: "Approval requests created for eligible reviewers" },
+                    400: { description: "Invalid payload or no eligible reviewers", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository or stack not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                 },
             },
         },
