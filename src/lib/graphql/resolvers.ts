@@ -7,6 +7,11 @@ import { getDatabase, schema } from "@/db";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { eq, and, like, desc, sql, count } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { compareBranches, getCommit, mergeBranch } from "@/lib/git";
+import { resolveRepoPath } from "@/lib/git-storage";
+import { canWriteRepo } from "@/lib/permissions";
+import { evaluateGates } from "@/lib/ci-gates";
+import { closeLinkedIssuesOnMerge } from "@/lib/pr-issue-linking";
 
 // Context type for resolvers
 export interface GraphQLContext {
@@ -209,7 +214,17 @@ export const resolvers = {
             };
         },
 
-        stargazerCount: () => 0, // Stars table not yet implemented
+        stargazerCount: async (
+            repo: typeof schema.repositories.$inferSelect,
+            _: unknown,
+            ctx: GraphQLContext
+        ) => {
+            const result = await ctx.db
+                .select({ count: count() })
+                .from(schema.repositoryStars)
+                .where(eq(schema.repositoryStars.repositoryId, repo.id));
+            return result[0]?.count || 0;
+        },
 
         forkCount: async (
             repo: typeof schema.repositories.$inferSelect,
@@ -429,6 +444,18 @@ export const resolvers = {
             });
             if (!repo) throw new Error("Repository not found");
 
+            const repoPath = await resolveRepoPath(repo.diskPath);
+            const headCommit = await getCommit(repoPath, input.headRefName);
+            if (!headCommit) throw new Error(`Head branch ${input.headRefName} not found`);
+
+            const baseCommit = await getCommit(repoPath, input.baseRefName);
+            if (!baseCommit) throw new Error(`Base branch ${input.baseRefName} not found`);
+
+            const { diffs } = await compareBranches(repoPath, input.baseRefName, input.headRefName);
+            const additions = diffs.reduce((sum, diff) => sum + diff.additions, 0);
+            const deletions = diffs.reduce((sum, diff) => sum + diff.deletions, 0);
+            const changedFiles = diffs.length;
+
             // Get next PR number
             const result = await ctx.db
                 .select({ count: count() })
@@ -447,10 +474,13 @@ export const resolvers = {
                 authorId: ctx.userId,
                 headBranch: input.headRefName,
                 baseBranch: input.baseRefName,
-                headSha: "0000000000000000000000000000000000000000", // Placeholder - would fetch from git
-                baseSha: "0000000000000000000000000000000000000000", // Placeholder
+                headSha: headCommit.sha,
+                baseSha: baseCommit.sha,
                 isDraft: input.draft,
                 state: "open",
+                additions,
+                deletions,
+                changedFiles,
                 createdAt: new Date(),
                 updatedAt: new Date(),
             });
@@ -476,18 +506,50 @@ export const resolvers = {
 
             if (pr.state !== "open") throw new Error("Pull request is not open");
 
-            // In a real implementation, this would trigger a git merge or enqueue
-            // For now, we update the DB state
+            const repo = await ctx.db.query.repositories.findFirst({
+                where: eq(schema.repositories.id, pr.repositoryId),
+            });
+            if (!repo) throw new Error("Repository not found");
+
+            if (!(await canWriteRepo(ctx.userId, repo, { isAdmin: ctx.user?.isAdmin ?? undefined }))) {
+                throw new Error("Access denied");
+            }
+
+            const gateResult = await evaluateGates(pr.id);
+            if (!gateResult.canMerge) {
+                const failed = gateResult.results
+                    .filter((r) => !r.passed)
+                    .map((r) => r.message)
+                    .join("; ");
+                throw new Error(`Merge blocked: ${failed}`);
+            }
+
+            const commitTitle = input.commitTitle || `Merge pull request #${pr.number} from ${pr.headBranch}`;
+            const mergeMessage = input.commitBody
+                ? `${commitTitle}\n\n${input.commitBody}`
+                : commitTitle;
+
+            const repoPath = await resolveRepoPath(repo.diskPath);
+            const mergeResult = await mergeBranch(repoPath, pr.baseBranch, pr.headBranch, mergeMessage);
+            if (!mergeResult.success) {
+                throw new Error(mergeResult.message || "Merge failed");
+            }
+
+            const now = new Date();
             await ctx.db.update(schema.pullRequests)
                 .set({
                     state: "merged",
                     isMerged: true,
-                    mergedAt: new Date(),
+                    mergedAt: now,
                     mergedById: ctx.userId,
+                    mergeCommitSha: mergeResult.sha || null,
+                    mergeSha: mergeResult.sha || null,
                     mergeMethod: input.mergeMethod?.toLowerCase() || "merge",
-                    updatedAt: new Date(),
+                    updatedAt: now,
                 })
                 .where(eq(schema.pullRequests.id, input.pullRequestId));
+
+            await closeLinkedIssuesOnMerge(pr.id, ctx.userId);
 
             const updatedPr = await ctx.db.query.pullRequests.findFirst({
                 where: eq(schema.pullRequests.id, input.pullRequestId),
