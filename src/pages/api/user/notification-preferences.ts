@@ -18,6 +18,41 @@ import { logger } from "@/lib/logger";
 
 // ... existing imports ...
 
+type DigestType = "none" | "daily" | "weekly";
+
+function normalizeDigestType(value: unknown): DigestType {
+    if (value === "daily" || value === "weekly" || value === "none") return value;
+    return "none";
+}
+
+function normalizeDigestTime(value: unknown): string {
+    if (typeof value !== "string") return "09:00";
+    const match = /^(\d{2}):(\d{2})$/.exec(value);
+    if (!match) return "09:00";
+    const hour = Number.parseInt(match[1], 10);
+    const minute = Number.parseInt(match[2], 10);
+    if (!Number.isInteger(hour) || !Number.isInteger(minute)) return "09:00";
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return "09:00";
+    return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function normalizeDigestDay(value: unknown): number {
+    if (!Number.isInteger(value)) return 1;
+    const day = Number(value);
+    if (day < 1 || day > 7) return 1;
+    return day;
+}
+
+function normalizeTimeZone(value: unknown): string {
+    if (typeof value !== "string" || !value) return "UTC";
+    try {
+        Intl.DateTimeFormat("en-US", { timeZone: value }).format(new Date());
+        return value;
+    } catch {
+        return "UTC";
+    }
+}
+
 export const POST: APIRoute = withErrorHandler(async ({ locals, request }) => {
     const user = locals.user;
 
@@ -114,6 +149,11 @@ export const POST: APIRoute = withErrorHandler(async ({ locals, request }) => {
 
     // Save digest settings
     if (digestSettings) {
+        const digestType = normalizeDigestType(digestSettings.digestType);
+        const digestTime = normalizeDigestTime(digestSettings.digestTime);
+        const digestDay = normalizeDigestDay(digestSettings.digestDay);
+        const timezone = normalizeTimeZone(digestSettings.timezone);
+
         const existingDigest = await db.query.emailDigestSettings.findFirst({
             where: eq(schema.emailDigestSettings.userId, user.id),
         });
@@ -122,8 +162,10 @@ export const POST: APIRoute = withErrorHandler(async ({ locals, request }) => {
             await db
                 .update(schema.emailDigestSettings)
                 .set({
-                    digestType: digestSettings.digestType || "none",
-                    digestTime: digestSettings.digestTime || "09:00",
+                    digestType,
+                    digestTime,
+                    digestDay,
+                    timezone,
                     updatedAt: new Date(),
                 })
                 .where(eq(schema.emailDigestSettings.id, existingDigest.id));
@@ -131,9 +173,10 @@ export const POST: APIRoute = withErrorHandler(async ({ locals, request }) => {
             await db.insert(schema.emailDigestSettings).values({
                 id: generateId(),
                 userId: user.id,
-                digestType: digestSettings.digestType || "none",
-                digestTime: digestSettings.digestTime || "09:00",
-                timezone: "UTC",
+                digestType,
+                digestTime,
+                digestDay,
+                timezone,
                 createdAt: new Date(),
                 updatedAt: new Date(),
             });
@@ -201,6 +244,8 @@ export const GET: APIRoute = withErrorHandler(async ({ locals }) => {
                 ? {
                     digestType: digestSettings.digestType,
                     digestTime: digestSettings.digestTime,
+                    digestDay: digestSettings.digestDay,
+                    timezone: digestSettings.timezone,
                 }
                 : null,
         }),
