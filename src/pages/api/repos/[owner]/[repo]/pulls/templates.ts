@@ -3,6 +3,7 @@ import { getDatabase, schema } from "@/db";
 import { and, eq } from "drizzle-orm";
 import { resolveRepoPath } from "@/lib/git-storage";
 import { getFileContent } from "@/lib/git";
+import { canReadRepo } from "@/lib/permissions";
 import { withErrorHandler } from "@/lib/errors";
 import { notFound, success } from "@/lib/api";
 
@@ -17,9 +18,6 @@ export const GET: APIRoute = withErrorHandler(async ({ params, request, locals }
 
     const db = getDatabase();
 
-    // permissions check (read access)
-    // In a real app we should check this, but for now assuming public or implicit check via middleware/repo existence
-    // We'll do a quick check
     const user = await db.query.users.findFirst({
         where: eq(schema.users.username, ownerName),
     });
@@ -34,6 +32,10 @@ export const GET: APIRoute = withErrorHandler(async ({ params, request, locals }
     });
 
     if (!repo) return notFound("Repository not found");
+
+    if (!(await canReadRepo(locals.user?.id, repo, { isAdmin: locals.user?.isAdmin }))) {
+        return notFound("Repository not found");
+    }
 
     // Resolve path
     const repoPath = await resolveRepoPath(repo.diskPath);
