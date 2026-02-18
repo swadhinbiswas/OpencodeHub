@@ -6,6 +6,7 @@
 import { getDatabase, schema } from "@/db";
 import { eq, and, inArray } from "drizzle-orm";
 import { logger } from "./logger";
+import { getChangedFiles } from "./git";
 
 export interface PRDependency {
     prId: string;
@@ -88,17 +89,99 @@ export async function detectBranchDependencies(
 export async function detectFileDependencies(
     repositoryId: string
 ): Promise<{ conflicting: { pr1: string; pr2: string; files: string[] }[] }> {
-    // Note: This would require accessing git diff data
-    // For now, return empty - implementation would need git integration
-    logger.info({ repositoryId }, "File dependency detection not yet implemented");
-    return { conflicting: [] };
+    const db = getDatabase();
+
+    const repo = await db.query.repositories.findFirst({
+        where: eq(schema.repositories.id, repositoryId),
+    });
+
+    if (!repo?.diskPath) {
+        logger.warn({ repositoryId }, "Skipping file dependency detection: repository disk path not available");
+        return { conflicting: [] };
+    }
+
+    const prs = await db.query.pullRequests.findMany({
+        where: and(
+            eq(schema.pullRequests.repositoryId, repositoryId),
+            eq(schema.pullRequests.state, "open")
+        ),
+    });
+
+    if (prs.length < 2) {
+        return { conflicting: [] };
+    }
+
+    const filesByPrId = new Map<string, Set<string>>();
+    for (const pr of prs) {
+        try {
+            const files = await getChangedFiles(repo.diskPath, pr.baseBranch, pr.headBranch);
+            filesByPrId.set(pr.id, new Set(files));
+        } catch (error) {
+            logger.warn({ repositoryId, prId: pr.id, error }, "Failed to load PR changed files for dependency detection");
+            filesByPrId.set(pr.id, new Set<string>());
+        }
+    }
+
+    const conflicting: { pr1: string; pr2: string; files: string[] }[] = [];
+
+    for (let i = 0; i < prs.length; i++) {
+        for (let j = i + 1; j < prs.length; j++) {
+            const left = prs[i];
+            const right = prs[j];
+            const leftFiles = filesByPrId.get(left.id) || new Set<string>();
+            const rightFiles = filesByPrId.get(right.id) || new Set<string>();
+
+            const overlap: string[] = [];
+            for (const file of leftFiles) {
+                if (rightFiles.has(file)) overlap.push(file);
+            }
+
+            if (overlap.length > 0) {
+                conflicting.push({
+                    pr1: left.id,
+                    pr2: right.id,
+                    files: overlap.sort(),
+                });
+            }
+        }
+    }
+
+    return { conflicting };
 }
 
 /**
  * Get dependency graph for visualization
  */
 export async function getDependencyGraph(repositoryId: string): Promise<DependencyGraph> {
-    return detectBranchDependencies(repositoryId);
+    const [branchGraph, fileDeps] = await Promise.all([
+        detectBranchDependencies(repositoryId),
+        detectFileDependencies(repositoryId),
+    ]);
+
+    const edges = [...branchGraph.edges];
+    for (const conflict of fileDeps.conflicting) {
+        edges.push({
+            from: conflict.pr1,
+            to: conflict.pr2,
+            type: "files",
+        });
+    }
+
+    const conflictByPr = new Map<string, Set<string>>();
+    for (const conflict of fileDeps.conflicting) {
+        if (!conflictByPr.has(conflict.pr1)) conflictByPr.set(conflict.pr1, new Set<string>());
+        if (!conflictByPr.has(conflict.pr2)) conflictByPr.set(conflict.pr2, new Set<string>());
+        conflictByPr.get(conflict.pr1)!.add(conflict.pr2);
+        conflictByPr.get(conflict.pr2)!.add(conflict.pr1);
+    }
+
+    const nodes = branchGraph.nodes.map((node) => ({
+        ...node,
+        blockedBy: Array.from(new Set([...node.blockedBy, ...(conflictByPr.get(node.prId) || [])])),
+        dependencyType: (conflictByPr.get(node.prId)?.size ? "files" : node.dependencyType) as PRDependency["dependencyType"],
+    }));
+
+    return { nodes, edges };
 }
 
 /**
