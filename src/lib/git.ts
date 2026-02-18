@@ -14,7 +14,8 @@ import {
   releaseRepo,
 } from "@/lib/git-storage";
 import { spawn } from "child_process";
-import { existsSync, mkdirSync, rmSync, readdirSync } from "fs";
+import { existsSync, mkdirSync, rmSync, readdirSync, mkdtempSync } from "fs";
+import { tmpdir } from "os";
 import { basename, dirname, extname, join, resolve } from "path";
 import { simpleGit, SimpleGit, SimpleGitOptions } from "simple-git";
 
@@ -1145,64 +1146,29 @@ export async function mergeBranch(
   head: string,
   message?: string
 ): Promise<MergeResult> {
-  const git = getGit(repoPath);
+  const tempDir = mkdtempSync(join(tmpdir(), "och-merge-"));
   try {
-    // We assume the repo is bare, so we can't do a normal merge with checkout.
-    // However, OpenCodeHub seems to stick to bare repos for storage.
-    // Merging in a bare repo is tricky. We usually need a worktree.
-    // OPTION 1: Create a temp worktree, merge, push back.
-    // OPTION 2: Use low-level commands (git merge-tree).
-    // Given the difficulty, maybe we should assume non-bare for now or use a temporary clone?
-    // But `initRepository` created a bare repo.
-    // So we MUST use a temp clone/worktree or low-level plumbing.
+    const tempGit = simpleGit();
+    await tempGit.clone(repoPath, tempDir);
 
-    // Using simple-git, let's try to match the implementation pattern.
-    // If we use a temp directory:
-    // This might be slow for large repos but it's safe.
+    const workGit = simpleGit(tempDir);
+    await workGit.fetch("origin", base);
+    await workGit.fetch("origin", head);
+    await workGit.checkout(["-B", base, `origin/${base}`]);
 
-    // However, existing `createBranch` works on bare repo refs.
-
-    // Let's use `git merge-tree` (server-side merge).
-    // git merge-tree --write-tree base head
-    // This returns a tree OID if successful.
-    // Then we create a commit from that tree.
-    // Then we update the base branch ref.
-
-    // check if merge-tree supports --write-tree (git > 2.38)
-    // If not, we might fail. Assuming modern git.
-
-    const output = await git.raw(["merge-tree", "--write-tree", base, head]);
-    const treeOid = output.trim();
-
-    // Create commit
     const commitMsg = message || `Merge pull request from ${head} into ${base}`;
-    // We need parent commits: tip of base, and tip of head.
-    const baseSha = (await git.revparse([base])).trim();
-    const headSha = (await git.revparse([head])).trim();
+    await workGit.merge(["--no-ff", "-m", commitMsg, `origin/${head}`]);
 
-    const commitOutput = await git.raw([
-      "commit-tree",
-      treeOid,
-      "-p", baseSha,
-      "-p", headSha,
-      "-m", commitMsg
-    ]);
-    const newCommitSha = commitOutput.trim();
-
-    // Update ref
-    await git.raw(["update-ref", `refs/heads/${base}`, newCommitSha]);
+    const newCommitSha = (await workGit.revparse(["HEAD"])).trim();
+    await workGit.push("origin", `${base}:${base}`);
 
     return { success: true, message: "Merged successfully", sha: newCommitSha };
 
   } catch (error: any) {
     logger.error("Error merging branches:", error);
-    // basic conflict detection from error message if possible
-    // merge-tree errors out on conflict (without --write-tree) or returns conflict info
-    // With --write-tree, it succeeds but might contain conflict markers in files?
-    // Actually `git merge-tree --write-tree` exit code is non-0 on conflict? No, it writes the tree with conflict markers.
-    // We should check for conflicts.
-    // For now, return generic failure.
     return { success: false, message: error.message || "Merge failed" };
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
   }
 }
 
