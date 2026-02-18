@@ -9,6 +9,8 @@ import { eq, and } from "drizzle-orm";
 import { logger } from "./logger";
 import { pullRequests } from "@/db/schema/pull-requests";
 import { users } from "@/db/schema/users";
+import { getChangedFiles } from "./git";
+import { resolveRepoPath } from "./git-storage";
 
 /**
  * File-level approvals table
@@ -107,8 +109,22 @@ export async function getFileApprovalStatus(prId: string): Promise<{
         return { files: [], allApproved: false };
     }
 
-    // Get changed files (would need git diff in real implementation)
-    // For now, return approvals we have
+    const repo = await db.query.repositories.findFirst({
+        where: eq(schema.repositories.id, pr.repositoryId),
+    });
+
+    if (!repo) {
+        return { files: [], allApproved: false };
+    }
+
+    let changedPaths: string[] = [];
+    try {
+        const repoPath = await resolveRepoPath(repo.diskPath);
+        changedPaths = await getChangedFiles(repoPath, pr.baseBranch, pr.headBranch);
+    } catch (error) {
+        logger.warn({ prId, error }, "Failed to calculate changed files for file approvals");
+    }
+
     const approvals = await db.query.fileApprovals?.findMany({
         where: eq(schema.fileApprovals.pullRequestId, prId),
         with: { approvedBy: { columns: { username: true } } },
@@ -128,16 +144,22 @@ export async function getFileApprovalStatus(prId: string): Promise<{
         }
     }
 
-    const files = Array.from(fileMap.entries()).map(([path, data]) => ({
-        path,
-        approved: data.approvers.length > 0 && !data.stale,
-        approvers: data.approvers,
-        stale: data.stale,
-    }));
+    const fileSet = new Set<string>(changedPaths);
+    for (const p of fileMap.keys()) fileSet.add(p);
+
+    const files = Array.from(fileSet.values()).map((path) => {
+        const data = fileMap.get(path) || { approvers: [], stale: false };
+        return {
+            path,
+            approved: data.approvers.length > 0 && !data.stale,
+            approvers: data.approvers,
+            stale: data.stale,
+        };
+    });
 
     return {
         files,
-        allApproved: files.every(f => f.approved),
+        allApproved: files.length > 0 && files.every(f => f.approved),
     };
 }
 
