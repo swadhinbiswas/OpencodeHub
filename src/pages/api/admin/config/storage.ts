@@ -1,4 +1,11 @@
-import { updateStorageConfig, resetStorage, checkStorageHealth, getStorageConfig } from "@/lib/storage";
+import {
+    updateStorageConfig,
+    resetStorage,
+    checkStorageHealth,
+    getStorageConfig,
+    createStorageAdapter,
+    type StorageConfig,
+} from "@/lib/storage";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { APIRoute } from "astro";
 import { withErrorHandler } from "@/lib/errors";
@@ -62,12 +69,58 @@ export const POST: APIRoute = withErrorHandler(async ({ request, locals }) => {
         return badRequest("Invalid JSON");
     }
 
-    const { action, config } = body;
+    const { action } = body;
+    const bodyConfig = body?.config ?? body;
+
+    const normalizeConfig = (input: unknown): StorageConfig => {
+        if (!input || typeof input !== "object" || Array.isArray(input)) {
+            throw new Error("Config required");
+        }
+        const cfg = input as Partial<StorageConfig>;
+        if (!cfg.type) {
+            throw new Error("Storage type required");
+        }
+
+        return {
+            ...cfg,
+            type: cfg.type,
+            basePath: typeof cfg.basePath === "string"
+                ? cfg.basePath
+                : cfg.type === "local"
+                    ? "./data/storage"
+                    : "",
+        } as StorageConfig;
+    };
 
     if (action === "test") {
-        // TODO: Test the provided config without saving
-        // For now, we only support testing current config via GET ?check=true
-        return badRequest("Test config action not yet implemented");
+        let testConfig: StorageConfig;
+        try {
+            testConfig = normalizeConfig(bodyConfig);
+        } catch (error: any) {
+            return badRequest(error?.message || "Invalid storage config");
+        }
+
+        try {
+            const adapter = createStorageAdapter(testConfig);
+            const testKey = `admin-storage-test/${Date.now()}-${Math.random().toString(36).slice(2)}.txt`;
+
+            await adapter.put(testKey, Buffer.from("storage test"));
+            await adapter.delete(testKey).catch(() => { });
+
+            return success({
+                success: true,
+                healthy: true,
+                type: testConfig.type,
+            });
+        } catch (error: any) {
+            logger.warn({ error, storageType: testConfig.type }, "Storage config test failed");
+            return success({
+                success: false,
+                healthy: false,
+                type: testConfig.type,
+                error: error?.message || "Storage connection test failed",
+            });
+        }
     }
 
     if (action === "reset") {
@@ -75,8 +128,15 @@ export const POST: APIRoute = withErrorHandler(async ({ request, locals }) => {
         return success({ message: "Storage cache cleared" });
     }
 
-    if (!config) {
-        return badRequest("Config required");
+    if (action && action !== "save") {
+        return badRequest("Unknown action");
+    }
+
+    let config: StorageConfig;
+    try {
+        config = normalizeConfig(bodyConfig);
+    } catch (error: any) {
+        return badRequest(error?.message || "Invalid storage config");
     }
 
     await updateStorageConfig(config, user.id);
