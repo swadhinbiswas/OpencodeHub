@@ -266,13 +266,35 @@ async function executeHook(repoPath: string, hookName: string, args: string[], e
         const child = spawn(hookPath, [], {
             cwd: repoPath,
             env: { ...process.env, ...env },
-            stdio: ["pipe", "ignore", "ignore"] // We don't care about output for now
+            stdio: ["pipe", "pipe", "pipe"]
+        });
+        let stdout = "";
+        let stderr = "";
+
+        child.stdout.on("data", (chunk) => {
+            stdout += chunk.toString();
+        });
+        child.stderr.on("data", (chunk) => {
+            stderr += chunk.toString();
         });
 
         child.stdin.write(input);
         child.stdin.end();
 
-        child.on("close", () => resolve());
+        child.on("close", (code) => {
+            if (code !== 0) {
+                logger.warn(
+                    {
+                        hook: hookName,
+                        exitCode: code,
+                        stdout: stdout.slice(0, 1000),
+                        stderr: stderr.slice(0, 1000),
+                    },
+                    "Hook exited with non-zero status"
+                );
+            }
+            resolve();
+        });
         child.on("error", (err) => {
             logger.error({ err, hook: hookName }, "Failed to execute hook");
             resolve();
