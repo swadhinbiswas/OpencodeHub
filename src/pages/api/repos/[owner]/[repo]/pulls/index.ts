@@ -14,6 +14,7 @@ import { logActivity } from "@/lib/activity";
 import { autoLinkPR } from "@/lib/pr-issue-linking";
 import { autoAssignReviewers } from "@/lib/multi-reviewer";
 import { addToStack, createStack, getStackForPr } from "@/lib/stacks";
+import { isValidBranchName } from "@/lib/utils";
 
 // ... existing imports ...
 
@@ -67,11 +68,13 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
         return badRequest("Base and head branches must be different");
     }
 
+    if (!isValidBranchName(base) || !isValidBranchName(head)) {
+        return badRequest("Invalid branch name");
+    }
+
     const repoPath = await resolveRepoPath(repo.diskPath);
 
-    // Verify branches exist and get SHAs
-    // In a real implementation we should verify they exist using git.branch() or similar
-    // For now we trust the client but get the SHAs via git rev-parse (or log -1)
+    // Verify branches exist and resolve SHAs from git
 
     // Get Head SHA
     const headCommit = await getCommit(repoPath, head);
