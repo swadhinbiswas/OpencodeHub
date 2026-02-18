@@ -65,6 +65,13 @@ Scope: `src/`, `cli/`, `packages/`, and existing audit docs.
 | Implemented (2026-02-18) | Migration detection endpoint integrated into PR impact scan | `src/lib/dependency-awareness.ts`, `src/pages/api/repos/[owner]/[repo]/pulls/[number]/impact.ts` |
 | Implemented (2026-02-18) | Terraform/IaC hook triggering via repo API and automation actions | `src/lib/iac-hooks.ts`, `src/pages/api/repos/[owner]/[repo]/iac/hooks.ts`, `src/lib/automations.ts`, `src/db/schema/automations.ts` |
 | Implemented (2026-02-18) | Cloud deploy hooks for AWS/GCP/Azure/Kubernetes exposed via repo API and automations | `src/lib/cloud-hooks.ts`, `src/pages/api/repos/[owner]/[repo]/cloud/deploy.ts`, `src/lib/automations.ts`, `src/db/schema/automations.ts` |
+| Implemented (2026-02-18) | Batch review comments now submitted atomically with server-side rollback safety | `src/pages/api/repos/[owner]/[repo]/pulls/[number]/reviews/batch.ts`, `src/components/pulls/PRConversation.tsx`, `tests/integration/review-batch-route.test.ts` |
+| Implemented (2026-02-18) | File-level path permissions enforced for PR comment create/edit/delete and batch review comments | `src/pages/api/repos/[owner]/[repo]/pulls/[number]/comments.ts`, `src/pages/api/repos/[owner]/[repo]/pulls/[number]/reviews/batch.ts`, `tests/integration/pr-comments-path-permissions.test.ts` |
+| Implemented (2026-02-18) | PR↔Issue linking parser upgraded for scoped refs and dedupe precedence | `src/lib/pr-issue-linking.ts`, `tests/unit/pr-issue-linking.test.ts` |
+| Implemented (2026-02-18) | Multi-reviewer merge gate now enforces explicit required-reviewer approvals | `src/lib/merge-queue.ts`, `tests/unit/merge-gates.test.ts` |
+| Implemented (2026-02-18) | AI provider set expanded with free/open options and external agent mode | `src/lib/ai/openrouter.ts`, `src/lib/ai/together.ts`, `src/lib/ai/google.ts`, `src/lib/ai/external-agent.ts`, `src/pages/settings/ai.astro`, `src/pages/api/user/ai-config.ts` |
+| Implemented (2026-02-18) | External agent async callback endpoint persists final AI findings | `src/pages/api/repos/[owner]/[repo]/pulls/[number]/ai-review/callback.ts`, `src/lib/ai-review.ts`, `tests/integration/ai-review-callback-route.test.ts` |
+| Implemented (2026-02-18) | Digest scheduling hardened with timezone/day handling and cron coverage | `src/lib/chat-notifications.ts`, `src/pages/api/user/notification-preferences.ts`, `src/pages/settings/notification-preferences.astro`, `tests/unit/digest-scheduler.test.ts`, `tests/unit/notification-digest-cron.test.ts` |
 
 ## D) Existing Broad Audit (High-Level)
 

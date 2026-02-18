@@ -1,7 +1,7 @@
 # OpenCodeHub Feature Audit & Implementation Plan
 **Audit Date:** February 6, 2026
 **Total Features Analyzed:** 122
-**Status:** ✅ Implemented: 47 | ⚠️ Partial: 29 | ❌ Missing: 46
+**Status:** Reconciliation in progress (the February 6, 2026 aggregate counts are outdated after subsequent implementations).
 
 ## Feature Matrix Summary
 
@@ -35,7 +35,7 @@
 | Branch protection rules | ✅ | Schema + UI + API in place |
 | Repository templates | ⚠️ | Not fully implemented |
 | Repository Wiki | ✅ | Implemented (Phase 8) |
-| File-level permissions | ❌ | Not implemented |
+| File-level permissions | ⚠️ | Path-scoped enforcement now covers PR comment create/edit/delete and batch-review comment submission; broader endpoint coverage remains |
 | Commit signing (GPG) | ✅ | GPG key management UI exists |
 | Commit signing (SSH) | ✅ | SSH key management UI exists |
 
@@ -48,41 +48,41 @@
 | Stack rebase & auto-update | ⚠️ | Partial - manual rebase exists |
 | Stack-level approvals | ⚠️ | Basic - individual PR approvals only |
 | Bulk merge (merge stacks) | ⚠️ | Via merge queue, not explicit bulk action |
-| Custom PR states | ❌ | Only standard states (open/closed/merged/draft) |
-| Required reviewers per state | ❌ | Not implemented |
+| Custom PR states | ⚠️ | Schema exists (`pr-states`), end-to-end workflow adoption is incomplete |
+| Required reviewers per state | ⚠️ | Basic reviewer requirements exist; full state-specific enforcement remains incomplete |
 | PR merge queues | ✅ | `merge-queue.ts` (590+ lines) |
 | Conflict detection before merge | ✅ | `mergeable` field in PR schema |
 | Auto-merge rules | ⚠️ | Basic via automations, incomplete |
 | Draft PRs | ✅ | Schema supports `isDraft` field |
 | PR labels | ✅ | Full implementation with schema |
 | PR assignees | ✅ | Full implementation with schema |
-| PR checks | ❌ | Schema exists, CI integration incomplete |
+| PR checks | ⚠️ | Basic checks exist, but full CI provider parity is incomplete |
 
 ## 3. Code Review
 | Feature | Status | Implementation Notes |
 | :--- | :---: | :--- |
 | Inline code comments | ✅ | `pullRequestComments` schema with line/position |
 | Threaded discussions | ✅ | Reply threading via `replyToId` |
-| Suggested changes | ❌ | Not implemented |
-| Batch comments | ⚠️ | Schema supports, UI may be incomplete |
-| Code owner enforcement | ⚠️ | TODO in `automations.ts`, CODEOWNERS not implemented |
-| Review templates | ❌ | Not implemented |
+| Suggested changes | ✅ | Suggestion creation + apply endpoints implemented (`pulls/[pullNumber]/suggestions/apply.ts`) |
+| Batch comments | ✅ | Atomic batch review submission endpoint + PR conversation UI integration (`reviews/batch`) |
+| Code owner enforcement | ⚠️ | Enforced in PR state transitions and merge queue (`pr-codeowner.ts`); branch/rules UX still maturing |
+| Review templates | ✅ | UI + API + defaults implemented (`review-templates`) |
 | Required approval policies | ✅ | Via branch protection rules |
-| Partial file approvals | ❌ | Not implemented |
-| Multi-reviewer rules | ⚠️ | Basic - required reviewer count only |
-| AI code review | ✅ | `ai-review.ts` with OpenAI/Anthropic |
+| Partial file approvals | ✅ | Implemented via API + PR UI (`partial-file-approvals`, `file-approvals.ts`) |
+| Multi-reviewer rules | ⚠️ | Merge gates now enforce explicit required-reviewer approvals; broader state/rule UX still maturing |
+| AI code review | ✅ | Multi-provider adapters (OpenAI/Anthropic/Groq/Bytez/OpenRouter/Together/Google) + external-agent async callback flow |
 
 ## 4. Issues & Planning
 | Feature | Status | Implementation Notes |
 | :--- | :---: | :--- |
 | Issue tracking | ✅ | Full schema + UI for issues |
 | Epics and sub-tasks | ✅ | Implemented (Phase 8) |
-| Custom issue fields | ❌ | Not implemented |
-| Issue workflows | ❌ | Not implemented |
+| Custom issue fields | ✅ | Library + issue integration + settings API (`settings/fields`) now implemented |
+| Issue workflows | ✅ | Repository issue statuses workflow endpoints implemented |
 | Milestones & roadmaps | ✅ | `milestones` schema + UI |
 | Kanban boards | ✅ | Implemented |
-| PR ↔ Issue linking | ⚠️ | Basic via text parsing only |
-| Cross-repo issues | ❌ | Not implemented |
+| PR ↔ Issue linking | ✅ | Explicit link/unlink APIs + UI + auto-link parsing (including scoped refs like `owner/repo#123`) |
+| Cross-repo issues | ✅ | Cross-repo link parsing/storage/API implemented |
 | Labels | ✅ | Full implementation |
 | Assignees | ✅ | Full implementation |
 
@@ -90,64 +90,64 @@
 | Feature | Status | Implementation Notes |
 | :--- | :---: | :--- |
 | Native CI pipeline support | ✅ | `pipeline.ts` - 1066 lines, GitHub Actions compatible |
-| External CI integration | ⚠️ | Webhook based, no official integrations |
+| External CI integration | ⚠️ | Provider-aware integration APIs and normalized status ingestion are implemented; UX and provider-specific setup polish are still maturing |
 | Self-hosted runners | ✅ | `runner/` with Docker executor |
 | Secrets management | ✅ | Schema + UI for repo/org secrets |
-| Merge checks & gates | ⚠️ | Via branch protection, incomplete CI gates |
-| Automation rules engine | ⚠️ | `automations.ts` exists, has TODOs |
+| Merge checks & gates | ⚠️ | Required status checks + external CI gate readiness enforced in merge queue; broader policy UX remains |
+| Automation rules engine | ⚠️ | Conditions/actions active with retry + dead-letter audit logging; advanced orchestration still maturing |
 | Webhooks | ✅ | Full implementation with UI |
-| Workflow templates | ❌ | Not implemented |
+| Workflow templates | ⚠️ | Template library exists, broader UX/workflow adoption still maturing |
 
 ## 6. Third-Party Integrations
 ### 6.1 Code Quality & Coverage
 | Feature | Status | Notes |
 | :--- | :---: | :--- |
-| Codecov | ❌ | Not implemented |
-| Coveralls | ❌ | Not implemented |
-| SonarQube | ❌ | Not implemented |
+| Codecov | ⚠️ | Coverage webhook processing + API configuration implemented; deeper workflow/UI automation is still partial |
+| Coveralls | ⚠️ | Coverage webhook processing + API configuration implemented; deeper workflow/UI automation is still partial |
+| SonarQube | ⚠️ | Integration and quality-gate ingestion implemented, enterprise-depth coverage still partial |
 | Snyk | ⚠️ | Trivy-based scanning exists |
 
 ### 6.2 CI Providers
 | Feature | Status | Notes |
 | :--- | :---: | :--- |
 | GitHub Actions | ✅ | Compatible workflow format |
-| GitLab CI | ❌ | Not supported |
-| CircleCI | ❌ | Not supported |
-| Buildkite | ❌ | Not supported |
-| Jenkins | ❌ | Not supported |
+| GitLab CI | ⚠️ | External CI provider mapping + status normalization + repo integration APIs implemented |
+| CircleCI | ⚠️ | External CI provider mapping + status normalization + repo integration APIs implemented |
+| Buildkite | ⚠️ | External CI provider mapping + status normalization + repo integration APIs implemented |
+| Jenkins | ⚠️ | External CI provider mapping + status normalization + repo integration APIs implemented |
 
 ### 6.3 Issue Tracking
 | Feature | Status | Notes |
 | :--- | :---: | :--- |
 | Jira | ⚠️ | Basic integration implemented (`jira.ts`) |
-| Linear | ❌ | Not implemented |
-| Trello | ❌ | Not implemented |
-| ClickUp | ❌ | Not implemented |
+| Linear | ⚠️ | Provider integration + repo config/webhook APIs implemented; workflow/UI depth can expand |
+| Trello | ⚠️ | Provider integration + repo config/webhook APIs implemented; workflow/UI depth can expand |
+| ClickUp | ⚠️ | Provider integration + repo config/webhook APIs implemented; workflow/UI depth can expand |
 
 ### 6.4 Chat & Notifications
 | Feature | Status | Notes |
 | :--- | :---: | :--- |
 | Slack | ✅ | `slack-notifications.ts` + schema |
-| Microsoft Teams | ❌ | Not implemented |
-| Discord | ❌ | Not implemented |
+| Microsoft Teams | ✅ | Teams webhook integration implemented (`integrations/teams.ts`) |
+| Discord | ✅ | Discord webhook integration implemented (`integrations/discord.ts`) |
 | Email notifications | ⚠️ | `email.ts` exists, needs enhancement |
 
 ### 6.5 Cloud & Infrastructure
 | Feature | Status | Notes |
 | :--- | :---: | :--- |
-| AWS | ❌ | No direct integration |
-| Google Cloud | ❌ | No direct integration |
-| Microsoft Azure | ❌ | No direct integration |
-| Kubernetes-native | ❌ | Docker only currently |
-| Terraform/IaC hooks | ❌ | Not implemented |
+| AWS | ⚠️ | Provider integration and deploy hooks implemented; broader service coverage can expand |
+| Google Cloud | ⚠️ | Cloud Run deployment integration and hooks implemented |
+| Microsoft Azure | ⚠️ | App Service deployment integration and hooks implemented |
+| Kubernetes-native | ⚠️ | Baseline Helm chart added (`deploy/helm/opencodehub`); operator-grade lifecycle management remains |
+| Terraform/IaC hooks | ⚠️ | Terraform hook triggering implemented via automation + repository API; broader IaC providers can be expanded |
 
 ## 7. Dependency & Impact Awareness
 | Feature | Status | Implementation Notes |
 | :--- | :---: | :--- |
 | PR dependency visualization | ✅ | Stack visualization in `stacks.ts` |
-| Cross-repo change sets | ❌ | Not implemented |
-| Breaking-change detection | ❌ | Not implemented |
-| Database migration detection | ❌ | Not implemented |
+| Cross-repo change sets | ⚠️ | Implemented via change-set schema/library and API endpoints; UI workflow still limited |
+| Breaking-change detection | ⚠️ | Implemented with PR diff/file heuristics + persistence; semantic precision can be improved |
+| Database migration detection | ⚠️ | Implemented from changed-file pattern detection + persistence; deeper SQL semantic analysis pending |
 | API change awareness | ⚠️ | AI review can detect, no dedicated system |
 
 ## 8. Security
@@ -157,9 +157,9 @@
 | Organization & team management | ✅ | Schema + UI implemented |
 | SSO (OIDC / SAML) | ✅ | `oidc.ts` implements OIDC fully, SAML missing |
 | MFA | ✅ | TOTP implemented (`src/pages/api/user/settings/2fa.ts`) |
-| Secret scanning | ⚠️ | TODO in codebase |
+| Secret scanning | ⚠️ | Scan trigger + result APIs implemented with paginated vulnerabilities endpoint; policy workflows still limited |
 | Dependency vulnerability scanning | ✅ | Trivy integration in `security.ts` |
-| License compliance scanning | ❌ | Not implemented |
+| License compliance scanning | ⚠️ | Trivy license checks integrated in `security.ts`; policy/allowlist workflows still limited |
 | Audit logs | ✅ | `audit.astro` + schema |
 | Session management | ✅ | JWT + session handling |
 | Rate limiting | ✅ | Implemented with Redis backend (`src/middleware/rate-limit.ts`) |
@@ -173,17 +173,17 @@
 | Review latency tracking | ✅ | Metrics schema exists |
 | Merge frequency metrics | ⚠️ | Basic tracking |
 | Developer workload insights | ⚠️ | Basic - needs enhancement |
-| Hotspot file detection | ❌ | Not implemented |
+| Hotspot file detection | ✅ | Implemented in analytics library + repository API endpoint |
 | Delivery performance dashboards | ✅ | `insights.astro` pages |
-| Export metrics | ❌ | Not implemented |
-| Custom dashboards | ❌ | Not implemented |
+| Export metrics | ✅ | JSON/CSV/Prometheus export implemented (`analytics/export.ts`) |
+| Custom dashboards | ✅ | Dashboard CRUD + widget APIs implemented (`api/analytics/dashboards`) |
 
 ## 10. Notifications & Collaboration
 | Feature | Status | Implementation Notes |
 | :--- | :---: | :--- |
 | Smart notifications | ⚠️ | Basic notifications, no AI prioritization |
 | Blocking alerts | ⚠️ | Basic via inbox sections |
-| Daily/weekly digests | ❌ | Not implemented |
+| Daily/weekly digests | ⚠️ | Scheduler now timezone-aware with cron endpoint + tests; delivery infrastructure hardening still pending |
 | Mentions & subscriptions | ✅ | Implemented |
 | PR-level discussions | ✅ | Full threaded comments |
 | Activity feeds | ✅ | Dashboard activity feed |
@@ -199,17 +199,17 @@
 | CLI | ✅ | `cli/` package - 21+ commands |
 | Plugin/extension system | ⚠️ | `plugins.ts` infrastructure exists, but basic |
 | Webhook events | ✅ | Full implementation |
-| API documentation | ⚠️ | OpenAPI spec generator exists (`openapi.json.ts`) |
+| API documentation | ⚠️ | OpenAPI includes AI callback and batch review routes; broader endpoint parity still incomplete |
 
 ## 12. Self-Hosted & Deployment
 | Feature | Status | Implementation Notes |
 | :--- | :---: | :--- |
 | Docker deployment | ✅ | Dockerfile + docker-compose |
-| Kubernetes deployment | ⚠️ | No official Helm chart |
-| Horizontal scaling | ⚠️ | Merge queue/rate limiting not distributed-safe |
-| Backup & restore tools | ❌ | Not implemented |
+| Kubernetes deployment | ⚠️ | Official baseline Helm chart now included under `deploy/helm/opencodehub` |
+| Horizontal scaling | ⚠️ | Production now requires Redis for distributed locks/rate-limit; broader queue/load validation still pending |
+| Backup & restore tools | ✅ | Backup script + admin sync/restore endpoints exist |
 | Config-as-code | ✅ | Environment variables |
-| Offline/air-gapped mode | ❌ | Not tested/documented |
+| Offline/air-gapped mode | ⚠️ | Runtime guardrails + env flag + docs implemented; full offline integration test matrix still pending |
 | Multi-tenant mode | ✅ | Organization-based multi-tenancy |
 
 ---
