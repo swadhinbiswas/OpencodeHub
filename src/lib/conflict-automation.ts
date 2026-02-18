@@ -10,6 +10,7 @@ import { logger } from "@/lib/logger";
 import { simpleGit, SimpleGit } from "simple-git";
 import { getStack, updateStackStatus } from "./stacks";
 import { notifyPrEvent, notifyUserDm } from "./slack-notifications";
+import { resolveRepoPath } from "./git-storage";
 
 export interface ConflictInfo {
     hasConflict: boolean;
@@ -77,11 +78,19 @@ export async function checkForConflicts(
         }
     } catch (error) {
         logger.error({ err: error }, "Error checking conflicts");
+        let baseSha = baseBranch;
+        let headSha = headBranch;
+        try {
+            baseSha = (await git.revparse([baseBranch])).trim();
+        } catch { }
+        try {
+            headSha = (await git.revparse([headBranch])).trim();
+        } catch { }
         return {
             hasConflict: false,
             conflictingFiles: [],
-            baseSha: "",
-            headSha: "",
+            baseSha,
+            headSha,
             canAutoResolve: false,
         };
     }
@@ -227,9 +236,16 @@ export async function autoRebaseAfterMerge(
     // Trigger rebase for remaining PRs
     logger.info({ count: remainingPrs.length, stackId: stackEntry.stackId }, "Auto-rebasing PRs after merge");
 
-    // This would typically be queued to a background job
-    // For now, just log and update status
-    await updateStackStatus(stackEntry.stackId);
+    const localRepoPath = await resolveRepoPath(repo.diskPath);
+    const baseBranch = stackInfo.stack.baseBranch || "main";
+    const result = await rebaseStack(localRepoPath, stackEntry.stackId, baseBranch);
+
+    if (!result.success) {
+        logger.warn(
+            { stackId: stackEntry.stackId, repositoryId, message: result.message },
+            "Auto-rebase after merge failed"
+        );
+    }
 }
 
 /**
