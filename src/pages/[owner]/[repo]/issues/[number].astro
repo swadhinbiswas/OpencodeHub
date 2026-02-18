@@ -4,7 +4,7 @@ import IssueDetail from "@/components/issues/IssueDetail";
 import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { renderMarkdown } from "@/lib/markdown";
-import { canWriteRepo } from "@/lib/permissions";
+import { canReadRepo, canWriteRepo } from "@/lib/permissions";
 import { and, eq } from "drizzle-orm";
 
 const { owner: ownerName, repo: repoName, number } = Astro.params;
@@ -29,6 +29,10 @@ const repoData = await db.query.repositories.findFirst({
 
 if (!repoData) return Astro.redirect("/404");
 
+const currentUser = Astro.locals.user;
+const hasAccess = await canReadRepo(currentUser?.id, repoData);
+if (!hasAccess) return Astro.redirect("/404");
+
 // 2. Fetch Issue
 const issue = await db.query.issues.findFirst({
   where: and(
@@ -37,6 +41,7 @@ const issue = await db.query.issues.findFirst({
   ),
   with: {
     author: true,
+    assignee: true,
     parent: true,
     children: true,
     status: true,
@@ -45,10 +50,40 @@ const issue = await db.query.issues.findFirst({
 
 if (!issue) return Astro.redirect("/404");
 
-const currentUser = Astro.locals.user;
 const canLink = await canWriteRepo(currentUser?.id, repoData);
 
 const bodyHtml = await renderMarkdown(issue.body || "");
+
+const issueLabels = await db.query.issueLabels.findMany({
+  where: eq(schema.issueLabels.issueId, issue.id),
+  with: {
+    label: true,
+  },
+});
+
+const issueAssignees = await db
+  .select({
+    userId: schema.issueAssignees.userId,
+    username: schema.users.username,
+    avatarUrl: schema.users.avatarUrl,
+  })
+  .from(schema.issueAssignees)
+  .innerJoin(schema.users, eq(schema.issueAssignees.userId, schema.users.id))
+  .where(eq(schema.issueAssignees.issueId, issue.id));
+
+const assigneeMap = new Map<string, { username: string; avatarUrl?: string }>();
+if (issue.assigneeId && issue.assignee) {
+  assigneeMap.set(issue.assigneeId, {
+    username: issue.assignee.username,
+    avatarUrl: issue.assignee.avatarUrl || undefined,
+  });
+}
+for (const assignee of issueAssignees) {
+  assigneeMap.set(assignee.userId, {
+    username: assignee.username,
+    avatarUrl: assignee.avatarUrl || undefined,
+  });
+}
 
 const repoForHeader = {
   ...repoData,
@@ -77,8 +112,13 @@ const formattedIssue = {
     username: issue.author.username,
     avatarUrl: issue.author.avatarUrl || undefined,
   },
-  assignees: [], // TODO: Add assignees when schema supports it
-  labels: [], // TODO: Add labels when schema relation is fixed
+  assignees: Array.from(assigneeMap.values()),
+  labels: issueLabels
+    .filter((il) => il.label)
+    .map((il) => ({
+      name: il.label!.name,
+      color: il.label!.color,
+    })),
   parent: issue.parent
     ? {
         number: issue.parent.number,
