@@ -192,6 +192,18 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request }) => {
         return unauthorized("Not your comment");
     }
 
+    if (comment.path) {
+        const permission = await checkPathPermissions(
+            tokenPayload.userId,
+            comment.pullRequest.repositoryId,
+            [comment.path],
+            "write"
+        );
+        if (!permission.allowed) {
+            return forbidden(permission.reason || "Insufficient path permissions for this comment");
+        }
+    }
+
     // Update
     await db
         .update(schema.pullRequestComments)
@@ -234,6 +246,18 @@ export const DELETE: APIRoute = withErrorHandler(async ({ params, request }) => 
     // Check ownership
     if (comment.authorId !== tokenPayload.userId && !tokenPayload.isAdmin) {
         return unauthorized("Not authorized");
+    }
+
+    if (comment.path && !tokenPayload.isAdmin) {
+        const permission = await checkPathPermissions(
+            tokenPayload.userId,
+            comment.pullRequest.repositoryId,
+            [comment.path],
+            "write"
+        );
+        if (!permission.allowed) {
+            return forbidden(permission.reason || "Insufficient path permissions for this comment");
+        }
     }
 
     // Delete
