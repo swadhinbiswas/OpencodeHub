@@ -1,11 +1,10 @@
-// @ts-ignore
-import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { sendDiscordMessage, createPREmbed } from "./discord";
 import { sendTeamsMessage, createPRCard } from "./teams";
 
 // Mock fetch globally
 const originalFetch = global.fetch;
-const mockFetch = mock((url: string | Request | URL, init?: RequestInit) => {
+const mockFetch = vi.fn((url: string | Request | URL, init?: RequestInit) => {
     return Promise.resolve(new Response("OK", { status: 200 }));
 });
 
@@ -45,7 +44,7 @@ describe("Webhook Integrations", () => {
         });
 
         it("should handle failures gracefully", async () => {
-            global.fetch = mock(() => Promise.resolve(new Response("Error", { status: 500 })));
+            global.fetch = vi.fn(() => Promise.resolve(new Response("Error", { status: 500 })));
 
             const success = await sendDiscordMessage("https://discord.com/api/webhooks/xyz", {});
             expect(success).toBe(false);
