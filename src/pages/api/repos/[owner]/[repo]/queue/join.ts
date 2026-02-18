@@ -1,11 +1,11 @@
 import { getDatabase, schema } from "@/db";
 import { error, success, unauthorized } from "@/lib/api";
 import { withErrorHandler } from "@/lib/errors";
-import { queueWorker } from "@/lib/queue-worker";
+import { canWriteRepo } from "@/lib/permissions";
+import { addToMergeQueue, processNextInQueue } from "@/lib/merge-queue";
 import { and, eq } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { APIContext } from "astro";
-import { v4 as uuidv4 } from "uuid";
 
 export const POST = withErrorHandler(async ({ params, request, locals }: APIContext) => {
     const user = locals.user;
@@ -22,51 +22,50 @@ export const POST = withErrorHandler(async ({ params, request, locals }: APICont
 
     const db = getDatabase() as NodePgDatabase<typeof schema>;
 
-    // 1. Verify Repository
-    const repository = await db.query.repositories.findFirst({
-        where: and(eq(schema.repositories.name, repo!), eq(schema.repositories.ownerId, user.id)), // basic check, refine for orgs
-        with: { owner: true }
+    const ownerUser = await db.query.users.findFirst({
+        where: eq(schema.users.username, owner!),
     });
-
-    if (!repository || repository.owner.username !== owner) {
-        const repoByOwner = await db.query.repositories.findFirst({
-            where: eq(schema.repositories.name, repo!),
-            with: { owner: true }
-        });
-        if (!repoByOwner || repoByOwner.owner.username !== owner) {
-            return error("NOT_FOUND", "Repository not found", 404);
-        }
-        // Check basic permissions here...
+    if (!ownerUser) {
+        return error("NOT_FOUND", "Repository not found", 404);
     }
 
-    // 2. Add to Queue
-    const queueItem = {
-        id: uuidv4(),
-        repositoryId: repository!.id, // Need to fetch correct repo ID if permission check passes
-        pullRequestId,
-        status: "queued",
-        attemptCount: 0,
-        queuedAt: new Date(),
-    };
-
-    // Fix repo id fetching above or assume owner/repo is correct:
-    const targetRepo = await db.query.repositories.findFirst({
+    const repository = await db.query.repositories.findFirst({
         where: and(
+            eq(schema.repositories.ownerId, ownerUser.id),
             eq(schema.repositories.name, repo!),
-            eq(schema.repositories.ownerId, (await db.query.users.findFirst({ where: eq(schema.users.username, owner!) }))!.id)
-        )
+        ),
+    });
+    if (!repository) {
+        return error("NOT_FOUND", "Repository not found", 404);
+    }
+
+    if (!(await canWriteRepo(user.id, repository, { isAdmin: user.isAdmin ?? undefined }))) {
+        return error("FORBIDDEN", "Access denied", 403);
+    }
+
+    const pr = await db.query.pullRequests.findFirst({
+        where: and(
+            eq(schema.pullRequests.id, pullRequestId),
+            eq(schema.pullRequests.repositoryId, repository.id),
+        ),
+    });
+    if (!pr) {
+        return error("NOT_FOUND", "Pull request not found", 404);
+    }
+    if (pr.state !== "open" || pr.isMerged) {
+        return error("BAD_REQUEST", "Pull request is not open", 400);
+    }
+
+    const queueItem = await addToMergeQueue({
+        repositoryId: repository.id,
+        pullRequestId,
+        addedById: user.id,
     });
 
-    if (!targetRepo) return error("NOT_FOUND", "Repo not found", 404);
-
-    await db.insert(schema.mergeQueueItems).values({
-        ...queueItem,
-        repositoryId: targetRepo.id
-    });
-
-    // 3. Trigger Worker (Async)
-    // In production, this might be a cron or event queue. For now, we trigger immediately.
-    queueWorker.processQueue(targetRepo.id).catch(console.error);
+    // Kick processing asynchronously, but do not block request lifecycle.
+    setTimeout(() => {
+        processNextInQueue(repository.id).catch(console.error);
+    }, 0);
 
     return success({ message: "Added to merge queue", queueId: queueItem.id });
 });
