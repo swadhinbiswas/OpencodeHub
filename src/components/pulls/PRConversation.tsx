@@ -106,29 +106,25 @@ export default function PRConversation({ owner, repo, pullNumber, currentUser }:
         setIsReviewSubmitting(true);
 
         try {
-            for (const body of pendingComments) {
-                const res = await fetch(`/api/repos/${owner}/${repo}/pulls/${pullNumber}/comments`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ body })
-                });
-
-                if (!res.ok) {
-                    throw new Error("Failed to submit review comments");
-                }
-            }
-
-            const reviewRes = await fetch(`/api/repos/${owner}/${repo}/pulls/${pullNumber}/reviews`, {
+            const reviewRes = await fetch(`/api/repos/${owner}/${repo}/pulls/${pullNumber}/reviews/batch`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     state: "COMMENTED",
-                    body: reviewSummary || "Review submitted"
+                    body: reviewSummary || "Review submitted",
+                    comments: pendingComments.map((body) => ({ body })),
                 })
             });
 
             if (!reviewRes.ok) {
-                throw new Error("Failed to submit review");
+                let message = "Failed to submit review";
+                try {
+                    const payload = await reviewRes.json();
+                    message = payload?.error?.message || payload?.message || message;
+                } catch {
+                    // best effort parse only
+                }
+                throw new Error(message);
             }
 
             setPendingComments([]);
