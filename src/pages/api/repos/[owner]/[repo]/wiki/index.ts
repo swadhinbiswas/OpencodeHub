@@ -19,8 +19,6 @@ export const GET: APIRoute = async ({ request, params }) => {
         const repoData = await getRepoAndUser(request, owner, repo);
 
         if (!repoData) return notFound("Repository not found");
-        // Check read access (public repos are readable)
-        if (repoData.permission === "none") return notFound("Repository not found");
 
         const pages = await db.query.wikiPages.findMany({
             where: eq(wikiPages.repositoryId, repoData.repository.id),
