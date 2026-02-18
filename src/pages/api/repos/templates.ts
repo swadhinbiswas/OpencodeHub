@@ -16,13 +16,14 @@ export const GET: APIRoute = withErrorHandler(async ({ request }) => {
     if (!tokenPayload) {
         conditions.push(eq(repositories.visibility, "public"));
     } else if (!tokenPayload.isAdmin) {
-        conditions.push(
-            or(
-                eq(repositories.visibility, "public"),
-                eq(repositories.visibility, "internal"),
-                eq(repositories.ownerId, tokenPayload.userId)
-            )
+        const visibilityOrOwner = or(
+            eq(repositories.visibility, "public"),
+            eq(repositories.visibility, "internal"),
+            eq(repositories.ownerId, tokenPayload.userId)
         );
+        if (visibilityOrOwner) {
+            conditions.push(visibilityOrOwner);
+        }
     }
 
     const templates = await db.query.repositories.findMany({
