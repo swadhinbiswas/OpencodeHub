@@ -23,7 +23,7 @@ export const PATCH: APIRoute = async ({ request, params }) => {
 
         // Check repo access
         const repoData = await getRepoAndUser(request, owner, repo);
-        if (!repoData || repoData.permission === "none") return notFound("Repository not found");
+        if (!repoData) return notFound("Repository not found");
 
         if (repoData.permission === "read") return unauthorized("Write access required");
 
