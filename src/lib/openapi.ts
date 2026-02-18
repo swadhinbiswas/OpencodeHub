@@ -57,6 +57,71 @@ export const openApiSpec = {
                     owner: { $ref: "#/components/schemas/User" },
                 },
             },
+            ReviewSuggestion: {
+                type: "object",
+                properties: {
+                    path: { type: "string" },
+                    line: { type: "integer", nullable: true },
+                    endLine: { type: "integer", nullable: true },
+                    severity: { type: "string", enum: ["info", "warning", "error", "critical"] },
+                    type: { type: "string", enum: ["bug", "security", "performance", "style", "documentation", "suggestion"] },
+                    title: { type: "string" },
+                    message: { type: "string" },
+                    suggestedFix: { type: "string", nullable: true },
+                    explanation: { type: "string", nullable: true },
+                },
+            },
+            AIBatchReviewRequest: {
+                type: "object",
+                properties: {
+                    state: { type: "string", enum: ["APPROVED", "CHANGES_REQUESTED", "COMMENTED"], default: "COMMENTED" },
+                    body: { type: "string" },
+                    commitSha: { type: "string" },
+                    comments: {
+                        type: "array",
+                        minItems: 1,
+                        items: {
+                            type: "object",
+                            properties: {
+                                body: { type: "string" },
+                                path: { type: "string" },
+                                line: { type: "integer" },
+                                side: { type: "string", enum: ["LEFT", "RIGHT"] },
+                                startLine: { type: "integer" },
+                                commitSha: { type: "string" },
+                                inReplyToId: { type: "string" },
+                                suggestedChange: { type: "string" },
+                            },
+                            required: ["body"],
+                        },
+                    },
+                },
+                required: ["comments"],
+            },
+            AIReviewCallbackRequest: {
+                type: "object",
+                properties: {
+                    reviewId: { type: "string" },
+                    status: { type: "string", enum: ["completed", "failed"], default: "completed" },
+                    summary: { type: "string" },
+                    overallSeverity: { type: "string", enum: ["info", "warning", "error", "critical"] },
+                    suggestions: {
+                        type: "array",
+                        items: { $ref: "#/components/schemas/ReviewSuggestion" },
+                    },
+                    usage: {
+                        type: "object",
+                        properties: {
+                            inputTokens: { type: "integer" },
+                            outputTokens: { type: "integer" },
+                            totalTokens: { type: "integer" },
+                        },
+                    },
+                    errorMessage: { type: "string" },
+                    rawResponse: { type: "object" },
+                },
+                required: ["reviewId"],
+            },
         },
     },
     paths: {
@@ -201,6 +266,150 @@ export const openApiSpec = {
                             },
                         },
                     },
+                },
+            },
+        },
+        "/repos/{owner}/{repo}/pulls/{number}/reviews/batch": {
+            post: {
+                tags: ["Pull Requests"],
+                summary: "Submit batch review with comments",
+                description: "Atomically submit a PR review and multiple review comments in one request.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "number", in: "path", required: true, schema: { type: "integer" } },
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/AIBatchReviewRequest" },
+                        },
+                    },
+                },
+                responses: {
+                    200: {
+                        description: "Batch review submitted",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    type: "object",
+                                    properties: {
+                                        success: { type: "boolean", example: true },
+                                        data: {
+                                            type: "object",
+                                            properties: {
+                                                id: { type: "string" },
+                                                state: { type: "string" },
+                                                commentCount: { type: "integer" },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/repos/{owner}/{repo}/pulls/{number}/ai-review/callback": {
+            post: {
+                tags: ["AI Review"],
+                summary: "Receive external AI agent callback",
+                description: "Authenticated callback endpoint for external agents (CodeRabbit-like) to finalize async AI reviews.",
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "number", in: "path", required: true, schema: { type: "integer" } },
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/AIReviewCallbackRequest" },
+                        },
+                    },
+                },
+                responses: {
+                    200: {
+                        description: "Callback processed",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    type: "object",
+                                    properties: {
+                                        success: { type: "boolean", example: true },
+                                        data: {
+                                            type: "object",
+                                            properties: {
+                                                reviewId: { type: "string" },
+                                                status: { type: "string" },
+                                                suggestionsCount: { type: "integer" },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    401: { description: "Unauthorized callback", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Review target not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/user/ai-config": {
+            get: {
+                tags: ["AI Review"],
+                summary: "Get current user's AI config",
+                security: [{ bearerAuth: [] }],
+                responses: {
+                    200: { description: "AI config returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+            post: {
+                tags: ["AI Review"],
+                summary: "Update current user's AI config",
+                security: [{ bearerAuth: [] }],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    provider: {
+                                        type: "string",
+                                        enum: ["openai", "anthropic", "groq", "bytez", "openrouter", "together", "google", "external_agent", "local"],
+                                    },
+                                    model: { type: "string" },
+                                    externalAgentWebhookUrl: { type: "string", format: "uri" },
+                                    apiKeys: {
+                                        type: "object",
+                                        properties: {
+                                            openai: { type: "string" },
+                                            anthropic: { type: "string" },
+                                            groq: { type: "string" },
+                                            bytez: { type: "string" },
+                                            openrouter: { type: "string" },
+                                            together: { type: "string" },
+                                            google: { type: "string" },
+                                            externalAgent: { type: "string" },
+                                        },
+                                    },
+                                },
+                                required: ["provider"],
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    200: { description: "AI config updated" },
+                    400: { description: "Invalid provider or payload", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                 },
             },
         },
