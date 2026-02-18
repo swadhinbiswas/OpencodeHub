@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 import { getDatabase, schema } from "@/db";
+import { canReadRepo } from "@/lib/permissions";
 import { eq, and } from "drizzle-orm";
 
 const { owner: ownerName, repo: repoName } = Astro.params;
@@ -36,7 +37,11 @@ if (!currentUser) {
   return Astro.redirect(`/login?redirect=${Astro.url.pathname}`);
 }
 
-// TODO: Check permissions (can user create issue?)
+// Check permissions
+const hasAccess = await canReadRepo(currentUser.id, repoData);
+if (!hasAccess) {
+  return Astro.redirect("/404");
+}
 
 const repoForHeader = {
   ...repoData,
