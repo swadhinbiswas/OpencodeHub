@@ -25,9 +25,15 @@ let aiConfig: PublicAIConfig = {
     model: "gpt-4-turbo",
     apiKeys: {
         openai: { isSet: false },
+        anthropic: { isSet: false },
         groq: { isSet: false },
         bytez: { isSet: false },
+        openrouter: { isSet: false },
+        together: { isSet: false },
+        google: { isSet: false },
+        externalAgent: { isSet: false },
     },
+    externalAgentWebhookUrl: "",
 };
 
 try {
@@ -124,6 +130,36 @@ const sideNav = [
                                             >Bytez (Many Models)</option
                                         >
                                         <option
+                                            value="openrouter"
+                                            selected={aiConfig.provider ===
+                                                "openrouter"}
+                                            >OpenRouter (Free models)</option
+                                        >
+                                        <option
+                                            value="together"
+                                            selected={aiConfig.provider ===
+                                                "together"}
+                                            >Together AI (Open models)</option
+                                        >
+                                        <option
+                                            value="google"
+                                            selected={aiConfig.provider ===
+                                                "google"}
+                                            >Google Gemini</option
+                                        >
+                                        <option
+                                            value="external_agent"
+                                            selected={aiConfig.provider ===
+                                                "external_agent"}
+                                            >External Agent (CodeRabbit-like)</option
+                                        >
+                                        <option
+                                            value="anthropic"
+                                            selected={aiConfig.provider ===
+                                                "anthropic"}
+                                            >Anthropic</option
+                                        >
+                                        <option
                                             value="local"
                                             selected={aiConfig.provider ===
                                                 "local"}
@@ -143,7 +179,8 @@ const sideNav = [
                                     <p class="text-xs text-muted-foreground">
                                         Leave blank to use provider default.
                                         Recommended: `gpt-4-turbo` (OpenAI),
-                                        `llama3-70b-8192` (Groq).
+                                        `llama3-70b-8192` (Groq),
+                                        `meta-llama/llama-3.1-8b-instruct:free` (OpenRouter).
                                     </p>
                                 </div>
                             </CardContent>
@@ -167,6 +204,19 @@ const sideNav = [
                                         name="openaiKey"
                                         type="password"
                                         placeholder={aiConfig.apiKeys.openai.masked || "sk-..."}
+                                        value=""
+                                    />
+                                </div>
+
+                                <div class="space-y-2">
+                                    <Label htmlFor="anthropic-key"
+                                        >Anthropic API Key</Label
+                                    >
+                                    <Input
+                                        id="anthropic-key"
+                                        name="anthropicKey"
+                                        type="password"
+                                        placeholder={aiConfig.apiKeys.anthropic.masked || "sk-ant-..."}
                                         value=""
                                     />
                                 </div>
@@ -212,6 +262,71 @@ const sideNav = [
                                         >
                                     </p>
                                 </div>
+
+                                <div class="space-y-2">
+                                    <Label htmlFor="openrouter-key"
+                                        >OpenRouter API Key</Label
+                                    >
+                                    <Input
+                                        id="openrouter-key"
+                                        name="openrouterKey"
+                                        type="password"
+                                        placeholder={aiConfig.apiKeys.openrouter.masked || "sk-or-..."}
+                                        value=""
+                                    />
+                                </div>
+
+                                <div class="space-y-2">
+                                    <Label htmlFor="together-key"
+                                        >Together API Key</Label
+                                    >
+                                    <Input
+                                        id="together-key"
+                                        name="togetherKey"
+                                        type="password"
+                                        placeholder={aiConfig.apiKeys.together.masked || "together_..."}
+                                        value=""
+                                    />
+                                </div>
+
+                                <div class="space-y-2">
+                                    <Label htmlFor="google-key"
+                                        >Google AI API Key</Label
+                                    >
+                                    <Input
+                                        id="google-key"
+                                        name="googleKey"
+                                        type="password"
+                                        placeholder={aiConfig.apiKeys.google.masked || "AIza..."}
+                                        value=""
+                                    />
+                                </div>
+
+                                <div class="space-y-2">
+                                    <Label htmlFor="external-agent-webhook"
+                                        >External Agent Webhook URL</Label
+                                    >
+                                    <Input
+                                        id="external-agent-webhook"
+                                        name="externalAgentWebhookUrl"
+                                        type="url"
+                                        placeholder={aiConfig.externalAgentWebhookUrl || "https://your-agent/webhooks/review"}
+                                        value=""
+                                    />
+                                </div>
+
+                                <div class="space-y-2">
+                                    <Label htmlFor="external-agent-key"
+                                        >External Agent Token</Label
+                                    >
+                                    <Input
+                                        id="external-agent-key"
+                                        name="externalAgentKey"
+                                        type="password"
+                                        placeholder={aiConfig.apiKeys.externalAgent.masked || "agent_..."}
+                                        value=""
+                                    />
+                                </div>
                             </CardContent>
                         </Card>
 
@@ -239,9 +354,15 @@ const sideNav = [
             model: formData.get("model"),
             apiKeys: {
                 openai: formData.get("openaiKey"),
+                anthropic: formData.get("anthropicKey"),
                 groq: formData.get("groqKey"),
                 bytez: formData.get("bytezKey"),
+                openrouter: formData.get("openrouterKey"),
+                together: formData.get("togetherKey"),
+                google: formData.get("googleKey"),
+                externalAgent: formData.get("externalAgentKey"),
             },
+            externalAgentWebhookUrl: formData.get("externalAgentWebhookUrl"),
         };
 
         try {

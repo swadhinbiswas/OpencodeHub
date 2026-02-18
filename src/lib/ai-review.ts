@@ -15,7 +15,16 @@ import OpenAI from "openai";
 
 // Supported AI providers
 // Supported AI providers
-export type AIProvider = "openai" | "anthropic" | "groq" | "bytez" | "local";
+export type AIProvider =
+    | "openai"
+    | "anthropic"
+    | "groq"
+    | "bytez"
+    | "openrouter"
+    | "together"
+    | "google"
+    | "external_agent"
+    | "local";
 export type AIModel = string; // Allow any string for model flexibility
 
 export interface AIReviewConfig {
