@@ -5,12 +5,13 @@
 
 import type { APIRoute } from "astro";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getDatabase, schema } from "@/db";
 import { getUserFromRequest } from "@/lib/auth";
 import { withErrorHandler } from "@/lib/errors";
 import { parseBody, unauthorized, badRequest, notFound, forbidden, success } from "@/lib/api";
 import { applySuggestion, batchApplySuggestions, canApplySuggestions } from "@/lib/suggestions";
+import { checkPathPermissions } from "@/lib/path-scoping";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 
@@ -43,7 +44,10 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
     }
 
     const repository = await db.query.repositories.findFirst({
-        where: eq(schema.repositories.ownerId, repoOwner.id),
+        where: and(
+            eq(schema.repositories.ownerId, repoOwner.id),
+            eq(schema.repositories.name, repo as string)
+        ),
     });
 
     if (!repository) {
@@ -52,7 +56,10 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
 
     // Find PR
     const pr = await db.query.pullRequests.findFirst({
-        where: eq(schema.pullRequests.number, parseInt(pullNumber as string)),
+        where: and(
+            eq(schema.pullRequests.repositoryId, repository.id),
+            eq(schema.pullRequests.number, parseInt(pullNumber as string))
+        ),
     });
 
     if (!pr) {
@@ -75,6 +82,15 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
 
     if (invalidIds.length > 0) {
         return badRequest(`Invalid comment IDs: ${invalidIds.join(", ")}`);
+    }
+
+    const pathScopedComments = comments.filter(c => commentIds.includes(c.id) && !!c.path);
+    if (pathScopedComments.length > 0) {
+        const scopedPaths = [...new Set(pathScopedComments.map(c => c.path as string))];
+        const permission = await checkPathPermissions(user.userId, repository.id, scopedPaths, "write");
+        if (!permission.allowed) {
+            return forbidden(permission.reason || "Insufficient path permissions to apply these suggestions");
+        }
     }
 
     // Apply suggestions

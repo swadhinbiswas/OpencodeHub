@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import crypto from "crypto";
 
 const { fakeSchema } = vi.hoisted(() => ({
   fakeSchema: {
@@ -71,6 +72,20 @@ function makeDb() {
 
 async function readJson(response: Response): Promise<any> {
   return response.json();
+}
+
+function buildSignedHeaders(secret: string, payload: string, timestamp: string, eventId: string) {
+  const signature = `sha256=${crypto
+    .createHmac("sha256", secret)
+    .update(`${timestamp}.${payload}`)
+    .digest("hex")}`;
+
+  return {
+    "content-type": "application/json",
+    "x-opencodehub-timestamp": timestamp,
+    "x-opencodehub-signature": signature,
+    "x-opencodehub-event-id": eventId,
+  };
 }
 
 describe("AI review callback route", () => {
@@ -158,5 +173,76 @@ describe("AI review callback route", () => {
     expect(body?.data?.status).toBe("failed");
     expect(mockDb.__state.insertCalls.length).toBe(0);
     expect(mockDb.__state.updateCalls.length).toBe(1);
+  });
+
+  it("accepts signed callback requests without bearer token", async () => {
+    const payload = JSON.stringify({
+      reviewId: "review-1",
+      status: "completed",
+      suggestions: [],
+    });
+    const timestamp = String(Math.floor(Date.now() / 1000));
+
+    const response = await callbackPost({
+      params: { owner: "acme", repo: "demo", number: "42" },
+      request: new Request("http://localhost/api/repos/acme/demo/pulls/42/ai-review/callback", {
+        method: "POST",
+        headers: buildSignedHeaders("callback-secret", payload, timestamp, "evt-signed-1"),
+        body: payload,
+      }),
+    } as any);
+
+    expect(response.status).toBe(200);
+  });
+
+  it("rejects signed callback with stale timestamp", async () => {
+    const payload = JSON.stringify({
+      reviewId: "review-1",
+      status: "completed",
+      suggestions: [],
+    });
+    const staleTimestamp = String(Math.floor((Date.now() - 10 * 60 * 1000) / 1000));
+
+    const response = await callbackPost({
+      params: { owner: "acme", repo: "demo", number: "42" },
+      request: new Request("http://localhost/api/repos/acme/demo/pulls/42/ai-review/callback", {
+        method: "POST",
+        headers: buildSignedHeaders("callback-secret", payload, staleTimestamp, "evt-stale-1"),
+        body: payload,
+      }),
+    } as any);
+
+    expect(response.status).toBe(401);
+  });
+
+  it("rejects duplicate signed callback event ids", async () => {
+    const payload = JSON.stringify({
+      reviewId: "review-1",
+      status: "completed",
+      suggestions: [],
+    });
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const headers = buildSignedHeaders("callback-secret", payload, timestamp, "evt-dup-1");
+
+    const first = await callbackPost({
+      params: { owner: "acme", repo: "demo", number: "42" },
+      request: new Request("http://localhost/api/repos/acme/demo/pulls/42/ai-review/callback", {
+        method: "POST",
+        headers,
+        body: payload,
+      }),
+    } as any);
+
+    const second = await callbackPost({
+      params: { owner: "acme", repo: "demo", number: "42" },
+      request: new Request("http://localhost/api/repos/acme/demo/pulls/42/ai-review/callback", {
+        method: "POST",
+        headers,
+        body: payload,
+      }),
+    } as any);
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(401);
   });
 });

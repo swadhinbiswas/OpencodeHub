@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { and, eq } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import crypto from "crypto";
 import { z } from "zod";
 import { getDatabase, schema } from "@/db";
 import { withErrorHandler } from "@/lib/errors";
@@ -43,16 +44,92 @@ const callbackSchema = z.object({
   rawResponse: z.unknown().optional(),
 });
 
-function isAuthorized(request: Request): boolean {
+const CALLBACK_TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;
+const CALLBACK_EVENT_TTL_MS = 10 * 60 * 1000;
+const seenEventIds = new Map<string, number>();
+
+function timingSafeMatch(expected: string, actual: string): boolean {
+  const expectedBuffer = Buffer.from(expected);
+  const actualBuffer = Buffer.from(actual);
+  if (expectedBuffer.length !== actualBuffer.length) return false;
+  return crypto.timingSafeEqual(expectedBuffer, actualBuffer);
+}
+
+function parseTimestampToMs(timestampHeader: string | null): number | null {
+  if (!timestampHeader) return null;
+  const parsed = Number.parseInt(timestampHeader, 10);
+  if (!Number.isFinite(parsed)) return null;
+  // Accept unix seconds or milliseconds for compatibility.
+  return parsed < 1_000_000_000_000 ? parsed * 1000 : parsed;
+}
+
+function purgeExpiredEvents(now: number): void {
+  for (const [eventId, expiresAt] of seenEventIds.entries()) {
+    if (expiresAt <= now) {
+      seenEventIds.delete(eventId);
+    }
+  }
+}
+
+function registerEventId(eventId: string, now: number): boolean {
+  purgeExpiredEvents(now);
+  if (seenEventIds.has(eventId)) {
+    return false;
+  }
+  seenEventIds.set(eventId, now + CALLBACK_EVENT_TTL_MS);
+  return true;
+}
+
+function isAuthorized(request: Request, rawBody: string): { ok: boolean; reason?: string } {
   const expected =
     process.env.EXTERNAL_AGENT_CALLBACK_SECRET || process.env.INTERNAL_HOOK_SECRET;
-  if (!expected) return false;
-  return request.headers.get("Authorization") === `Bearer ${expected}`;
+  if (!expected) return { ok: false, reason: "Callback secret is not configured" };
+
+  const bearerAuth = request.headers.get("authorization");
+  if (bearerAuth === `Bearer ${expected}`) {
+    return { ok: true };
+  }
+
+  const timestampHeader = request.headers.get("x-opencodehub-timestamp");
+  const signatureHeader = request.headers.get("x-opencodehub-signature");
+  const eventId =
+    request.headers.get("x-opencodehub-event-id") || request.headers.get("x-request-id");
+
+  if (!timestampHeader || !signatureHeader || !eventId) {
+    return { ok: false, reason: "Missing callback authentication headers" };
+  }
+
+  const timestampMs = parseTimestampToMs(timestampHeader);
+  if (!timestampMs) {
+    return { ok: false, reason: "Invalid callback timestamp" };
+  }
+
+  const now = Date.now();
+  if (Math.abs(now - timestampMs) > CALLBACK_TIMESTAMP_TOLERANCE_MS) {
+    return { ok: false, reason: "Callback timestamp is outside allowed window" };
+  }
+
+  const signedPayload = `${timestampHeader}.${rawBody}`;
+  const expectedSignature = `sha256=${crypto
+    .createHmac("sha256", expected)
+    .update(signedPayload)
+    .digest("hex")}`;
+  if (!timingSafeMatch(expectedSignature, signatureHeader)) {
+    return { ok: false, reason: "Invalid callback signature" };
+  }
+
+  if (!registerEventId(eventId, now)) {
+    return { ok: false, reason: "Duplicate callback event" };
+  }
+
+  return { ok: true };
 }
 
 export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
-  if (!isAuthorized(request)) {
-    return unauthorized();
+  const rawBody = await request.text();
+  const auth = isAuthorized(request, rawBody);
+  if (!auth.ok) {
+    return unauthorized(auth.reason);
   }
 
   const { owner, repo: repoName, number } = params;
@@ -61,7 +138,14 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
     return badRequest("Invalid repository or pull request");
   }
 
-  const parsed = callbackSchema.safeParse(await request.json());
+  let payload: unknown;
+  try {
+    payload = JSON.parse(rawBody);
+  } catch {
+    return badRequest("Invalid callback payload");
+  }
+
+  const parsed = callbackSchema.safeParse(payload);
   if (!parsed.success) {
     return badRequest("Invalid callback payload");
   }
