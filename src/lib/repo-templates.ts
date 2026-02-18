@@ -3,13 +3,13 @@
  * Handle creating repositories from templates
  */
 
+import crypto from "node:crypto";
 import { getDatabase, schema } from "@/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 import simpleGit from "simple-git";
 import path from "path";
 import fs from "fs/promises";
-import { v4 as uuidv4 } from "uuid";
 import {
     finalizeRepoInit,
     getDiskPath,
@@ -60,7 +60,7 @@ export async function createFromTemplate(options: CreateFromTemplateOptions): Pr
         return { success: false, error: "Repository is not marked as a template" };
     }
 
-    const newRepoId = uuidv4();
+    const newRepoId = crypto.randomUUID();
     const newSlug = options.newName.toLowerCase().replace(/[^a-z0-9-]/g, "-");
     const newDiskPath = options.diskPath || (await getDiskPath(options.newOwnerUsername, newSlug));
 
