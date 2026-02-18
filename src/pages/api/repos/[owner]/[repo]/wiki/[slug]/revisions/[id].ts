@@ -16,7 +16,6 @@ export const GET: APIRoute = async ({ request, params }) => {
         const repoData = await getRepoAndUser(request, owner, repo);
 
         if (!repoData) return notFound("Repository not found");
-        if (repoData.permission === "none") return notFound("Repository not found");
 
         const revision = await db.query.wikiRevisions.findFirst({
             where: eq(wikiRevisions.id, id),
