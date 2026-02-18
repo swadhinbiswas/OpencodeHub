@@ -9,6 +9,8 @@ import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
 import { logger } from "./logger";
 import { repositories } from "@/db/schema/repositories";
 import { users } from "@/db/schema/users";
+import { compareBranches } from "@/lib/git";
+import { resolveRepoPath } from "@/lib/git-storage";
 
 // ============================================================================
 // SCHEMA
@@ -86,6 +88,12 @@ interface WidgetConfig {
 
 export async function calculateFileHotspots(repositoryId: string): Promise<FileHotspot[]> {
     const db = getDatabase();
+    const repository = await db.query.repositories.findFirst({
+        where: eq(schema.repositories.id, repositoryId),
+    });
+    if (!repository) return [];
+
+    const repoPath = await resolveRepoPath(repository.diskPath);
 
     // Get all PRs for this repository
     const prs = await db.query.pullRequests.findMany({
@@ -99,10 +107,20 @@ export async function calculateFileHotspots(repositoryId: string): Promise<FileH
         lastModified: Date;
     }> = new Map();
 
+    // Replace previous snapshot for this repository
+    // @ts-expect-error - Drizzle multi-db union type issue
+    await db.delete(schema.fileHotspots).where(eq(schema.fileHotspots.repositoryId, repositoryId));
+
     // Analyze each PR's changed files
     for (const pr of prs) {
-        // changedFiles is integer count in schema, logic requires strings. Stubbing for now.
-        const changedFiles: string[] = [];
+        let changedFiles: string[] = [];
+        try {
+            const { diffs } = await compareBranches(repoPath, pr.baseBranch, pr.headBranch);
+            changedFiles = diffs.map((d) => d.file).filter(Boolean);
+        } catch (error) {
+            logger.warn({ repositoryId, prId: pr.id, error }, "Failed to load changed files for hotspot analysis");
+            continue;
+        }
         const isBugFix = pr.title?.toLowerCase().includes("fix") ||
             pr.title?.toLowerCase().includes("bug");
 
@@ -116,6 +134,7 @@ export async function calculateFileHotspots(repositoryId: string): Promise<FileH
 
             current.changeCount++;
             if (isBugFix) current.bugCount++;
+            current.reviewCount += pr.reviewCount || 0;
             if (pr.mergedAt && pr.mergedAt > current.lastModified) {
                 current.lastModified = pr.mergedAt;
             }
