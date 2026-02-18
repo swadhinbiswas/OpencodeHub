@@ -137,8 +137,15 @@ export async function rebaseStack(stackId: string): Promise<RebaseResult> {
  * Auto-update a stack when its base branch changes
  */
 export async function autoUpdateStack(stackId: string): Promise<RebaseResult> {
-    // For now, auto-update is the same as rebase
-    // Could be enhanced to use merge instead of rebase
+    const { needsRebase } = await stackNeedsRebase(stackId);
+    if (!needsRebase) {
+        return {
+            success: true,
+            rebased: [],
+            failed: [],
+            conflicts: [],
+        };
+    }
     return rebaseStack(stackId);
 }
 
