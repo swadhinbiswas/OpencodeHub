@@ -21,8 +21,7 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
         return badRequest("Token and secret are required");
     }
 
-    // Verify token against the provided secret (which should match what we saved in DB, or we can trust client provided secret during setup flow before enabling)
-    // Better security: fetches secret from DB.
+    // Verify token against the server-side secret saved during setup.
     const db = getDatabase() as NodePgDatabase<typeof schema>;
     const user = await db.query.users.findFirst({
         where: eq(schema.users.id, userPayload.userId)
@@ -30,8 +29,6 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
 
     if (!user) return unauthorized();
 
-    // Check if the provided secret matches the one we stored tentatively (optional check)
-    // Or just use the one from DB.
     const storedSecret = user.twoFactorSecret;
     if (!storedSecret) {
         return badRequest("2FA setup not initiated");
