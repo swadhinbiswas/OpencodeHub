@@ -34,7 +34,13 @@ export async function triggerWebhooks(
 
     // Filter webhooks that subscribe to this event
     const matchingWebhooks = webhooks.filter((hook) => {
-        const events = Array.isArray(hook.events) ? hook.events : JSON.parse(hook.events as any);
+        let events: string[] = [];
+        try {
+            events = Array.isArray(hook.events) ? hook.events : JSON.parse(String(hook.events));
+        } catch {
+            logger.warn({ webhookId: hook.id }, "Skipping webhook with invalid events config");
+            return false;
+        }
         return events.includes(event) || events.includes("*");
     });
 
@@ -45,14 +51,14 @@ export async function triggerWebhooks(
         "Triggering webhooks"
     );
 
-    // Dispatch to all matching webhooks (fire and forget)
-    // In a real system, this would go to a job queue (BullMQ/Redis)
-    // For now, we'll run it asynchronously
-    matchingWebhooks.forEach((hook) => {
-        dispatchWebhook(hook, event, payload).catch((err) => {
-            logger.error({ webhookId: hook.id, err }, "Failed to dispatch webhook");
-        });
-    });
+    const results = await Promise.allSettled(
+        matchingWebhooks.map((hook) => dispatchWebhook(hook, event, payload))
+    );
+
+    const failures = results.filter((result) => result.status === "rejected").length;
+    if (failures > 0) {
+        logger.warn({ repositoryId, event, failures }, "Some webhook dispatches failed");
+    }
 }
 
 /**
