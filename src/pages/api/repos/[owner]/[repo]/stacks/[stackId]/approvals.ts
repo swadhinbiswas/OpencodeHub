@@ -1,11 +1,16 @@
 import type { APIRoute } from "astro";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { and, eq, inArray } from "drizzle-orm";
+import { z } from "zod";
 import { getDatabase, schema } from "@/db";
 import { canReadRepo, canWriteRepo } from "@/lib/permissions";
 import { withErrorHandler } from "@/lib/errors";
 import { badRequest, notFound, success, unauthorized, forbidden } from "@/lib/api";
 import { getStackApprovalStatus, requestStackApproval } from "@/lib/stack-approvals";
+
+const requestApprovalsSchema = z.object({
+    reviewers: z.array(z.string().min(1)).min(1).max(50),
+});
 
 export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
     const { owner: ownerName, repo: repoName, stackId } = params;
@@ -81,9 +86,12 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals, request 
 
     if (!stack) return notFound("Stack not found");
 
-    const body = await request.json();
-    const reviewers = Array.isArray(body?.reviewers) ? body.reviewers : [];
-    if (reviewers.length === 0) return badRequest("No reviewers provided");
+    const body = await request.json().catch(() => null);
+    const parsed = requestApprovalsSchema.safeParse(body);
+    if (!parsed.success) {
+        return badRequest(parsed.error.issues[0]?.message || "Invalid reviewer payload");
+    }
+    const reviewers = [...new Set(parsed.data.reviewers)];
 
     const users = await db.query.users.findMany({
         where: inArray(schema.users.username, reviewers),
@@ -92,10 +100,25 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals, request 
 
     if (users.length === 0) return badRequest("Reviewers not found");
 
-    const reviewerIds = users.map((u) => u.id);
+    const eligibleUsers: typeof users = [];
+    const skipped: string[] = [];
+    for (const reviewer of users) {
+        const canAccess = await canReadRepo(reviewer.id, repo);
+        if (canAccess) {
+            eligibleUsers.push(reviewer);
+        } else {
+            skipped.push(reviewer.username);
+        }
+    }
+
+    if (eligibleUsers.length === 0) {
+        return badRequest("No eligible reviewers with access to this repository");
+    }
+
+    const reviewerIds = eligibleUsers.map((u) => u.id);
     const ok = await requestStackApproval(stackId, reviewerIds);
 
     if (!ok) return badRequest("Failed to request stack approvals");
 
-    return success({ requested: users.map((u) => u.username) });
+    return success({ requested: eligibleUsers.map((u) => u.username), skipped });
 });
