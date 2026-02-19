@@ -940,6 +940,51 @@ export const openApiSpec = {
                 },
             },
         },
+        "/repos/{owner}/{repo}/external-ci": {
+            get: {
+                tags: ["CI/CD"],
+                summary: "Get external CI integration status",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                ],
+                responses: {
+                    200: { description: "External CI integration status returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+            post: {
+                tags: ["CI/CD"],
+                summary: "Configure or rotate external CI integration token",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                ],
+                requestBody: {
+                    required: false,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    name: { type: "string", default: "External CI" },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    201: { description: "Token generated and integration configured" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
         "/user/notification-digests/test": {
             post: {
                 tags: ["Notifications"],
