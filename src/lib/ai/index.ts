@@ -6,6 +6,7 @@ import { OpenRouterAdapter } from "./openrouter";
 import { TogetherAdapter } from "./together";
 import { GoogleAdapter } from "./google";
 import { ExternalAgentAdapter } from "./external-agent";
+import { LocalAdapter } from "./local";
 import type { AIAdapter } from "./types";
 
 export function getAIAdapter(provider: string): AIAdapter {
@@ -24,6 +25,8 @@ export function getAIAdapter(provider: string): AIAdapter {
             return new GoogleAdapter();
         case "external_agent":
             return new ExternalAgentAdapter();
+        case "local":
+            return new LocalAdapter();
         case "anthropic":
             return new AnthropicAdapter();
         default:
