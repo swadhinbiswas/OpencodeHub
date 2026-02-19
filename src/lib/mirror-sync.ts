@@ -17,6 +17,24 @@ interface SyncResult {
     error?: string;
 }
 
+export interface SyncAllMirrorsOptions {
+    staleOnly?: boolean;
+    minSyncIntervalMinutes?: number;
+    maxRepos?: number;
+    staleAfterMinutes?: number;
+}
+
+export interface SyncAllMirrorsResult {
+    synced: number;
+    failed: number;
+    total: number;
+    eligible: number;
+    skipped: number;
+    stale: number;
+    failedRepoIds: string[];
+    durationMs: number;
+}
+
 async function ensureUpstreamRemote(git: SimpleGit, mirrorUrl: string): Promise<void> {
     const remotes = await git.getRemotes(true);
     const upstream = remotes.find((remote) => remote.name === "upstream");
@@ -115,22 +133,91 @@ export async function syncAllMirrors(): Promise<{ synced: number; failed: number
     const mirrors = await db.query.repositories.findMany({
         where: eq(schema.repositories.isMirror, true),
     });
+    return syncAllMirrorsWithOptions(mirrors, {});
+}
+
+async function syncAllMirrorsWithOptions(
+    mirrors: Array<typeof schema.repositories.$inferSelect>,
+    options: SyncAllMirrorsOptions
+): Promise<SyncAllMirrorsResult> {
+    const startedAt = Date.now();
+    const staleAfterMinutes = options.staleAfterMinutes ?? 24 * 60;
+    const minSyncIntervalMinutes = Math.max(0, options.minSyncIntervalMinutes ?? 30);
+    const staleOnly = options.staleOnly ?? true;
+    const maxRepos = options.maxRepos && options.maxRepos > 0 ? options.maxRepos : mirrors.length;
 
     let synced = 0;
     let failed = 0;
+    let skipped = 0;
+    let stale = 0;
+    const failedRepoIds: string[] = [];
 
-    for (const mirror of mirrors) {
+    const nowMs = Date.now();
+    const eligibleMirrors = mirrors.filter((mirror) => {
+        const lastSyncMs = mirror.lastMirrorSyncAt?.getTime() ?? null;
+        const ageMinutes = lastSyncMs === null ? null : Math.max(0, Math.floor((nowMs - lastSyncMs) / 60000));
+        const isStale = ageMinutes === null ? true : ageMinutes > staleAfterMinutes;
+        if (isStale) stale += 1;
+
+        if (mirror.mirrorSyncStatus === "syncing") {
+            skipped += 1;
+            return false;
+        }
+        if (staleOnly && !isStale) {
+            skipped += 1;
+            return false;
+        }
+        if (!isStale && ageMinutes !== null && ageMinutes < minSyncIntervalMinutes) {
+            skipped += 1;
+            return false;
+        }
+        return true;
+    }).slice(0, maxRepos);
+
+    for (const mirror of eligibleMirrors) {
         const result = await syncMirrorRepository(mirror.id);
         if (result.success) {
             synced++;
         } else {
             failed++;
+            failedRepoIds.push(mirror.id);
         }
     }
 
-    logger.info({ synced, failed, total: mirrors.length }, "Mirror sync batch completed");
+    const durationMs = Date.now() - startedAt;
+    logger.info(
+        {
+            synced,
+            failed,
+            total: mirrors.length,
+            eligible: eligibleMirrors.length,
+            skipped,
+            stale,
+            durationMs,
+        },
+        "Mirror sync batch completed"
+    );
 
-    return { synced, failed };
+    return {
+        synced,
+        failed,
+        total: mirrors.length,
+        eligible: eligibleMirrors.length,
+        skipped,
+        stale,
+        failedRepoIds,
+        durationMs,
+    };
+}
+
+export async function syncAllMirrorsScheduled(
+    options: SyncAllMirrorsOptions = {}
+): Promise<SyncAllMirrorsResult> {
+    const db = getDatabase();
+    const mirrors = await db.query.repositories.findMany({
+        where: eq(schema.repositories.isMirror, true),
+    });
+    return syncAllMirrorsWithOptions(mirrors, options);
 }
 
 /**

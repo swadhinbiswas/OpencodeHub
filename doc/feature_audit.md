@@ -28,7 +28,7 @@
 | :--- | :---: | :--- |
 | Full Git protocol (SSH/HTTPS) | ✅ | `ssh.ts`, `git-server.ts` fully implemented |
 | Repository hosting | ✅ | Multiple storage adapters (S3, R2, local, GDrive) |
-| Repository mirroring | ⚠️ | Background sync cron plus repository mirror config/manual-sync APIs are implemented (`settings/mirror`, `settings/mirror/sync`) with derived health telemetry (`isHealthy`, `isStale`, `lastSyncAgeMinutes`); scheduling/monitoring automation depth remains partial |
+| Repository mirroring | ⚠️ | Background sync cron plus repository mirror config/manual-sync APIs are implemented (`settings/mirror`, `settings/mirror/sync`) with derived health telemetry (`isHealthy`, `isStale`, `lastSyncAgeMinutes`); scheduled sync automation now supports stale-only windows, sync-interval/max-repo controls, and batch monitoring metrics (`eligible`, `skipped`, `stale`, `failedRepoIds`, `durationMs`) via `cron/mirror-sync`, while advanced alerting/runbook workflows remain partial |
 | Forks & pull-based workflows | ✅ | `fork.ts` API, UI implemented |
 | Monorepo support | ⚠️ | Basic support, no advanced path scoping |
 | Git LFS | ✅ | `lfs.ts` with batch API (upload/download) |
