@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { resolveRepoPath } from "@/lib/git-storage";
 import { getFileContent } from "@/lib/git";
 import { canReadRepo } from "@/lib/permissions";
+import { checkPathPermissions } from "@/lib/path-scoping";
 import { withErrorHandler } from "@/lib/errors";
 import { notFound, success } from "@/lib/api";
 
@@ -53,7 +54,10 @@ export const GET: APIRoute = withErrorHandler(async ({ params, request, locals }
         "pull_request_template.txt"
     ];
 
+    const scopedUserId = locals.user?.id || "__anonymous__";
     for (const path of candidates) {
+        const permission = await checkPathPermissions(scopedUserId, repo.id, [path], "read");
+        if (!permission.allowed) continue;
         const file = await getFileContent(repoPath, path, targetBranch);
         if (file && !file.isBinary && file.content) {
             return success({ content: file.content });

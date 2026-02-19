@@ -1234,7 +1234,7 @@ export const openApiSpec = {
             get: {
                 tags: ["Pull Requests"],
                 summary: "Get pull request template",
-                description: "Loads PR template content from common repository template locations for a target branch.",
+                description: "Loads PR template content from common repository template locations for a target branch, with path-scoped read permission checks per candidate path.",
                 security: [{ bearerAuth: [] }],
                 parameters: [
                     { name: "owner", in: "path", required: true, schema: { type: "string" } },
