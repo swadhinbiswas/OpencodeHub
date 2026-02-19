@@ -936,6 +936,30 @@ export const openApiSpec = {
                 },
             },
         },
+        "/notifications": {
+            get: {
+                tags: ["Notifications"],
+                summary: "List notifications",
+                description: "Returns notifications for the authenticated user. Supports `filter=unread|read|archived|all|blocking`.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    {
+                        name: "filter",
+                        in: "query",
+                        required: false,
+                        schema: {
+                            type: "string",
+                            enum: ["unread", "read", "archived", "all", "blocking"],
+                        },
+                    },
+                ],
+                responses: {
+                    200: { description: "Notifications returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    500: { description: "Fetch failed", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
         "/repos/{owner}/{repo}/workflow/states": {
             get: {
                 tags: ["Workflow"],
