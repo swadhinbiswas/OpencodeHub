@@ -1013,6 +1013,26 @@ export const openApiSpec = {
                 },
             },
         },
+        "/repos/{owner}/{repo}/analytics/merge-frequency": {
+            get: {
+                tags: ["Analytics"],
+                summary: "Get merge frequency metrics",
+                description: "Returns merge frequency points for a repository with daily or weekly bucketing.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "days", in: "query", required: false, schema: { type: "integer", minimum: 7, maximum: 365, default: 30 } },
+                    { name: "bucket", in: "query", required: false, schema: { type: "string", enum: ["day", "week"], default: "day" } },
+                ],
+                responses: {
+                    200: { description: "Merge frequency metrics returned" },
+                    400: { description: "Invalid query parameters", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
         "/repos/{owner}/{repo}/workflow/states": {
             get: {
                 tags: ["Workflow"],
