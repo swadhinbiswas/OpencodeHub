@@ -5,12 +5,14 @@ const {
   canAdminRepoMock,
   checkPathPermissionsMock,
   approveFileMock,
+  getChangedFilesMock,
   fakeSchema,
 } = vi.hoisted(() => ({
   canReadRepoMock: vi.fn(async () => true),
   canAdminRepoMock: vi.fn(async () => false),
   checkPathPermissionsMock: vi.fn(async () => ({ allowed: true, deniedPaths: [] })),
   approveFileMock: vi.fn(async () => ({ id: "fa-1", path: "src/app.ts" })),
+  getChangedFilesMock: vi.fn(async () => ["src/app.ts", "src/secret.ts"]),
   fakeSchema: {
     users: { username: {} },
     repositories: { ownerId: {}, name: {}, id: {} },
@@ -39,7 +41,19 @@ vi.mock("@/lib/partial-file-approvals", () => ({
   approveFile: approveFileMock,
 }));
 
-import { POST as fileApprovalsPost } from "@/pages/api/repos/[owner]/[repo]/pulls/[number]/file-approvals";
+vi.mock("@/lib/git-storage", () => ({
+  resolveRepoPath: vi.fn(async () => "/tmp/repo"),
+}));
+
+vi.mock("@/lib/git", () => ({
+  getRepoPath: vi.fn(() => "/tmp/repo"),
+  getChangedFiles: getChangedFilesMock,
+}));
+
+import {
+  GET as fileApprovalsGet,
+  POST as fileApprovalsPost,
+} from "@/pages/api/repos/[owner]/[repo]/pulls/[number]/file-approvals";
 import { DELETE as fileApprovalsDelete } from "@/pages/api/repos/[owner]/[repo]/pulls/[number]/file-approvals/[id]";
 
 function makeDb() {
@@ -56,6 +70,22 @@ function makeDb() {
       },
       fileApprovals: {
         findFirst: vi.fn(async () => ({ id: "fa-1", pullRequestId: "pr-1", approvedById: "user-1", path: "src/app.ts" })),
+        findMany: vi.fn(async () => ([
+          {
+            id: "fa-1",
+            pullRequestId: "pr-1",
+            path: "src/app.ts",
+            commitSha: "sha-1",
+            approvedBy: { username: "alice" },
+          },
+          {
+            id: "fa-2",
+            pullRequestId: "pr-1",
+            path: "src/secret.ts",
+            commitSha: "sha-1",
+            approvedBy: { username: "bob" },
+          },
+        ])),
       },
     },
     delete: vi.fn(() => ({
@@ -71,6 +101,27 @@ describe("file approvals path permissions", () => {
     canReadRepoMock.mockResolvedValue(true);
     canAdminRepoMock.mockResolvedValue(false);
     checkPathPermissionsMock.mockResolvedValue({ allowed: true, deniedPaths: [] });
+    getChangedFilesMock.mockResolvedValue(["src/app.ts", "src/secret.ts"]);
+  });
+
+  it("filters hidden files from GET results when read path scope denies access", async () => {
+    checkPathPermissionsMock.mockResolvedValue({
+      allowed: false,
+      deniedPaths: ["src/secret.ts"],
+      reason: "denied",
+    });
+
+    const response = await fileApprovalsGet({
+      params: { owner: "owner-1", repo: "demo", number: "42" },
+      locals: { user: { id: "user-1" } },
+    } as any);
+
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body?.data?.files).toHaveLength(1);
+    expect(body?.data?.files?.[0]?.path).toBe("src/app.ts");
+    expect(body?.data?.hiddenPaths).toBe(1);
+    expect(checkPathPermissionsMock).toHaveBeenCalledWith("user-1", "repo-1", ["src/app.ts", "src/secret.ts"], "read");
   });
 
   it("blocks approving file when path permissions deny access", async () => {
