@@ -12,14 +12,14 @@
 | **Code Review** | 9 | 1 | 0 | 10 |
 | **Issues & Planning** | 10 | 0 | 0 | 10 |
 | **CI/CD & Automation** | 7 | 1 | 0 | 8 |
-| **Third-Party Integrations** | 12 | 10 | 0 | 22 |
+| **Third-Party Integrations** | 16 | 6 | 0 | 22 |
 | **Dependency & Impact Awareness** | 1 | 4 | 0 | 5 |
 | **Security** | 9 | 3 | 0 | 12 |
 | **Analytics & Insights** | 6 | 2 | 0 | 8 |
 | **Notifications & Collaboration** | 5 | 3 | 0 | 8 |
 | **Interfaces & Extensibility** | 5 | 2 | 0 | 7 |
 | **Self-Hosted & Deployment** | 4 | 3 | 0 | 7 |
-| **Total** | **86** | **39** | **0** | **125** |
+| **Total** | **90** | **35** | **0** | **125** |
 
 ---
 
@@ -120,10 +120,10 @@
 ### 6.3 Issue Tracking
 | Feature | Status | Notes |
 | :--- | :---: | :--- |
-| Jira | ⚠️ | Basic integration implemented (`jira.ts`) |
-| Linear | ⚠️ | Provider integration + repo config/webhook APIs implemented; workflow/UI depth can expand |
-| Trello | ⚠️ | Provider integration + repo config/webhook APIs implemented; workflow/UI depth can expand |
-| ClickUp | ⚠️ | Provider integration + repo config/webhook APIs implemented; workflow/UI depth can expand |
+| Jira | ✅ | Provider integration, repo config CRUD/webhook APIs, and repository settings automation UX are implemented (`integrations/issue-trackers`, `settings/issue-trackers`) with Jira-specific API URL/project/token controls, webhook secret visibility, and recent sync-link surfacing |
+| Linear | ✅ | Provider integration, repo config CRUD/webhook APIs, and repository settings automation UX are implemented (`integrations/issue-trackers`, `settings/issue-trackers`) with team/token controls, webhook secret visibility, and recent sync-link surfacing |
+| Trello | ✅ | Provider integration, repo config CRUD/webhook APIs, and repository settings automation UX are implemented (`integrations/issue-trackers`, `settings/issue-trackers`) with board/list + `key:token` controls, webhook secret visibility, and recent sync-link surfacing |
+| ClickUp | ✅ | Provider integration, repo config CRUD/webhook APIs, and repository settings automation UX are implemented (`integrations/issue-trackers`, `settings/issue-trackers`) with list/token controls, webhook secret visibility, and recent sync-link surfacing |
 
 ### 6.4 Chat & Notifications
 | Feature | Status | Notes |
