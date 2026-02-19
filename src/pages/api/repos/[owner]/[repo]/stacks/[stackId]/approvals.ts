@@ -6,10 +6,11 @@ import { getDatabase, schema } from "@/db";
 import { canReadRepo, canWriteRepo } from "@/lib/permissions";
 import { withErrorHandler } from "@/lib/errors";
 import { badRequest, notFound, success, unauthorized, forbidden } from "@/lib/api";
-import { getStackApprovalStatus, requestStackApproval } from "@/lib/stack-approvals";
+import { canMergeStack, getStackApprovalStatus, requestStackApproval } from "@/lib/stack-approvals";
 
 const requestApprovalsSchema = z.object({
     reviewers: z.array(z.string().min(1)).min(1).max(50),
+    dryRun: z.boolean().optional(),
 });
 
 export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
@@ -48,8 +49,13 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
 
     const status = await getStackApprovalStatus(stackId);
     if (!status) return notFound("Stack not found");
+    const readiness = await canMergeStack(stackId);
 
-    return success({ status });
+    return success({
+        status,
+        canMerge: readiness.canMerge,
+        blockers: readiness.blockers,
+    });
 });
 
 export const POST: APIRoute = withErrorHandler(async ({ params, locals, request }) => {
@@ -92,6 +98,8 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals, request 
         return badRequest(parsed.error.issues[0]?.message || "Invalid reviewer payload");
     }
     const reviewers = [...new Set(parsed.data.reviewers)];
+    const requestedDuplicates = parsed.data.reviewers.length - reviewers.length;
+    const dryRun = parsed.data.dryRun === true;
 
     const users = await db.query.users.findMany({
         where: inArray(schema.users.username, reviewers),
@@ -99,6 +107,9 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals, request 
     });
 
     if (users.length === 0) return badRequest("Reviewers not found");
+
+    const foundUsernames = new Set(users.map((u) => u.username));
+    const unresolvedReviewers = reviewers.filter((name) => !foundUsernames.has(name));
 
     const eligibleUsers: typeof users = [];
     const skipped: string[] = [];
@@ -116,9 +127,18 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals, request 
     }
 
     const reviewerIds = eligibleUsers.map((u) => u.id);
-    const ok = await requestStackApproval(stackId, reviewerIds);
+    let ok = true;
+    if (!dryRun) {
+        ok = await requestStackApproval(stackId, reviewerIds);
+    }
 
     if (!ok) return badRequest("Failed to request stack approvals");
 
-    return success({ requested: eligibleUsers.map((u) => u.username), skipped });
+    return success({
+        dryRun,
+        requested: eligibleUsers.map((u) => u.username),
+        skipped,
+        notFound: unresolvedReviewers,
+        requestedDuplicates,
+    });
 });

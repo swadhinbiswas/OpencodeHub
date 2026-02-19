@@ -6,6 +6,7 @@ const {
   addRequiredCheckMock,
   createMergeGateMock,
   getMergeGatesMock,
+  evaluateGatesMock,
   fakeSchema,
 } = vi.hoisted(() => ({
   canReadRepoMock: vi.fn(async () => true),
@@ -13,10 +14,12 @@ const {
   addRequiredCheckMock: vi.fn(async () => ({ id: "check-1", checkName: "ci/build", branch: "main" })),
   createMergeGateMock: vi.fn(async () => ({ id: "gate-1", name: "PR Label Gate", gateType: "label" })),
   getMergeGatesMock: vi.fn(async () => [{ id: "gate-1", name: "PR Label Gate", gateType: "label" }]),
+  evaluateGatesMock: vi.fn(async () => ({ canMerge: true, results: [] })),
   fakeSchema: {
     users: { username: {} },
     repositories: { ownerId: {}, name: {}, id: {} },
     requiredStatusChecks: { repositoryId: {} },
+    pullRequests: { repositoryId: {}, number: {} },
   } as any,
 }));
 
@@ -36,6 +39,7 @@ vi.mock("@/lib/ci-gates", () => ({
   addRequiredCheck: addRequiredCheckMock,
   createMergeGate: createMergeGateMock,
   getMergeGates: getMergeGatesMock,
+  evaluateGates: evaluateGatesMock,
 }));
 
 import { GET as mergeGatesGet, POST as mergeGatesPost } from "@/pages/api/repos/[owner]/[repo]/merge-gates";
@@ -51,6 +55,9 @@ function makeDb() {
       },
       requiredStatusChecks: {
         findMany: vi.fn(async () => [{ id: "check-1", checkName: "ci/build", branch: "main" }]),
+      },
+      pullRequests: {
+        findFirst: vi.fn(async () => ({ id: "pr-1", number: 12 })),
       },
     },
   };
@@ -69,27 +76,55 @@ describe("merge gates route", () => {
     addRequiredCheckMock.mockResolvedValue({ id: "check-1", checkName: "ci/build", branch: "main" });
     createMergeGateMock.mockResolvedValue({ id: "gate-1", name: "PR Label Gate", gateType: "label" });
     getMergeGatesMock.mockResolvedValue([{ id: "gate-1", name: "PR Label Gate", gateType: "label" }]);
+    evaluateGatesMock.mockResolvedValue({ canMerge: true, results: [] });
   });
 
   it("returns merge gate policy configuration for readers", async () => {
     const response = await mergeGatesGet({
       params: { owner: "owner-1", repo: "demo" },
       locals: { user: { id: "user-1", isAdmin: false } },
+      request: new Request("http://localhost/api/repos/owner-1/demo/merge-gates"),
     } as any);
 
     const body = await readJson(response);
     expect(response.status).toBe(200);
     expect(body?.data?.requiredChecks).toHaveLength(1);
     expect(body?.data?.mergeGates).toHaveLength(1);
+    expect(body?.data?.report?.requiredChecksTotal).toBe(1);
+    expect(body?.data?.report?.mergeGatesTotal).toBe(1);
   });
 
   it("returns 401 for unauthenticated reads", async () => {
     const response = await mergeGatesGet({
       params: { owner: "owner-1", repo: "demo" },
       locals: {},
+      request: new Request("http://localhost/api/repos/owner-1/demo/merge-gates"),
     } as any);
 
     expect(response.status).toBe(401);
+  });
+
+  it("returns readiness report when pullNumber is provided", async () => {
+    const response = await mergeGatesGet({
+      params: { owner: "owner-1", repo: "demo" },
+      locals: { user: { id: "user-1", isAdmin: false } },
+      request: new Request("http://localhost/api/repos/owner-1/demo/merge-gates?pullNumber=12"),
+    } as any);
+
+    const body = await readJson(response);
+    expect(response.status).toBe(200);
+    expect(evaluateGatesMock).toHaveBeenCalledWith("pr-1");
+    expect(body?.data?.readiness?.canMerge).toBe(true);
+  });
+
+  it("validates pullNumber query parameter", async () => {
+    const response = await mergeGatesGet({
+      params: { owner: "owner-1", repo: "demo" },
+      locals: { user: { id: "user-1", isAdmin: false } },
+      request: new Request("http://localhost/api/repos/owner-1/demo/merge-gates?pullNumber=abc"),
+    } as any);
+
+    expect(response.status).toBe(400);
   });
 
   it("creates required check for admins", async () => {

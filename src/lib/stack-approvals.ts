@@ -12,6 +12,12 @@ import crypto from "crypto";
 export interface StackApprovalStatus {
     stackId: string;
     allApproved: boolean;
+    summary: {
+        totalPrs: number;
+        approvedPrs: number;
+        pendingPrs: number;
+        totalMissingApprovals: number;
+    };
     prs: {
         prId: string;
         prNumber: number;
@@ -19,7 +25,13 @@ export interface StackApprovalStatus {
         isApproved: boolean;
         approvalCount: number;
         requiredApprovals: number;
+        missingApprovals: number;
         changesRequested: boolean;
+        requestedReviewers: {
+            userId: string;
+            username?: string;
+            isRequired: boolean;
+        }[];
     }[];
 }
 
@@ -48,9 +60,32 @@ export async function getStackApprovalStatus(stackId: string): Promise<StackAppr
         const reviews = await db.query.pullRequestReviews.findMany({
             where: eq(schema.pullRequestReviews.pullRequestId, entry.pr.id),
         });
+        const requestedReviewers = await db.query.pullRequestReviewers.findMany({
+            where: eq(schema.pullRequestReviewers.pullRequestId, entry.pr.id),
+            with: {
+                user: {
+                    columns: {
+                        username: true,
+                    },
+                },
+            },
+        });
 
-        const approvals = reviews.filter(r => r.state === "approved");
-        const changesRequested = reviews.some(r => r.state === "changes_requested");
+        const latestByReviewer = new Map<string, typeof reviews[number]>();
+        for (const review of reviews) {
+            const previous = latestByReviewer.get(review.reviewerId);
+            const reviewTime = review.submittedAt || review.createdAt || new Date(0);
+            const previousTime = previous
+                ? (previous.submittedAt || previous.createdAt || new Date(0))
+                : new Date(0);
+            if (!previous || reviewTime >= previousTime) {
+                latestByReviewer.set(review.reviewerId, review);
+            }
+        }
+
+        const latestReviews = [...latestByReviewer.values()];
+        const approvals = latestReviews.filter(r => r.state === "approved");
+        const changesRequested = latestReviews.some(r => r.state === "changes_requested");
 
         const matchingRule = rules.find(rule => {
             if (rule.pattern === entry.pr.baseBranch) return true;
@@ -64,6 +99,7 @@ export async function getStackApprovalStatus(stackId: string): Promise<StackAppr
             reviewRequirements?.minApprovals ?? 0,
             matchingRule ? (matchingRule.requiredApprovals ?? 1) : 0
         );
+        const missingApprovals = Math.max(requiredApprovals - approvals.length, 0);
 
         prs.push({
             prId: entry.pr.id,
@@ -72,13 +108,29 @@ export async function getStackApprovalStatus(stackId: string): Promise<StackAppr
             isApproved: approvals.length >= requiredApprovals && !changesRequested,
             approvalCount: approvals.length,
             requiredApprovals,
+            missingApprovals: changesRequested ? requiredApprovals : missingApprovals,
             changesRequested,
+            requestedReviewers: requestedReviewers.map((reviewer) => ({
+                userId: reviewer.userId,
+                username: reviewer.user?.username,
+                isRequired: Boolean(reviewer.isRequired),
+            })),
         });
     }
+
+    const approvedPrs = prs.filter((pr) => pr.isApproved).length;
+    const pendingPrs = prs.length - approvedPrs;
+    const totalMissingApprovals = prs.reduce((total, pr) => total + pr.missingApprovals, 0);
 
     return {
         stackId,
         allApproved: prs.every(pr => pr.isApproved),
+        summary: {
+            totalPrs: prs.length,
+            approvedPrs,
+            pendingPrs,
+            totalMissingApprovals,
+        },
         prs,
     };
 }

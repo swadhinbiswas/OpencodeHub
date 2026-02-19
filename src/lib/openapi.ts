@@ -143,6 +143,10 @@ export const openApiSpec = {
                         maxItems: 50,
                         items: { type: "string", description: "Reviewer username" },
                     },
+                    dryRun: {
+                        type: "boolean",
+                        description: "When true, returns eligibility details without creating reviewer requests.",
+                    },
                 },
                 required: ["reviewers"],
             },
@@ -586,6 +590,7 @@ export const openApiSpec = {
             get: {
                 tags: ["Stacks"],
                 summary: "Get stack approval status",
+                description: "Returns stack approval details plus merge readiness blockers for UX dashboards.",
                 security: [{ bearerAuth: [] }],
                 parameters: [
                     { name: "owner", in: "path", required: true, schema: { type: "string" } },
@@ -601,7 +606,7 @@ export const openApiSpec = {
             post: {
                 tags: ["Stacks"],
                 summary: "Request approvals across all PRs in a stack",
-                description: "Requests stack approvals for eligible reviewers. Reviewers without repository access are skipped.",
+                description: "Requests stack approvals for eligible reviewers. Supports dry-run eligibility previews, duplicate detection, and reviewer-not-found reporting.",
                 security: [{ bearerAuth: [] }],
                 parameters: [
                     { name: "owner", in: "path", required: true, schema: { type: "string" } },
@@ -1004,14 +1009,16 @@ export const openApiSpec = {
             get: {
                 tags: ["CI/CD"],
                 summary: "List repository merge gates and required checks",
-                description: "Returns configured required status checks and merge gate definitions used by merge-readiness evaluation.",
+                description: "Returns merge policy config plus a derived report (counts, breakdown, warnings). Optionally evaluates readiness for a specific PR via `pullNumber` query.",
                 security: [{ bearerAuth: [] }],
                 parameters: [
                     { name: "owner", in: "path", required: true, schema: { type: "string" } },
                     { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "pullNumber", in: "query", required: false, schema: { type: "integer" } },
                 ],
                 responses: {
                     200: { description: "Merge gate configuration returned" },
+                    400: { description: "Invalid query parameters", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                 },
