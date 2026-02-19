@@ -1194,6 +1194,59 @@ export const openApiSpec = {
                 },
             },
         },
+        "/repos/{owner}/{repo}/pulls": {
+            post: {
+                tags: ["Pull Requests"],
+                summary: "Create pull request",
+                description: "Creates a pull request from head branch into base branch, computes diff stats, and triggers reviewer/automation workflows.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    title: { type: "string" },
+                                    body: { type: "string" },
+                                    base: { type: "string" },
+                                    head: { type: "string" },
+                                },
+                                required: ["title", "base", "head"],
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    201: { description: "Pull request created" },
+                    400: { description: "Invalid payload or branch configuration", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository or branch not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/repos/{owner}/{repo}/pulls/templates": {
+            get: {
+                tags: ["Pull Requests"],
+                summary: "Get pull request template",
+                description: "Loads PR template content from common repository template locations for a target branch.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "branch", in: "query", required: false, schema: { type: "string" } },
+                ],
+                responses: {
+                    200: { description: "Template content returned (or null)" },
+                    404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
         "/repos/{owner}/{repo}/pulls/stack-order": {
             post: {
                 tags: ["Pull Requests"],
