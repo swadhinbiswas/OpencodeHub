@@ -1308,7 +1308,7 @@ export const openApiSpec = {
             get: {
                 tags: ["CI/CD"],
                 summary: "List repository merge gates and required checks",
-                description: "Returns merge policy config plus a derived report (counts, breakdown, structured warnings with code/severity/message). Optionally evaluates readiness for a specific PR via `pullNumber` query.",
+                description: "Returns merge policy config plus a derived report (counts, breakdown, structured warnings with code/severity/message). Optionally evaluates readiness for a specific PR via `pullNumber` query and includes actionable readiness recommendations.",
                 security: [{ bearerAuth: [] }],
                 parameters: [
                     { name: "owner", in: "path", required: true, schema: { type: "string" } },

@@ -97,6 +97,13 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals, request }
   }
 
   let readiness: Awaited<ReturnType<typeof evaluateGates>> | null = null;
+  let readinessReport:
+    | {
+        failedGateCount: number;
+        failedGateNames: string[];
+        recommendations: string[];
+      }
+    | null = null;
   if (pullNumberRaw !== null) {
     const pullNumber = Number.parseInt(pullNumberRaw, 10);
     if (!Number.isFinite(pullNumber) || pullNumber < 1) {
@@ -110,6 +117,27 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals, request }
     });
     if (!pullRequest) return notFound("Pull request not found");
     readiness = await evaluateGates(pullRequest.id);
+    const failed = readiness.results.filter((result) => !result.passed);
+    const recommendations = new Set<string>();
+    for (const gate of failed) {
+      if (gate.gateName.startsWith("Status: ")) {
+        recommendations.add("Re-run or fix failing required status checks.");
+      }
+      if (gate.gateName === "Review" || gate.message.toLowerCase().includes("approval")) {
+        recommendations.add("Request approvals from required reviewers and resolve outstanding review changes.");
+      }
+      if (gate.message.toLowerCase().includes("label")) {
+        recommendations.add("Add required labels and remove blocked labels before merging.");
+      }
+      if (gate.gateName === "Merge Conflicts") {
+        recommendations.add("Rebase or merge base branch to resolve merge conflicts.");
+      }
+    }
+    readinessReport = {
+      failedGateCount: failed.length,
+      failedGateNames: failed.map((gate) => gate.gateName),
+      recommendations: [...recommendations.values()],
+    };
   }
 
   return success({
@@ -125,6 +153,7 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals, request }
       warnings,
     },
     readiness,
+    readinessReport,
   });
 });
 
