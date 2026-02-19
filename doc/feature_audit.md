@@ -183,7 +183,7 @@
 | Feature | Status | Implementation Notes |
 | :--- | :---: | :--- |
 | Smart notifications | ⚠️ | Basic notifications, no AI prioritization |
-| Blocking alerts | ⚠️ | Basic via inbox sections |
+| Blocking alerts | ⚠️ | Blocking-focused notification feed filter is now available via `GET /notifications?filter=blocking`; prioritization/automation depth remains partial |
 | Daily/weekly digests | ⚠️ | Scheduler is timezone-aware with cron endpoint/tests and user-scoped digest test API (`/user/notification-digests/test`); delivery observability/retry depth remains partial |
 | Mentions & subscriptions | ✅ | Implemented |
 | PR-level discussions | ✅ | Full threaded comments |
