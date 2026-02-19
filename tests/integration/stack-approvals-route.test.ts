@@ -103,6 +103,7 @@ describe("stack approvals route", () => {
         approvedPrs: 1,
         pendingPrs: 1,
         totalMissingApprovals: 1,
+        totalMissingRequiredReviewerApprovals: 1,
       },
       prs: [],
     });
@@ -121,6 +122,7 @@ describe("stack approvals route", () => {
     expect(body?.data?.canMerge).toBe(false);
     expect(body?.data?.blockers).toHaveLength(1);
     expect(body?.data?.status?.summary?.pendingPrs).toBe(1);
+    expect(body?.data?.status?.summary?.totalMissingRequiredReviewerApprovals).toBe(1);
   });
 
   it("requests approvals only for reviewers with repository access", async () => {

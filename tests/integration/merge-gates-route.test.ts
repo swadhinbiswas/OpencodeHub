@@ -102,6 +102,8 @@ describe("merge gates route", () => {
     expect(body?.data?.report?.mergeGatesTotal).toBe(1);
     expect(body?.data?.report?.warnings).toHaveLength(2);
     expect(body?.data?.report?.warnings?.[0]?.code).toBe("duplicate_required_checks");
+    expect(body?.data?.report?.warnings?.[0]?.severity).toBe("warning");
+    expect(body?.data?.report?.warnings?.[0]?.message).toContain("Duplicate required checks");
   });
 
   it("returns 401 for unauthenticated reads", async () => {

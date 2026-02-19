@@ -590,7 +590,7 @@ export const openApiSpec = {
             get: {
                 tags: ["Stacks"],
                 summary: "Get stack approval status",
-                description: "Returns stack approval details plus merge readiness blockers for UX dashboards.",
+                description: "Returns stack approval details plus merge readiness blockers, including missing-approval and missing-required-reviewer summary metrics.",
                 security: [{ bearerAuth: [] }],
                 parameters: [
                     { name: "owner", in: "path", required: true, schema: { type: "string" } },
@@ -699,6 +699,7 @@ export const openApiSpec = {
             get: {
                 tags: ["Pull Requests"],
                 summary: "List PR comments",
+                description: "Returns threaded PR comments filtered by path-scoped read permissions, with `hiddenCount` for suppressed comments.",
                 security: [{ bearerAuth: [] }],
                 parameters: [
                     { name: "owner", in: "path", required: true, schema: { type: "string" } },
@@ -1009,7 +1010,7 @@ export const openApiSpec = {
             get: {
                 tags: ["CI/CD"],
                 summary: "List repository merge gates and required checks",
-                description: "Returns merge policy config plus a derived report (counts, breakdown, warnings). Optionally evaluates readiness for a specific PR via `pullNumber` query.",
+                description: "Returns merge policy config plus a derived report (counts, breakdown, structured warnings with code/severity/message). Optionally evaluates readiness for a specific PR via `pullNumber` query.",
                 security: [{ bearerAuth: [] }],
                 parameters: [
                     { name: "owner", in: "path", required: true, schema: { type: "string" } },
