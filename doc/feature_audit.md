@@ -8,7 +8,7 @@
 | Category | Implemented | Partial | Missing | Total |
 | :--- | :---: | :---: | :---: | :---: |
 | **Repository & Git** | 9 | 4 | 0 | 13 |
-| **Pull Requests** | 8 | 7 | 0 | 15 |
+| **Pull Requests** | 9 | 6 | 0 | 15 |
 | **Code Review** | 8 | 2 | 0 | 10 |
 | **Issues & Planning** | 10 | 0 | 0 | 10 |
 | **CI/CD & Automation** | 4 | 4 | 0 | 8 |
@@ -19,7 +19,7 @@
 | **Notifications & Collaboration** | 5 | 3 | 0 | 8 |
 | **Interfaces & Extensibility** | 5 | 2 | 0 | 7 |
 | **Self-Hosted & Deployment** | 4 | 3 | 0 | 7 |
-| **Total** | **73** | **52** | **0** | **125** |
+| **Total** | **74** | **51** | **0** | **125** |
 
 ---
 
@@ -57,7 +57,7 @@
 | Draft PRs | ✅ | Schema supports `isDraft` field |
 | PR labels | ✅ | Full implementation with schema |
 | PR assignees | ✅ | Full implementation with schema |
-| PR checks | ⚠️ | PR check ingestion + summary/read APIs are implemented (`external-ci/checks`, `pulls/{number}/checks`); deeper provider parity and setup UX remain partial |
+| PR checks | ✅ | PR check ingestion now supports provider-aware webhook payload normalization (normalized/GitHub Actions/GitLab/CircleCI/Buildkite/Jenkins) via `external-ci/checks`, PR check summary/read APIs remain in `pulls/{number}/checks`, PR detail UI now surfaces live check summary/list refresh, and external-CI settings provide provider-specific setup payload presets |
 
 ## 3. Code Review
 | Feature | Status | Implementation Notes |
