@@ -22,6 +22,22 @@ const {
     enabled: true,
     eligibleToMerge: false,
     blockers: ["1 pending check(s)"],
+    policySummary: {
+      totalRules: 1,
+      matchedRules: 1,
+      passedRules: 0,
+      failedRules: 1,
+      unmatchedRules: 0,
+    },
+    ruleEvaluations: [
+      {
+        ruleId: "rule-1",
+        name: "Main branch policy",
+        matched: true,
+        passed: false,
+        reasons: ["Rule \"Main branch policy\" has pending checks"],
+      },
+    ],
   })),
   enableAutoMergeMock: vi.fn(async () => ({ success: true })),
   disableAutoMergeMock: vi.fn(async () => true),
@@ -104,6 +120,22 @@ describe("pull request auto-merge route", () => {
       enabled: true,
       eligibleToMerge: false,
       blockers: ["1 pending check(s)"],
+      policySummary: {
+        totalRules: 1,
+        matchedRules: 1,
+        passedRules: 0,
+        failedRules: 1,
+        unmatchedRules: 0,
+      },
+      ruleEvaluations: [
+        {
+          ruleId: "rule-1",
+          name: "Main branch policy",
+          matched: true,
+          passed: false,
+          reasons: ["Rule \"Main branch policy\" has pending checks"],
+        },
+      ],
     });
     compareBranchesMock.mockResolvedValue({
       diffs: [{ file: "src/app.ts", additions: 1, deletions: 0 }],
@@ -122,6 +154,8 @@ describe("pull request auto-merge route", () => {
     const body = await readJson(response);
     expect(response.status).toBe(200);
     expect(body?.data?.enabled).toBe(true);
+    expect(body?.data?.policySummary?.totalRules).toBe(1);
+    expect(body?.data?.ruleEvaluations?.[0]?.name).toBe("Main branch policy");
     expect(getAutoMergeStatusMock).toHaveBeenCalledWith("pr-1");
   });
 

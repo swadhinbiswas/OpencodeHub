@@ -388,6 +388,40 @@ try {
                         </a>
                       </div>
                     )}
+
+                    {canWrite && (
+                      <div class="mt-4 rounded-md border border-dashed p-3 space-y-2">
+                        <div class="flex items-center justify-between gap-2">
+                          <div class="text-xs font-medium text-muted-foreground">Auto-merge</div>
+                          <div class="flex items-center gap-2">
+                            <select
+                              id="auto-merge-method"
+                              class="h-8 rounded-md border bg-background px-2 text-xs"
+                            >
+                              <option value="merge">Merge</option>
+                              <option value="squash">Squash</option>
+                              <option value="rebase">Rebase</option>
+                            </select>
+                            <button
+                              id="auto-merge-toggle"
+                              class="h-8 rounded-md border border-primary/30 px-3 text-xs text-primary"
+                            >
+                              Enable auto-merge
+                            </button>
+                            <button
+                              id="auto-merge-refresh"
+                              class="h-8 rounded-md border px-3 text-xs text-muted-foreground"
+                            >
+                              Refresh
+                            </button>
+                          </div>
+                        </div>
+                        <div id="auto-merge-status" class="text-xs text-muted-foreground"></div>
+                        <div id="auto-merge-summary" class="text-xs text-muted-foreground"></div>
+                        <div id="auto-merge-blockers" class="space-y-1 text-xs text-amber-500"></div>
+                        <div id="auto-merge-rules" class="space-y-1 text-xs text-muted-foreground"></div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -734,6 +768,13 @@ try {
   const prStateHint = document.getElementById("pr-state-hint");
   const prStateReviewers = document.getElementById("pr-state-reviewers");
   const prStateMsg = document.getElementById("pr-state-msg");
+  const autoMergeMethod = document.getElementById("auto-merge-method");
+  const autoMergeToggle = document.getElementById("auto-merge-toggle");
+  const autoMergeRefresh = document.getElementById("auto-merge-refresh");
+  const autoMergeStatus = document.getElementById("auto-merge-status");
+  const autoMergeSummary = document.getElementById("auto-merge-summary");
+  const autoMergeBlockers = document.getElementById("auto-merge-blockers");
+  const autoMergeRules = document.getElementById("auto-merge-rules");
   let stackApprovalRecommendations = [];
 
   // Keyboard Shortcuts
@@ -893,6 +934,129 @@ try {
       prStateMsg.textContent = error.message || "Failed to transition state";
     } finally {
       prStateApply.removeAttribute("disabled");
+    }
+  });
+
+  function setAutoMergeControlsBusy(busy) {
+    if (autoMergeToggle) {
+      if (busy) autoMergeToggle.setAttribute("disabled", "true");
+      else autoMergeToggle.removeAttribute("disabled");
+    }
+    if (autoMergeRefresh) {
+      if (busy) autoMergeRefresh.setAttribute("disabled", "true");
+      else autoMergeRefresh.removeAttribute("disabled");
+    }
+    if (autoMergeMethod) {
+      if (busy) autoMergeMethod.setAttribute("disabled", "true");
+      else autoMergeMethod.removeAttribute("disabled");
+    }
+  }
+
+  function renderAutoMergeStatus(status) {
+    if (!autoMergeToggle || !autoMergeStatus || !autoMergeSummary) return;
+
+    const enabled = !!status?.enabled;
+    const eligible = !!status?.eligibleToMerge;
+    const blockers = status?.blockers || [];
+    const summary = status?.policySummary;
+    const evaluations = status?.ruleEvaluations || [];
+
+    autoMergeToggle.textContent = enabled ? "Disable auto-merge" : "Enable auto-merge";
+    autoMergeStatus.textContent = enabled
+      ? eligible
+        ? "Auto-merge is enabled and currently merge-ready."
+        : "Auto-merge is enabled but waiting for merge policy."
+      : "Auto-merge is disabled.";
+
+    if (status?.enabledBy || status?.enabledAt) {
+      const enabledBy = status?.enabledBy ? `by ${status.enabledBy}` : "by unknown user";
+      const enabledAt = status?.enabledAt ? ` at ${new Date(status.enabledAt).toLocaleString()}` : "";
+      autoMergeStatus.textContent += ` Enabled ${enabledBy}${enabledAt}.`;
+    }
+
+    if (!summary || summary.totalRules === 0) {
+      autoMergeSummary.textContent = "No repository auto-merge rules configured.";
+    } else {
+      autoMergeSummary.textContent = `Rules: ${summary.passedRules}/${summary.totalRules} passing • failed ${summary.failedRules} • unmatched ${summary.unmatchedRules}`;
+    }
+
+    if (autoMergeBlockers) {
+      autoMergeBlockers.innerHTML = blockers.map((blocker) => `<div>• ${blocker}</div>`).join("");
+    }
+
+    if (autoMergeRules) {
+      autoMergeRules.innerHTML = evaluations.map((rule) => {
+        const state = !rule.matched ? "not matched" : rule.passed ? "passing" : "failing";
+        const reasons = (rule.reasons || []).length > 0
+          ? ` (${rule.reasons.join(" | ")})`
+          : "";
+        return `<div>• ${rule.name}: ${state}${reasons}</div>`;
+      }).join("");
+    }
+  }
+
+  async function loadAutoMergeStatus() {
+    if (!autoMergeStatus) return;
+    autoMergeStatus.textContent = "Loading auto-merge status...";
+
+    try {
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}/auto-merge`,
+      );
+      const payload = await res.json();
+      if (!res.ok) {
+        throw new Error(payload?.error?.message || payload?.message || "Failed to load auto-merge status");
+      }
+
+      renderAutoMergeStatus(payload?.data || payload);
+    } catch (error) {
+      autoMergeStatus.textContent = error.message || "Failed to load auto-merge status";
+      if (autoMergeSummary) autoMergeSummary.textContent = "";
+      if (autoMergeBlockers) autoMergeBlockers.innerHTML = "";
+      if (autoMergeRules) autoMergeRules.innerHTML = "";
+    }
+  }
+
+  autoMergeRefresh?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    loadAutoMergeStatus();
+  });
+
+  autoMergeToggle?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    if (!autoMergeToggle) return;
+
+    const disabling = autoMergeToggle.textContent?.toLowerCase().includes("disable");
+    setAutoMergeControlsBusy(true);
+    if (autoMergeStatus) {
+      autoMergeStatus.textContent = disabling
+        ? "Disabling auto-merge..."
+        : "Enabling auto-merge...";
+    }
+
+    try {
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}/auto-merge`,
+        disabling
+          ? { method: "DELETE" }
+          : {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ mergeMethod: autoMergeMethod?.value || "merge" }),
+            },
+      );
+      const payload = await res.json();
+      if (!res.ok) {
+        throw new Error(payload?.error?.message || payload?.message || "Failed to update auto-merge");
+      }
+
+      renderAutoMergeStatus(payload?.data || payload);
+    } catch (error) {
+      if (autoMergeStatus) {
+        autoMergeStatus.textContent = error.message || "Failed to update auto-merge";
+      }
+    } finally {
+      setAutoMergeControlsBusy(false);
     }
   });
 
@@ -1333,6 +1497,7 @@ try {
     refreshStackMaintenanceStatus();
     refreshStackMergeReadiness();
   }
+  loadAutoMergeStatus();
 
   mergeBtn?.addEventListener("click", async () => {
     if (!confirm("Are you sure you want to merge this pull request?")) return;
