@@ -150,18 +150,21 @@ export async function evaluateGates(prId: string): Promise<{
                 passed: false,
                 gateName: `Status: ${required.checkName}`,
                 message: "Check not found",
+                details: { gateType: "status_check", branch: required.branch, strictMode: required.strictMode },
             });
         } else if (check.conclusion !== "success") {
             results.push({
                 passed: false,
                 gateName: `Status: ${required.checkName}`,
                 message: `Check ${check.status}: ${check.conclusion || "pending"}`,
+                details: { gateType: "status_check", branch: required.branch, strictMode: required.strictMode },
             });
         } else {
             results.push({
                 passed: true,
                 gateName: `Status: ${required.checkName}`,
                 message: "Check passed",
+                details: { gateType: "status_check", branch: required.branch, strictMode: required.strictMode },
             });
         }
     }
@@ -175,18 +178,21 @@ export async function evaluateGates(prId: string): Promise<{
             passed: false,
             gateName: "Review",
             message: "At least one approval required",
+            details: { gateType: "review" },
         });
     } else if (changesRequested) {
         results.push({
             passed: false,
             gateName: "Review",
             message: "Changes requested by reviewer",
+            details: { gateType: "review" },
         });
     } else {
         results.push({
             passed: true,
             gateName: "Review",
             message: `${approvals.length} approval(s)`,
+            details: { gateType: "review", approvals: approvals.length },
         });
     }
 
@@ -206,12 +212,14 @@ export async function evaluateGates(prId: string): Promise<{
             passed: false,
             gateName: "Merge Conflicts",
             message: "Branch has conflicts that must be resolved",
+            details: { gateType: "conflict" },
         });
     } else {
         results.push({
             passed: true,
             gateName: "Merge Conflicts",
             message: "No conflicts",
+            details: { gateType: "conflict" },
         });
     }
 
@@ -264,6 +272,7 @@ async function evaluateSingleGate(
                     passed: false,
                     gateName: gate.name,
                     message: `Missing required labels: ${missingRequired.join(", ")}`,
+                    details: { gateType: "label", missingRequired, blockedLabels: blockedLabels },
                 };
             }
             if (presentBlocked.length > 0) {
@@ -271,12 +280,14 @@ async function evaluateSingleGate(
                     passed: false,
                     gateName: gate.name,
                     message: `Blocked labels present: ${presentBlocked.join(", ")}`,
+                    details: { gateType: "label", presentBlocked, requiredLabels },
                 };
             }
             return {
                 passed: true,
                 gateName: gate.name,
                 message: "Label check passed",
+                details: { gateType: "label", requiredLabels, blockedLabels },
             };
         }
 
@@ -303,6 +314,7 @@ async function evaluateSingleGate(
                     passed: false,
                     gateName: gate.name,
                     message: "Changes requested by reviewer",
+                    details: { gateType: "review", minReviews, approvalCount },
                 };
             }
             if (approvalCount < minReviews) {
@@ -310,12 +322,14 @@ async function evaluateSingleGate(
                     passed: false,
                     gateName: gate.name,
                     message: `Needs ${minReviews - approvalCount} more approval(s)`,
+                    details: { gateType: "review", minReviews, approvalCount },
                 };
             }
             return {
                 passed: true,
                 gateName: gate.name,
                 message: `Review requirements met (${approvalCount}/${minReviews})`,
+                details: { gateType: "review", minReviews, approvalCount },
             };
         }
 
@@ -330,20 +344,32 @@ async function evaluateSingleGate(
                         passed: Boolean(passed),
                         gateName: gate.name,
                         message: passed ? "Custom gate passed" : "Custom gate failed",
+                        details: { gateType: "custom" },
                     };
                 } catch (error) {
                     return {
                         passed: false,
                         gateName: gate.name,
                         message: "Error evaluating gate",
+                        details: { gateType: "custom" },
                     };
                 }
             }
-            return { passed: true, gateName: gate.name, message: "No condition defined" };
+            return {
+                passed: true,
+                gateName: gate.name,
+                message: "No condition defined",
+                details: { gateType: "custom" },
+            };
         }
 
         default:
-            return { passed: true, gateName: gate.name, message: "Unknown gate type" };
+            return {
+                passed: true,
+                gateName: gate.name,
+                message: "Unknown gate type",
+                details: { gateType: gate.gateType || "unknown" },
+            };
     }
 }
 

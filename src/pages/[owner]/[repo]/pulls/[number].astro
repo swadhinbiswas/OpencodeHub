@@ -452,6 +452,22 @@ try {
                       <div id="codeowner-blockers" class="space-y-1 text-xs text-amber-500"></div>
                       <div id="codeowner-files" class="space-y-1 text-xs text-muted-foreground"></div>
                     </div>
+
+                    <div class="mt-4 rounded-md border border-dashed p-3 space-y-2">
+                      <div class="flex items-center justify-between">
+                        <div class="text-xs font-medium text-muted-foreground">Merge gate policy</div>
+                        <button
+                          id="merge-readiness-refresh"
+                          class="h-8 rounded-md border px-3 text-xs text-muted-foreground"
+                        >
+                          Refresh
+                        </button>
+                      </div>
+                      <div id="merge-readiness-summary" class="text-xs text-muted-foreground"></div>
+                      <div id="merge-readiness-breakdown" class="text-xs text-muted-foreground"></div>
+                      <div id="merge-readiness-blockers" class="space-y-1 text-xs text-amber-500"></div>
+                      <div id="merge-readiness-recommendations" class="space-y-1 text-xs text-muted-foreground"></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -813,6 +829,11 @@ try {
   const codeOwnerPolicy = document.getElementById("codeowner-policy");
   const codeOwnerBlockers = document.getElementById("codeowner-blockers");
   const codeOwnerFiles = document.getElementById("codeowner-files");
+  const mergeReadinessRefresh = document.getElementById("merge-readiness-refresh");
+  const mergeReadinessSummary = document.getElementById("merge-readiness-summary");
+  const mergeReadinessBreakdown = document.getElementById("merge-readiness-breakdown");
+  const mergeReadinessBlockers = document.getElementById("merge-readiness-blockers");
+  const mergeReadinessRecommendations = document.getElementById("merge-readiness-recommendations");
   let stackApprovalRecommendations = [];
 
   // Keyboard Shortcuts
@@ -1235,6 +1256,63 @@ try {
   codeOwnerRefresh?.addEventListener("click", async (event) => {
     event.preventDefault();
     loadCodeOwnerEnforcement();
+  });
+
+  async function loadMergeReadiness() {
+    if (!mergeReadinessSummary || !mergeReadinessBreakdown) return;
+    mergeReadinessSummary.textContent = "Loading merge readiness...";
+    mergeReadinessBreakdown.textContent = "";
+    if (mergeReadinessBlockers) mergeReadinessBlockers.innerHTML = "";
+    if (mergeReadinessRecommendations) mergeReadinessRecommendations.innerHTML = "";
+
+    try {
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}/merge-readiness`,
+      );
+      const payload = await res.json();
+      if (!res.ok) {
+        throw new Error(payload?.error?.message || payload?.message || "Failed to load merge readiness");
+      }
+
+      const data = payload?.data || payload;
+      const report = data?.policyReport || {};
+      const canMerge = !!data?.canMerge;
+      const blockers = data?.blockers || [];
+      const failedByType = report?.failedByType || {};
+      const recommendations = report?.recommendations || [];
+
+      mergeReadinessSummary.textContent = canMerge
+        ? "All merge gates are currently satisfied."
+        : "Merge is currently blocked by one or more gates.";
+      mergeReadinessBreakdown.textContent =
+        `Gates: passed ${report?.passedGates || 0}/${report?.totalGates || 0} • failed ${report?.failedGates || 0}`;
+
+      if (mergeReadinessBlockers) {
+        mergeReadinessBlockers.innerHTML = blockers.map((blocker) => `<div>• ${blocker}</div>`).join("");
+      }
+
+      if (mergeReadinessRecommendations) {
+        const typeParts = Object.entries(failedByType).map(([key, count]) => `${key}: ${count}`);
+        const sections = [];
+        if (typeParts.length > 0) {
+          sections.push(`<div>Failed gate types: ${typeParts.join(", ")}</div>`);
+        }
+        if (recommendations.length > 0) {
+          sections.push(...recommendations.map((item) => `<div>• ${item}</div>`));
+        }
+        mergeReadinessRecommendations.innerHTML = sections.join("");
+      }
+    } catch (error) {
+      mergeReadinessSummary.textContent = error.message || "Failed to load merge readiness";
+      mergeReadinessBreakdown.textContent = "";
+      if (mergeReadinessBlockers) mergeReadinessBlockers.innerHTML = "";
+      if (mergeReadinessRecommendations) mergeReadinessRecommendations.innerHTML = "";
+    }
+  }
+
+  mergeReadinessRefresh?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    loadMergeReadiness();
   });
 
   aiReviewBtn?.addEventListener("click", async () => {
@@ -1677,6 +1755,7 @@ try {
   loadAutoMergeStatus();
   loadPrChecks();
   loadCodeOwnerEnforcement();
+  loadMergeReadiness();
 
   mergeBtn?.addEventListener("click", async () => {
     if (!confirm("Are you sure you want to merge this pull request?")) return;
