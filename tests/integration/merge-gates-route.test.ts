@@ -80,6 +80,14 @@ describe("merge gates route", () => {
   });
 
   it("returns merge gate policy configuration for readers", async () => {
+    getMergeGatesMock.mockResolvedValue([
+      { id: "gate-1", name: "PR Label Gate", gateType: "custom", conditionScript: null },
+    ] as any);
+    mockDb.query.requiredStatusChecks.findMany = vi.fn(async () => [
+      { id: "check-1", checkName: "ci/build", branch: "main" },
+      { id: "check-2", checkName: "ci/build", branch: "main" },
+    ]);
+
     const response = await mergeGatesGet({
       params: { owner: "owner-1", repo: "demo" },
       locals: { user: { id: "user-1", isAdmin: false } },
@@ -88,10 +96,12 @@ describe("merge gates route", () => {
 
     const body = await readJson(response);
     expect(response.status).toBe(200);
-    expect(body?.data?.requiredChecks).toHaveLength(1);
+    expect(body?.data?.requiredChecks).toHaveLength(2);
     expect(body?.data?.mergeGates).toHaveLength(1);
-    expect(body?.data?.report?.requiredChecksTotal).toBe(1);
+    expect(body?.data?.report?.requiredChecksTotal).toBe(2);
     expect(body?.data?.report?.mergeGatesTotal).toBe(1);
+    expect(body?.data?.report?.warnings).toHaveLength(2);
+    expect(body?.data?.report?.warnings?.[0]?.code).toBe("duplicate_required_checks");
   });
 
   it("returns 401 for unauthenticated reads", async () => {

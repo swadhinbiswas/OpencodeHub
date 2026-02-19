@@ -77,15 +77,23 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals, request }
     if (seenCheckKeys.has(key)) duplicateCheckKeys.add(key);
     seenCheckKeys.add(key);
   }
-  const warnings: string[] = [];
+  const warnings: Array<{ code: string; severity: "warning" | "info"; message: string }> = [];
   if (duplicateCheckKeys.size > 0) {
-    warnings.push(`Duplicate required checks detected: ${[...duplicateCheckKeys.values()].join(", ")}`);
+    warnings.push({
+      code: "duplicate_required_checks",
+      severity: "warning",
+      message: `Duplicate required checks detected: ${[...duplicateCheckKeys.values()].join(", ")}`,
+    });
   }
   const customWithoutScript = mergeGates.filter(
     (gate) => gate.gateType === "custom" && !gate.conditionScript
   );
   if (customWithoutScript.length > 0) {
-    warnings.push(`Custom gates without condition scripts: ${customWithoutScript.map((gate) => gate.name).join(", ")}`);
+    warnings.push({
+      code: "custom_gate_without_script",
+      severity: "info",
+      message: `Custom gates without condition scripts: ${customWithoutScript.map((gate) => gate.name).join(", ")}`,
+    });
   }
 
   let readiness: Awaited<ReturnType<typeof evaluateGates>> | null = null;

@@ -33,6 +33,7 @@ vi.mock("@/lib/permissions", () => ({
   canWriteRepo: canWriteRepoMock,
 }));
 
+import { GET as listCommentsGet } from "@/pages/api/repos/[owner]/[repo]/pulls/[number]/comments";
 import { POST as createCommentPost } from "@/pages/api/repos/[owner]/[repo]/pulls/[number]/comments";
 import { PATCH as updateCommentPatch } from "@/pages/api/repos/[owner]/[repo]/pulls/[number]/comments";
 import { DELETE as deleteCommentDelete } from "@/pages/api/repos/[owner]/[repo]/pulls/[number]/comments";
@@ -72,6 +73,28 @@ function makeDb() {
           if (_args?.with?.pullRequest) return commentForMutation;
           return { id: "comment-1", author: { username: "user-1" } };
         }),
+        findMany: vi.fn(async () => ([
+          {
+            id: "comment-1",
+            pullRequestId: "pr-1",
+            authorId: "user-1",
+            body: "public",
+            path: "src/app.ts",
+            inReplyToId: null,
+            createdAt: new Date("2026-02-19T00:00:00Z"),
+            author: { username: "user-1" },
+          },
+          {
+            id: "comment-2",
+            pullRequestId: "pr-1",
+            authorId: "user-2",
+            body: "secret",
+            path: "secure/config.yml",
+            inReplyToId: null,
+            createdAt: new Date("2026-02-19T00:01:00Z"),
+            author: { username: "user-2" },
+          },
+        ])),
       },
     },
     insert: vi.fn(() => ({
@@ -129,6 +152,33 @@ describe("PR comments path permissions", () => {
     expect(response.status).toBe(403);
     expect(body?.error?.code).toBe("FORBIDDEN");
     expect(mockDb.__state.insertCalls).toHaveLength(0);
+  });
+
+  it("filters hidden comment paths in list responses", async () => {
+    checkPathPermissionsMock.mockResolvedValue({
+      allowed: false,
+      deniedPaths: ["secure/config.yml"],
+      reason: "Insufficient permissions for paths: secure/config.yml",
+    });
+
+    const response = await listCommentsGet({
+      params: { owner: "owner-1", repo: "demo", number: "42" },
+      request: new Request("http://localhost/api/repos/owner-1/demo/pulls/42/comments", {
+        method: "GET",
+      }),
+    } as any);
+
+    const body = await readJson(response);
+    expect(response.status).toBe(200);
+    expect(body?.data?.comments).toHaveLength(1);
+    expect(body?.data?.comments?.[0]?.path).toBe("src/app.ts");
+    expect(body?.data?.hiddenCount).toBe(1);
+    expect(checkPathPermissionsMock).toHaveBeenCalledWith(
+      "user-1",
+      "repo-1",
+      ["src/app.ts", "secure/config.yml"],
+      "read"
+    );
   });
 
   it("blocks comment creation when repository write permission is denied", async () => {
