@@ -8,7 +8,7 @@
 | Category | Implemented | Partial | Missing | Total |
 | :--- | :---: | :---: | :---: | :---: |
 | **Repository & Git** | 9 | 4 | 0 | 13 |
-| **Pull Requests** | 7 | 8 | 0 | 15 |
+| **Pull Requests** | 8 | 7 | 0 | 15 |
 | **Code Review** | 8 | 2 | 0 | 10 |
 | **Issues & Planning** | 10 | 0 | 0 | 10 |
 | **CI/CD & Automation** | 4 | 4 | 0 | 8 |
@@ -19,7 +19,7 @@
 | **Notifications & Collaboration** | 5 | 3 | 0 | 8 |
 | **Interfaces & Extensibility** | 5 | 2 | 0 | 7 |
 | **Self-Hosted & Deployment** | 4 | 3 | 0 | 7 |
-| **Total** | **72** | **53** | **0** | **125** |
+| **Total** | **73** | **52** | **0** | **125** |
 
 ---
 
@@ -53,7 +53,7 @@
 | Required reviewers per state | ✅ | State reviewer requirements are enforced during transitions, and required-reviewer introspection now supports state-policy preview mode (`pulls/{number}/required-reviewers?stateId=`) including team/user requirement progress; PR state UI surfaces live per-state reviewer policy guidance before applying transitions |
 | PR merge queues | ✅ | `merge-queue.ts` (590+ lines) |
 | Conflict detection before merge | ✅ | `mergeable` field in PR schema |
-| Auto-merge rules | ⚠️ | Auto-merge rules engine plus explicit PR auto-merge control/status APIs now implemented (`pulls/{number}/auto-merge`); richer policy UX and rule introspection remain partial |
+| Auto-merge rules | ✅ | Auto-merge rules engine plus explicit PR auto-merge control/status APIs are fully wired (`pulls/{number}/auto-merge`), including policy summary and per-rule introspection in status responses (`policySummary`, `ruleEvaluations`) and PR detail UI controls for enable/disable, method selection, blockers, and live rule evaluation visibility |
 | Draft PRs | ✅ | Schema supports `isDraft` field |
 | PR labels | ✅ | Full implementation with schema |
 | PR assignees | ✅ | Full implementation with schema |

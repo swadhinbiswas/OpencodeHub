@@ -4,10 +4,13 @@
  */
 
 import { getDatabase, schema } from "@/db";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 import { addToMergeQueue } from "./merge-queue";
-import { evaluateAutoMergeRules } from "./auto-merge-rules";
+import {
+    evaluateAutoMergeRulesDetailed,
+    type AutoMergeRuleEvaluation,
+} from "./auto-merge-rules";
 
 export interface AutoMergeOptions {
     mergeMethod: "merge" | "squash" | "rebase";
@@ -22,6 +25,14 @@ export interface AutoMergeStatus {
     blockers: string[];
     enabledBy?: string;
     enabledAt?: Date;
+    policySummary?: {
+        totalRules: number;
+        matchedRules: number;
+        passedRules: number;
+        failedRules: number;
+        unmatchedRules: number;
+    };
+    ruleEvaluations?: AutoMergeRuleEvaluation[];
 }
 
 /**
@@ -155,15 +166,14 @@ export async function checkAutoMergeEligibility(prId: string): Promise<AutoMerge
 
     // Check reviews
     const reviews = pr.reviews || [];
-    const approvals = reviews.filter(r => r.state === "approved");
     const changesRequested = reviews.filter(r => r.state === "changes_requested");
 
     if (changesRequested.length > 0) {
         blockers.push("Changes requested by reviewer(s)");
     }
 
-    const ruleBlockers = await evaluateAutoMergeRules(prId);
-    blockers.push(...ruleBlockers);
+    const ruleEvaluation = await evaluateAutoMergeRulesDetailed(prId);
+    blockers.push(...ruleEvaluation.blockers);
 
     // Get enabler info
     let enabledBy: string | undefined;
@@ -181,6 +191,16 @@ export async function checkAutoMergeEligibility(prId: string): Promise<AutoMerge
         blockers,
         enabledBy,
         enabledAt: pr.autoMergeEnabledAt || undefined,
+        policySummary: {
+            totalRules: ruleEvaluation.evaluations.length,
+            matchedRules: ruleEvaluation.evaluations.filter((evaluation) => evaluation.matched).length,
+            passedRules: ruleEvaluation.evaluations.filter((evaluation) => evaluation.passed).length,
+            failedRules: ruleEvaluation.evaluations.filter(
+                (evaluation) => evaluation.matched && !evaluation.passed
+            ).length,
+            unmatchedRules: ruleEvaluation.evaluations.filter((evaluation) => !evaluation.matched).length,
+        },
+        ruleEvaluations: ruleEvaluation.evaluations,
     };
 }
 
