@@ -32,7 +32,7 @@ vi.mock("@/lib/stack-rebase", () => ({
   autoUpdateStack: autoUpdateStackMock,
 }));
 
-import { POST as autoUpdatePost } from "@/pages/api/repos/[owner]/[repo]/stacks/[stackId]/auto-update";
+import { GET as autoUpdateGet, POST as autoUpdatePost } from "@/pages/api/repos/[owner]/[repo]/stacks/[stackId]/auto-update";
 
 function makeDb() {
   return {
@@ -56,6 +56,7 @@ async function readJson(response: Response): Promise<any> {
 
 describe("stack auto-update route", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     mockDb = makeDb();
     canWriteRepoMock.mockResolvedValue(true);
     stackNeedsRebaseMock.mockResolvedValue({ needsRebase: true, behindBy: 2 });
@@ -73,6 +74,18 @@ describe("stack auto-update route", () => {
     expect(response.status).toBe(403);
   });
 
+  it("returns rebase status via GET", async () => {
+    const response = await autoUpdateGet({
+      params: { owner: "owner-1", repo: "demo", stackId: "stack-1" },
+      locals: { user: { id: "user-1" } },
+    } as any);
+
+    const body = await readJson(response);
+    expect(response.status).toBe(200);
+    expect(body?.data?.needsRebase).toBe(true);
+    expect(body?.data?.upToDate).toBe(false);
+  });
+
   it("returns auto-update result with pre-check status", async () => {
     const response = await autoUpdatePost({
       params: { owner: "owner-1", repo: "demo", stackId: "stack-1" },
@@ -83,7 +96,22 @@ describe("stack auto-update route", () => {
     expect(response.status).toBe(200);
     expect(body?.data?.needsRebase).toBe(true);
     expect(body?.data?.behindBy).toBe(2);
+    expect(body?.data?.performed).toBe(true);
     expect(autoUpdateStackMock).toHaveBeenCalledWith("stack-1");
   });
-});
 
+  it("returns a no-op result when stack is already up to date", async () => {
+    stackNeedsRebaseMock.mockResolvedValueOnce({ needsRebase: false, behindBy: 0 });
+
+    const response = await autoUpdatePost({
+      params: { owner: "owner-1", repo: "demo", stackId: "stack-1" },
+      locals: { user: { id: "user-1" } },
+    } as any);
+
+    const body = await readJson(response);
+    expect(response.status).toBe(200);
+    expect(body?.data?.performed).toBe(false);
+    expect(body?.data?.message).toMatch(/already up to date/i);
+    expect(autoUpdateStackMock).not.toHaveBeenCalled();
+  });
+});

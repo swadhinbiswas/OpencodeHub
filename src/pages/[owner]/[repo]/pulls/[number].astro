@@ -516,6 +516,9 @@ try {
                     <Button id="queue-stack-btn" variant="outline" className="text-sm">
                       Add stack to merge queue
                     </Button>
+                    <Button id="auto-update-stack-btn" variant="outline" className="text-sm">
+                      Auto-update stack
+                    </Button>
                     <Button id="rebase-stack-btn" variant="outline" className="text-sm">
                       Rebase stack
                     </Button>
@@ -630,6 +633,7 @@ try {
   const linkIssueError = document.getElementById("link-issue-error");
   const queueStackBtn = document.getElementById("queue-stack-btn");
   const queueStackError = document.getElementById("queue-stack-error");
+  const autoUpdateStackBtn = document.getElementById("auto-update-stack-btn");
   const rebaseStackBtn = document.getElementById("rebase-stack-btn");
   const rebaseStackMsg = document.getElementById("rebase-stack-msg");
   const stackApprovalsRefresh = document.getElementById("stack-approvals-refresh");
@@ -771,12 +775,62 @@ try {
     }
   });
 
+  function showStackActionMessage(message, isError = false) {
+    if (!rebaseStackMsg) return;
+    rebaseStackMsg.textContent = message || "";
+    rebaseStackMsg.classList.remove("hidden", "text-muted-foreground", "text-red-500", "text-green-600");
+    rebaseStackMsg.classList.add(isError ? "text-red-500" : "text-green-600");
+  }
+
+  function resetStackActionButtons() {
+    if (autoUpdateStackBtn) {
+      autoUpdateStackBtn.removeAttribute("disabled");
+      autoUpdateStackBtn.textContent = "Auto-update stack";
+    }
+    if (rebaseStackBtn) {
+      rebaseStackBtn.removeAttribute("disabled");
+      rebaseStackBtn.textContent = "Rebase stack";
+    }
+  }
+
+  async function refreshStackMaintenanceStatus() {
+    if (!stackId) return;
+    try {
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/stacks/${stackId}/auto-update`,
+      );
+      const data = await res.json();
+      if (!res.ok) return;
+
+      if (data?.needsRebase) {
+        if (autoUpdateStackBtn) {
+          autoUpdateStackBtn.removeAttribute("disabled");
+        }
+        if (rebaseStackBtn) {
+          rebaseStackBtn.removeAttribute("disabled");
+        }
+        showStackActionMessage(`Stack is ${data.behindBy} commit(s) behind base branch.`);
+      } else {
+        if (autoUpdateStackBtn) {
+          autoUpdateStackBtn.setAttribute("disabled", "true");
+          autoUpdateStackBtn.textContent = "Stack up to date";
+        }
+        showStackActionMessage("Stack is up to date.");
+      }
+    } catch {
+      // Non-fatal status refresh
+    }
+  }
+
   rebaseStackBtn?.addEventListener("click", async () => {
     if (!stackId) return;
 
+    if (autoUpdateStackBtn) {
+      autoUpdateStackBtn.setAttribute("disabled", "true");
+    }
     rebaseStackBtn.setAttribute("disabled", "true");
     rebaseStackBtn.textContent = "Rebasing...";
-    rebaseStackMsg.classList.add("hidden");
+    showStackActionMessage("Rebasing stack...");
 
     try {
       const res = await fetch(
@@ -790,18 +844,49 @@ try {
         throw new Error(data?.message || "Failed to rebase stack");
       }
 
-      rebaseStackMsg.textContent = data?.message || "Rebase complete";
-      rebaseStackMsg.classList.remove("hidden");
+      showStackActionMessage(data?.message || "Rebase complete");
 
       if (data?.result?.success) {
         window.location.reload();
       }
     } catch (e) {
-      rebaseStackMsg.textContent = e.message || "Failed to rebase stack";
-      rebaseStackMsg.classList.remove("hidden");
+      showStackActionMessage(e.message || "Failed to rebase stack", true);
     } finally {
-      rebaseStackBtn.removeAttribute("disabled");
-      rebaseStackBtn.textContent = "Rebase stack";
+      resetStackActionButtons();
+      refreshStackMaintenanceStatus();
+    }
+  });
+
+  autoUpdateStackBtn?.addEventListener("click", async () => {
+    if (!stackId) return;
+
+    autoUpdateStackBtn.setAttribute("disabled", "true");
+    autoUpdateStackBtn.textContent = "Auto-updating...";
+    if (rebaseStackBtn) {
+      rebaseStackBtn.setAttribute("disabled", "true");
+    }
+    showStackActionMessage("Running auto-update...");
+
+    try {
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/stacks/${stackId}/auto-update`,
+        { method: "POST" },
+      );
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to auto-update stack");
+      }
+
+      showStackActionMessage(data?.message || "Auto-update completed");
+      if (data?.performed && data?.result?.success) {
+        window.location.reload();
+      }
+    } catch (e) {
+      showStackActionMessage(e.message || "Failed to auto-update stack", true);
+    } finally {
+      resetStackActionButtons();
+      refreshStackMaintenanceStatus();
     }
   });
 
@@ -888,6 +973,7 @@ try {
 
   if (stackId) {
     loadStackApprovals();
+    refreshStackMaintenanceStatus();
   }
 
   mergeBtn?.addEventListener("click", async () => {
