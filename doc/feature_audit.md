@@ -184,7 +184,7 @@
 | :--- | :---: | :--- |
 | Smart notifications | ⚠️ | Basic notifications, no AI prioritization |
 | Blocking alerts | ⚠️ | Basic via inbox sections |
-| Daily/weekly digests | ⚠️ | Scheduler now timezone-aware with cron endpoint + tests; delivery infrastructure hardening still pending |
+| Daily/weekly digests | ⚠️ | Scheduler is timezone-aware with cron endpoint/tests and user-scoped digest test API (`/user/notification-digests/test`); delivery observability/retry depth remains partial |
 | Mentions & subscriptions | ✅ | Implemented |
 | PR-level discussions | ✅ | Full threaded comments |
 | Activity feeds | ✅ | Dashboard activity feed |

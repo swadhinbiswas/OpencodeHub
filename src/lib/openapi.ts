@@ -264,6 +264,13 @@ export const openApiSpec = {
                 },
                 required: ["mirrorUrl"],
             },
+            UserDigestTestRequest: {
+                type: "object",
+                properties: {
+                    dryRun: { type: "boolean", default: true },
+                    period: { type: "string", enum: ["daily", "weekly"] },
+                },
+            },
         },
     },
     paths: {
@@ -905,6 +912,27 @@ export const openApiSpec = {
                     401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/user/notification-digests/test": {
+            post: {
+                tags: ["Notifications"],
+                summary: "Run a user digest test",
+                description: "Runs a digest generation for the authenticated user. Defaults to dry-run mode unless explicitly disabled.",
+                security: [{ bearerAuth: [] }],
+                requestBody: {
+                    required: false,
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/UserDigestTestRequest" },
+                        },
+                    },
+                },
+                responses: {
+                    200: { description: "Digest test result returned" },
+                    400: { description: "Invalid payload", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                 },
             },
         },
