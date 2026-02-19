@@ -48,7 +48,7 @@
 | Cross-PR dependency detection | ⚠️ | Automatic branch/file dependency graph API (`pulls/dependencies`) plus stack-order suggestion API (`pulls/stack-order`) implemented; UI-driven workflows remain partial |
 | Stack rebase & auto-update | ⚠️ | Manual rebase + auto-update API endpoints now implemented (`stacks/[stackId]/rebase`, `stacks/[stackId]/auto-update`); workflow automation/UI depth remains partial |
 | Stack-level approvals | ⚠️ | Basic - individual PR approvals only |
-| Bulk merge (merge stacks) | ⚠️ | Via merge queue, not explicit bulk action |
+| Bulk merge (merge stacks) | ⚠️ | Explicit bulk merge queue APIs now exist for stacks (`stacks/[stackId]/merge`) and selected PRs (`pulls/bulk-merge`); higher-level stack orchestration UX remains partial |
 | Custom PR states | ⚠️ | Schema exists (`pr-states`), end-to-end workflow adoption is incomplete |
 | Required reviewers per state | ⚠️ | Basic reviewer requirements exist; full state-specific enforcement remains incomplete |
 | PR merge queues | ✅ | `merge-queue.ts` (590+ lines) |
