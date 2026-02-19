@@ -8,6 +8,7 @@ import { resolveRepoPath } from "@/lib/git-storage";
 import { getRepoPath, getChangedFiles } from "@/lib/git";
 import { canReadRepo } from "@/lib/permissions";
 import { badRequest, forbidden, notFound, success, unauthorized } from "@/lib/api";
+import { checkPathPermissions } from "@/lib/path-scoping";
 
 async function getRepository(owner: string, repo: string) {
     const db = getDatabase() as NodePgDatabase<typeof schema>;
@@ -116,6 +117,11 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals, request 
     const { path, comment } = body || {};
 
     if (!path) return badRequest("Missing file path");
+
+    const permission = await checkPathPermissions(user.id, repository.id, [path], "write");
+    if (!permission.allowed) {
+        return forbidden(permission.reason || "Insufficient path permissions for this file");
+    }
 
     const approval = await approveFile({
         pullRequestId: pr.id,

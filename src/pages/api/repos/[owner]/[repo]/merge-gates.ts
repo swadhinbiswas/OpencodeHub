@@ -6,7 +6,7 @@ import { getDatabase, schema } from "@/db";
 import { badRequest, forbidden, notFound, success, unauthorized } from "@/lib/api";
 import { withErrorHandler } from "@/lib/errors";
 import { canAdminRepo, canReadRepo } from "@/lib/permissions";
-import { addRequiredCheck, createMergeGate, getMergeGates } from "@/lib/ci-gates";
+import { addRequiredCheck, createMergeGate, evaluateGates, getMergeGates } from "@/lib/ci-gates";
 
 const createPayloadSchema = z.discriminatedUnion("kind", [
   z.object({
@@ -39,7 +39,7 @@ async function resolveRepository(owner: string, repoName: string) {
   });
 }
 
-export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
+export const GET: APIRoute = withErrorHandler(async ({ params, locals, request }) => {
   const owner = params.owner;
   const repoName = params.repo;
   const user = locals.user;
@@ -59,10 +59,64 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
     where: eq(schema.requiredStatusChecks.repositoryId, repository.id),
   });
   const mergeGates = await getMergeGates(repository.id);
+  const search = new URL(request.url).searchParams;
+  const pullNumberRaw = search.get("pullNumber");
+
+  const requiredChecksByBranch = requiredChecks.reduce<Record<string, number>>((acc, check) => {
+    acc[check.branch] = (acc[check.branch] || 0) + 1;
+    return acc;
+  }, {});
+  const gateTypeBreakdown = mergeGates.reduce<Record<string, number>>((acc, gate) => {
+    acc[gate.gateType] = (acc[gate.gateType] || 0) + 1;
+    return acc;
+  }, {});
+  const duplicateCheckKeys = new Set<string>();
+  const seenCheckKeys = new Set<string>();
+  for (const check of requiredChecks) {
+    const key = `${check.branch}::${check.checkName}`;
+    if (seenCheckKeys.has(key)) duplicateCheckKeys.add(key);
+    seenCheckKeys.add(key);
+  }
+  const warnings: string[] = [];
+  if (duplicateCheckKeys.size > 0) {
+    warnings.push(`Duplicate required checks detected: ${[...duplicateCheckKeys.values()].join(", ")}`);
+  }
+  const customWithoutScript = mergeGates.filter(
+    (gate) => gate.gateType === "custom" && !gate.conditionScript
+  );
+  if (customWithoutScript.length > 0) {
+    warnings.push(`Custom gates without condition scripts: ${customWithoutScript.map((gate) => gate.name).join(", ")}`);
+  }
+
+  let readiness: Awaited<ReturnType<typeof evaluateGates>> | null = null;
+  if (pullNumberRaw !== null) {
+    const pullNumber = Number.parseInt(pullNumberRaw, 10);
+    if (!Number.isFinite(pullNumber) || pullNumber < 1) {
+      return badRequest("Invalid pullNumber query parameter");
+    }
+    const pullRequest = await db.query.pullRequests.findFirst({
+      where: and(
+        eq(schema.pullRequests.repositoryId, repository.id),
+        eq(schema.pullRequests.number, pullNumber)
+      ),
+    });
+    if (!pullRequest) return notFound("Pull request not found");
+    readiness = await evaluateGates(pullRequest.id);
+  }
 
   return success({
     requiredChecks,
     mergeGates,
+    report: {
+      requiredChecksTotal: requiredChecks.length,
+      mergeGatesTotal: mergeGates.length,
+      enabledMergeGates: mergeGates.filter((gate) => gate.isEnabled).length,
+      disabledMergeGates: mergeGates.filter((gate) => !gate.isEnabled).length,
+      requiredChecksByBranch,
+      gateTypeBreakdown,
+      warnings,
+    },
+    readiness,
   });
 });
 

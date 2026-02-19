@@ -5,6 +5,7 @@ import { getDatabase, schema } from "@/db";
 import { withErrorHandler } from "@/lib/errors";
 import { canAdminRepo } from "@/lib/permissions";
 import { badRequest, forbidden, notFound, success, unauthorized } from "@/lib/api";
+import { checkPathPermissions } from "@/lib/path-scoping";
 
 async function getRepository(owner: string, repo: string) {
     const db = getDatabase() as NodePgDatabase<typeof schema>;
@@ -56,6 +57,13 @@ export const DELETE: APIRoute = withErrorHandler(async ({ params, locals }) => {
 
     if (!isAdmin && approval.approvedById !== user.id) {
         return forbidden();
+    }
+
+    if (!isAdmin) {
+        const permission = await checkPathPermissions(user.id, repository.id, [approval.path], "write");
+        if (!permission.allowed) {
+            return forbidden(permission.reason || "Insufficient path permissions for this file");
+        }
     }
 
     await db.delete(schema.fileApprovals)
