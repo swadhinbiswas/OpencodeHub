@@ -601,13 +601,23 @@ export const resolvers = {
                 }
             }
 
+            const reviewStateByEvent: Record<string, "commented" | "approved" | "changes_requested"> = {
+                COMMENT: "commented",
+                APPROVE: "approved",
+                REQUEST_CHANGES: "changes_requested",
+            };
+            const mappedState = reviewStateByEvent[input.event];
+            if (!mappedState) {
+                throw new Error("Invalid review event");
+            }
+
             const reviewId = generateId();
 
             await ctx.db.insert(schema.pullRequestReviews).values({
                 id: reviewId,
                 pullRequestId: pullRequest.id,
                 reviewerId: ctx.userId,
-                state: input.event.toLowerCase(), // APPROVED, REQUEST_CHANGES, COMMENT, etc.
+                state: mappedState,
                 body: input.body,
                 submittedAt: new Date(),
                 createdAt: new Date(),
