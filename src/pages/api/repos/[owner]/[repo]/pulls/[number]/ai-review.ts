@@ -141,11 +141,12 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
                 provider === "bytez" ||
                 provider === "openrouter" ||
                 provider === "together" ||
-                provider === "google"
+                provider === "google" ||
+                provider === "local"
                     ? provider
                     : provider === "external_agent"
                         ? "externalAgent"
-                    : undefined;
+                        : undefined;
             aiConfig = {
                 provider,
                 model: userConfig.model || aiConfig.model,
@@ -156,6 +157,8 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
                 baseUrl:
                     provider === "external_agent"
                         ? (userConfig.externalAgentWebhookUrl || aiConfig.baseUrl)
+                        : provider === "local"
+                            ? userConfig.localBaseUrl
                         : undefined,
             };
         } catch (e) {

@@ -1021,6 +1021,7 @@ export const openApiSpec = {
                                         enum: ["openai", "anthropic", "groq", "bytez", "openrouter", "together", "google", "external_agent", "local"],
                                     },
                                     model: { type: "string" },
+                                    localBaseUrl: { type: "string", format: "uri" },
                                     externalAgentWebhookUrl: { type: "string", format: "uri" },
                                     apiKeys: {
                                         type: "object",
@@ -1032,6 +1033,7 @@ export const openApiSpec = {
                                             openrouter: { type: "string" },
                                             together: { type: "string" },
                                             google: { type: "string" },
+                                            local: { type: "string" },
                                             externalAgent: { type: "string" },
                                         },
                                     },

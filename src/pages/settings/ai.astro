@@ -31,8 +31,10 @@ let aiConfig: PublicAIConfig = {
         openrouter: { isSet: false },
         together: { isSet: false },
         google: { isSet: false },
+        local: { isSet: false },
         externalAgent: { isSet: false },
     },
+    localBaseUrl: "",
     externalAgentWebhookUrl: "",
 };
 
@@ -304,6 +306,32 @@ const sideNav = [
                                 </div>
 
                                 <div class="space-y-2">
+                                    <Label htmlFor="local-base-url"
+                                        >Local AI Base URL</Label
+                                    >
+                                    <Input
+                                        id="local-base-url"
+                                        name="localBaseUrl"
+                                        type="url"
+                                        placeholder={aiConfig.localBaseUrl || "http://127.0.0.1:11434/v1"}
+                                        value=""
+                                    />
+                                </div>
+
+                                <div class="space-y-2">
+                                    <Label htmlFor="local-key"
+                                        >Local AI API Key (optional)</Label
+                                    >
+                                    <Input
+                                        id="local-key"
+                                        name="localKey"
+                                        type="password"
+                                        placeholder={aiConfig.apiKeys.local.masked || "ollama"}
+                                        value=""
+                                    />
+                                </div>
+
+                                <div class="space-y-2">
                                     <Label htmlFor="external-agent-webhook"
                                         >External Agent Webhook URL</Label
                                     >
@@ -361,8 +389,10 @@ const sideNav = [
                 openrouter: formData.get("openrouterKey"),
                 together: formData.get("togetherKey"),
                 google: formData.get("googleKey"),
+                local: formData.get("localKey"),
                 externalAgent: formData.get("externalAgentKey"),
             },
+            localBaseUrl: formData.get("localBaseUrl"),
             externalAgentWebhookUrl: formData.get("externalAgentWebhookUrl"),
         };
 
