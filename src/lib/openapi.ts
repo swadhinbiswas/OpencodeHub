@@ -621,6 +621,25 @@ export const openApiSpec = {
                 },
             },
         },
+        "/repos/{owner}/{repo}/stacks/{stackId}/auto-update": {
+            post: {
+                tags: ["Stacks"],
+                summary: "Auto-update stack onto latest base branch",
+                description: "Checks whether a stack is behind and triggers stack auto-update/rebase when needed.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "stackId", in: "path", required: true, schema: { type: "string" } },
+                ],
+                responses: {
+                    200: { description: "Auto-update result returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository or stack not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
         "/repos/{owner}/{repo}/pulls/{number}/comments": {
             get: {
                 tags: ["Pull Requests"],
