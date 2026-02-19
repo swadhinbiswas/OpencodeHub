@@ -269,6 +269,7 @@ export const openApiSpec = {
                 properties: {
                     dryRun: { type: "boolean", default: true },
                     period: { type: "string", enum: ["daily", "weekly"] },
+                    maxRetries: { type: "integer", minimum: 0, maximum: 5, default: 1 },
                 },
             },
         },
@@ -933,6 +934,32 @@ export const openApiSpec = {
                     200: { description: "Digest test result returned" },
                     400: { description: "Invalid payload", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/cron/notification-digests": {
+            post: {
+                tags: ["Notifications"],
+                summary: "Run scheduled digest delivery",
+                description: "Cron-authenticated endpoint to process due digests. Supports `dryRun=true` and bounded retry depth via `maxRetries`.",
+                parameters: [
+                    {
+                        name: "dryRun",
+                        in: "query",
+                        required: false,
+                        schema: { type: "boolean", default: false },
+                    },
+                    {
+                        name: "maxRetries",
+                        in: "query",
+                        required: false,
+                        schema: { type: "integer", minimum: 0, maximum: 5, default: 1 },
+                    },
+                ],
+                responses: {
+                    200: { description: "Digest run completed" },
+                    401: { description: "Unauthorized" },
+                    500: { description: "Digest run failed" },
                 },
             },
         },

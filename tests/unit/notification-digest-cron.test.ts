@@ -81,8 +81,37 @@ describe("notification digest cron API", () => {
     expect(response.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.dryRun).toBe(true);
-    expect(runDueDigestsMock).toHaveBeenCalledWith({ dryRun: true });
+    expect(body.maxRetries).toBe(1);
+    expect(runDueDigestsMock).toHaveBeenCalledWith({ dryRun: true, maxRetries: 1 });
     expect(loggerInfoMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes maxRetries query param to digest runner", async () => {
+    vi.stubEnv("CRON_SECRET", "super-secret");
+    runDueDigestsMock.mockResolvedValue({
+      checked: 1,
+      due: 1,
+      sent: 1,
+      skippedNoEmail: 0,
+      skippedEmpty: 0,
+      failed: 0,
+      retried: 1,
+      recovered: 1,
+    });
+    vi.resetModules();
+    const mod = await import("@/pages/api/cron/notification-digests");
+
+    const request = new Request("http://localhost/api/cron/notification-digests?maxRetries=3", {
+      method: "POST",
+      headers: { Authorization: "Bearer super-secret" },
+    });
+
+    const response = await mod.POST({ request, url: new URL(request.url) } as any);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.maxRetries).toBe(3);
+    expect(runDueDigestsMock).toHaveBeenCalledWith({ dryRun: false, maxRetries: 3 });
   });
 
   it("returns 500 when digest runner throws", async () => {

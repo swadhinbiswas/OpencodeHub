@@ -6,6 +6,7 @@ const { runUserDigestMock } = vi.hoisted(() => ({
     dryRun: true,
     period: "daily",
     itemCount: 3,
+    attempts: 0,
   })),
 }));
 
@@ -26,6 +27,7 @@ describe("user digest test route", () => {
       dryRun: true,
       period: "daily",
       itemCount: 3,
+      attempts: 0,
     });
   });
 
@@ -57,7 +59,7 @@ describe("user digest test route", () => {
       userId: "user-1",
       dryRun: true,
       period: undefined,
+      maxRetries: undefined,
     });
   });
 });
-
