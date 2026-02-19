@@ -1,6 +1,6 @@
 import { getDatabase, schema } from "@/db";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { mergeBranch } from "@/lib/git";
+import { compareBranches, mergeBranch } from "@/lib/git";
 import { resolveRepoPath } from "@/lib/git-storage";
 import { canWriteRepo } from "@/lib/permissions";
 import type { APIRoute } from "astro";
@@ -11,6 +11,7 @@ import { logger } from "@/lib/logger";
 import { unauthorized, badRequest, notFound, serverError, forbidden, success, conflict } from "@/lib/api";
 import { evaluateGates } from "@/lib/ci-gates";
 import { closeLinkedIssuesOnMerge } from "@/lib/pr-issue-linking";
+import { checkPathPermissions } from "@/lib/path-scoping";
 
 // ... existing imports ...
 
@@ -68,6 +69,17 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals }) => {
         return badRequest("Pull request is not open");
     }
 
+    const repoPath = await resolveRepoPath(repo.diskPath);
+    const { diffs } = await compareBranches(repoPath, pr.baseBranch, pr.headBranch);
+    const changedFiles = diffs.map((diff) => diff.file).filter(Boolean);
+
+    if (changedFiles.length > 0) {
+        const permission = await checkPathPermissions(user.id, repo.id, changedFiles, "write");
+        if (!permission.allowed) {
+            return forbidden(permission.reason || "Insufficient path permissions for one or more changed files");
+        }
+    }
+
     // Verify CI Gates (Strict Merge Checks)
     const gateResult = await evaluateGates(pr.id);
 
@@ -78,11 +90,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals }) => {
             .join("; ");
         return conflict(`Merge blocked: ${failedGates}`);
     }
-
-
-
     // Merge branch
-    const repoPath = await resolveRepoPath(repo.diskPath);
     const result = await mergeBranch(repoPath, pr.baseBranch, pr.headBranch);
 
     if (result.success) {
