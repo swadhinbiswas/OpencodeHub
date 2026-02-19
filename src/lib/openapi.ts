@@ -208,6 +208,43 @@ export const openApiSpec = {
                 },
                 required: ["name"],
             },
+            PRDependencyGraphResponse: {
+                type: "object",
+                properties: {
+                    repositoryId: { type: "string" },
+                    includeFiles: { type: "boolean" },
+                    graph: {
+                        type: "object",
+                        properties: {
+                            nodes: {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    properties: {
+                                        prId: { type: "string" },
+                                        prNumber: { type: "integer" },
+                                        title: { type: "string" },
+                                        dependsOn: { type: "array", items: { type: "string" } },
+                                        blockedBy: { type: "array", items: { type: "string" } },
+                                        dependencyType: { type: "string", enum: ["branch", "files", "manual"] },
+                                    },
+                                },
+                            },
+                            edges: {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    properties: {
+                                        from: { type: "string" },
+                                        to: { type: "string" },
+                                        type: { type: "string" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         },
     },
     paths: {
@@ -692,6 +729,43 @@ export const openApiSpec = {
                     401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     404: { description: "Repository or pull request not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/repos/{owner}/{repo}/pulls/dependencies": {
+            get: {
+                tags: ["Pull Requests"],
+                summary: "Get automatic cross-PR dependency graph",
+                description: "Returns branch and optional file-overlap dependency graph for open pull requests in a repository.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    {
+                        name: "includeFiles",
+                        in: "query",
+                        required: false,
+                        schema: { type: "boolean", default: true },
+                        description: "Set false to return branch-based dependencies only.",
+                    },
+                ],
+                responses: {
+                    200: {
+                        description: "Dependency graph returned",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    type: "object",
+                                    properties: {
+                                        success: { type: "boolean", example: true },
+                                        data: { $ref: "#/components/schemas/PRDependencyGraphResponse" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                 },
             },
         },
