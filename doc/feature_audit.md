@@ -36,7 +36,7 @@
 | Branch protection rules | ✅ | Schema + UI + API in place |
 | Repository templates | ⚠️ | Not fully implemented |
 | Repository Wiki | ✅ | Implemented (Phase 8) |
-| File-level permissions | ⚠️ | Path-scoped enforcement now covers PR comment create/edit/delete and batch-review comment submission; broader endpoint coverage remains |
+| File-level permissions | ⚠️ | Path-scoped enforcement now covers PR comment create/edit/delete, single-review inline comments, batch-review comment submission, and suggestion-apply flows; broader endpoint coverage still remains |
 | Commit signing (GPG) | ✅ | GPG key management UI exists |
 | Commit signing (SSH) | ✅ | SSH key management UI exists |
 
@@ -200,7 +200,7 @@
 | CLI | ✅ | `cli/` package - 21+ commands |
 | Plugin/extension system | ⚠️ | `plugins.ts` infrastructure exists, but basic |
 | Webhook events | ✅ | Full implementation |
-| API documentation | ⚠️ | OpenAPI includes AI callback and batch review routes; broader endpoint parity still incomplete |
+| API documentation | ⚠️ | OpenAPI now includes AI callback, single/batch review, PR comments, workflow states, stack approvals/merge-readiness/merge routes; broader endpoint parity still incomplete |
 
 ## 12. Self-Hosted & Deployment
 | Feature | Status | Implementation Notes |
