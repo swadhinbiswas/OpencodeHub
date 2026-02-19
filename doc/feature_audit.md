@@ -71,7 +71,7 @@
 | Required approval policies | ✅ | Via branch protection rules |
 | Partial file approvals | ✅ | Implemented via API + PR UI (`partial-file-approvals`, `file-approvals.ts`) |
 | Multi-reviewer rules | ⚠️ | Merge gates now enforce explicit required-reviewer approvals; broader state/rule UX still maturing |
-| AI code review | ✅ | Multi-provider adapters (OpenAI/Anthropic/Groq/Bytez/OpenRouter/Together/Google) + external-agent async callback flow |
+| AI code review | ✅ | Multi-provider adapters (OpenAI/Anthropic/Groq/Bytez/OpenRouter/Together/Google/Local-Ollama) + external-agent async callback flow |
 
 ## 4. Issues & Planning
 | Feature | Status | Implementation Notes |

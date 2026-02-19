@@ -163,7 +163,7 @@ const sideNav = [
                                             value="local"
                                             selected={aiConfig.provider ===
                                                 "local"}
-                                            >Local LLM (Coming Soon)</option
+                                            >Local LLM (Ollama/OpenAI-compatible)</option
                                         >
                                     </select>
                                 </div>
@@ -180,7 +180,8 @@ const sideNav = [
                                         Leave blank to use provider default.
                                         Recommended: `gpt-4-turbo` (OpenAI),
                                         `llama3-70b-8192` (Groq),
-                                        `meta-llama/llama-3.1-8b-instruct:free` (OpenRouter).
+                                        `meta-llama/llama-3.1-8b-instruct:free` (OpenRouter),
+                                        `llama3.1` (Local).
                                     </p>
                                 </div>
                             </CardContent>
