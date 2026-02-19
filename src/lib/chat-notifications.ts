@@ -765,6 +765,7 @@ export function shouldSendDigestNow(
 export interface DigestRunOptions {
     now?: Date;
     dryRun?: boolean;
+    maxRetries?: number;
 }
 
 export interface DigestRunResult {
@@ -774,6 +775,8 @@ export interface DigestRunResult {
     skippedNoEmail: number;
     skippedEmpty: number;
     failed: number;
+    retried: number;
+    recovered: number;
 }
 
 export interface UserDigestRunOptions {
@@ -781,6 +784,7 @@ export interface UserDigestRunOptions {
     period?: "daily" | "weekly";
     now?: Date;
     dryRun?: boolean;
+    maxRetries?: number;
 }
 
 export interface UserDigestRunResult {
@@ -789,12 +793,62 @@ export interface UserDigestRunResult {
     period: "daily" | "weekly";
     itemCount: number;
     reason?: "missing_user_or_email" | "empty_digest" | "send_failed" | "missing_digest_settings";
+    attempts: number;
+    recovered?: boolean;
+    lastError?: string;
+}
+
+function normalizeRetryCount(value: number | undefined): number {
+    if (typeof value !== "number" || Number.isNaN(value)) return 1;
+    return Math.min(Math.max(Math.trunc(value), 0), 5);
+}
+
+export interface DigestDeliveryAttemptResult {
+    sent: boolean;
+    attempts: number;
+    recovered: boolean;
+    lastError?: string;
+}
+
+export async function sendDigestWithRetry(
+    send: () => Promise<boolean>,
+    maxRetries: number
+): Promise<DigestDeliveryAttemptResult> {
+    const retries = normalizeRetryCount(maxRetries);
+    const maxAttempts = retries + 1;
+    let attempts = 0;
+    let lastError: string | undefined;
+
+    while (attempts < maxAttempts) {
+        attempts++;
+        try {
+            const sent = await send();
+            if (sent) {
+                return {
+                    sent: true,
+                    attempts,
+                    recovered: attempts > 1,
+                };
+            }
+            lastError = "send_failed";
+        } catch (error) {
+            lastError = error instanceof Error ? error.message : "send_failed";
+        }
+    }
+
+    return {
+        sent: false,
+        attempts,
+        recovered: false,
+        lastError,
+    };
 }
 
 export async function runUserDigest(options: UserDigestRunOptions): Promise<UserDigestRunResult> {
     const db = getDatabase() as NodePgDatabase<typeof schema>;
     const now = options.now ?? new Date();
     const dryRun = options.dryRun ?? true;
+    const maxRetries = normalizeRetryCount(options.maxRetries);
 
     const setting = await db.query.emailDigestSettings.findFirst({
         where: eq(schema.emailDigestSettings.userId, options.userId),
@@ -806,6 +860,7 @@ export async function runUserDigest(options: UserDigestRunOptions): Promise<User
             period: options.period || "daily",
             itemCount: 0,
             reason: "missing_digest_settings",
+            attempts: 0,
         };
     }
 
@@ -821,6 +876,7 @@ export async function runUserDigest(options: UserDigestRunOptions): Promise<User
             period,
             itemCount: 0,
             reason: "missing_user_or_email",
+            attempts: 0,
         };
     }
 
@@ -846,25 +902,34 @@ export async function runUserDigest(options: UserDigestRunOptions): Promise<User
             period,
             itemCount: 0,
             reason: "empty_digest",
+            attempts: 0,
         };
     }
 
+    let attempts = 0;
+    let recovered = false;
     if (!dryRun) {
-        const sent = await sendPlatformEmail({
-            to: user.email,
-            subject: digest.subject,
-            html: digest.html,
-            text: `${digest.subject}\n\nYou have ${digest.itemCount} new notification(s).`,
-        });
-        if (!sent) {
+        const delivery = await sendDigestWithRetry(async () => {
+            return sendPlatformEmail({
+                to: user.email,
+                subject: digest.subject,
+                html: digest.html,
+                text: `${digest.subject}\n\nYou have ${digest.itemCount} new notification(s).`,
+            });
+        }, maxRetries);
+        if (!delivery.sent) {
             return {
                 sent: false,
                 dryRun,
                 period,
                 itemCount: digest.itemCount,
                 reason: "send_failed",
+                attempts: delivery.attempts,
+                lastError: delivery.lastError,
             };
         }
+        attempts = delivery.attempts;
+        recovered = delivery.recovered;
 
         await db
             .update(schema.emailDigestSettings)
@@ -877,6 +942,8 @@ export async function runUserDigest(options: UserDigestRunOptions): Promise<User
         dryRun,
         period,
         itemCount: digest.itemCount,
+        attempts: dryRun ? 0 : attempts,
+        recovered,
     };
 }
 
@@ -884,6 +951,7 @@ export async function runDueDigests(options: DigestRunOptions = {}): Promise<Dig
     const db = getDatabase() as NodePgDatabase<typeof schema>;
     const now = options.now ?? new Date();
     const dryRun = options.dryRun ?? false;
+    const maxRetries = normalizeRetryCount(options.maxRetries);
 
     const result: DigestRunResult = {
         checked: 0,
@@ -892,6 +960,8 @@ export async function runDueDigests(options: DigestRunOptions = {}): Promise<Dig
         skippedNoEmail: 0,
         skippedEmpty: 0,
         failed: 0,
+        retried: 0,
+        recovered: 0,
     };
 
     const settings = await db.query.emailDigestSettings.findMany({
@@ -960,15 +1030,29 @@ export async function runDueDigests(options: DigestRunOptions = {}): Promise<Dig
             }
 
             if (!dryRun) {
-                const sent = await sendPlatformEmail({
-                    to: user.email,
-                    subject: digest.subject,
-                    html: digest.html,
-                    text: `${digest.subject}\n\nYou have ${digest.itemCount} new notification(s).`,
-                });
-                if (!sent) {
+                const delivery = await sendDigestWithRetry(async () => {
+                    return sendPlatformEmail({
+                        to: user.email,
+                        subject: digest.subject,
+                        html: digest.html,
+                        text: `${digest.subject}\n\nYou have ${digest.itemCount} new notification(s).`,
+                    });
+                }, maxRetries);
+                if (delivery.attempts > 1) {
+                    result.retried += delivery.attempts - 1;
+                }
+                if (!delivery.sent) {
                     result.failed++;
+                    logger.error({
+                        userId: setting.userId,
+                        digestSettingId: setting.id,
+                        attempts: delivery.attempts,
+                        lastError: delivery.lastError || "send_failed",
+                    }, "Digest send retries exhausted");
                     continue;
+                }
+                if (delivery.recovered) {
+                    result.recovered++;
                 }
 
                 await db

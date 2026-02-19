@@ -184,7 +184,7 @@
 | :--- | :---: | :--- |
 | Smart notifications | ⚠️ | API now supports smart priority scoring/sorting via `GET /notifications?prioritize=true`; deeper ML personalization and channel-level routing remain partial |
 | Blocking alerts | ⚠️ | Blocking-focused notification feed filter is now available via `GET /notifications?filter=blocking`; prioritization/automation depth remains partial |
-| Daily/weekly digests | ⚠️ | Scheduler is timezone-aware with cron endpoint/tests and user-scoped digest test API (`/user/notification-digests/test`); delivery observability/retry depth remains partial |
+| Daily/weekly digests | ⚠️ | Scheduler is timezone-aware with cron endpoint/tests, user-scoped digest test API (`/user/notification-digests/test`), and bounded retry/observability metrics (`maxRetries`, `retried`, `recovered`); provider-level delivery analytics and dead-letter tooling remain partial |
 | Mentions & subscriptions | ✅ | Implemented |
 | PR-level discussions | ✅ | Full threaded comments |
 | Activity feeds | ✅ | Dashboard activity feed |
