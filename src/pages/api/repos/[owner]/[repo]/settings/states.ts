@@ -56,6 +56,18 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
         return badRequest(parsed.error.issues[0]?.message || "Invalid state payload");
     }
     const { name, displayName, color, description, icon, isFinal, allowMerge, requireCodeOwner, reviewers } = parsed.data;
+    const normalizedName = name.trim().toLowerCase().replace(/\s+/g, "_");
+
+    const duplicate = await db.query.prStateDefinitions.findFirst({
+        where: and(
+            eq(schema.prStateDefinitions.repositoryId, repo.id),
+            eq(schema.prStateDefinitions.name, normalizedName)
+        ),
+        columns: { id: true },
+    });
+    if (duplicate) {
+        return badRequest(`State '${normalizedName}' already exists`);
+    }
 
     const id = nanoid();
 
@@ -69,7 +81,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
     const [newState] = await (db as any).insert(schema.prStateDefinitions).values({
         id,
         repositoryId: repo.id,
-        name,
+        name: normalizedName,
         displayName,
         color: color || "#6B7280",
         description,
