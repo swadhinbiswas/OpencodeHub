@@ -145,4 +145,25 @@ describe("code quality integrations route", () => {
     expect(body?.data?.provider).toBe("codecov");
     expect(body?.data?.apiToken).toBeUndefined();
   });
+
+  it("creates non-codecov quality configs for coveralls/sonarqube/snyk", async () => {
+    for (const provider of ["coveralls", "sonarqube", "snyk"] as const) {
+      const response = await codeQualityPost({
+        params: { owner: "owner-1", repo: "demo" },
+        request: new Request("http://localhost/api/repos/owner-1/demo/integrations/code-quality", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            provider,
+            projectKey: "owner/demo",
+            apiToken: "token-1",
+            ...(provider === "sonarqube" ? { serverUrl: "https://sonar.example.com" } : {}),
+          }),
+        }),
+      } as any);
+
+      expect(response.status).toBe(200);
+    }
+    expect(configureQualityProviderMock).toHaveBeenCalledTimes(3);
+  });
 });
