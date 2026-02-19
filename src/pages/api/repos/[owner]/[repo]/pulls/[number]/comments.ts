@@ -12,6 +12,7 @@ import { parseBody, unauthorized, badRequest, notFound, success, forbidden } fro
 import { z } from "zod";
 import crypto from "crypto";
 import { checkPathPermissions } from "@/lib/path-scoping";
+import { canReadRepo, canWriteRepo } from "@/lib/permissions";
 
 const createCommentSchema = z.object({
     body: z.string().min(1),
@@ -62,6 +63,9 @@ export const GET: APIRoute = withErrorHandler(async ({ params, request }) => {
     const db = getDatabase() as NodePgDatabase<typeof schema>;
     const repository = await getRepositoryByOwnerAndName(db, owner as string, repo as string);
     if (!repository) return notFound("Repository not found");
+    if (!(await canReadRepo(tokenPayload.userId, repository, { isAdmin: tokenPayload.isAdmin }))) {
+        return notFound("Repository not found");
+    }
 
     // Find PR
     const pr = await db.query.pullRequests.findFirst({
@@ -122,6 +126,9 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
     const db = getDatabase() as NodePgDatabase<typeof schema>;
     const repository = await getRepositoryByOwnerAndName(db, owner as string, repo as string);
     if (!repository) return notFound("Repository not found");
+    if (!(await canWriteRepo(tokenPayload.userId, repository, { isAdmin: tokenPayload.isAdmin }))) {
+        return forbidden();
+    }
 
     // Find PR
     const pr = await db.query.pullRequests.findFirst({
@@ -198,6 +205,9 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request }) => {
     const db = getDatabase() as NodePgDatabase<typeof schema>;
     const repository = await getRepositoryByOwnerAndName(db, owner as string, repo as string);
     if (!repository) return notFound("Repository not found");
+    if (!(await canWriteRepo(tokenPayload.userId, repository, { isAdmin: tokenPayload.isAdmin }))) {
+        return forbidden();
+    }
 
     // Find comment
     const comment = await db.query.pullRequestComments.findFirst({
@@ -256,6 +266,9 @@ export const DELETE: APIRoute = withErrorHandler(async ({ params, request }) => 
     const db = getDatabase() as NodePgDatabase<typeof schema>;
     const repository = await getRepositoryByOwnerAndName(db, owner as string, repo as string);
     if (!repository) return notFound("Repository not found");
+    if (!(await canWriteRepo(tokenPayload.userId, repository, { isAdmin: tokenPayload.isAdmin }))) {
+        return forbidden();
+    }
 
     // Find comment
     const comment = await db.query.pullRequestComments.findFirst({

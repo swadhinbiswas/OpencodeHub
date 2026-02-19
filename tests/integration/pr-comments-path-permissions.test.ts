@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getUserFromRequestMock, checkPathPermissionsMock, fakeSchema } = vi.hoisted(() => ({
+const { getUserFromRequestMock, checkPathPermissionsMock, canReadRepoMock, canWriteRepoMock, fakeSchema } = vi.hoisted(() => ({
   getUserFromRequestMock: vi.fn(async () => ({ userId: "user-1", isAdmin: false })),
   checkPathPermissionsMock: vi.fn(async () => ({ allowed: true, deniedPaths: [] })),
+  canReadRepoMock: vi.fn(async () => true),
+  canWriteRepoMock: vi.fn(async () => true),
   fakeSchema: {
     users: { username: {}, id: {} },
     repositories: { ownerId: {}, name: {}, id: {} },
@@ -24,6 +26,11 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/lib/path-scoping", () => ({
   checkPathPermissions: checkPathPermissionsMock,
+}));
+
+vi.mock("@/lib/permissions", () => ({
+  canReadRepo: canReadRepoMock,
+  canWriteRepo: canWriteRepoMock,
 }));
 
 import { POST as createCommentPost } from "@/pages/api/repos/[owner]/[repo]/pulls/[number]/comments";
@@ -98,6 +105,8 @@ describe("PR comments path permissions", () => {
     mockDb = makeDb();
     getUserFromRequestMock.mockResolvedValue({ userId: "user-1", isAdmin: false });
     checkPathPermissionsMock.mockResolvedValue({ allowed: true, deniedPaths: [] });
+    canReadRepoMock.mockResolvedValue(true);
+    canWriteRepoMock.mockResolvedValue(true);
   });
 
   it("blocks inline comment creation when path write permission is denied", async () => {
@@ -113,6 +122,24 @@ describe("PR comments path permissions", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ body: "blocked", path: "secure/config.yml", line: 1 }),
+      }),
+    } as any);
+
+    const body = await readJson(response);
+    expect(response.status).toBe(403);
+    expect(body?.error?.code).toBe("FORBIDDEN");
+    expect(mockDb.__state.insertCalls).toHaveLength(0);
+  });
+
+  it("blocks comment creation when repository write permission is denied", async () => {
+    canWriteRepoMock.mockResolvedValue(false);
+
+    const response = await createCommentPost({
+      params: { owner: "owner-1", repo: "demo", number: "42" },
+      request: new Request("http://localhost/api/repos/owner-1/demo/pulls/42/comments", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ body: "blocked", path: "src/app.ts", line: 1 }),
       }),
     } as any);
 

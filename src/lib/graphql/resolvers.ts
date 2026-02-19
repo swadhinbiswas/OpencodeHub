@@ -566,12 +566,46 @@ export const resolvers = {
             if (!ctx.userId) throw new Error("Authentication required");
 
             const { generateId } = await import("@/lib/utils");
+            const { checkPathPermissions } = await import("@/lib/path-scoping");
+
+            const pullRequest = await ctx.db.query.pullRequests.findFirst({
+                where: eq(schema.pullRequests.id, input.pullRequestId),
+                columns: {
+                    id: true,
+                    repositoryId: true,
+                },
+            });
+            if (!pullRequest) throw new Error("Pull request not found");
+
+            const repository = await ctx.db.query.repositories.findFirst({
+                where: eq(schema.repositories.id, pullRequest.repositoryId),
+            });
+            if (!repository || !(await canWriteRepo(ctx.userId, repository, { isAdmin: ctx.user?.isAdmin ?? undefined }))) {
+                throw new Error("Insufficient repository permissions");
+            }
+
+            const scopedPaths = [...new Set(
+                (input.comments || [])
+                    .map((comment: { path?: string }) => comment.path)
+                    .filter(Boolean) as string[]
+            )];
+            if (scopedPaths.length > 0) {
+                const permission = await checkPathPermissions(
+                    ctx.userId,
+                    repository.id,
+                    scopedPaths,
+                    "write"
+                );
+                if (!permission.allowed) {
+                    throw new Error(permission.reason || "Insufficient path permissions");
+                }
+            }
 
             const reviewId = generateId();
 
             await ctx.db.insert(schema.pullRequestReviews).values({
                 id: reviewId,
-                pullRequestId: input.pullRequestId,
+                pullRequestId: pullRequest.id,
                 reviewerId: ctx.userId,
                 state: input.event.toLowerCase(), // APPROVED, REQUEST_CHANGES, COMMENT, etc.
                 body: input.body,
@@ -585,7 +619,7 @@ export const resolvers = {
                 for (const comment of input.comments) {
                     await ctx.db.insert(schema.pullRequestComments).values({
                         id: generateId(),
-                        pullRequestId: input.pullRequestId,
+                        pullRequestId: pullRequest.id,
                         reviewId: reviewId,
                         authorId: ctx.userId,
                         body: comment.body,
@@ -621,6 +655,13 @@ export const resolvers = {
             });
 
             if (issue) {
+                const repository = await ctx.db.query.repositories.findFirst({
+                    where: eq(schema.repositories.id, issue.repositoryId),
+                });
+                if (!repository || !(await canWriteRepo(ctx.userId, repository, { isAdmin: ctx.user?.isAdmin ?? undefined }))) {
+                    throw new Error("Insufficient repository permissions");
+                }
+
                 await ctx.db.insert(schema.issueComments).values({
                     id,
                     issueId: input.subjectId,
@@ -643,6 +684,13 @@ export const resolvers = {
             });
 
             if (pr) {
+                const repository = await ctx.db.query.repositories.findFirst({
+                    where: eq(schema.repositories.id, pr.repositoryId),
+                });
+                if (!repository || !(await canWriteRepo(ctx.userId, repository, { isAdmin: ctx.user?.isAdmin ?? undefined }))) {
+                    throw new Error("Insufficient repository permissions");
+                }
+
                 await ctx.db.insert(schema.pullRequestComments).values({
                     id,
                     pullRequestId: input.subjectId,
