@@ -12,14 +12,14 @@
 | **Code Review** | 9 | 1 | 0 | 10 |
 | **Issues & Planning** | 10 | 0 | 0 | 10 |
 | **CI/CD & Automation** | 6 | 2 | 0 | 8 |
-| **Third-Party Integrations** | 4 | 18 | 0 | 22 |
+| **Third-Party Integrations** | 5 | 17 | 0 | 22 |
 | **Dependency & Impact Awareness** | 1 | 4 | 0 | 5 |
 | **Security** | 9 | 3 | 0 | 12 |
 | **Analytics & Insights** | 6 | 2 | 0 | 8 |
 | **Notifications & Collaboration** | 5 | 3 | 0 | 8 |
 | **Interfaces & Extensibility** | 5 | 2 | 0 | 7 |
 | **Self-Hosted & Deployment** | 4 | 3 | 0 | 7 |
-| **Total** | **77** | **48** | **0** | **125** |
+| **Total** | **78** | **47** | **0** | **125** |
 
 ---
 
@@ -103,7 +103,7 @@
 ### 6.1 Code Quality & Coverage
 | Feature | Status | Notes |
 | :--- | :---: | :--- |
-| Codecov | ⚠️ | Coverage webhook processing + API configuration implemented; deeper workflow/UI automation is still partial |
+| Codecov | ✅ | Coverage webhook processing + API configuration are implemented, and repository settings now provide Codecov automation UX (config save/update, gating controls, webhook endpoint/secret visibility, and recent coverage report surfacing) using `integrations/code-quality` APIs |
 | Coveralls | ⚠️ | Coverage webhook processing + API configuration implemented; deeper workflow/UI automation is still partial |
 | SonarQube | ⚠️ | Integration and quality-gate ingestion implemented, enterprise-depth coverage still partial |
 | Snyk | ⚠️ | Trivy-based scanning exists |
