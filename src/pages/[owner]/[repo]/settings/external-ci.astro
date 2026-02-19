@@ -39,9 +39,16 @@ if (!hasAccess) {
 const integration = await db.query.externalCiIntegrations.findFirst({
   where: eq(schema.externalCiIntegrations.repositoryId, repoData.id),
 });
+const codecovConfig = await db.query.codeQualityConfigs.findFirst({
+  where: and(
+    eq(schema.codeQualityConfigs.repositoryId, repoData.id),
+    eq(schema.codeQualityConfigs.provider, "codecov")
+  ),
+});
 
 const siteUrl = process.env.SITE_URL || "http://localhost:4321";
 const endpointUrl = `${siteUrl}/api/repos/${repoData.owner.username}/${repoData.name}/external-ci/checks`;
+const codecovWebhookUrl = `${siteUrl}/api/repos/${repoData.owner.username}/${repoData.name}/integrations/code-quality/webhooks/codecov`;
 
 const repo = {
   owner: repoData.owner.username,
@@ -183,16 +190,107 @@ const repo = {
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Codecov Coverage Automation</CardTitle>
+            <CardDescription>
+              Configure coverage gating, webhook ingestion, and PR reporting for Codecov.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div class="rounded-md border border-dashed border-white/10 bg-white/5 p-3 text-sm text-muted-foreground">
+              <div class="text-xs uppercase tracking-wide text-muted-foreground">Codecov Webhook Endpoint</div>
+              <div class="mt-1 font-mono text-xs break-all">{codecovWebhookUrl}</div>
+            </div>
+
+            <div class="grid gap-3 md:grid-cols-2">
+              <div>
+                <label for="codecov-project-key" class="block text-xs text-muted-foreground mb-1">Project key</label>
+                <input
+                  id="codecov-project-key"
+                  class="h-8 w-full rounded-md border bg-background px-2 text-xs"
+                  placeholder="owner/repo"
+                  value={codecovConfig?.projectKey || ""}
+                />
+              </div>
+              <div>
+                <label for="codecov-api-token" class="block text-xs text-muted-foreground mb-1">API token</label>
+                <input
+                  id="codecov-api-token"
+                  type="password"
+                  class="h-8 w-full rounded-md border bg-background px-2 text-xs"
+                  placeholder={codecovConfig ? "•••••••• (leave empty to keep)" : "Codecov token"}
+                />
+              </div>
+            </div>
+
+            <div class="grid gap-3 md:grid-cols-4">
+              <div>
+                <label for="codecov-min-coverage" class="block text-xs text-muted-foreground mb-1">Min coverage %</label>
+                <input
+                  id="codecov-min-coverage"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  class="h-8 w-full rounded-md border bg-background px-2 text-xs"
+                  value={codecovConfig?.minCoverage ?? 80}
+                />
+              </div>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-5">
+                <input id="codecov-block-on-fail" type="checkbox" checked={!!codecovConfig?.blockOnFail} />
+                Block on fail
+              </label>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-5">
+                <input id="codecov-report-on-pr" type="checkbox" checked={codecovConfig?.reportOnPR ?? true} />
+                Report on PR
+              </label>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-5">
+                <input id="codecov-enabled" type="checkbox" checked={codecovConfig?.isEnabled ?? true} />
+                Enabled
+              </label>
+            </div>
+
+            <div class="text-xs text-muted-foreground">
+              Webhook secret:
+              <span id="codecov-webhook-secret" class="font-mono">{codecovConfig?.webhookSecret || "Not configured yet"}</span>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <Button id="save-codecov" variant="outline">Save Codecov Config</Button>
+              <span id="codecov-save-msg" class="text-xs text-muted-foreground"></span>
+            </div>
+
+            <div class="pt-2 border-t border-white/10">
+              <div class="text-xs font-medium text-muted-foreground mb-2">Recent Codecov Reports</div>
+              <div id="codecov-reports" class="space-y-1 text-xs text-muted-foreground">
+                Loading coverage reports...
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   </div>
 </BaseLayout>
 
-<script define:vars={{ repoOwner: repo.owner, repoName: repo.name }}>
+<script define:vars={{ repoOwner: repo.owner, repoName: repo.name, initialCodecovConfigId: codecovConfig?.id || null }}>
   const btn = document.getElementById("generate-token");
   const output = document.getElementById("token-output");
   const providerTemplate = document.getElementById("provider-template");
   const payloadTemplate = document.getElementById("payload-template");
+  const saveCodecovBtn = document.getElementById("save-codecov");
+  const codecovSaveMsg = document.getElementById("codecov-save-msg");
+  const codecovProjectKey = document.getElementById("codecov-project-key");
+  const codecovApiToken = document.getElementById("codecov-api-token");
+  const codecovMinCoverage = document.getElementById("codecov-min-coverage");
+  const codecovBlockOnFail = document.getElementById("codecov-block-on-fail");
+  const codecovReportOnPr = document.getElementById("codecov-report-on-pr");
+  const codecovEnabled = document.getElementById("codecov-enabled");
+  const codecovWebhookSecret = document.getElementById("codecov-webhook-secret");
+  const codecovReports = document.getElementById("codecov-reports");
+  let codecovConfigId = initialCodecovConfigId;
 
   const payloadTemplates = {
     normalized: `{
@@ -289,4 +387,89 @@ const repo = {
       btn.removeAttribute("disabled");
     }
   });
+
+  async function loadCodecovSummary() {
+    if (!codecovReports) return;
+    try {
+      const res = await fetch(`/api/repos/${repoOwner}/${repoName}/integrations/code-quality?summary=1`);
+      const payload = await res.json();
+      if (!res.ok) {
+        throw new Error(payload?.error?.message || payload?.message || "Failed to load coverage summary");
+      }
+      const data = payload?.data || payload;
+      const codecov = (data?.configs || []).find((cfg) => cfg.provider === "codecov");
+      if (codecov) {
+        codecovConfigId = codecov.id;
+        if (codecovWebhookSecret) codecovWebhookSecret.textContent = codecov.webhookSecret || "Not configured";
+      }
+
+      const reports = (data?.coverage || []).filter((report) => report.provider === "codecov").slice(0, 5);
+      if (reports.length === 0) {
+        codecovReports.textContent = "No Codecov reports received yet.";
+        return;
+      }
+
+      codecovReports.innerHTML = reports.map((report) => `
+        <div class="rounded border border-white/10 bg-white/5 px-2 py-1.5 flex items-center justify-between gap-2">
+          <span>Coverage ${Number(report.coverage || 0).toFixed(1)}%</span>
+          <span class="text-[11px] text-muted-foreground font-mono">${(report.commitSha || "").slice(0, 7)}</span>
+        </div>
+      `).join("");
+    } catch (error) {
+      codecovReports.textContent = error.message || "Failed to load coverage summary";
+    }
+  }
+
+  saveCodecovBtn?.addEventListener("click", async () => {
+    if (!codecovSaveMsg) return;
+    saveCodecovBtn.setAttribute("disabled", "true");
+    codecovSaveMsg.textContent = "Saving Codecov config...";
+
+    const projectKey = codecovProjectKey?.value?.trim();
+    const apiToken = codecovApiToken?.value?.trim();
+    const minCoverageNumber = Number.parseFloat(codecovMinCoverage?.value || "0");
+    const payload = {
+      provider: "codecov",
+      ...(projectKey ? { projectKey } : {}),
+      ...(apiToken ? { apiToken } : {}),
+      minCoverage: Number.isFinite(minCoverageNumber) ? minCoverageNumber : 0,
+      blockOnFail: !!codecovBlockOnFail?.checked,
+      reportOnPR: !!codecovReportOnPr?.checked,
+      isEnabled: !!codecovEnabled?.checked,
+    };
+
+    try {
+      const res = await fetch(
+        codecovConfigId
+          ? `/api/repos/${repoOwner}/${repoName}/integrations/code-quality/${codecovConfigId}`
+          : `/api/repos/${repoOwner}/${repoName}/integrations/code-quality`,
+        {
+          method: codecovConfigId ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
+      const body = await res.json();
+      if (!res.ok) {
+        throw new Error(body?.error?.message || body?.message || "Failed to save Codecov config");
+      }
+
+      const data = body?.data || body;
+      if (data?.id) {
+        codecovConfigId = data.id;
+      }
+      if (codecovWebhookSecret && data?.webhookSecret) {
+        codecovWebhookSecret.textContent = data.webhookSecret;
+      }
+      codecovSaveMsg.textContent = "Codecov configuration saved.";
+      if (codecovApiToken) codecovApiToken.value = "";
+      loadCodecovSummary();
+    } catch (error) {
+      codecovSaveMsg.textContent = error.message || "Failed to save Codecov config";
+    } finally {
+      saveCodecovBtn.removeAttribute("disabled");
+    }
+  });
+
+  loadCodecovSummary();
 </script>
