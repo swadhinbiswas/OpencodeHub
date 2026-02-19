@@ -2,10 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   canWriteRepoMock,
+  canAdminRepoMock,
   bulkMergeStackMock,
   fakeSchema,
 } = vi.hoisted(() => ({
   canWriteRepoMock: vi.fn(async () => true),
+  canAdminRepoMock: vi.fn(async () => false),
   bulkMergeStackMock: vi.fn(async () => ({
     success: true,
     merged: [{ prId: "pr-1", prNumber: 1 }],
@@ -28,6 +30,7 @@ vi.mock("@/db", () => ({
 
 vi.mock("@/lib/permissions", () => ({
   canWriteRepo: canWriteRepoMock,
+  canAdminRepo: canAdminRepoMock,
 }));
 
 vi.mock("@/lib/bulk-merge", () => ({
@@ -60,6 +63,8 @@ describe("stack merge route", () => {
   beforeEach(() => {
     mockDb = makeDb();
     canWriteRepoMock.mockResolvedValue(true);
+    canAdminRepoMock.mockResolvedValue(false);
+    bulkMergeStackMock.mockClear();
     bulkMergeStackMock.mockResolvedValue({
       success: true,
       merged: [{ prId: "pr-1", prNumber: 1 }],
@@ -85,6 +90,8 @@ describe("stack merge route", () => {
   });
 
   it("calls bulk merge with merge options", async () => {
+    canAdminRepoMock.mockResolvedValue(true);
+
     const response = await mergeStackPost({
       params: { owner: "owner-1", repo: "demo", stackId: "stack-1" },
       locals: { user: { id: "user-1" } },
@@ -103,5 +110,23 @@ describe("stack merge route", () => {
       skipApprovalCheck: true,
     });
   });
-});
 
+  it("forbids skipApprovalCheck for non-admin writers", async () => {
+    canAdminRepoMock.mockResolvedValue(false);
+
+    const response = await mergeStackPost({
+      params: { owner: "owner-1", repo: "demo", stackId: "stack-1" },
+      locals: { user: { id: "user-1" } },
+      request: new Request("http://localhost/api/repos/owner-1/demo/stacks/stack-1/merge", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ skipApprovalCheck: true }),
+      }),
+    } as any);
+
+    const body = await readJson(response);
+    expect(response.status).toBe(403);
+    expect(body?.error?.code).toBe("FORBIDDEN");
+    expect(bulkMergeStackMock).not.toHaveBeenCalled();
+  });
+});
