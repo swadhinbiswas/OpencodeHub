@@ -1000,6 +1000,73 @@ export const openApiSpec = {
                 },
             },
         },
+        "/repos/{owner}/{repo}/merge-gates": {
+            get: {
+                tags: ["CI/CD"],
+                summary: "List repository merge gates and required checks",
+                description: "Returns configured required status checks and merge gate definitions used by merge-readiness evaluation.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                ],
+                responses: {
+                    200: { description: "Merge gate configuration returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+            post: {
+                tags: ["CI/CD"],
+                summary: "Create required check or merge gate rule",
+                description: "Allows repository admins to create `required_check` rules or higher-level `merge_gate` policies.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                oneOf: [
+                                    {
+                                        type: "object",
+                                        properties: {
+                                            kind: { type: "string", enum: ["required_check"] },
+                                            branch: { type: "string" },
+                                            checkName: { type: "string" },
+                                            strictMode: { type: "boolean" },
+                                        },
+                                        required: ["kind", "branch", "checkName"],
+                                    },
+                                    {
+                                        type: "object",
+                                        properties: {
+                                            kind: { type: "string", enum: ["merge_gate"] },
+                                            name: { type: "string" },
+                                            description: { type: "string" },
+                                            gateType: { type: "string", enum: ["status_check", "review", "label", "custom"] },
+                                            config: { type: "object", additionalProperties: true },
+                                            conditionScript: { type: "string" },
+                                        },
+                                        required: ["kind", "name", "gateType"],
+                                    },
+                                ],
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    200: { description: "Merge gate configuration created" },
+                    400: { description: "Invalid payload", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
         "/user/notification-digests/test": {
             post: {
                 tags: ["Notifications"],
