@@ -228,4 +228,19 @@ describe("PR comments path permissions", () => {
     expect(body?.success).toBe(true);
     expect(mockDb.__mutationState.deleteCalls).toHaveLength(1);
   });
+
+  it("requires commentId for comment mutation routes", async () => {
+    const response = await updateCommentPatch({
+      params: { owner: "owner-1", repo: "demo", number: "42" },
+      request: new Request("http://localhost/api/repos/owner-1/demo/pulls/42/comments", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ body: "updated" }),
+      }),
+    } as any);
+
+    const body = await readJson(response);
+    expect(response.status).toBe(400);
+    expect(body?.error?.code).toBe("BAD_REQUEST");
+  });
 });
