@@ -3,7 +3,12 @@ import type { APIRoute } from "astro";
 import { getDatabase, schema } from "@/db";
 import { eq, and } from "drizzle-orm";
 import { canWriteRepo } from "@/lib/permissions";
-import { rewriteBranchHistory, type RewriteOperation } from "@/lib/git-rewrite";
+import { checkPathPermissions } from "@/lib/path-scoping";
+import {
+    getRewriteOperationFiles,
+    rewriteBranchHistory,
+    type RewriteOperation
+} from "@/lib/git-rewrite";
 
 export const POST: APIRoute = async ({ params, request, locals }) => {
     const { owner, repo: repoName, number } = params;
@@ -50,6 +55,24 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
 
         if (!operations || !Array.isArray(operations)) {
             return new Response("Invalid operations", { status: 400 });
+        }
+
+        const touchedFiles = await getRewriteOperationFiles(
+            repository.owner.username,
+            repository.name,
+            operations
+        );
+
+        if (touchedFiles.length > 0) {
+            const permission = await checkPathPermissions(
+                user.id,
+                repository.id,
+                touchedFiles,
+                "write"
+            );
+            if (!permission.allowed) {
+                return new Response(permission.reason || "Insufficient path permissions", { status: 403 });
+            }
         }
 
         // 3. Execute Rewrite
