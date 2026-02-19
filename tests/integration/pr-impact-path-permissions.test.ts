@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  canReadRepoMock,
   canWriteRepoMock,
   checkPathPermissionsMock,
   compareBranchesMock,
@@ -11,6 +12,7 @@ const {
   triggerIaCHooksMock,
   fakeSchema,
 } = vi.hoisted(() => ({
+  canReadRepoMock: vi.fn(async () => true),
   canWriteRepoMock: vi.fn(async () => true),
   checkPathPermissionsMock: vi.fn(async () => ({ allowed: true, deniedPaths: [] })),
   compareBranchesMock: vi.fn(async () => ({ diffs: [{ file: "src/app.ts" }] })),
@@ -34,7 +36,7 @@ vi.mock("@/db", () => ({
 }));
 
 vi.mock("@/lib/permissions", () => ({
-  canReadRepo: vi.fn(async () => true),
+  canReadRepo: canReadRepoMock,
   canWriteRepo: canWriteRepoMock,
 }));
 
@@ -61,7 +63,7 @@ vi.mock("@/lib/iac-hooks", () => ({
   triggerIaCHooks: triggerIaCHooksMock,
 }));
 
-import { POST as impactPost } from "@/pages/api/repos/[owner]/[repo]/pulls/[number]/impact";
+import { GET as impactGet, POST as impactPost } from "@/pages/api/repos/[owner]/[repo]/pulls/[number]/impact";
 
 function makeDb() {
   return {
@@ -89,9 +91,45 @@ describe("PR impact path permissions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDb = makeDb();
+    canReadRepoMock.mockResolvedValue(true);
     canWriteRepoMock.mockResolvedValue(true);
     checkPathPermissionsMock.mockResolvedValue({ allowed: true, deniedPaths: [] });
     compareBranchesMock.mockResolvedValue({ diffs: [{ file: "src/app.ts" }] });
+  });
+
+  it("filters hidden file paths from GET impact payload", async () => {
+    analyzeImpactMock.mockResolvedValue({
+      breakingChanges: [
+        { id: "bc-1", affectedFiles: ["src/app.ts", "secure/secret.ts"] },
+      ],
+      migrations: [
+        { id: "mg-1", files: ["db/migrations/001.sql", "secure/secret.sql"] },
+      ],
+      affectedRepos: [],
+      riskScore: 25,
+    });
+    checkPathPermissionsMock.mockResolvedValue({
+      allowed: false,
+      deniedPaths: ["secure/secret.ts", "secure/secret.sql"],
+      reason: "Insufficient permissions for paths: secure/secret.ts, secure/secret.sql",
+    });
+
+    const response = await impactGet({
+      params: { owner: "owner-1", repo: "demo", number: "42" },
+      locals: { user: { id: "user-1", isAdmin: false } },
+    } as any);
+
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body?.data?.breakingChanges?.[0]?.affectedFiles).toEqual(["src/app.ts"]);
+    expect(body?.data?.migrations?.[0]?.files).toEqual(["db/migrations/001.sql"]);
+    expect(body?.data?.hiddenPathArtifacts).toBe(2);
+    expect(checkPathPermissionsMock).toHaveBeenCalledWith(
+      "user-1",
+      "repo-1",
+      ["src/app.ts", "secure/secret.ts", "db/migrations/001.sql", "secure/secret.sql"],
+      "read"
+    );
   });
 
   it("blocks impact scan when changed files are not path-authorized", async () => {

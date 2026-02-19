@@ -879,6 +879,7 @@ export const openApiSpec = {
             get: {
                 tags: ["Pull Requests"],
                 summary: "Get pull request impact analysis",
+                description: "Returns persisted impact findings with path-scoped read filtering applied to file path lists and `hiddenPathArtifacts` metadata.",
                 security: [{ bearerAuth: [] }],
                 parameters: [
                     { name: "owner", in: "path", required: true, schema: { type: "string" } },

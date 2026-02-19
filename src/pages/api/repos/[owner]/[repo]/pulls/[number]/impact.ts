@@ -15,6 +15,7 @@ import {
   detectMigrations,
 } from "@/lib/dependency-awareness";
 import { detectIaCFiles, triggerIaCHooks } from "@/lib/iac-hooks";
+import type { BreakingChange, MigrationDetection } from "@/lib/dependency-awareness";
 
 const scanSchema = z.object({
   persist: z.boolean().optional().default(true),
@@ -46,6 +47,62 @@ async function resolveRepoAndPr(owner: string, repoName: string, number: number)
   return { repository, pr };
 }
 
+function filterImpactByReadablePaths(options: {
+  userId: string;
+  repositoryId: string;
+  breakingChanges: BreakingChange[];
+  migrations: MigrationDetection[];
+}) {
+  return (async () => {
+    const scopedPaths = Array.from(
+      new Set([
+        ...options.breakingChanges.flatMap((change) => change.affectedFiles || []),
+        ...options.migrations.flatMap((migration) => migration.files || []),
+      ])
+    );
+    if (scopedPaths.length === 0) {
+      return {
+        breakingChanges: options.breakingChanges,
+        migrations: options.migrations,
+        hiddenPathArtifacts: 0,
+      };
+    }
+
+    const permission = await checkPathPermissions(
+      options.userId,
+      options.repositoryId,
+      scopedPaths,
+      "read"
+    );
+    const denied = new Set(permission.deniedPaths || []);
+    let hiddenPathArtifacts = 0;
+
+    const breakingChanges = options.breakingChanges.map((change) => {
+      const visible = (change.affectedFiles || []).filter((file) => !denied.has(file));
+      hiddenPathArtifacts += (change.affectedFiles || []).length - visible.length;
+      return {
+        ...change,
+        affectedFiles: visible,
+      };
+    });
+
+    const migrations = options.migrations.map((migration) => {
+      const visible = (migration.files || []).filter((file) => !denied.has(file));
+      hiddenPathArtifacts += (migration.files || []).length - visible.length;
+      return {
+        ...migration,
+        files: visible,
+      };
+    });
+
+    return {
+      breakingChanges,
+      migrations,
+      hiddenPathArtifacts,
+    };
+  })();
+}
+
 export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
   const owner = params.owner;
   const repoName = params.repo;
@@ -60,7 +117,19 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
   }
 
   const impact = await analyzeImpact(resolved.pr.id);
-  return success(impact);
+  const filtered = await filterImpactByReadablePaths({
+    userId: locals.user?.id || "__anonymous__",
+    repositoryId: resolved.repository.id,
+    breakingChanges: impact.breakingChanges,
+    migrations: impact.migrations,
+  });
+
+  return success({
+    ...impact,
+    breakingChanges: filtered.breakingChanges,
+    migrations: filtered.migrations,
+    hiddenPathArtifacts: filtered.hiddenPathArtifacts,
+  });
 });
 
 export const POST: APIRoute = withErrorHandler(async ({ params, locals, request }) => {
