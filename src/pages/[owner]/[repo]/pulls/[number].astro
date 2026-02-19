@@ -256,6 +256,7 @@ try {
               </Button>
             </div>
             <div id="pr-state-hint" class="text-xs text-muted-foreground"></div>
+            <div id="pr-state-reviewers" class="text-xs text-muted-foreground"></div>
             <div id="pr-state-msg" class="text-xs text-muted-foreground"></div>
           </div>
         )}
@@ -731,6 +732,7 @@ try {
   const prStateSelect = document.getElementById("pr-state-select");
   const prStateApply = document.getElementById("pr-state-apply");
   const prStateHint = document.getElementById("pr-state-hint");
+  const prStateReviewers = document.getElementById("pr-state-reviewers");
   const prStateMsg = document.getElementById("pr-state-msg");
   let stackApprovalRecommendations = [];
 
@@ -794,6 +796,50 @@ try {
     prStateHint.textContent = parts.join(" | ") || "Custom workflow state.";
   }
 
+  async function refreshPrStateReviewerPreview() {
+    if (!prStateSelect || !prStateReviewers) return;
+    const value = prStateSelect.value || "";
+    if (!value.startsWith("custom:")) {
+      prStateReviewers.textContent = "Required reviewer policy preview is shown for custom states.";
+      return;
+    }
+
+    const stateId = value.replace("custom:", "");
+    prStateReviewers.textContent = "Loading reviewer policy...";
+    try {
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}/required-reviewers?stateId=${encodeURIComponent(stateId)}`,
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error?.message || data?.message || "Failed to load state reviewer policy");
+      }
+
+      const lines = [];
+      lines.push(
+        `Missing required approvals: ${data?.missingRequired || 0} (${data?.approvedRequired || 0}/${data?.totalRequired || 0})`
+      );
+
+      const userMissing = (data?.reviewers || [])
+        .filter((reviewer) => !reviewer.approved)
+        .map((reviewer) => reviewer.username || reviewer.userId);
+      if (userMissing.length > 0) {
+        lines.push(`Pending users: ${userMissing.join(", ")}`);
+      }
+
+      const teamMissing = (data?.teamRequirements || [])
+        .filter((team) => team.missingCount > 0)
+        .map((team) => `${team.teamName || team.teamId} (${team.approvedCount}/${team.requiredCount})`);
+      if (teamMissing.length > 0) {
+        lines.push(`Pending teams: ${teamMissing.join(", ")}`);
+      }
+
+      prStateReviewers.textContent = lines.join(" | ") || "No reviewer requirements.";
+    } catch (error) {
+      prStateReviewers.textContent = error.message || "Failed to load reviewer requirements";
+    }
+  }
+
   function getCurrentPrStateSelection() {
     if (currentCustomStateId) return `custom:${currentCustomStateId}`;
     return `builtin:${currentBuiltinState || "open"}`;
@@ -808,7 +854,11 @@ try {
       prStateSelect.value = currentBuiltinState === "closed" ? "builtin:closed" : "builtin:open";
     }
     updatePrStateHint();
-    prStateSelect.addEventListener("change", updatePrStateHint);
+    refreshPrStateReviewerPreview();
+    prStateSelect.addEventListener("change", () => {
+      updatePrStateHint();
+      refreshPrStateReviewerPreview();
+    });
   }
 
   prStateApply?.addEventListener("click", async (event) => {

@@ -8,9 +8,12 @@ const {
   fakeSchema: {
     users: { username: {} },
     repositories: { ownerId: {}, name: {}, id: {} },
-    pullRequests: { repositoryId: {}, number: {}, id: {} },
+    pullRequests: { repositoryId: {}, number: {}, id: {}, stateId: {} },
     pullRequestReviewers: { pullRequestId: {}, isRequired: {} },
     pullRequestReviews: { pullRequestId: {}, submittedAt: {} },
+    prStateDefinitions: { repositoryId: {}, id: {}, name: {} },
+    prStateReviewers: { stateDefinitionId: {}, userId: {}, teamId: {} },
+    teamMembers: { teamId: {}, userId: {} },
   } as any,
 }));
 
@@ -37,7 +40,7 @@ function makeDb() {
         findFirst: vi.fn(async () => ({ id: "repo-1", ownerId: "owner-1", name: "demo" })),
       },
       pullRequests: {
-        findFirst: vi.fn(async () => ({ id: "pr-1", number: 12 })),
+        findFirst: vi.fn(async () => ({ id: "pr-1", number: 12, stateId: null })),
       },
       pullRequestReviewers: {
         findMany: vi.fn(async () => ([
@@ -50,6 +53,34 @@ function makeDb() {
           { reviewerId: "u1", state: "approved", submittedAt: new Date("2026-02-19T00:00:00Z"), createdAt: new Date("2026-02-19T00:00:00Z") },
           { reviewerId: "u2", state: "changes_requested", submittedAt: new Date("2026-02-18T00:00:00Z"), createdAt: new Date("2026-02-18T00:00:00Z") },
         ])),
+      },
+      prStateDefinitions: {
+        findFirst: vi.fn(async () => ({ id: "state-1", name: "in_review", displayName: "In Review" })),
+      },
+      prStateReviewers: {
+        findMany: vi.fn(async () => ([
+          {
+            userId: "u1",
+            teamId: null,
+            requiredCount: 1,
+            user: { id: "u1", username: "alice", displayName: "Alice" },
+            team: null,
+          },
+          {
+            userId: null,
+            teamId: "team-1",
+            requiredCount: 2,
+            user: null,
+            team: { id: "team-1", name: "Platform" },
+          },
+        ])),
+      },
+      teamMembers: {
+        findMany: vi.fn(async () => [
+          { userId: "u1" },
+          { userId: "u3" },
+          { userId: "u4" },
+        ]),
       },
     },
   };
@@ -69,6 +100,7 @@ describe("required reviewers route", () => {
     const response = await requiredReviewersGet({
       params: { owner: "owner-1", repo: "demo", number: "12" },
       locals: {},
+      request: new Request("http://localhost/api/repos/owner-1/demo/pulls/12/required-reviewers"),
     } as any);
 
     expect(response.status).toBe(401);
@@ -78,6 +110,7 @@ describe("required reviewers route", () => {
     const response = await requiredReviewersGet({
       params: { owner: "owner-1", repo: "demo", number: "12" },
       locals: { user: { id: "user-1", isAdmin: false } },
+      request: new Request("http://localhost/api/repos/owner-1/demo/pulls/12/required-reviewers"),
     } as any);
 
     const body = await readJson(response);
@@ -86,5 +119,22 @@ describe("required reviewers route", () => {
     expect(body?.data?.approvedRequired).toBe(1);
     expect(body?.data?.missingRequired).toBe(1);
     expect(body?.data?.reviewers?.[0]?.username).toBe("alice");
+    expect(body?.data?.policySource).toBe("assigned");
+  });
+
+  it("returns state-policy reviewer requirements when stateId is provided", async () => {
+    const response = await requiredReviewersGet({
+      params: { owner: "owner-1", repo: "demo", number: "12" },
+      locals: { user: { id: "user-1", isAdmin: false } },
+      request: new Request("http://localhost/api/repos/owner-1/demo/pulls/12/required-reviewers?stateId=state-1"),
+    } as any);
+
+    const body = await readJson(response);
+    expect(response.status).toBe(200);
+    expect(body?.data?.policySource).toBe("state");
+    expect(body?.data?.targetState?.id).toBe("state-1");
+    expect(body?.data?.reviewers?.[0]?.username).toBe("alice");
+    expect(body?.data?.teamRequirements?.[0]?.teamName).toBe("Platform");
+    expect(body?.data?.missingRequired).toBeGreaterThanOrEqual(1);
   });
 });
