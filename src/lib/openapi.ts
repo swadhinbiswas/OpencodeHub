@@ -940,7 +940,7 @@ export const openApiSpec = {
             get: {
                 tags: ["Notifications"],
                 summary: "List notifications",
-                description: "Returns notifications for the authenticated user. Supports `filter=unread|read|archived|all|blocking`.",
+                description: "Returns notifications for the authenticated user. Supports `filter=unread|read|archived|all|blocking` and `prioritize=true` for smart priority ordering.",
                 security: [{ bearerAuth: [] }],
                 parameters: [
                     {
@@ -951,6 +951,12 @@ export const openApiSpec = {
                             type: "string",
                             enum: ["unread", "read", "archived", "all", "blocking"],
                         },
+                    },
+                    {
+                        name: "prioritize",
+                        in: "query",
+                        required: false,
+                        schema: { type: "boolean" },
                     },
                 ],
                 responses: {

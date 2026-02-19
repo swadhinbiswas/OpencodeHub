@@ -182,7 +182,7 @@
 ## 10. Notifications & Collaboration
 | Feature | Status | Implementation Notes |
 | :--- | :---: | :--- |
-| Smart notifications | ⚠️ | Basic notifications, no AI prioritization |
+| Smart notifications | ⚠️ | API now supports smart priority scoring/sorting via `GET /notifications?prioritize=true`; deeper ML personalization and channel-level routing remain partial |
 | Blocking alerts | ⚠️ | Blocking-focused notification feed filter is now available via `GET /notifications?filter=blocking`; prioritization/automation depth remains partial |
 | Daily/weekly digests | ⚠️ | Scheduler is timezone-aware with cron endpoint/tests and user-scoped digest test API (`/user/notification-digests/test`); delivery observability/retry depth remains partial |
 | Mentions & subscriptions | ✅ | Implemented |

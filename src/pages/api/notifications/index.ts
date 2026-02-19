@@ -8,6 +8,7 @@ import {  getDatabase , schema } from "@/db";
 import { notifications } from '@/db/schema';
 import { getUserFromRequest } from '@/lib/auth';
 import { success, unauthorized, serverError } from '@/lib/api';
+import { scoreNotificationPriority } from '@/lib/notification-priority';
 
 const BLOCKING_NOTIFICATION_TYPES = [
     "ci_failed",
@@ -34,6 +35,7 @@ export const GET: APIRoute = async ({ request, url }) => {
 
         const db = getDatabase() as NodePgDatabase<typeof schema>;
         const filter = url.searchParams.get('filter') || 'unread';
+        const prioritize = url.searchParams.get("prioritize") === "true";
 
         let conditions = [eq(notifications.userId, tokenPayload.userId)];
 
@@ -72,6 +74,23 @@ export const GET: APIRoute = async ({ request, url }) => {
             },
         });
 
+        const notificationsWithPriority = notifs.map((notification) => {
+            const scored = scoreNotificationPriority(notification);
+            return {
+                ...notification,
+                priority: scored.priority,
+                priorityScore: scored.score,
+                isBlocking: scored.isBlocking,
+            };
+        });
+
+        if (prioritize) {
+            notificationsWithPriority.sort((a, b) => {
+                if (b.priorityScore !== a.priorityScore) return b.priorityScore - a.priorityScore;
+                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            });
+        }
+
         // Get unread count
         const unreadNotifs = await db.query.notifications.findMany({
             where: and(
@@ -82,7 +101,7 @@ export const GET: APIRoute = async ({ request, url }) => {
         });
 
         return success({
-            notifications: notifs,
+            notifications: notificationsWithPriority,
             unreadCount: unreadNotifs.length,
         });
     } catch (e) {
