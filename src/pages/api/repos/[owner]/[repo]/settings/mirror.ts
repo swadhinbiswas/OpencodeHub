@@ -27,6 +27,34 @@ async function resolveRepository(owner: string, repoName: string) {
   });
 }
 
+const MIRROR_STALE_MINUTES = 24 * 60;
+
+function deriveMirrorHealth(repository: {
+  isMirror: boolean | null;
+  mirrorSyncStatus: string | null;
+  lastMirrorSyncAt: Date | null;
+}) {
+  if (!repository.isMirror) {
+    return {
+      lastSyncAgeMinutes: null as number | null,
+      isStale: false,
+      isHealthy: false,
+    };
+  }
+
+  const nowMs = Date.now();
+  const lastSyncMs = repository.lastMirrorSyncAt ? repository.lastMirrorSyncAt.getTime() : null;
+  const lastSyncAgeMinutes = lastSyncMs ? Math.max(0, Math.floor((nowMs - lastSyncMs) / 60000)) : null;
+  const isStale = lastSyncAgeMinutes === null ? true : lastSyncAgeMinutes > MIRROR_STALE_MINUTES;
+  const isHealthy = repository.mirrorSyncStatus === "success" && !isStale;
+
+  return {
+    lastSyncAgeMinutes,
+    isStale,
+    isHealthy,
+  };
+}
+
 export const GET: APIRoute = withErrorHandler(async ({ params, request }) => {
   const owner = params.owner;
   const repoName = params.repo;
@@ -42,11 +70,14 @@ export const GET: APIRoute = withErrorHandler(async ({ params, request }) => {
     return notFound("Repository not found");
   }
 
+  const health = deriveMirrorHealth(repository);
+
   return success({
     isMirror: repository.isMirror,
     mirrorUrl: repository.mirrorUrl,
     mirrorSyncStatus: repository.mirrorSyncStatus,
     lastMirrorSyncAt: repository.lastMirrorSyncAt,
+    ...health,
   });
 });
 
@@ -101,4 +132,3 @@ export const DELETE: APIRoute = withErrorHandler(async ({ params, request }) => 
 
   return success({ configured: false });
 });
-

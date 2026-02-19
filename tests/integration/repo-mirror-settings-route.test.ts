@@ -95,6 +95,8 @@ describe("repository mirror settings routes", () => {
     const body = await readJson(response);
     expect(response.status).toBe(200);
     expect(body?.data?.isMirror).toBe(true);
+    expect(typeof body?.data?.isHealthy).toBe("boolean");
+    expect(typeof body?.data?.isStale).toBe("boolean");
   });
 
   it("configures mirror for repo admins", async () => {
@@ -139,4 +141,3 @@ describe("repository mirror settings routes", () => {
     expect(disableMirrorMock).toHaveBeenCalledWith("repo-1");
   });
 });
-
