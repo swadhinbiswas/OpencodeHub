@@ -776,6 +776,110 @@ export interface DigestRunResult {
     failed: number;
 }
 
+export interface UserDigestRunOptions {
+    userId: string;
+    period?: "daily" | "weekly";
+    now?: Date;
+    dryRun?: boolean;
+}
+
+export interface UserDigestRunResult {
+    sent: boolean;
+    dryRun: boolean;
+    period: "daily" | "weekly";
+    itemCount: number;
+    reason?: "missing_user_or_email" | "empty_digest" | "send_failed" | "missing_digest_settings";
+}
+
+export async function runUserDigest(options: UserDigestRunOptions): Promise<UserDigestRunResult> {
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
+    const now = options.now ?? new Date();
+    const dryRun = options.dryRun ?? true;
+
+    const setting = await db.query.emailDigestSettings.findFirst({
+        where: eq(schema.emailDigestSettings.userId, options.userId),
+    });
+    if (!setting) {
+        return {
+            sent: false,
+            dryRun,
+            period: options.period || "daily",
+            itemCount: 0,
+            reason: "missing_digest_settings",
+        };
+    }
+
+    const period = options.period || ((setting.digestType as "daily" | "weekly" | "none") === "weekly" ? "weekly" : "daily");
+    const user = await db.query.users.findFirst({
+        where: eq(schema.users.id, options.userId),
+        columns: { id: true, email: true, isActive: true },
+    });
+    if (!user || !user.isActive || !user.email) {
+        return {
+            sent: false,
+            dryRun,
+            period,
+            itemCount: 0,
+            reason: "missing_user_or_email",
+        };
+    }
+
+    const prefs = await db.query.notificationPreferences.findMany({
+        where: and(
+            eq(schema.notificationPreferences.userId, user.id),
+            eq(schema.notificationPreferences.emailEnabled, true)
+        ),
+        columns: { eventType: true },
+    });
+    const includeEvents = prefs.map((p) => p.eventType as NotificationEvent);
+
+    const digest = await generateDigestEmail({
+        userId: user.id,
+        period,
+        includeEvents,
+    });
+
+    if (digest.itemCount === 0) {
+        return {
+            sent: false,
+            dryRun,
+            period,
+            itemCount: 0,
+            reason: "empty_digest",
+        };
+    }
+
+    if (!dryRun) {
+        const sent = await sendPlatformEmail({
+            to: user.email,
+            subject: digest.subject,
+            html: digest.html,
+            text: `${digest.subject}\n\nYou have ${digest.itemCount} new notification(s).`,
+        });
+        if (!sent) {
+            return {
+                sent: false,
+                dryRun,
+                period,
+                itemCount: digest.itemCount,
+                reason: "send_failed",
+            };
+        }
+
+        await db
+            .update(schema.emailDigestSettings)
+            .set({ lastSentAt: now, updatedAt: now })
+            .where(eq(schema.emailDigestSettings.id, setting.id));
+    }
+
+    return {
+        sent: true,
+        dryRun,
+        period,
+        itemCount: digest.itemCount,
+    };
+}
+
 export async function runDueDigests(options: DigestRunOptions = {}): Promise<DigestRunResult> {
     const db = getDatabase() as NodePgDatabase<typeof schema>;
     const now = options.now ?? new Date();
