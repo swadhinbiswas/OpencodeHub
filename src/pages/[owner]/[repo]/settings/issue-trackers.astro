@@ -1,0 +1,449 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getDatabase, schema } from "@/db";
+import { eq, and } from "drizzle-orm";
+import { canAdminRepo } from "@/lib/permissions";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { Link2 } from "lucide-react";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!),
+  ),
+  with: { owner: true },
+});
+
+if (!repoData) return Astro.redirect("/404");
+
+const currentUser = Astro.locals.user;
+const hasAccess = await canAdminRepo(currentUser?.id, repoData, {
+  isAdmin: currentUser?.isAdmin ?? undefined,
+});
+
+if (!hasAccess) {
+  return Astro.redirect(`/${ownerName}/${repoName}`);
+}
+
+const trackerConfigs = await db.query.issueTrackerConfigs.findMany({
+  where: eq(schema.issueTrackerConfigs.repositoryId, repoData.id),
+});
+const jiraConfig = trackerConfigs.find((config) => config.provider === "jira");
+const linearConfig = trackerConfigs.find((config) => config.provider === "linear");
+const trelloConfig = trackerConfigs.find((config) => config.provider === "trello");
+const clickupConfig = trackerConfigs.find((config) => config.provider === "clickup");
+
+const siteUrl = process.env.SITE_URL || "http://localhost:4321";
+const jiraWebhookUrl = `${siteUrl}/api/repos/${repoData.owner.username}/${repoData.name}/integrations/issue-trackers/jira/webhook`;
+const linearWebhookUrl = `${siteUrl}/api/repos/${repoData.owner.username}/${repoData.name}/integrations/issue-trackers/linear/webhook`;
+const trelloWebhookUrl = `${siteUrl}/api/repos/${repoData.owner.username}/${repoData.name}/integrations/issue-trackers/trello/webhook`;
+const clickupWebhookUrl = `${siteUrl}/api/repos/${repoData.owner.username}/${repoData.name}/integrations/issue-trackers/clickup/webhook`;
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  openIssueCount: repoData.openIssueCount,
+  openPrCount: repoData.openPrCount,
+  hasIssues: repoData.hasIssues,
+  hasWiki: repoData.hasWiki,
+  hasActions: repoData.hasActions,
+};
+---
+
+<BaseLayout title={`Issue Trackers · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="settings" />
+
+    <div class="grid gap-6 md:grid-cols-[240px_1fr]">
+      <nav class="space-y-1">
+        <a href={`/${repo.owner}/${repo.name}/settings`} class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">General</a>
+        <a href={`/${repo.owner}/${repo.name}/settings/collaborators`} class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Collaborators</a>
+        <a href={`/${repo.owner}/${repo.name}/settings/webhooks`} class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Webhooks</a>
+        <a href={`/${repo.owner}/${repo.name}/settings/external-ci`} class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">External CI</a>
+        <a href={`/${repo.owner}/${repo.name}/settings/issue-trackers`} class="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm font-medium text-foreground">Issue Trackers</a>
+        <a href={`/${repo.owner}/${repo.name}/settings/reviews`} class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Reviews</a>
+        <a href={`/${repo.owner}/${repo.name}/settings/actions`} class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Actions</a>
+        <a href={`/${repo.owner}/${repo.name}/settings/deploy-keys`} class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Deploy keys</a>
+        <a href={`/${repo.owner}/${repo.name}/settings/workflow`} class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Workflow</a>
+      </nav>
+
+      <div class="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Link2 className="h-5 w-5" />
+              Issue Tracker Integrations
+            </CardTitle>
+            <CardDescription>
+              Configure Jira, Linear, Trello, and ClickUp sync settings, webhook endpoints, and issue-linking controls.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Jira Integration</CardTitle>
+            <CardDescription>Configure Jira project sync and webhook processing.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div class="rounded-md border border-dashed border-white/10 bg-white/5 p-3 text-sm text-muted-foreground">
+              <div class="text-xs uppercase tracking-wide text-muted-foreground">Jira Webhook Endpoint</div>
+              <div class="mt-1 font-mono text-xs break-all">{jiraWebhookUrl}</div>
+            </div>
+            <div class="grid gap-3 md:grid-cols-3">
+              <div>
+                <label for="jira-api-url" class="block text-xs text-muted-foreground mb-1">Jira API URL</label>
+                <input id="jira-api-url" class="h-8 w-full rounded-md border bg-background px-2 text-xs" value={jiraConfig?.apiUrl || "https://your-domain.atlassian.net/rest/api/3"} />
+              </div>
+              <div>
+                <label for="jira-project-key" class="block text-xs text-muted-foreground mb-1">Project Key</label>
+                <input id="jira-project-key" class="h-8 w-full rounded-md border bg-background px-2 text-xs" value={jiraConfig?.projectKey || ""} placeholder="PROJ" />
+              </div>
+              <div>
+                <label for="jira-api-token" class="block text-xs text-muted-foreground mb-1">API Token</label>
+                <input id="jira-api-token" type="password" class="h-8 w-full rounded-md border bg-background px-2 text-xs" placeholder={jiraConfig ? "•••••••• (leave empty to keep)" : "Jira token"} />
+              </div>
+            </div>
+            <div class="grid gap-3 md:grid-cols-3">
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="jira-sync-to" type="checkbox" checked={jiraConfig?.syncToExternal ?? true} />Sync to provider</label>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="jira-sync-from" type="checkbox" checked={jiraConfig?.syncFromExternal ?? true} />Sync from provider</label>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="jira-enabled" type="checkbox" checked={jiraConfig?.isEnabled ?? true} />Enabled</label>
+            </div>
+            <div class="text-xs text-muted-foreground">Webhook secret: <span id="jira-webhook-secret" class="font-mono">{jiraConfig?.webhookSecret || "Not configured yet"}</span></div>
+            <div class="flex items-center gap-2">
+              <Button id="save-jira" variant="outline">Save Jira Config</Button>
+              <span id="jira-save-msg" class="text-xs text-muted-foreground"></span>
+            </div>
+            <div class="pt-2 border-t border-white/10">
+              <div class="text-xs font-medium text-muted-foreground mb-2">Recent Jira Links</div>
+              <div id="jira-links" class="space-y-1 text-xs text-muted-foreground">Loading links...</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Linear Integration</CardTitle>
+            <CardDescription>Configure Linear team sync and webhook processing.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div class="rounded-md border border-dashed border-white/10 bg-white/5 p-3 text-sm text-muted-foreground">
+              <div class="text-xs uppercase tracking-wide text-muted-foreground">Linear Webhook Endpoint</div>
+              <div class="mt-1 font-mono text-xs break-all">{linearWebhookUrl}</div>
+            </div>
+            <div class="grid gap-3 md:grid-cols-2">
+              <div>
+                <label for="linear-project-key" class="block text-xs text-muted-foreground mb-1">Team ID</label>
+                <input id="linear-project-key" class="h-8 w-full rounded-md border bg-background px-2 text-xs" value={linearConfig?.projectKey || ""} placeholder="team-id" />
+              </div>
+              <div>
+                <label for="linear-api-token" class="block text-xs text-muted-foreground mb-1">API Token</label>
+                <input id="linear-api-token" type="password" class="h-8 w-full rounded-md border bg-background px-2 text-xs" placeholder={linearConfig ? "•••••••• (leave empty to keep)" : "Linear token"} />
+              </div>
+            </div>
+            <div class="grid gap-3 md:grid-cols-3">
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="linear-sync-to" type="checkbox" checked={linearConfig?.syncToExternal ?? true} />Sync to provider</label>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="linear-sync-from" type="checkbox" checked={linearConfig?.syncFromExternal ?? true} />Sync from provider</label>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="linear-enabled" type="checkbox" checked={linearConfig?.isEnabled ?? true} />Enabled</label>
+            </div>
+            <div class="text-xs text-muted-foreground">Webhook secret: <span id="linear-webhook-secret" class="font-mono">{linearConfig?.webhookSecret || "Not configured yet"}</span></div>
+            <div class="flex items-center gap-2"><Button id="save-linear" variant="outline">Save Linear Config</Button><span id="linear-save-msg" class="text-xs text-muted-foreground"></span></div>
+            <div class="pt-2 border-t border-white/10"><div class="text-xs font-medium text-muted-foreground mb-2">Recent Linear Links</div><div id="linear-links" class="space-y-1 text-xs text-muted-foreground">Loading links...</div></div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Trello Integration</CardTitle>
+            <CardDescription>Configure Trello board/list sync and webhook processing.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div class="rounded-md border border-dashed border-white/10 bg-white/5 p-3 text-sm text-muted-foreground"><div class="text-xs uppercase tracking-wide text-muted-foreground">Trello Webhook Endpoint</div><div class="mt-1 font-mono text-xs break-all">{trelloWebhookUrl}</div></div>
+            <div class="grid gap-3 md:grid-cols-2">
+              <div><label for="trello-project-key" class="block text-xs text-muted-foreground mb-1">Board/List ID</label><input id="trello-project-key" class="h-8 w-full rounded-md border bg-background px-2 text-xs" value={trelloConfig?.projectKey || ""} placeholder="list-id" /></div>
+              <div><label for="trello-api-token" class="block text-xs text-muted-foreground mb-1">API Token (`key:token`)</label><input id="trello-api-token" type="password" class="h-8 w-full rounded-md border bg-background px-2 text-xs" placeholder={trelloConfig ? "•••••••• (leave empty to keep)" : "key:token"} /></div>
+            </div>
+            <div class="grid gap-3 md:grid-cols-3">
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="trello-sync-to" type="checkbox" checked={trelloConfig?.syncToExternal ?? true} />Sync to provider</label>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="trello-sync-from" type="checkbox" checked={trelloConfig?.syncFromExternal ?? true} />Sync from provider</label>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="trello-enabled" type="checkbox" checked={trelloConfig?.isEnabled ?? true} />Enabled</label>
+            </div>
+            <div class="text-xs text-muted-foreground">Webhook secret: <span id="trello-webhook-secret" class="font-mono">{trelloConfig?.webhookSecret || "Not configured yet"}</span></div>
+            <div class="flex items-center gap-2"><Button id="save-trello" variant="outline">Save Trello Config</Button><span id="trello-save-msg" class="text-xs text-muted-foreground"></span></div>
+            <div class="pt-2 border-t border-white/10"><div class="text-xs font-medium text-muted-foreground mb-2">Recent Trello Links</div><div id="trello-links" class="space-y-1 text-xs text-muted-foreground">Loading links...</div></div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>ClickUp Integration</CardTitle>
+            <CardDescription>Configure ClickUp list sync and webhook processing.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div class="rounded-md border border-dashed border-white/10 bg-white/5 p-3 text-sm text-muted-foreground"><div class="text-xs uppercase tracking-wide text-muted-foreground">ClickUp Webhook Endpoint</div><div class="mt-1 font-mono text-xs break-all">{clickupWebhookUrl}</div></div>
+            <div class="grid gap-3 md:grid-cols-2">
+              <div><label for="clickup-project-key" class="block text-xs text-muted-foreground mb-1">List ID</label><input id="clickup-project-key" class="h-8 w-full rounded-md border bg-background px-2 text-xs" value={clickupConfig?.projectKey || ""} placeholder="list-id" /></div>
+              <div><label for="clickup-api-token" class="block text-xs text-muted-foreground mb-1">API Token</label><input id="clickup-api-token" type="password" class="h-8 w-full rounded-md border bg-background px-2 text-xs" placeholder={clickupConfig ? "•••••••• (leave empty to keep)" : "ClickUp token"} /></div>
+            </div>
+            <div class="grid gap-3 md:grid-cols-3">
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="clickup-sync-to" type="checkbox" checked={clickupConfig?.syncToExternal ?? true} />Sync to provider</label>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="clickup-sync-from" type="checkbox" checked={clickupConfig?.syncFromExternal ?? true} />Sync from provider</label>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="clickup-enabled" type="checkbox" checked={clickupConfig?.isEnabled ?? true} />Enabled</label>
+            </div>
+            <div class="text-xs text-muted-foreground">Webhook secret: <span id="clickup-webhook-secret" class="font-mono">{clickupConfig?.webhookSecret || "Not configured yet"}</span></div>
+            <div class="flex items-center gap-2"><Button id="save-clickup" variant="outline">Save ClickUp Config</Button><span id="clickup-save-msg" class="text-xs text-muted-foreground"></span></div>
+            <div class="pt-2 border-t border-white/10"><div class="text-xs font-medium text-muted-foreground mb-2">Recent ClickUp Links</div><div id="clickup-links" class="space-y-1 text-xs text-muted-foreground">Loading links...</div></div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script define:vars={{ repoOwner: repo.owner, repoName: repo.name, initialJiraConfigId: jiraConfig?.id || null, initialLinearConfigId: linearConfig?.id || null, initialTrelloConfigId: trelloConfig?.id || null, initialClickupConfigId: clickupConfig?.id || null }}>
+  const saveJiraBtn = document.getElementById("save-jira");
+  const saveLinearBtn = document.getElementById("save-linear");
+  const saveTrelloBtn = document.getElementById("save-trello");
+  const saveClickupBtn = document.getElementById("save-clickup");
+
+  const jiraSaveMsg = document.getElementById("jira-save-msg");
+  const linearSaveMsg = document.getElementById("linear-save-msg");
+  const trelloSaveMsg = document.getElementById("trello-save-msg");
+  const clickupSaveMsg = document.getElementById("clickup-save-msg");
+
+  const jiraApiUrl = document.getElementById("jira-api-url");
+  const jiraProjectKey = document.getElementById("jira-project-key");
+  const jiraApiToken = document.getElementById("jira-api-token");
+  const jiraSyncTo = document.getElementById("jira-sync-to");
+  const jiraSyncFrom = document.getElementById("jira-sync-from");
+  const jiraEnabled = document.getElementById("jira-enabled");
+
+  const linearProjectKey = document.getElementById("linear-project-key");
+  const linearApiToken = document.getElementById("linear-api-token");
+  const linearSyncTo = document.getElementById("linear-sync-to");
+  const linearSyncFrom = document.getElementById("linear-sync-from");
+  const linearEnabled = document.getElementById("linear-enabled");
+
+  const trelloProjectKey = document.getElementById("trello-project-key");
+  const trelloApiToken = document.getElementById("trello-api-token");
+  const trelloSyncTo = document.getElementById("trello-sync-to");
+  const trelloSyncFrom = document.getElementById("trello-sync-from");
+  const trelloEnabled = document.getElementById("trello-enabled");
+
+  const clickupProjectKey = document.getElementById("clickup-project-key");
+  const clickupApiToken = document.getElementById("clickup-api-token");
+  const clickupSyncTo = document.getElementById("clickup-sync-to");
+  const clickupSyncFrom = document.getElementById("clickup-sync-from");
+  const clickupEnabled = document.getElementById("clickup-enabled");
+
+  const jiraWebhookSecret = document.getElementById("jira-webhook-secret");
+  const linearWebhookSecret = document.getElementById("linear-webhook-secret");
+  const trelloWebhookSecret = document.getElementById("trello-webhook-secret");
+  const clickupWebhookSecret = document.getElementById("clickup-webhook-secret");
+
+  const jiraLinks = document.getElementById("jira-links");
+  const linearLinks = document.getElementById("linear-links");
+  const trelloLinks = document.getElementById("trello-links");
+  const clickupLinks = document.getElementById("clickup-links");
+
+  let jiraConfigId = initialJiraConfigId;
+  let linearConfigId = initialLinearConfigId;
+  let trelloConfigId = initialTrelloConfigId;
+  let clickupConfigId = initialClickupConfigId;
+
+  function renderLinks(target, links, emptyMessage) {
+    if (!target) return;
+    target.innerHTML = links.length === 0
+      ? emptyMessage
+      : links.map((item) => `
+      <div class="rounded border border-white/10 bg-white/5 px-2 py-1.5 flex items-center justify-between gap-2">
+        <span>${item.externalKey || item.externalId || "linked issue"}</span>
+        <span class="text-[11px] text-muted-foreground">${item.lastSyncAt ? new Date(item.lastSyncAt).toLocaleString() : "pending"}</span>
+      </div>
+    `).join("");
+  }
+
+  async function loadSummary() {
+    try {
+      const res = await fetch(`/api/repos/${repoOwner}/${repoName}/integrations/issue-trackers?summary=1`);
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error?.message || body?.message || "Failed to load issue tracker summary");
+
+      const data = body?.data || body;
+      const configs = data?.configs || [];
+      const links = data?.links || [];
+      const byProvider = {
+        jira: configs.find((cfg) => cfg.provider === "jira"),
+        linear: configs.find((cfg) => cfg.provider === "linear"),
+        trello: configs.find((cfg) => cfg.provider === "trello"),
+        clickup: configs.find((cfg) => cfg.provider === "clickup"),
+      };
+
+      if (byProvider.jira) {
+        jiraConfigId = byProvider.jira.id;
+        if (jiraWebhookSecret) jiraWebhookSecret.textContent = byProvider.jira.webhookSecret || "Not configured";
+      }
+      if (byProvider.linear) {
+        linearConfigId = byProvider.linear.id;
+        if (linearWebhookSecret) linearWebhookSecret.textContent = byProvider.linear.webhookSecret || "Not configured";
+      }
+      if (byProvider.trello) {
+        trelloConfigId = byProvider.trello.id;
+        if (trelloWebhookSecret) trelloWebhookSecret.textContent = byProvider.trello.webhookSecret || "Not configured";
+      }
+      if (byProvider.clickup) {
+        clickupConfigId = byProvider.clickup.id;
+        if (clickupWebhookSecret) clickupWebhookSecret.textContent = byProvider.clickup.webhookSecret || "Not configured";
+      }
+
+      renderLinks(jiraLinks, links.filter((item) => item.configId === byProvider.jira?.id).slice(0, 5), "No Jira links synced yet.");
+      renderLinks(linearLinks, links.filter((item) => item.configId === byProvider.linear?.id).slice(0, 5), "No Linear links synced yet.");
+      renderLinks(trelloLinks, links.filter((item) => item.configId === byProvider.trello?.id).slice(0, 5), "No Trello links synced yet.");
+      renderLinks(clickupLinks, links.filter((item) => item.configId === byProvider.clickup?.id).slice(0, 5), "No ClickUp links synced yet.");
+    } catch (error) {
+      if (jiraLinks) jiraLinks.textContent = error.message || "Failed to load links";
+      if (linearLinks) linearLinks.textContent = error.message || "Failed to load links";
+      if (trelloLinks) trelloLinks.textContent = error.message || "Failed to load links";
+      if (clickupLinks) clickupLinks.textContent = error.message || "Failed to load links";
+    }
+  }
+
+  async function saveTracker(options) {
+    const res = await fetch(
+      options.configId
+        ? `/api/repos/${repoOwner}/${repoName}/integrations/issue-trackers/${options.configId}`
+        : `/api/repos/${repoOwner}/${repoName}/integrations/issue-trackers`,
+      {
+        method: options.configId ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(options.payload),
+      },
+    );
+    const body = await res.json();
+    if (!res.ok) {
+      throw new Error(body?.error?.message || body?.message || "Failed to save issue tracker config");
+    }
+    return body?.data || body;
+  }
+
+  saveJiraBtn?.addEventListener("click", async () => {
+    if (!jiraSaveMsg) return;
+    jiraSaveMsg.textContent = "Saving Jira config...";
+    try {
+      const saved = await saveTracker({
+        configId: jiraConfigId,
+        payload: {
+          ...(jiraConfigId ? {} : { provider: "jira", name: "Jira" }),
+          ...(jiraConfigId ? { name: "Jira" } : {}),
+          apiUrl: jiraApiUrl?.value?.trim() || undefined,
+          projectKey: jiraProjectKey?.value?.trim() || undefined,
+          apiToken: jiraApiToken?.value?.trim() || undefined,
+          syncToExternal: !!jiraSyncTo?.checked,
+          syncFromExternal: !!jiraSyncFrom?.checked,
+          isEnabled: !!jiraEnabled?.checked,
+        },
+      });
+      if (saved?.id) jiraConfigId = saved.id;
+      if (jiraApiToken) jiraApiToken.value = "";
+      jiraSaveMsg.textContent = "Jira configuration saved.";
+      loadSummary();
+    } catch (error) {
+      jiraSaveMsg.textContent = error.message || "Failed to save Jira config";
+    }
+  });
+
+  saveLinearBtn?.addEventListener("click", async () => {
+    if (!linearSaveMsg) return;
+    linearSaveMsg.textContent = "Saving Linear config...";
+    try {
+      const saved = await saveTracker({
+        configId: linearConfigId,
+        payload: {
+          ...(linearConfigId ? {} : { provider: "linear", name: "Linear" }),
+          ...(linearConfigId ? { name: "Linear" } : {}),
+          projectKey: linearProjectKey?.value?.trim() || undefined,
+          apiToken: linearApiToken?.value?.trim() || undefined,
+          syncToExternal: !!linearSyncTo?.checked,
+          syncFromExternal: !!linearSyncFrom?.checked,
+          isEnabled: !!linearEnabled?.checked,
+        },
+      });
+      if (saved?.id) linearConfigId = saved.id;
+      if (linearApiToken) linearApiToken.value = "";
+      linearSaveMsg.textContent = "Linear configuration saved.";
+      loadSummary();
+    } catch (error) {
+      linearSaveMsg.textContent = error.message || "Failed to save Linear config";
+    }
+  });
+
+  saveTrelloBtn?.addEventListener("click", async () => {
+    if (!trelloSaveMsg) return;
+    trelloSaveMsg.textContent = "Saving Trello config...";
+    try {
+      const saved = await saveTracker({
+        configId: trelloConfigId,
+        payload: {
+          ...(trelloConfigId ? {} : { provider: "trello", name: "Trello" }),
+          ...(trelloConfigId ? { name: "Trello" } : {}),
+          projectKey: trelloProjectKey?.value?.trim() || undefined,
+          apiToken: trelloApiToken?.value?.trim() || undefined,
+          syncToExternal: !!trelloSyncTo?.checked,
+          syncFromExternal: !!trelloSyncFrom?.checked,
+          isEnabled: !!trelloEnabled?.checked,
+        },
+      });
+      if (saved?.id) trelloConfigId = saved.id;
+      if (trelloApiToken) trelloApiToken.value = "";
+      trelloSaveMsg.textContent = "Trello configuration saved.";
+      loadSummary();
+    } catch (error) {
+      trelloSaveMsg.textContent = error.message || "Failed to save Trello config";
+    }
+  });
+
+  saveClickupBtn?.addEventListener("click", async () => {
+    if (!clickupSaveMsg) return;
+    clickupSaveMsg.textContent = "Saving ClickUp config...";
+    try {
+      const saved = await saveTracker({
+        configId: clickupConfigId,
+        payload: {
+          ...(clickupConfigId ? {} : { provider: "clickup", name: "ClickUp" }),
+          ...(clickupConfigId ? { name: "ClickUp" } : {}),
+          projectKey: clickupProjectKey?.value?.trim() || undefined,
+          apiToken: clickupApiToken?.value?.trim() || undefined,
+          syncToExternal: !!clickupSyncTo?.checked,
+          syncFromExternal: !!clickupSyncFrom?.checked,
+          isEnabled: !!clickupEnabled?.checked,
+        },
+      });
+      if (saved?.id) clickupConfigId = saved.id;
+      if (clickupApiToken) clickupApiToken.value = "";
+      clickupSaveMsg.textContent = "ClickUp configuration saved.";
+      loadSummary();
+    } catch (error) {
+      clickupSaveMsg.textContent = error.message || "Failed to save ClickUp config";
+    }
+  });
+
+  loadSummary();
+</script>
