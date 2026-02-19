@@ -34,7 +34,7 @@
 | Git LFS | ✅ | `lfs.ts` with batch API (upload/download) |
 | Submodules | ✅ | Native Git support, no special handling needed |
 | Branch protection rules | ✅ | Schema + UI + API in place |
-| Repository templates | ⚠️ | Not fully implemented |
+| Repository templates | ⚠️ | Template creation and listing are implemented with access-aware discovery filters (`/repos/templates?q=&owner=&visibility=`) including collaborator-visible private templates; dedicated template governance UX remains partial |
 | Repository Wiki | ✅ | Implemented (Phase 8) |
 | File-level permissions | ⚠️ | Path-scoped enforcement now covers PR comment create/edit/delete, single-review inline comments, batch-review comment submission, and suggestion-apply flows; broader endpoint coverage still remains |
 | Commit signing (GPG) | ✅ | GPG key management UI exists |
