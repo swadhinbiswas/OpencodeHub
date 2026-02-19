@@ -9,6 +9,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { logger } from "./logger";
 import { repositories } from "@/db/schema/repositories";
 import { pullRequests } from "@/db/schema/pull-requests";
+import { assertOnlineFeature } from "./air-gapped";
 
 // ============================================================================
 // SCHEMA DEFINITIONS
@@ -183,6 +184,7 @@ export async function processCodecovWebhook(payload: {
     totals: { coverage: number; lines: number; hits: number };
     pull?: { pullid: number };
 }): Promise<CoverageReport> {
+    assertOnlineFeature("Codecov integration");
     const db = getDatabase();
 
     const repo = await db.query.repositories.findFirst({
@@ -238,6 +240,7 @@ export async function fetchCodecovCoverage(options: {
     commitSha: string;
     token: string;
 }): Promise<{ coverage: number; url: string } | null> {
+    assertOnlineFeature("Codecov integration");
     try {
         const response = await fetch(
             `https://codecov.io/api/v2/github/${options.owner}/repos/${options.repo}/commits/${options.commitSha}`,
@@ -271,7 +274,9 @@ export async function processCoverallsWebhook(payload: {
     covered_percent: number;
     covered_lines: number;
     relevant_lines: number;
+    pull_request_number?: number;
 }): Promise<CoverageReport> {
+    assertOnlineFeature("Coveralls integration");
     const db = getDatabase();
 
     const repo = await db.query.repositories.findFirst({
@@ -283,7 +288,7 @@ export async function processCoverallsWebhook(payload: {
     const report = {
         id: crypto.randomUUID(),
         repositoryId: repo.id,
-        pullRequestId: null,
+        pullRequestId: null as string | null,
         commitSha: payload.commit_sha,
         provider: "coveralls",
         coverage: payload.covered_percent,
@@ -296,8 +301,22 @@ export async function processCoverallsWebhook(payload: {
         createdAt: new Date(),
     };
 
+    if (typeof payload.pull_request_number === "number") {
+        const pr = await db.query.pullRequests.findFirst({
+            where: and(
+                eq(schema.pullRequests.repositoryId, repo.id),
+                eq(schema.pullRequests.number, payload.pull_request_number)
+            ),
+        });
+        if (pr) report.pullRequestId = pr.id;
+    }
+
     // @ts-expect-error - Drizzle multi-db union type issue
     await db.insert(schema.coverageReports).values(report);
+
+    if (report.pullRequestId) {
+        await updatePRCoverageCheck(report.pullRequestId, report as CoverageReport);
+    }
 
     return report as CoverageReport;
 }
@@ -315,6 +334,7 @@ export async function triggerSonarAnalysis(options: {
     branch?: string;
     pullRequestId?: string;
 }): Promise<boolean> {
+    assertOnlineFeature("SonarQube integration");
     const db = getDatabase();
 
     const config = await db.query.codeQualityConfigs?.findFirst({
@@ -395,6 +415,7 @@ export async function fetchSonarQubeStatus(options: {
     status: "OK" | "WARN" | "ERROR";
     issues: CodeQualityIssue[];
 } | null> {
+    assertOnlineFeature("SonarQube integration");
     try {
         const response = await fetch(
             `${options.serverUrl}/api/qualitygates/project_status?projectKey=${options.projectKey}`,
@@ -457,6 +478,7 @@ export async function runSnykScan(options: {
     apiToken: string;
     targetFile?: string;
 }): Promise<CodeQualityIssue[]> {
+    assertOnlineFeature("Snyk integration");
     const db = getDatabase();
     const issues: CodeQualityIssue[] = [];
 
@@ -538,6 +560,7 @@ export async function getSnykVulnerabilities(options: {
     cve?: string;
     fixedIn?: string;
 }[]> {
+    assertOnlineFeature("Snyk integration");
     try {
         const response = await fetch(
             `https://api.snyk.io/v1/vuln/${options.packageManager}/${encodeURIComponent(options.packageName)}/${options.version}`,
@@ -660,6 +683,7 @@ export async function handleQualityWebhook(
     webhookSecret: string,
     payload: Record<string, unknown>
 ): Promise<boolean> {
+    assertOnlineFeature("Code quality webhooks");
     const db = getDatabase();
 
     const config = await db.query.codeQualityConfigs?.findFirst({
