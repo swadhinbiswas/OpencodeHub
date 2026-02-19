@@ -146,6 +146,13 @@ export const openApiSpec = {
                 },
                 required: ["reviewers"],
             },
+            StackMergeRequest: {
+                type: "object",
+                properties: {
+                    mergeMethod: { type: "string", enum: ["merge", "squash", "rebase"] },
+                    skipApprovalCheck: { type: "boolean" },
+                },
+            },
             PullRequestCommentCreateRequest: {
                 type: "object",
                 properties: {
@@ -519,6 +526,34 @@ export const openApiSpec = {
                 responses: {
                     200: { description: "Merge readiness returned" },
                     401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository or stack not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/repos/{owner}/{repo}/stacks/{stackId}/merge": {
+            post: {
+                tags: ["Stacks"],
+                summary: "Queue merge for all PRs in a stack",
+                description: "Attempts to merge an entire stack in order by enqueuing each eligible PR into the merge queue.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "stackId", in: "path", required: true, schema: { type: "string" } },
+                ],
+                requestBody: {
+                    required: false,
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/StackMergeRequest" },
+                        },
+                    },
+                },
+                responses: {
+                    200: { description: "Bulk merge result returned" },
+                    400: { description: "Invalid merge payload", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     404: { description: "Repository or stack not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                 },
             },
