@@ -131,7 +131,7 @@
 | Slack | ✅ | `slack-notifications.ts` + schema |
 | Microsoft Teams | ✅ | Teams webhook integration implemented (`integrations/teams.ts`) |
 | Discord | ✅ | Discord webhook integration implemented (`integrations/discord.ts`) |
-| Email notifications | ⚠️ | `email.ts` exists, needs enhancement |
+| Email notifications | ⚠️ | Email delivery test API is now available via `POST /user/email/test` (dry-run + explicit destination + SMTP-config visibility); advanced template/routing/analytics depth remains partial |
 
 ### 6.5 Cloud & Infrastructure
 | Feature | Status | Notes |

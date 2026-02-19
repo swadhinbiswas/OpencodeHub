@@ -272,6 +272,13 @@ export const openApiSpec = {
                     maxRetries: { type: "integer", minimum: 0, maximum: 5, default: 1 },
                 },
             },
+            UserEmailTestRequest: {
+                type: "object",
+                properties: {
+                    dryRun: { type: "boolean", default: true },
+                    to: { type: "string", format: "email" },
+                },
+            },
         },
     },
     paths: {
@@ -932,6 +939,27 @@ export const openApiSpec = {
                 },
                 responses: {
                     200: { description: "Digest test result returned" },
+                    400: { description: "Invalid payload", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/user/email/test": {
+            post: {
+                tags: ["Notifications"],
+                summary: "Run a user email delivery test",
+                description: "Sends (or dry-runs) a simple test email for the authenticated user to verify delivery setup.",
+                security: [{ bearerAuth: [] }],
+                requestBody: {
+                    required: false,
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/UserEmailTestRequest" },
+                        },
+                    },
+                },
+                responses: {
+                    200: { description: "Email test result returned" },
                     400: { description: "Invalid payload", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                 },

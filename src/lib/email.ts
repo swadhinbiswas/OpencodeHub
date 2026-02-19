@@ -19,6 +19,10 @@ export interface EmailOptions {
   html?: string;
 }
 
+export function isSmtpConfigured(): boolean {
+  return Boolean(SMTP_HOST);
+}
+
 let transporter: any = null;
 
 async function getTransporter() {
@@ -78,6 +82,30 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     logger.error({ error, to: options.to }, "Failed to send email");
     return false;
   }
+}
+
+export async function sendTestEmail(options: {
+  to: string;
+  dryRun?: boolean;
+}): Promise<boolean> {
+  const dryRun = options.dryRun ?? true;
+  if (dryRun) {
+    logger.info({ to: options.to }, "Test email dry-run (not sent)");
+    return true;
+  }
+
+  return sendEmail({
+    to: options.to,
+    subject: "OpenCodeHub email delivery test",
+    text: "This is a test email from OpenCodeHub. If you received this, email delivery is working.",
+    html: `
+      <div style="font-family: sans-serif; color: #111; line-height: 1.5;">
+        <h2>OpenCodeHub email delivery test</h2>
+        <p>This is a test email from OpenCodeHub.</p>
+        <p>If you received this, your email delivery configuration is working.</p>
+      </div>
+    `,
+  });
 }
 
 export async function sendPasswordResetEmail(email: string, token: string): Promise<boolean> {
