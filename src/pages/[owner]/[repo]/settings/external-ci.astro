@@ -39,16 +39,20 @@ if (!hasAccess) {
 const integration = await db.query.externalCiIntegrations.findFirst({
   where: eq(schema.externalCiIntegrations.repositoryId, repoData.id),
 });
-const codecovConfig = await db.query.codeQualityConfigs.findFirst({
-  where: and(
-    eq(schema.codeQualityConfigs.repositoryId, repoData.id),
-    eq(schema.codeQualityConfigs.provider, "codecov")
-  ),
+const qualityConfigs = await db.query.codeQualityConfigs.findMany({
+  where: eq(schema.codeQualityConfigs.repositoryId, repoData.id),
 });
+const codecovConfig = qualityConfigs.find((config) => config.provider === "codecov");
+const coverallsConfig = qualityConfigs.find((config) => config.provider === "coveralls");
+const sonarqubeConfig = qualityConfigs.find((config) => config.provider === "sonarqube");
+const snykConfig = qualityConfigs.find((config) => config.provider === "snyk");
 
 const siteUrl = process.env.SITE_URL || "http://localhost:4321";
 const endpointUrl = `${siteUrl}/api/repos/${repoData.owner.username}/${repoData.name}/external-ci/checks`;
 const codecovWebhookUrl = `${siteUrl}/api/repos/${repoData.owner.username}/${repoData.name}/integrations/code-quality/webhooks/codecov`;
+const coverallsWebhookUrl = `${siteUrl}/api/repos/${repoData.owner.username}/${repoData.name}/integrations/code-quality/webhooks/coveralls`;
+const sonarqubeWebhookUrl = `${siteUrl}/api/repos/${repoData.owner.username}/${repoData.name}/integrations/code-quality/webhooks/sonarqube`;
+const snykWebhookUrl = `${siteUrl}/api/repos/${repoData.owner.username}/${repoData.name}/integrations/code-quality/webhooks/snyk`;
 
 const repo = {
   owner: repoData.owner.username,
@@ -270,12 +274,137 @@ const repo = {
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Coveralls Coverage Automation</CardTitle>
+            <CardDescription>
+              Configure Coveralls webhook ingestion, PR reporting, and coverage gating.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div class="rounded-md border border-dashed border-white/10 bg-white/5 p-3 text-sm text-muted-foreground">
+              <div class="text-xs uppercase tracking-wide text-muted-foreground">Coveralls Webhook Endpoint</div>
+              <div class="mt-1 font-mono text-xs break-all">{coverallsWebhookUrl}</div>
+            </div>
+            <div class="grid gap-3 md:grid-cols-2">
+              <div>
+                <label for="coveralls-project-key" class="block text-xs text-muted-foreground mb-1">Project key</label>
+                <input id="coveralls-project-key" class="h-8 w-full rounded-md border bg-background px-2 text-xs" value={coverallsConfig?.projectKey || ""} />
+              </div>
+              <div>
+                <label for="coveralls-api-token" class="block text-xs text-muted-foreground mb-1">API token</label>
+                <input id="coveralls-api-token" type="password" class="h-8 w-full rounded-md border bg-background px-2 text-xs" />
+              </div>
+            </div>
+            <div class="grid gap-3 md:grid-cols-4">
+              <div>
+                <label for="coveralls-min-coverage" class="block text-xs text-muted-foreground mb-1">Min coverage %</label>
+                <input id="coveralls-min-coverage" type="number" min="0" max="100" step="0.1" class="h-8 w-full rounded-md border bg-background px-2 text-xs" value={coverallsConfig?.minCoverage ?? 80} />
+              </div>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-5"><input id="coveralls-block-on-fail" type="checkbox" checked={!!coverallsConfig?.blockOnFail} />Block on fail</label>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-5"><input id="coveralls-report-on-pr" type="checkbox" checked={coverallsConfig?.reportOnPR ?? true} />Report on PR</label>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-5"><input id="coveralls-enabled" type="checkbox" checked={coverallsConfig?.isEnabled ?? true} />Enabled</label>
+            </div>
+            <div class="text-xs text-muted-foreground">Webhook secret: <span id="coveralls-webhook-secret" class="font-mono">{coverallsConfig?.webhookSecret || "Not configured yet"}</span></div>
+            <div class="flex items-center gap-2">
+              <Button id="save-coveralls" variant="outline">Save Coveralls Config</Button>
+              <span id="coveralls-save-msg" class="text-xs text-muted-foreground"></span>
+            </div>
+            <div class="pt-2 border-t border-white/10">
+              <div class="text-xs font-medium text-muted-foreground mb-2">Recent Coveralls Reports</div>
+              <div id="coveralls-reports" class="space-y-1 text-xs text-muted-foreground">Loading coverage reports...</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>SonarQube Quality Gate Automation</CardTitle>
+            <CardDescription>
+              Configure SonarQube quality-gate ingestion and issue visibility.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div class="rounded-md border border-dashed border-white/10 bg-white/5 p-3 text-sm text-muted-foreground">
+              <div class="text-xs uppercase tracking-wide text-muted-foreground">SonarQube Webhook Endpoint</div>
+              <div class="mt-1 font-mono text-xs break-all">{sonarqubeWebhookUrl}</div>
+            </div>
+            <div class="grid gap-3 md:grid-cols-3">
+              <div>
+                <label for="sonar-project-key" class="block text-xs text-muted-foreground mb-1">Project key</label>
+                <input id="sonar-project-key" class="h-8 w-full rounded-md border bg-background px-2 text-xs" value={sonarqubeConfig?.projectKey || ""} />
+              </div>
+              <div>
+                <label for="sonar-server-url" class="block text-xs text-muted-foreground mb-1">Server URL</label>
+                <input id="sonar-server-url" class="h-8 w-full rounded-md border bg-background px-2 text-xs" value={sonarqubeConfig?.serverUrl || ""} placeholder="https://sonar.example.com" />
+              </div>
+              <div>
+                <label for="sonar-api-token" class="block text-xs text-muted-foreground mb-1">API token</label>
+                <input id="sonar-api-token" type="password" class="h-8 w-full rounded-md border bg-background px-2 text-xs" />
+              </div>
+            </div>
+            <div class="grid gap-3 md:grid-cols-3">
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="sonar-block-on-fail" type="checkbox" checked={!!sonarqubeConfig?.blockOnFail} />Block on fail</label>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="sonar-report-on-pr" type="checkbox" checked={sonarqubeConfig?.reportOnPR ?? true} />Report on PR</label>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="sonar-enabled" type="checkbox" checked={sonarqubeConfig?.isEnabled ?? true} />Enabled</label>
+            </div>
+            <div class="text-xs text-muted-foreground">Webhook secret: <span id="sonar-webhook-secret" class="font-mono">{sonarqubeConfig?.webhookSecret || "Not configured yet"}</span></div>
+            <div class="flex items-center gap-2">
+              <Button id="save-sonar" variant="outline">Save SonarQube Config</Button>
+              <span id="sonar-save-msg" class="text-xs text-muted-foreground"></span>
+            </div>
+            <div class="pt-2 border-t border-white/10">
+              <div class="text-xs font-medium text-muted-foreground mb-2">Recent SonarQube Issues</div>
+              <div id="sonar-issues" class="space-y-1 text-xs text-muted-foreground">Loading quality issues...</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Snyk Security Automation</CardTitle>
+            <CardDescription>
+              Configure Snyk issue ingestion and PR/security reporting controls.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div class="rounded-md border border-dashed border-white/10 bg-white/5 p-3 text-sm text-muted-foreground">
+              <div class="text-xs uppercase tracking-wide text-muted-foreground">Snyk Webhook Endpoint</div>
+              <div class="mt-1 font-mono text-xs break-all">{snykWebhookUrl}</div>
+            </div>
+            <div class="grid gap-3 md:grid-cols-2">
+              <div>
+                <label for="snyk-project-key" class="block text-xs text-muted-foreground mb-1">Project key</label>
+                <input id="snyk-project-key" class="h-8 w-full rounded-md border bg-background px-2 text-xs" value={snykConfig?.projectKey || ""} />
+              </div>
+              <div>
+                <label for="snyk-api-token" class="block text-xs text-muted-foreground mb-1">API token</label>
+                <input id="snyk-api-token" type="password" class="h-8 w-full rounded-md border bg-background px-2 text-xs" />
+              </div>
+            </div>
+            <div class="grid gap-3 md:grid-cols-3">
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="snyk-block-on-fail" type="checkbox" checked={!!snykConfig?.blockOnFail} />Block on fail</label>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="snyk-report-on-pr" type="checkbox" checked={snykConfig?.reportOnPR ?? true} />Report on PR</label>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="snyk-enabled" type="checkbox" checked={snykConfig?.isEnabled ?? true} />Enabled</label>
+            </div>
+            <div class="text-xs text-muted-foreground">Webhook secret: <span id="snyk-webhook-secret" class="font-mono">{snykConfig?.webhookSecret || "Not configured yet"}</span></div>
+            <div class="flex items-center gap-2">
+              <Button id="save-snyk" variant="outline">Save Snyk Config</Button>
+              <span id="snyk-save-msg" class="text-xs text-muted-foreground"></span>
+            </div>
+            <div class="pt-2 border-t border-white/10">
+              <div class="text-xs font-medium text-muted-foreground mb-2">Recent Snyk Issues</div>
+              <div id="snyk-issues" class="space-y-1 text-xs text-muted-foreground">Loading security issues...</div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   </div>
 </BaseLayout>
 
-<script define:vars={{ repoOwner: repo.owner, repoName: repo.name, initialCodecovConfigId: codecovConfig?.id || null }}>
+<script define:vars={{ repoOwner: repo.owner, repoName: repo.name, initialCodecovConfigId: codecovConfig?.id || null, initialCoverallsConfigId: coverallsConfig?.id || null, initialSonarConfigId: sonarqubeConfig?.id || null, initialSnykConfigId: snykConfig?.id || null }}>
   const btn = document.getElementById("generate-token");
   const output = document.getElementById("token-output");
   const providerTemplate = document.getElementById("provider-template");
@@ -291,6 +420,40 @@ const repo = {
   const codecovWebhookSecret = document.getElementById("codecov-webhook-secret");
   const codecovReports = document.getElementById("codecov-reports");
   let codecovConfigId = initialCodecovConfigId;
+  const saveCoverallsBtn = document.getElementById("save-coveralls");
+  const coverallsSaveMsg = document.getElementById("coveralls-save-msg");
+  const coverallsProjectKey = document.getElementById("coveralls-project-key");
+  const coverallsApiToken = document.getElementById("coveralls-api-token");
+  const coverallsMinCoverage = document.getElementById("coveralls-min-coverage");
+  const coverallsBlockOnFail = document.getElementById("coveralls-block-on-fail");
+  const coverallsReportOnPr = document.getElementById("coveralls-report-on-pr");
+  const coverallsEnabled = document.getElementById("coveralls-enabled");
+  const coverallsWebhookSecret = document.getElementById("coveralls-webhook-secret");
+  const coverallsReports = document.getElementById("coveralls-reports");
+  let coverallsConfigId = initialCoverallsConfigId;
+
+  const saveSonarBtn = document.getElementById("save-sonar");
+  const sonarSaveMsg = document.getElementById("sonar-save-msg");
+  const sonarProjectKey = document.getElementById("sonar-project-key");
+  const sonarServerUrl = document.getElementById("sonar-server-url");
+  const sonarApiToken = document.getElementById("sonar-api-token");
+  const sonarBlockOnFail = document.getElementById("sonar-block-on-fail");
+  const sonarReportOnPr = document.getElementById("sonar-report-on-pr");
+  const sonarEnabled = document.getElementById("sonar-enabled");
+  const sonarWebhookSecret = document.getElementById("sonar-webhook-secret");
+  const sonarIssues = document.getElementById("sonar-issues");
+  let sonarConfigId = initialSonarConfigId;
+
+  const saveSnykBtn = document.getElementById("save-snyk");
+  const snykSaveMsg = document.getElementById("snyk-save-msg");
+  const snykProjectKey = document.getElementById("snyk-project-key");
+  const snykApiToken = document.getElementById("snyk-api-token");
+  const snykBlockOnFail = document.getElementById("snyk-block-on-fail");
+  const snykReportOnPr = document.getElementById("snyk-report-on-pr");
+  const snykEnabled = document.getElementById("snyk-enabled");
+  const snykWebhookSecret = document.getElementById("snyk-webhook-secret");
+  const snykIssues = document.getElementById("snyk-issues");
+  let snykConfigId = initialSnykConfigId;
 
   const payloadTemplates = {
     normalized: `{
@@ -388,8 +551,7 @@ const repo = {
     }
   });
 
-  async function loadCodecovSummary() {
-    if (!codecovReports) return;
+  async function loadQualitySummary() {
     try {
       const res = await fetch(`/api/repos/${repoOwner}/${repoName}/integrations/code-quality?summary=1`);
       const payload = await res.json();
@@ -398,25 +560,65 @@ const repo = {
       }
       const data = payload?.data || payload;
       const codecov = (data?.configs || []).find((cfg) => cfg.provider === "codecov");
+      const coveralls = (data?.configs || []).find((cfg) => cfg.provider === "coveralls");
+      const sonar = (data?.configs || []).find((cfg) => cfg.provider === "sonarqube");
+      const snyk = (data?.configs || []).find((cfg) => cfg.provider === "snyk");
       if (codecov) {
         codecovConfigId = codecov.id;
         if (codecovWebhookSecret) codecovWebhookSecret.textContent = codecov.webhookSecret || "Not configured";
       }
-
-      const reports = (data?.coverage || []).filter((report) => report.provider === "codecov").slice(0, 5);
-      if (reports.length === 0) {
-        codecovReports.textContent = "No Codecov reports received yet.";
-        return;
+      if (coveralls) {
+        coverallsConfigId = coveralls.id;
+        if (coverallsWebhookSecret) coverallsWebhookSecret.textContent = coveralls.webhookSecret || "Not configured";
+      }
+      if (sonar) {
+        sonarConfigId = sonar.id;
+        if (sonarWebhookSecret) sonarWebhookSecret.textContent = sonar.webhookSecret || "Not configured";
+      }
+      if (snyk) {
+        snykConfigId = snyk.id;
+        if (snykWebhookSecret) snykWebhookSecret.textContent = snyk.webhookSecret || "Not configured";
       }
 
-      codecovReports.innerHTML = reports.map((report) => `
-        <div class="rounded border border-white/10 bg-white/5 px-2 py-1.5 flex items-center justify-between gap-2">
-          <span>Coverage ${Number(report.coverage || 0).toFixed(1)}%</span>
-          <span class="text-[11px] text-muted-foreground font-mono">${(report.commitSha || "").slice(0, 7)}</span>
-        </div>
-      `).join("");
+      if (codecovReports) {
+        const reports = (data?.coverage || []).filter((report) => report.provider === "codecov").slice(0, 5);
+        codecovReports.innerHTML = reports.length === 0
+          ? "No Codecov reports received yet."
+          : reports.map((report) => `
+          <div class="rounded border border-white/10 bg-white/5 px-2 py-1.5 flex items-center justify-between gap-2">
+            <span>Coverage ${Number(report.coverage || 0).toFixed(1)}%</span>
+            <span class="text-[11px] text-muted-foreground font-mono">${(report.commitSha || "").slice(0, 7)}</span>
+          </div>
+        `).join("");
+      }
+      if (coverallsReports) {
+        const reports = (data?.coverage || []).filter((report) => report.provider === "coveralls").slice(0, 5);
+        coverallsReports.innerHTML = reports.length === 0
+          ? "No Coveralls reports received yet."
+          : reports.map((report) => `
+          <div class="rounded border border-white/10 bg-white/5 px-2 py-1.5 flex items-center justify-between gap-2">
+            <span>Coverage ${Number(report.coverage || 0).toFixed(1)}%</span>
+            <span class="text-[11px] text-muted-foreground font-mono">${(report.commitSha || "").slice(0, 7)}</span>
+          </div>
+        `).join("");
+      }
+      if (sonarIssues) {
+        const issues = (data?.issues || []).filter((issue) => issue.provider === "sonarqube").slice(0, 5);
+        sonarIssues.innerHTML = issues.length === 0
+          ? "No SonarQube issues reported yet."
+          : issues.map((issue) => `<div class="rounded border border-white/10 bg-white/5 px-2 py-1.5">${issue.severity || "unknown"} • ${issue.message}</div>`).join("");
+      }
+      if (snykIssues) {
+        const issues = (data?.issues || []).filter((issue) => issue.provider === "snyk").slice(0, 5);
+        snykIssues.innerHTML = issues.length === 0
+          ? "No Snyk issues reported yet."
+          : issues.map((issue) => `<div class="rounded border border-white/10 bg-white/5 px-2 py-1.5">${issue.severity || "unknown"} • ${issue.message}</div>`).join("");
+      }
     } catch (error) {
-      codecovReports.textContent = error.message || "Failed to load coverage summary";
+      if (codecovReports) codecovReports.textContent = error.message || "Failed to load coverage summary";
+      if (coverallsReports) coverallsReports.textContent = error.message || "Failed to load coverage summary";
+      if (sonarIssues) sonarIssues.textContent = error.message || "Failed to load quality issues";
+      if (snykIssues) snykIssues.textContent = error.message || "Failed to load security issues";
     }
   }
 
@@ -463,13 +665,104 @@ const repo = {
       }
       codecovSaveMsg.textContent = "Codecov configuration saved.";
       if (codecovApiToken) codecovApiToken.value = "";
-      loadCodecovSummary();
+      loadQualitySummary();
     } catch (error) {
       codecovSaveMsg.textContent = error.message || "Failed to save Codecov config";
     } finally {
       saveCodecovBtn.removeAttribute("disabled");
     }
   });
+  async function saveProviderConfig(options) {
+    const res = await fetch(
+      options.configId
+        ? `/api/repos/${repoOwner}/${repoName}/integrations/code-quality/${options.configId}`
+        : `/api/repos/${repoOwner}/${repoName}/integrations/code-quality`,
+      {
+        method: options.configId ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(options.payload),
+      },
+    );
+    const body = await res.json();
+    if (!res.ok) {
+      throw new Error(body?.error?.message || body?.message || "Failed to save provider config");
+    }
+    return body?.data || body;
+  }
 
-  loadCodecovSummary();
+  saveCoverallsBtn?.addEventListener("click", async () => {
+    if (!coverallsSaveMsg) return;
+    coverallsSaveMsg.textContent = "Saving Coveralls config...";
+    try {
+      const saved = await saveProviderConfig({
+        configId: coverallsConfigId,
+        payload: {
+          provider: "coveralls",
+          projectKey: coverallsProjectKey?.value?.trim() || undefined,
+          apiToken: coverallsApiToken?.value?.trim() || undefined,
+          minCoverage: Number.parseFloat(coverallsMinCoverage?.value || "0") || 0,
+          blockOnFail: !!coverallsBlockOnFail?.checked,
+          reportOnPR: !!coverallsReportOnPr?.checked,
+          isEnabled: !!coverallsEnabled?.checked,
+        },
+      });
+      if (saved?.id) coverallsConfigId = saved.id;
+      if (coverallsApiToken) coverallsApiToken.value = "";
+      coverallsSaveMsg.textContent = "Coveralls configuration saved.";
+      loadQualitySummary();
+    } catch (error) {
+      coverallsSaveMsg.textContent = error.message || "Failed to save Coveralls config";
+    }
+  });
+
+  saveSonarBtn?.addEventListener("click", async () => {
+    if (!sonarSaveMsg) return;
+    sonarSaveMsg.textContent = "Saving SonarQube config...";
+    try {
+      const saved = await saveProviderConfig({
+        configId: sonarConfigId,
+        payload: {
+          provider: "sonarqube",
+          projectKey: sonarProjectKey?.value?.trim() || undefined,
+          apiToken: sonarApiToken?.value?.trim() || undefined,
+          serverUrl: sonarServerUrl?.value?.trim() || undefined,
+          blockOnFail: !!sonarBlockOnFail?.checked,
+          reportOnPR: !!sonarReportOnPr?.checked,
+          isEnabled: !!sonarEnabled?.checked,
+        },
+      });
+      if (saved?.id) sonarConfigId = saved.id;
+      if (sonarApiToken) sonarApiToken.value = "";
+      sonarSaveMsg.textContent = "SonarQube configuration saved.";
+      loadQualitySummary();
+    } catch (error) {
+      sonarSaveMsg.textContent = error.message || "Failed to save SonarQube config";
+    }
+  });
+
+  saveSnykBtn?.addEventListener("click", async () => {
+    if (!snykSaveMsg) return;
+    snykSaveMsg.textContent = "Saving Snyk config...";
+    try {
+      const saved = await saveProviderConfig({
+        configId: snykConfigId,
+        payload: {
+          provider: "snyk",
+          projectKey: snykProjectKey?.value?.trim() || undefined,
+          apiToken: snykApiToken?.value?.trim() || undefined,
+          blockOnFail: !!snykBlockOnFail?.checked,
+          reportOnPR: !!snykReportOnPr?.checked,
+          isEnabled: !!snykEnabled?.checked,
+        },
+      });
+      if (saved?.id) snykConfigId = saved.id;
+      if (snykApiToken) snykApiToken.value = "";
+      snykSaveMsg.textContent = "Snyk configuration saved.";
+      loadQualitySummary();
+    } catch (error) {
+      snykSaveMsg.textContent = error.message || "Failed to save Snyk config";
+    }
+  });
+
+  loadQualitySummary();
 </script>
