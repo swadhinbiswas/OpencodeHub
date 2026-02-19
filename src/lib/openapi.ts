@@ -245,6 +245,18 @@ export const openApiSpec = {
                     },
                 },
             },
+            StackOrderSuggestionRequest: {
+                type: "object",
+                properties: {
+                    prIds: {
+                        type: "array",
+                        minItems: 2,
+                        maxItems: 100,
+                        items: { type: "string" },
+                    },
+                },
+                required: ["prIds"],
+            },
         },
     },
     paths: {
@@ -783,6 +795,32 @@ export const openApiSpec = {
                             },
                         },
                     },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/repos/{owner}/{repo}/pulls/stack-order": {
+            post: {
+                tags: ["Pull Requests"],
+                summary: "Suggest stack ordering for selected PRs",
+                description: "Returns topological stack order and dependency cycles for a set of repository PR IDs.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/StackOrderSuggestionRequest" },
+                        },
+                    },
+                },
+                responses: {
+                    200: { description: "Suggested order returned" },
+                    400: { description: "Invalid PR list or cross-repository IDs", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                 },
