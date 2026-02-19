@@ -5,7 +5,7 @@
 
 import { pgTable, text, timestamp, integer, real, jsonb, boolean } from "drizzle-orm/pg-core";
 import { getDatabase, schema } from "@/db";
-import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
+import { eq, and, gte, lte, sql, desc, inArray } from "drizzle-orm";
 import { logger } from "./logger";
 import { repositories } from "@/db/schema/repositories";
 import { users } from "@/db/schema/users";
@@ -522,23 +522,53 @@ export async function getDeveloperWorkloads(options: {
     const workloads: DeveloperWorkload[] = [];
 
     for (const user of users) {
-        // Count open PRs authored
+        // Count open PRs authored (optionally repository-scoped)
+        const openPrConditions = [
+            eq(schema.pullRequests.authorId, user.id),
+            eq(schema.pullRequests.state, "open"),
+        ];
+        if (options.repositoryId) {
+            openPrConditions.push(eq(schema.pullRequests.repositoryId, options.repositoryId));
+        }
         const openPRs = await db.query.pullRequests.findMany({
-            where: and(
-                eq(schema.pullRequests.authorId, user.id),
-                eq(schema.pullRequests.state, "open")
-            ),
+            where: and(...openPrConditions),
         }) || [];
 
-        // Count pending reviews requested (simplified - get all assigned reviews)
-        const pendingReviews = await db.query.pullRequestReviewers?.findMany({
+        // Count pending reviews requested (optionally repository-scoped)
+        const pendingReviewRequests = await db.query.pullRequestReviewers?.findMany({
             where: eq(schema.pullRequestReviewers.userId, user.id),
         }) || [];
+        let pendingReviews = pendingReviewRequests;
+        if (options.repositoryId && pendingReviewRequests.length > 0) {
+            const pullRequestIds = pendingReviewRequests.map((r) => r.pullRequestId);
+            const repoPullRequests = await db.query.pullRequests.findMany({
+                where: and(
+                    inArray(schema.pullRequests.id, pullRequestIds),
+                    eq(schema.pullRequests.repositoryId, options.repositoryId)
+                ),
+                columns: { id: true },
+            });
+            const repoPullRequestIds = new Set(repoPullRequests.map((pr) => pr.id));
+            pendingReviews = pendingReviewRequests.filter((r) => repoPullRequestIds.has(r.pullRequestId));
+        }
 
-        // Count assigned issues
-        const assignedIssues = await db.query.issueAssignees?.findMany({
+        // Count assigned issues (optionally repository-scoped)
+        const assignedIssueLinks = await db.query.issueAssignees?.findMany({
             where: eq(schema.issueAssignees.userId, user.id),
         }) || [];
+        let assignedIssues = assignedIssueLinks;
+        if (options.repositoryId && assignedIssueLinks.length > 0) {
+            const issueIds = assignedIssueLinks.map((i) => i.issueId);
+            const repoIssues = await db.query.issues.findMany({
+                where: and(
+                    inArray(schema.issues.id, issueIds),
+                    eq(schema.issues.repositoryId, options.repositoryId)
+                ),
+                columns: { id: true },
+            });
+            const repoIssueIds = new Set(repoIssues.map((issue) => issue.id));
+            assignedIssues = assignedIssueLinks.filter((i) => repoIssueIds.has(i.issueId));
+        }
 
         // Calculate workload score (weighted)
         const workloadScore = Math.min(100,

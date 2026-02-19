@@ -1033,6 +1033,26 @@ export const openApiSpec = {
                 },
             },
         },
+        "/repos/{owner}/{repo}/analytics/workload": {
+            get: {
+                tags: ["Analytics"],
+                summary: "Get developer workload insights",
+                description: "Returns repository-scoped workload scores and summary counters for contributors.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "days", in: "query", required: false, schema: { type: "integer", minimum: 7, maximum: 365, default: 30 } },
+                    { name: "limit", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 200, default: 50 } },
+                ],
+                responses: {
+                    200: { description: "Workload insights returned" },
+                    400: { description: "Invalid query parameters", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
         "/repos/{owner}/{repo}/workflow/states": {
             get: {
                 tags: ["Workflow"],
