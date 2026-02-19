@@ -33,6 +33,24 @@ import { logger } from "@/lib/logger";
 
 // ... existing imports ...
 
+async function getRepositoryByOwnerAndName(
+    db: NodePgDatabase<typeof schema>,
+    owner: string,
+    repo: string
+) {
+    const repoOwner = await db.query.users.findFirst({
+        where: eq(schema.users.username, owner),
+    });
+    if (!repoOwner) return null;
+
+    return db.query.repositories.findFirst({
+        where: and(
+            eq(schema.repositories.ownerId, repoOwner.id),
+            eq(schema.repositories.name, repo)
+        ),
+    });
+}
+
 // GET /api/repos/:owner/:repo/pulls/:number/comments - List comments
 export const GET: APIRoute = withErrorHandler(async ({ params, request }) => {
     const tokenPayload = await getUserFromRequest(request);
@@ -42,16 +60,19 @@ export const GET: APIRoute = withErrorHandler(async ({ params, request }) => {
 
     const { owner, repo, number } = params;
     const db = getDatabase() as NodePgDatabase<typeof schema>;
+    const repository = await getRepositoryByOwnerAndName(db, owner as string, repo as string);
+    if (!repository) return notFound("Repository not found");
 
     // Find PR
     const pr = await db.query.pullRequests.findFirst({
         where: and(
+            eq(schema.pullRequests.repositoryId, repository.id),
             eq(schema.pullRequests.number, parseInt(number as string)),
         ),
         with: { repository: true },
     });
 
-    if (!pr || pr.repository?.ownerId !== owner) {
+    if (!pr) {
         return notFound("Pull request not found");
     }
 
@@ -99,16 +120,19 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
 
     const { owner, repo, number } = params;
     const db = getDatabase() as NodePgDatabase<typeof schema>;
+    const repository = await getRepositoryByOwnerAndName(db, owner as string, repo as string);
+    if (!repository) return notFound("Repository not found");
 
     // Find PR
     const pr = await db.query.pullRequests.findFirst({
         where: and(
+            eq(schema.pullRequests.repositoryId, repository.id),
             eq(schema.pullRequests.number, parseInt(number as string)),
         ),
         with: { repository: true },
     });
 
-    if (!pr || pr.repository?.ownerId !== owner) {
+    if (!pr) {
         return notFound("Pull request not found");
     }
 
@@ -172,6 +196,8 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request }) => {
 
     const { owner, repo, number, commentId } = params;
     const db = getDatabase() as NodePgDatabase<typeof schema>;
+    const repository = await getRepositoryByOwnerAndName(db, owner as string, repo as string);
+    if (!repository) return notFound("Repository not found");
 
     // Find comment
     const comment = await db.query.pullRequestComments.findFirst({
@@ -183,7 +209,7 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request }) => {
         },
     });
 
-    if (!comment || comment.pullRequest?.repository?.ownerId !== owner) {
+    if (!comment || comment.pullRequest?.repositoryId !== repository.id) {
         return notFound("Comment not found");
     }
 
@@ -228,6 +254,8 @@ export const DELETE: APIRoute = withErrorHandler(async ({ params, request }) => 
 
     const { owner, repo, number, commentId } = params;
     const db = getDatabase() as NodePgDatabase<typeof schema>;
+    const repository = await getRepositoryByOwnerAndName(db, owner as string, repo as string);
+    if (!repository) return notFound("Repository not found");
 
     // Find comment
     const comment = await db.query.pullRequestComments.findFirst({
@@ -239,7 +267,7 @@ export const DELETE: APIRoute = withErrorHandler(async ({ params, request }) => 
         },
     });
 
-    if (!comment || comment.pullRequest?.repository?.ownerId !== owner) {
+    if (!comment || comment.pullRequest?.repositoryId !== repository.id) {
         return notFound("Comment not found");
     }
 
