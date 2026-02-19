@@ -201,7 +201,10 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request }) => {
     const parsed = await parseBody(request, updateCommentSchema);
     if ("error" in parsed) return parsed.error;
 
-    const { owner, repo, number, commentId } = params;
+    const { owner, repo, number, commentId: commentIdFromParams } = params;
+    const requestUrl = new URL(request.url);
+    const commentId = (commentIdFromParams as string | undefined) || requestUrl.searchParams.get("commentId");
+    if (!commentId) return badRequest("commentId is required");
     const db = getDatabase() as NodePgDatabase<typeof schema>;
     const repository = await getRepositoryByOwnerAndName(db, owner as string, repo as string);
     if (!repository) return notFound("Repository not found");
@@ -262,7 +265,10 @@ export const DELETE: APIRoute = withErrorHandler(async ({ params, request }) => 
         return unauthorized();
     }
 
-    const { owner, repo, number, commentId } = params;
+    const { owner, repo, number, commentId: commentIdFromParams } = params;
+    const requestUrl = new URL(request.url);
+    const commentId = (commentIdFromParams as string | undefined) || requestUrl.searchParams.get("commentId");
+    if (!commentId) return badRequest("commentId is required");
     const db = getDatabase() as NodePgDatabase<typeof schema>;
     const repository = await getRepositoryByOwnerAndName(db, owner as string, repo as string);
     if (!repository) return notFound("Repository not found");
