@@ -45,7 +45,7 @@
 | :--- | :---: | :--- |
 | Native stacked PRs | ✅ | `stacks.ts` - create, add, reorder, visualize |
 | PR dependency graphs (DAG) | ✅ | `getStackVisualization()` implemented |
-| Cross-PR dependency detection | ⚠️ | Automatic branch/file dependency graph API (`pulls/dependencies`) plus stack-order suggestion API (`pulls/stack-order`) implemented; UI-driven workflows remain partial |
+| Cross-PR dependency detection | ✅ | Automatic branch/file dependency graph API (`pulls/dependencies`) plus stack-order suggestion/apply API (`POST/PUT pulls/stack-order`) are implemented, and PR list UI now provides dependency analysis, selection-based order suggestion, and one-click stack creation workflow for detected dependency sets |
 | Stack rebase & auto-update | ⚠️ | Manual rebase + auto-update API endpoints now implemented (`stacks/[stackId]/rebase`, `stacks/[stackId]/auto-update`); workflow automation/UI depth remains partial |
 | Stack-level approvals | ⚠️ | Stack approvals API now returns readiness + blocker context and richer per-stack approval summaries (pending counts/missing approvals/requested reviewers/missing required reviewer approvals), with dry-run reviewer eligibility previews; higher-level UI orchestration still partial |
 | Bulk merge (merge stacks) | ⚠️ | Explicit bulk merge queue APIs now exist for stacks (`stacks/[stackId]/merge`) and selected PRs (`pulls/bulk-merge`); higher-level stack orchestration UX remains partial |

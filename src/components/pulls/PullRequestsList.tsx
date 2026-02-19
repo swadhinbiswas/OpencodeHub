@@ -11,9 +11,10 @@ import {
     User,
     ArrowUpDown,
     Plus,
-    Sparkles,
     GitBranch,
-    CheckCircle2
+    CheckCircle2,
+    Link2,
+    Loader2
 } from "lucide-react";
 import { useState } from "react";
 
@@ -43,6 +44,27 @@ interface Props {
     closedCount: number;
     repoOwner: string;
     repoName: string;
+}
+
+interface DependencyGraphResponse {
+    nodes: Array<{
+        prId: string;
+        prNumber: number;
+        title: string;
+        dependsOn: string[];
+        blockedBy: string[];
+        dependencyType: "branch" | "files" | "manual";
+    }>;
+    edges: Array<{
+        from: string;
+        to: string;
+        type: string;
+    }>;
+}
+
+interface StackOrderSuggestion {
+    order: string[];
+    cycles: string[][];
 }
 
 function timeAgo(date: string): string {
@@ -83,6 +105,15 @@ function getPRIcon(state: string, isDraft?: boolean) {
 export default function PullRequestsList({ pullRequests, openCount, closedCount, repoOwner, repoName }: Props) {
     const [filter, setFilter] = useState<"open" | "closed" | "all">("open");
     const [searchQuery, setSearchQuery] = useState("");
+    const [selectedPrIds, setSelectedPrIds] = useState<string[]>([]);
+    const [graph, setGraph] = useState<DependencyGraphResponse | null>(null);
+    const [suggestion, setSuggestion] = useState<StackOrderSuggestion | null>(null);
+    const [workflowMsg, setWorkflowMsg] = useState<string>("");
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [isSuggesting, setIsSuggesting] = useState(false);
+    const [isApplying, setIsApplying] = useState(false);
+
+    const prById = new Map(pullRequests.map((pr) => [pr.id, pr]));
 
     const filteredPRs = pullRequests.filter(pr => {
         const matchesFilter = filter === "all" ||
@@ -91,6 +122,104 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
         const matchesSearch = pr.title.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesFilter && matchesSearch;
     });
+
+    const toggleSelectPr = (prId: string) => {
+        setSelectedPrIds((prev) =>
+            prev.includes(prId) ? prev.filter((id) => id !== prId) : [...prev, prId]
+        );
+    };
+
+    const selectAllVisibleOpen = () => {
+        const ids = filteredPRs.filter((pr) => pr.state === "open").map((pr) => pr.id);
+        setSelectedPrIds(ids);
+    };
+
+    const analyzeDependencies = async () => {
+        setIsAnalyzing(true);
+        setWorkflowMsg("");
+        try {
+            const response = await fetch(
+                `/api/repos/${repoOwner}/${repoName}/pulls/dependencies?includeFiles=true`
+            );
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload?.error?.message || "Failed to analyze dependencies");
+            }
+            setGraph(payload?.data?.graph || null);
+            const nodes = payload?.data?.graph?.nodes?.length || 0;
+            const edges = payload?.data?.graph?.edges?.length || 0;
+            setWorkflowMsg(`Dependency graph updated (${nodes} PRs, ${edges} edges).`);
+        } catch (error: any) {
+            setWorkflowMsg(error?.message || "Failed to analyze dependencies");
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
+    const suggestStackOrder = async () => {
+        if (selectedPrIds.length < 2) {
+            setWorkflowMsg("Select at least 2 open PRs to generate a stack suggestion.");
+            return;
+        }
+
+        setIsSuggesting(true);
+        setWorkflowMsg("");
+        try {
+            const response = await fetch(`/api/repos/${repoOwner}/${repoName}/pulls/stack-order`, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ prIds: selectedPrIds }),
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload?.error?.message || "Failed to suggest stack order");
+            }
+            const data = payload?.data as StackOrderSuggestion;
+            setSuggestion(data);
+            if (data.cycles.length > 0) {
+                setWorkflowMsg("Cycles detected. Resolve dependencies before applying a stack order.");
+            } else {
+                setWorkflowMsg(`Suggested order generated for ${data.order.length} PRs.`);
+            }
+        } catch (error: any) {
+            setWorkflowMsg(error?.message || "Failed to suggest stack order");
+        } finally {
+            setIsSuggesting(false);
+        }
+    };
+
+    const applySuggestedOrder = async () => {
+        if (!suggestion || suggestion.order.length < 2) {
+            setWorkflowMsg("Generate a valid suggestion before applying.");
+            return;
+        }
+        if (suggestion.cycles.length > 0) {
+            setWorkflowMsg("Cannot apply stack order while dependency cycles exist.");
+            return;
+        }
+
+        setIsApplying(true);
+        setWorkflowMsg("");
+        try {
+            const response = await fetch(`/api/repos/${repoOwner}/${repoName}/pulls/stack-order`, {
+                method: "PUT",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({
+                    prIds: suggestion.order,
+                    name: `Dependency stack (${suggestion.order.length} PRs)`,
+                }),
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload?.error?.message || "Failed to apply stack order");
+            }
+            setWorkflowMsg(`Created stack ${payload?.data?.stackId}.`);
+        } catch (error: any) {
+            setWorkflowMsg(error?.message || "Failed to apply stack order");
+        } finally {
+            setIsApplying(false);
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -154,6 +283,70 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                 transition={{ delay: 0.1 }}
                 className="relative"
             >
+                <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <p className="text-sm font-medium text-white">Dependency Workflow</p>
+                            <p className="text-xs text-gray-400">
+                                Detect cross-PR dependencies, suggest stack order, and apply it directly.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                onClick={analyzeDependencies}
+                                disabled={isAnalyzing}
+                                className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs text-gray-200 hover:bg-white/[0.08] disabled:opacity-60"
+                            >
+                                {isAnalyzing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+                                Analyze Dependencies
+                            </button>
+                            <button
+                                type="button"
+                                onClick={selectAllVisibleOpen}
+                                className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs text-gray-200 hover:bg-white/[0.08]"
+                            >
+                                Select Visible Open
+                            </button>
+                            <button
+                                type="button"
+                                onClick={suggestStackOrder}
+                                disabled={isSuggesting}
+                                className="inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs text-gray-200 hover:bg-white/[0.08] disabled:opacity-60"
+                            >
+                                {isSuggesting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <GitBranch className="h-3.5 w-3.5" />}
+                                Suggest Order ({selectedPrIds.length})
+                            </button>
+                            <button
+                                type="button"
+                                onClick={applySuggestedOrder}
+                                disabled={isApplying || !suggestion || suggestion.cycles.length > 0}
+                                className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+                            >
+                                {isApplying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                                Apply As Stack
+                            </button>
+                        </div>
+                    </div>
+                    {graph && (
+                        <div className="mt-3 text-xs text-gray-400">
+                            Graph: {graph.nodes.length} PRs, {graph.edges.length} edges (
+                            {graph.edges.filter((edge) => edge.type === "files").length} file conflicts)
+                        </div>
+                    )}
+                    {suggestion && (
+                        <div className="mt-2 text-xs text-gray-300">
+                            Suggested:{" "}
+                            {suggestion.order.map((id) => {
+                                const pr = prById.get(id);
+                                return pr ? `#${pr.number}` : id;
+                            }).join(" -> ")}
+                        </div>
+                    )}
+                    {workflowMsg && (
+                        <div className="mt-2 text-xs text-gray-400">{workflowMsg}</div>
+                    )}
+                </div>
                 {/* Gradient border effect */}
                 <div className="absolute -inset-[1px] bg-gradient-to-r from-green-500/30 via-purple-500/20 to-pink-500/30 rounded-xl blur-sm opacity-50" />
 
@@ -215,6 +408,21 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                                             transition={{ delay: index * 0.03 }}
                                             className="flex items-start gap-3 p-4 hover:bg-white/[0.02] transition-colors group"
                                         >
+                                            {pr.state === "open" && (
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Select PR #${pr.number}`}
+                                                    onClick={(event) => {
+                                                        event.preventDefault();
+                                                        event.stopPropagation();
+                                                        toggleSelectPr(pr.id);
+                                                    }}
+                                                    className={`mt-1 h-4 w-4 rounded border ${selectedPrIds.includes(pr.id)
+                                                        ? "border-green-400 bg-green-500/20"
+                                                        : "border-white/20 bg-transparent"
+                                                        }`}
+                                                />
+                                            )}
                                             {/* Status Icon */}
                                             <div className="mt-0.5">
                                                 <div className={`relative p-1 rounded-md ${bg}`}>
