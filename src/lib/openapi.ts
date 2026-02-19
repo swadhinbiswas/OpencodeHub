@@ -174,6 +174,32 @@ export const openApiSpec = {
                 },
                 required: ["body"],
             },
+            PullRequestReviewRequest: {
+                type: "object",
+                properties: {
+                    state: { type: "string", enum: ["APPROVED", "CHANGES_REQUESTED", "COMMENTED"] },
+                    body: { type: "string" },
+                    commitSha: { type: "string" },
+                    comments: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                body: { type: "string" },
+                                path: { type: "string" },
+                                line: { type: "integer" },
+                                side: { type: "string", enum: ["LEFT", "RIGHT"] },
+                                startLine: { type: "integer" },
+                                commitSha: { type: "string" },
+                                inReplyToId: { type: "string" },
+                                suggestedChange: { type: "string" },
+                            },
+                            required: ["body"],
+                        },
+                    },
+                },
+                required: ["state"],
+            },
             WorkflowStateCreateRequest: {
                 type: "object",
                 properties: {
@@ -638,6 +664,34 @@ export const openApiSpec = {
                     401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     404: { description: "Comment or repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/repos/{owner}/{repo}/pulls/{number}/reviews": {
+            post: {
+                tags: ["Pull Requests"],
+                summary: "Submit pull request review",
+                description: "Submit a review state and optional inline comments with path-scoped permission enforcement.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "number", in: "path", required: true, schema: { type: "integer" } },
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/PullRequestReviewRequest" },
+                        },
+                    },
+                },
+                responses: {
+                    200: { description: "Review submitted" },
+                    400: { description: "Invalid review payload or state", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository or pull request not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                 },
             },
         },

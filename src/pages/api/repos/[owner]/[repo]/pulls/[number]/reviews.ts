@@ -6,8 +6,32 @@ import type { APIRoute } from "astro";
 import { and, eq } from "drizzle-orm";
 import { withErrorHandler } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { unauthorized, badRequest, notFound, success, forbidden } from "@/lib/api";
+import { unauthorized, badRequest, notFound, success, forbidden, parseBody } from "@/lib/api";
 import { nanoid } from "nanoid";
+import { z } from "zod";
+import { checkPathPermissions } from "@/lib/path-scoping";
+import crypto from "crypto";
+
+const reviewSchema = z.object({
+    state: z.enum(["APPROVED", "CHANGES_REQUESTED", "COMMENTED"]),
+    body: z.string().max(10000).optional(),
+    commitSha: z.string().optional(),
+    comments: z
+        .array(
+            z.object({
+                body: z.string().min(1).max(20000),
+                path: z.string().optional(),
+                line: z.number().int().positive().optional(),
+                side: z.enum(["LEFT", "RIGHT"]).optional(),
+                startLine: z.number().int().positive().optional(),
+                commitSha: z.string().optional(),
+                inReplyToId: z.string().optional(),
+                suggestedChange: z.string().optional(),
+            })
+        )
+        .max(100)
+        .optional(),
+});
 
 // POST: Submit a review
 export const POST: APIRoute = withErrorHandler(async ({ params, request, locals }) => {
@@ -20,11 +44,9 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
         return badRequest("Missing parameters");
     }
 
-    const { state, body, commitSha } = await request.json();
-
-    if (!["APPROVED", "CHANGES_REQUESTED", "COMMENTED"].includes(state)) {
-        return badRequest("Invalid review state");
-    }
+    const parsed = await parseBody(request, reviewSchema);
+    if ("error" in parsed) return parsed.error;
+    const { state, body, commitSha, comments = [] } = parsed.data;
 
     const db = getDatabase() as NodePgDatabase<typeof schema>;
     const repoOwner = await db.query.users.findFirst({
@@ -63,16 +85,54 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
         return badRequest("Authors cannot approve or request changes on their own PR");
     }
 
+    const scopedPaths = Array.from(
+        new Set(
+            comments
+                .map((comment) => comment.path?.trim())
+                .filter((path): path is string => Boolean(path))
+        )
+    );
+    if (scopedPaths.length > 0) {
+        const permission = await checkPathPermissions(user.id, repo.id, scopedPaths, "write");
+        if (!permission.allowed) {
+            return forbidden(permission.reason || "Insufficient path permissions for one or more review comments");
+        }
+    }
+
+    const now = new Date();
     const reviewId = nanoid();
     await db.insert(schema.pullRequestReviews).values({
         id: reviewId,
         pullRequestId: pr.id,
         reviewerId: user.id,
         state,
-        body,
+        body: body || "Review submitted",
         commitSha,
-        submittedAt: new Date()
+        submittedAt: now
     });
+
+    for (const commentInput of comments) {
+        let commentBody = commentInput.body;
+        if (commentInput.suggestedChange) {
+            commentBody += `\n\n\`\`\`suggestion\n${commentInput.suggestedChange}\n\`\`\``;
+        }
+        const commentId = `comment_${crypto.randomBytes(8).toString("hex")}`;
+        await db.insert(schema.pullRequestComments).values({
+            id: commentId,
+            pullRequestId: pr.id,
+            reviewId,
+            authorId: user.id,
+            body: commentBody,
+            path: commentInput.path ?? null,
+            line: commentInput.line ?? null,
+            side: commentInput.side || "RIGHT",
+            startLine: commentInput.startLine ?? null,
+            commitSha: commentInput.commitSha || commitSha || null,
+            inReplyToId: commentInput.inReplyToId ?? null,
+            createdAt: now,
+            updatedAt: now,
+        });
+    }
 
     // Trigger automation
     import("@/lib/automations").then(({ triggerAutomation }) => {
@@ -97,5 +157,5 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
 
     logger.info({ userId: user.id, prId: pr.id, reviewId, state }, "PR review submitted");
 
-    return success({ id: reviewId, state });
+    return success({ id: reviewId, state, commentCount: comments.length });
 });
