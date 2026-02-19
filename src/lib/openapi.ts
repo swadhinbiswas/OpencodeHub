@@ -1252,6 +1252,55 @@ export const openApiSpec = {
                 },
             },
         },
+        "/repos/{owner}/{repo}/workflow/templates": {
+            get: {
+                tags: ["CI/CD"],
+                summary: "List workflow templates for repository setup",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "category", in: "query", required: false, schema: { type: "string" } },
+                    { name: "language", in: "query", required: false, schema: { type: "string" } },
+                ],
+                responses: {
+                    200: { description: "Workflow templates returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+            post: {
+                tags: ["CI/CD"],
+                summary: "Apply workflow template to repository",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    templateId: { type: "string" },
+                                    workflowName: { type: "string" },
+                                },
+                                required: ["templateId"],
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    200: { description: "Workflow template applied" },
+                    400: { description: "Invalid payload", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
         "/repos/{owner}/{repo}/workflow/states": {
             get: {
                 tags: ["Workflow"],
