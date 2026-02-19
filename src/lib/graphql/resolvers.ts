@@ -5,7 +5,7 @@
 
 import { getDatabase, schema } from "@/db";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { eq, and, like, desc, sql, count } from "drizzle-orm";
+import { eq, and, like, desc, sql, count, inArray } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { compareBranches, getCommit, mergeBranch } from "@/lib/git";
 import { resolveRepoPath } from "@/lib/git-storage";
@@ -669,18 +669,51 @@ export const resolvers = {
         ) => {
             if (!ctx.userId) throw new Error("Authentication required");
 
-            const { applySuggestion } = await import("@/lib/suggested-changes");
+            const comment = await ctx.db.query.pullRequestComments.findFirst({
+                where: eq(schema.pullRequestComments.id, input.commentId),
+                with: {
+                    pullRequest: {
+                        columns: {
+                            id: true,
+                            repositoryId: true,
+                        },
+                    },
+                },
+            });
+            if (!comment || !comment.pullRequest) {
+                throw new Error("Comment not found");
+            }
+
+            const { canApplySuggestions, applySuggestion } = await import("@/lib/suggestions");
+            const canApply = await canApplySuggestions(ctx.userId, comment.pullRequest.id);
+            if (!canApply) {
+                throw new Error("You don't have permission to apply suggestions");
+            }
+
+            if (comment.path) {
+                const { checkPathPermissions } = await import("@/lib/path-scoping");
+                const permission = await checkPathPermissions(
+                    ctx.userId,
+                    comment.pullRequest.repositoryId,
+                    [comment.path],
+                    "write"
+                );
+                if (!permission.allowed) {
+                    throw new Error(permission.reason || "Insufficient path permissions");
+                }
+            }
+
             const result = await applySuggestion(input.commentId, ctx.userId);
 
             if (!result.success) {
                 throw new Error(result.error || "Failed to apply suggestion");
             }
 
-            const comment = await ctx.db.query.pullRequestComments.findFirst({
+            const updatedComment = await ctx.db.query.pullRequestComments.findFirst({
                 where: eq(schema.pullRequestComments.id, input.commentId),
             });
 
-            return { success: true, comment };
+            return { success: true, comment: updatedComment };
         },
 
         batchApplySuggestions: async (
@@ -690,7 +723,52 @@ export const resolvers = {
         ) => {
             if (!ctx.userId) throw new Error("Authentication required");
 
-            const { batchApplySuggestions } = await import("@/lib/suggested-changes");
+            const comments = await ctx.db.query.pullRequestComments.findMany({
+                where: inArray(schema.pullRequestComments.id, input.commentIds),
+                with: {
+                    pullRequest: {
+                        columns: {
+                            id: true,
+                            repositoryId: true,
+                        },
+                    },
+                },
+            });
+            if (comments.length !== input.commentIds.length) {
+                throw new Error("One or more comments were not found");
+            }
+
+            const prIds = new Set(comments.map(c => c.pullRequest?.id).filter(Boolean));
+            if (prIds.size !== 1) {
+                throw new Error("All suggestions in a batch must belong to the same pull request");
+            }
+
+            const [pullRequestId] = [...prIds] as string[];
+            const repositoryId = comments[0].pullRequest?.repositoryId;
+            if (!repositoryId) {
+                throw new Error("Repository not found for suggestions");
+            }
+
+            const { canApplySuggestions, batchApplySuggestions } = await import("@/lib/suggestions");
+            const canApply = await canApplySuggestions(ctx.userId, pullRequestId);
+            if (!canApply) {
+                throw new Error("You don't have permission to apply suggestions");
+            }
+
+            const scopedPaths = [...new Set(comments.map(c => c.path).filter(Boolean) as string[])];
+            if (scopedPaths.length > 0) {
+                const { checkPathPermissions } = await import("@/lib/path-scoping");
+                const permission = await checkPathPermissions(
+                    ctx.userId,
+                    repositoryId,
+                    scopedPaths,
+                    "write"
+                );
+                if (!permission.allowed) {
+                    throw new Error(permission.reason || "Insufficient path permissions");
+                }
+            }
+
             const result = await batchApplySuggestions(input.commentIds, ctx.userId);
 
             const appliedComments = await ctx.db.query.pullRequestComments.findMany({
