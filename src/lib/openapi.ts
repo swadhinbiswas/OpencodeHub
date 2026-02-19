@@ -1188,6 +1188,24 @@ export const openApiSpec = {
                 },
             },
         },
+        "/repos/{owner}/{repo}/pulls/{number}/checks": {
+            get: {
+                tags: ["Pull Requests"],
+                summary: "Get pull request checks",
+                description: "Returns all recorded checks for a pull request plus an aggregated summary.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "number", in: "path", required: true, schema: { type: "integer" } },
+                ],
+                responses: {
+                    200: { description: "Check runs returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository or pull request not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
         "/repos/{owner}/{repo}/workflow/states": {
             get: {
                 tags: ["Workflow"],

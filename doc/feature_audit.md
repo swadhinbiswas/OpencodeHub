@@ -57,7 +57,7 @@
 | Draft PRs | ✅ | Schema supports `isDraft` field |
 | PR labels | ✅ | Full implementation with schema |
 | PR assignees | ✅ | Full implementation with schema |
-| PR checks | ⚠️ | Basic checks exist, but full CI provider parity is incomplete |
+| PR checks | ⚠️ | PR check ingestion + summary/read APIs are implemented (`external-ci/checks`, `pulls/{number}/checks`); deeper provider parity and setup UX remain partial |
 
 ## 3. Code Review
 | Feature | Status | Implementation Notes |
