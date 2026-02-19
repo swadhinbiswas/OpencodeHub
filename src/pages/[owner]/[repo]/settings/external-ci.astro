@@ -154,10 +154,23 @@ const repo = {
         <Card>
           <CardHeader>
             <CardTitle>Payload Format</CardTitle>
-            <CardDescription>Use the token as a Bearer token or X-OpenCodeHub-Token header.</CardDescription>
+            <CardDescription>
+              Use the token as a Bearer token or X-OpenCodeHub-Token header. Choose a provider preset to copy a setup-ready payload.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <pre class="text-xs bg-muted/10 rounded-md p-3 overflow-auto">{`{
+          <CardContent className="space-y-3">
+            <div class="flex items-center gap-2">
+              <label for="provider-template" class="text-xs text-muted-foreground">Provider preset</label>
+              <select id="provider-template" class="h-8 rounded-md border bg-background px-2 text-xs">
+                <option value="normalized">Normalized payload</option>
+                <option value="github_actions">GitHub Actions (check_run)</option>
+                <option value="gitlab">GitLab CI (pipeline/build webhook)</option>
+                <option value="circleci">CircleCI (workflow webhook)</option>
+                <option value="buildkite">Buildkite (build webhook)</option>
+                <option value="jenkins">Jenkins</option>
+              </select>
+            </div>
+            <pre id="payload-template" class="text-xs bg-muted/10 rounded-md p-3 overflow-auto">{`{
   "pullRequestNumber": 42,
   "name": "ci/build",
   "headSha": "abc123...",
@@ -165,6 +178,9 @@ const repo = {
   "conclusion": "success",
   "detailsUrl": "https://ci.example.com/build/42"
 }`}</pre>
+            <div class="text-xs text-muted-foreground">
+              Supported ingestion payloads: normalized, github_actions, gitlab, circleci, buildkite, jenkins.
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -175,6 +191,79 @@ const repo = {
 <script define:vars={{ repoOwner: repo.owner, repoName: repo.name }}>
   const btn = document.getElementById("generate-token");
   const output = document.getElementById("token-output");
+  const providerTemplate = document.getElementById("provider-template");
+  const payloadTemplate = document.getElementById("payload-template");
+
+  const payloadTemplates = {
+    normalized: `{
+  "pullRequestNumber": 42,
+  "name": "ci/build",
+  "headSha": "abc123...",
+  "status": "completed",
+  "conclusion": "success",
+  "detailsUrl": "https://ci.example.com/build/42"
+}`,
+    github_actions: `{
+  "check_run": {
+    "id": 991,
+    "name": "build",
+    "head_sha": "abc123...",
+    "status": "completed",
+    "conclusion": "success",
+    "details_url": "https://github.com/acme/app/actions/runs/991",
+    "pull_requests": [{ "number": 42 }]
+  }
+}`,
+    gitlab: `{
+  "object_kind": "pipeline",
+  "object_attributes": {
+    "id": 1234,
+    "status": "success",
+    "sha": "abc123...",
+    "url": "https://gitlab.com/acme/app/-/pipelines/1234"
+  },
+  "merge_request": { "iid": 42 }
+}`,
+    circleci: `{
+  "workflow": {
+    "id": "wf-123",
+    "name": "build-and-test",
+    "status": "success",
+    "url": "https://app.circleci.com/pipelines/github/acme/app/123"
+  },
+  "vcs": {
+    "revision": "abc123...",
+    "pull_requests": ["https://github.com/acme/app/pull/42"]
+  }
+}`,
+    buildkite: `{
+  "build": {
+    "id": "bk-123",
+    "number": 56,
+    "state": "passed",
+    "commit": "abc123...",
+    "web_url": "https://buildkite.com/acme/app/builds/56",
+    "pipeline": { "slug": "app" },
+    "pull_request": { "id": 42 }
+  }
+}`,
+    jenkins: `{
+  "name": "jenkins/build",
+  "status": "SUCCESS",
+  "head_sha": "abc123...",
+  "details_url": "https://jenkins.example.com/job/app/56/",
+  "pull_request": { "number": 42 }
+}`,
+  };
+
+  function refreshPayloadTemplate() {
+    if (!providerTemplate || !payloadTemplate) return;
+    const key = providerTemplate.value || "normalized";
+    payloadTemplate.textContent = payloadTemplates[key] || payloadTemplates.normalized;
+  }
+
+  providerTemplate?.addEventListener("change", refreshPayloadTemplate);
+  refreshPayloadTemplate();
 
   btn?.addEventListener("click", async () => {
     output.textContent = "";
@@ -193,7 +282,7 @@ const repo = {
       }
 
       const data = await res.json();
-      output.textContent = `Token: ${data.token}`;
+      output.textContent = `Token: ${data?.data?.token || ""}`;
     } catch (e) {
       output.textContent = "Failed to generate token";
     } finally {

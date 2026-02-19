@@ -6,6 +6,11 @@ import { getDatabase, schema } from "@/db";
 import { withErrorHandler } from "@/lib/errors";
 import { badRequest, notFound, success, unauthorized } from "@/lib/api";
 import { upsertCheckRun, updateMergeableState } from "@/lib/pr-checks";
+import { isAirGappedMode } from "@/lib/air-gapped";
+import {
+  normalizeExternalCiCheckPayload,
+  SUPPORTED_EXTERNAL_CI_PAYLOADS,
+} from "@/lib/external-ci-check-payload";
 
 async function getRepository(owner: string, repo: string) {
   const db = getDatabase() as NodePgDatabase<typeof schema>;
@@ -36,6 +41,19 @@ function getTokenFromRequest(request: Request): string | null {
 }
 
 export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
+  if (isAirGappedMode()) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: {
+          code: "AIR_GAPPED_MODE",
+          message: "External CI checks are disabled because AIR_GAPPED_MODE is enabled",
+        },
+      }),
+      { status: 503, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   const { owner, repo } = params;
 
   if (!owner || !repo) return badRequest("Missing parameters");
@@ -59,7 +77,13 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
     return unauthorized("Invalid external CI token");
   }
 
-  const body = await request.json();
+  const body = await request.json().catch(() => ({}));
+  const normalizedPayload = normalizeExternalCiCheckPayload(body);
+  if (!normalizedPayload.ok) {
+    return badRequest(normalizedPayload.error, {
+      acceptedPayloads: SUPPORTED_EXTERNAL_CI_PAYLOADS,
+    });
+  }
   const {
     pullRequestNumber,
     pullRequestId,
@@ -70,11 +94,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
     externalId,
     detailsUrl,
     output,
-  } = body || {};
-
-  if (!name || !headSha || !status) {
-    return badRequest("Missing required fields");
-  }
+  } = normalizedPayload.data;
 
   let pr = null;
   if (pullRequestId) {
@@ -111,5 +131,9 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
     .set({ lastUsedAt: new Date(), updatedAt: new Date() })
     .where(eq(schema.externalCiIntegrations.id, integration.id));
 
-  return success({ success: true });
+  return success({
+    success: true,
+    provider: normalizedPayload.data.provider,
+    acceptedPayloads: SUPPORTED_EXTERNAL_CI_PAYLOADS,
+  });
 });

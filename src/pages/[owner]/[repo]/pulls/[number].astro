@@ -422,6 +422,20 @@ try {
                         <div id="auto-merge-rules" class="space-y-1 text-xs text-muted-foreground"></div>
                       </div>
                     )}
+
+                    <div class="mt-4 rounded-md border border-dashed p-3 space-y-2">
+                      <div class="flex items-center justify-between">
+                        <div class="text-xs font-medium text-muted-foreground">PR checks</div>
+                        <button
+                          id="pr-checks-refresh"
+                          class="h-8 rounded-md border px-3 text-xs text-muted-foreground"
+                        >
+                          Refresh
+                        </button>
+                      </div>
+                      <div id="pr-checks-summary" class="text-xs text-muted-foreground"></div>
+                      <div id="pr-checks-list" class="space-y-1 text-xs text-muted-foreground"></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -775,6 +789,9 @@ try {
   const autoMergeSummary = document.getElementById("auto-merge-summary");
   const autoMergeBlockers = document.getElementById("auto-merge-blockers");
   const autoMergeRules = document.getElementById("auto-merge-rules");
+  const prChecksRefresh = document.getElementById("pr-checks-refresh");
+  const prChecksSummary = document.getElementById("pr-checks-summary");
+  const prChecksList = document.getElementById("pr-checks-list");
   let stackApprovalRecommendations = [];
 
   // Keyboard Shortcuts
@@ -1058,6 +1075,69 @@ try {
     } finally {
       setAutoMergeControlsBusy(false);
     }
+  });
+
+  function formatCheckState(check) {
+    if (check.status !== "completed") return "pending";
+    if (check.conclusion === "success") return "passed";
+    if (check.conclusion === "neutral") return "neutral";
+    if (check.conclusion === "cancelled") return "cancelled";
+    return "failed";
+  }
+
+  function checkStateClass(state) {
+    if (state === "passed") return "text-green-500";
+    if (state === "pending") return "text-amber-500";
+    if (state === "neutral") return "text-muted-foreground";
+    if (state === "cancelled") return "text-muted-foreground";
+    return "text-red-500";
+  }
+
+  async function loadPrChecks() {
+    if (!prChecksSummary || !prChecksList) return;
+    prChecksSummary.textContent = "Loading checks...";
+    prChecksList.innerHTML = "";
+
+    try {
+      const res = await fetch(`/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}/checks`);
+      const payload = await res.json();
+      if (!res.ok) {
+        throw new Error(payload?.error?.message || payload?.message || "Failed to load checks");
+      }
+
+      const data = payload?.data || payload;
+      const summary = data?.summary || {};
+      const checks = data?.checks || [];
+      prChecksSummary.textContent =
+        `Passed ${summary.passed || 0}/${summary.total || 0} • Failed ${summary.failed || 0} • Pending ${summary.pending || 0}`;
+
+      if (checks.length === 0) {
+        prChecksList.textContent = "No checks reported yet.";
+        return;
+      }
+
+      prChecksList.innerHTML = checks
+        .map((check) => {
+          const state = formatCheckState(check);
+          const label = `${check.name}: ${state}`;
+          const link = check.detailsUrl
+            ? `<a href="${check.detailsUrl}" target="_blank" rel="noopener noreferrer" class="hover:underline">${label}</a>`
+            : `<span>${label}</span>`;
+          return `<div class="flex items-center justify-between gap-2">
+            <span class="${checkStateClass(state)}">${link}</span>
+            <span class="text-[11px] text-muted-foreground">${check.headSha?.slice(0, 7) || ""}</span>
+          </div>`;
+        })
+        .join("");
+    } catch (error) {
+      prChecksSummary.textContent = error.message || "Failed to load checks";
+      prChecksList.innerHTML = "";
+    }
+  }
+
+  prChecksRefresh?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    loadPrChecks();
   });
 
   aiReviewBtn?.addEventListener("click", async () => {
@@ -1498,6 +1578,7 @@ try {
     refreshStackMergeReadiness();
   }
   loadAutoMergeStatus();
+  loadPrChecks();
 
   mergeBtn?.addEventListener("click", async () => {
     if (!confirm("Are you sure you want to merge this pull request?")) return;
