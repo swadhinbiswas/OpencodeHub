@@ -4,6 +4,8 @@ const { getUserFromRequestMock, checkPathPermissionsMock, fakeSchema } = vi.hois
   getUserFromRequestMock: vi.fn(async () => ({ userId: "user-1", isAdmin: false })),
   checkPathPermissionsMock: vi.fn(async () => ({ allowed: true, deniedPaths: [] })),
   fakeSchema: {
+    users: { username: {}, id: {} },
+    repositories: { ownerId: {}, name: {}, id: {} },
     pullRequests: { number: {}, repositoryId: {} },
     pullRequestComments: { id: {}, pullRequestId: {} },
   } as any,
@@ -49,6 +51,12 @@ function makeDb() {
 
   return {
     query: {
+      users: {
+        findFirst: vi.fn(async () => ({ id: "owner-1" })),
+      },
+      repositories: {
+        findFirst: vi.fn(async () => ({ id: "repo-1", ownerId: "owner-1", name: "demo" })),
+      },
       pullRequests: {
         findFirst: vi.fn(async () => pr),
       },
