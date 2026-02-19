@@ -29,7 +29,7 @@ vi.mock("@/lib/utils", () => ({
   generateId: generateIdMock,
 }));
 
-import { GET as externalCiGet, POST as externalCiPost } from "@/pages/api/repos/[owner]/[repo]/external-ci";
+import { DELETE as externalCiDelete, GET as externalCiGet, POST as externalCiPost } from "@/pages/api/repos/[owner]/[repo]/external-ci";
 
 function makeDb(integration: any | null = null) {
   return {
@@ -51,6 +51,9 @@ function makeDb(integration: any | null = null) {
       set: vi.fn(() => ({
         where: vi.fn(async () => undefined),
       })),
+    })),
+    delete: vi.fn(() => ({
+      where: vi.fn(async () => undefined),
     })),
   };
 }
@@ -121,5 +124,23 @@ describe("external ci route", () => {
     expect(response.status).toBe(201);
     expect(typeof body?.data?.token).toBe("string");
     expect(body?.data?.rotated).toBe(true);
+  });
+
+  it("disables integration with delete", async () => {
+    mockDb = makeDb({
+      id: "external-ci-1",
+      repositoryId: "repo-1",
+      name: "External CI",
+    });
+
+    const response = await externalCiDelete({
+      params: { owner: "owner-1", repo: "demo" },
+      locals: { user: { id: "user-1", isAdmin: false } },
+    } as any);
+
+    const body = await readJson(response);
+    expect(response.status).toBe(200);
+    expect(body?.data?.enabled).toBe(false);
+    expect(mockDb.delete).toHaveBeenCalledTimes(1);
   });
 });
