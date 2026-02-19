@@ -436,6 +436,22 @@ try {
                       <div id="pr-checks-summary" class="text-xs text-muted-foreground"></div>
                       <div id="pr-checks-list" class="space-y-1 text-xs text-muted-foreground"></div>
                     </div>
+
+                    <div class="mt-4 rounded-md border border-dashed p-3 space-y-2">
+                      <div class="flex items-center justify-between">
+                        <div class="text-xs font-medium text-muted-foreground">Code owner enforcement</div>
+                        <button
+                          id="codeowner-refresh"
+                          class="h-8 rounded-md border px-3 text-xs text-muted-foreground"
+                        >
+                          Refresh
+                        </button>
+                      </div>
+                      <div id="codeowner-summary" class="text-xs text-muted-foreground"></div>
+                      <div id="codeowner-policy" class="text-xs text-muted-foreground"></div>
+                      <div id="codeowner-blockers" class="space-y-1 text-xs text-amber-500"></div>
+                      <div id="codeowner-files" class="space-y-1 text-xs text-muted-foreground"></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -792,6 +808,11 @@ try {
   const prChecksRefresh = document.getElementById("pr-checks-refresh");
   const prChecksSummary = document.getElementById("pr-checks-summary");
   const prChecksList = document.getElementById("pr-checks-list");
+  const codeOwnerRefresh = document.getElementById("codeowner-refresh");
+  const codeOwnerSummary = document.getElementById("codeowner-summary");
+  const codeOwnerPolicy = document.getElementById("codeowner-policy");
+  const codeOwnerBlockers = document.getElementById("codeowner-blockers");
+  const codeOwnerFiles = document.getElementById("codeowner-files");
   let stackApprovalRecommendations = [];
 
   // Keyboard Shortcuts
@@ -1138,6 +1159,82 @@ try {
   prChecksRefresh?.addEventListener("click", async (event) => {
     event.preventDefault();
     loadPrChecks();
+  });
+
+  async function loadCodeOwnerEnforcement() {
+    if (!codeOwnerSummary || !codeOwnerPolicy || !codeOwnerFiles) return;
+    codeOwnerSummary.textContent = "Loading code owner policy...";
+    codeOwnerPolicy.textContent = "";
+    if (codeOwnerBlockers) codeOwnerBlockers.innerHTML = "";
+    codeOwnerFiles.innerHTML = "";
+
+    try {
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}/codeowner-enforcement`,
+      );
+      const payload = await res.json();
+      if (!res.ok) {
+        throw new Error(payload?.error?.message || payload?.message || "Failed to load code owner policy");
+      }
+
+      const data = payload?.data || payload;
+      if (!data?.enforced) {
+        codeOwnerSummary.textContent = "Code owner approval is not required by active review/branch policy.";
+        const activeRule = data?.activeRule;
+        codeOwnerPolicy.textContent = activeRule
+          ? `Active branch rule: ${activeRule.pattern} (code owner review disabled).`
+          : "No active matching branch protection rule.";
+        return;
+      }
+
+      const ready = !!data?.ready;
+      codeOwnerSummary.textContent = ready
+        ? "Code owner requirements satisfied."
+        : "Code owner approval is required and currently blocking merge.";
+
+      const policyParts = [];
+      if (data?.requiredBy?.reviewPolicy) policyParts.push("review requirements");
+      if (data?.requiredBy?.branchRule) {
+        const rulePattern = data?.activeRule?.pattern ? `branch rule ${data.activeRule.pattern}` : "branch protection rule";
+        policyParts.push(rulePattern);
+      }
+      codeOwnerPolicy.textContent = policyParts.length > 0
+        ? `Enforced by ${policyParts.join(" + ")}.`
+        : "Enforced by repository policy.";
+
+      const blockers = data?.blockers || [];
+      if (codeOwnerBlockers) {
+        codeOwnerBlockers.innerHTML = blockers.map((blocker) => `<div>• ${blocker}</div>`).join("");
+      }
+
+      const files = data?.files || [];
+      if (files.length === 0) {
+        codeOwnerFiles.textContent = "No CODEOWNERS-mapped files in this pull request.";
+        return;
+      }
+
+      codeOwnerFiles.innerHTML = files
+        .map((file) => {
+          const ownerText = file.owners?.length ? file.owners.join(", ") : "no owners";
+          const state = file.approved ? "approved" : "missing approval";
+          const stateClass = file.approved ? "text-green-500" : "text-amber-500";
+          return `<div class="flex items-start justify-between gap-2">
+            <span class="font-mono">${file.path}</span>
+            <span class="text-right ${stateClass}">${state} (${ownerText})</span>
+          </div>`;
+        })
+        .join("");
+    } catch (error) {
+      codeOwnerSummary.textContent = error.message || "Failed to load code owner policy";
+      codeOwnerPolicy.textContent = "";
+      if (codeOwnerBlockers) codeOwnerBlockers.innerHTML = "";
+      codeOwnerFiles.innerHTML = "";
+    }
+  }
+
+  codeOwnerRefresh?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    loadCodeOwnerEnforcement();
   });
 
   aiReviewBtn?.addEventListener("click", async () => {
@@ -1579,6 +1676,7 @@ try {
   }
   loadAutoMergeStatus();
   loadPrChecks();
+  loadCodeOwnerEnforcement();
 
   mergeBtn?.addEventListener("click", async () => {
     if (!confirm("Are you sure you want to merge this pull request?")) return;
