@@ -53,7 +53,7 @@
 | Required reviewers per state | ⚠️ | Basic reviewer requirements exist; full state-specific enforcement remains incomplete |
 | PR merge queues | ✅ | `merge-queue.ts` (590+ lines) |
 | Conflict detection before merge | ✅ | `mergeable` field in PR schema |
-| Auto-merge rules | ⚠️ | Basic via automations, incomplete |
+| Auto-merge rules | ⚠️ | Auto-merge rules engine plus explicit PR auto-merge control/status APIs now implemented (`pulls/{number}/auto-merge`); richer policy UX and rule introspection remain partial |
 | Draft PRs | ✅ | Schema supports `isDraft` field |
 | PR labels | ✅ | Full implementation with schema |
 | PR assignees | ✅ | Full implementation with schema |
