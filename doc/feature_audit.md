@@ -11,15 +11,15 @@
 | **Pull Requests** | 9 | 6 | 0 | 15 |
 | **Code Review** | 9 | 1 | 0 | 10 |
 | **Issues & Planning** | 10 | 0 | 0 | 10 |
-| **CI/CD & Automation** | 6 | 2 | 0 | 8 |
-| **Third-Party Integrations** | 8 | 14 | 0 | 22 |
+| **CI/CD & Automation** | 7 | 1 | 0 | 8 |
+| **Third-Party Integrations** | 12 | 10 | 0 | 22 |
 | **Dependency & Impact Awareness** | 1 | 4 | 0 | 5 |
 | **Security** | 9 | 3 | 0 | 12 |
 | **Analytics & Insights** | 6 | 2 | 0 | 8 |
 | **Notifications & Collaboration** | 5 | 3 | 0 | 8 |
 | **Interfaces & Extensibility** | 5 | 2 | 0 | 7 |
 | **Self-Hosted & Deployment** | 4 | 3 | 0 | 7 |
-| **Total** | **81** | **44** | **0** | **125** |
+| **Total** | **86** | **39** | **0** | **125** |
 
 ---
 
@@ -91,7 +91,7 @@
 | Feature | Status | Implementation Notes |
 | :--- | :---: | :--- |
 | Native CI pipeline support | ✅ | `pipeline.ts` - 1066 lines, GitHub Actions compatible |
-| External CI integration | ⚠️ | Provider-aware integration APIs and normalized status ingestion are implemented, with repo-level integration health/status + token rotate/disable APIs (`external-ci`, `external-ci/checks`); provider-specific setup UX still maturing |
+| External CI integration | ✅ | Provider-aware integration APIs and normalized status ingestion are implemented, with repo-level integration health/status + token rotate/disable APIs (`external-ci`, `external-ci/checks`) plus provider-specific configuration/summary APIs and settings UX for GitLab/CircleCI/Buildkite/Jenkins (`integrations/external-ci`) including setup fields, webhook secret visibility, and recent build surfacing |
 | Self-hosted runners | ✅ | `runner/` with Docker executor |
 | Secrets management | ✅ | Schema + UI for repo/org secrets |
 | Merge checks & gates | ✅ | Required status checks + external CI gate readiness are enforced, with explicit PR gate introspection via `pulls/{number}/merge-readiness` now including policy reports (`failedByType`, recommendations, pass/fail counts), active label/review/custom gate evaluation in `ci-gates.ts` with gate-type metadata, repository-level gate policy management/reporting APIs (`/repos/{owner}/{repo}/merge-gates`, `/repos/{owner}/{repo}/merge-gates/{id}`), and PR detail merge-gate policy UX for live blockers/breakdowns/remediation guidance |
@@ -112,10 +112,10 @@
 | Feature | Status | Notes |
 | :--- | :---: | :--- |
 | GitHub Actions | ✅ | Compatible workflow format |
-| GitLab CI | ⚠️ | External CI provider mapping + status normalization + repo integration APIs implemented |
-| CircleCI | ⚠️ | External CI provider mapping + status normalization + repo integration APIs implemented |
-| Buildkite | ⚠️ | External CI provider mapping + status normalization + repo integration APIs implemented |
-| Jenkins | ⚠️ | External CI provider mapping + status normalization + repo integration APIs implemented |
+| GitLab CI | ✅ | Provider mapping + status normalization are implemented, and repo settings now support GitLab config save/update (`baseUrl`, `projectId`, token, sync toggles), webhook secret visibility, and recent build surfacing via `integrations/external-ci` |
+| CircleCI | ✅ | Provider mapping + status normalization are implemented, and repo settings now support CircleCI config save/update (`baseUrl`, `projectId`, token, sync toggles), webhook secret visibility, and recent build surfacing via `integrations/external-ci` |
+| Buildkite | ✅ | Provider mapping + status normalization are implemented, and repo settings now support Buildkite config save/update (`baseUrl`, `projectId`, token, sync toggles), webhook secret visibility, and recent build surfacing via `integrations/external-ci` |
+| Jenkins | ✅ | Provider mapping + status normalization are implemented, and repo settings now support Jenkins config save/update (`baseUrl`, `projectId`, token, sync toggles), webhook secret visibility, and recent build surfacing via `integrations/external-ci` |
 
 ### 6.3 Issue Tracking
 | Feature | Status | Notes |
