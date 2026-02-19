@@ -144,3 +144,25 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals, request 
 
   return created({ token, rotated });
 });
+
+export const DELETE: APIRoute = withErrorHandler(async ({ params, locals }) => {
+  const { owner, repo } = params;
+  const user = locals.user;
+
+  if (!user) return unauthorized();
+  if (!owner || !repo) return badRequest("Missing parameters");
+
+  const db = getDatabase() as NodePgDatabase<typeof schema>;
+  const repository = await getRepository(owner, repo);
+
+  if (!repository) return notFound("Repository not found");
+
+  if (!(await canAdminRepo(user.id, repository))) {
+    return forbidden();
+  }
+
+  await db.delete(schema.externalCiIntegrations)
+    .where(eq(schema.externalCiIntegrations.repositoryId, repository.id));
+
+  return success({ enabled: false });
+});
