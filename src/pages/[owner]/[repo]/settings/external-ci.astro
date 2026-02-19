@@ -3,7 +3,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDatabase, schema } from "@/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { canAdminRepo } from "@/lib/permissions";
 import RepoHeader from "@/components/repo/RepoHeader.astro";
 import { Plug, ShieldCheck } from "lucide-react";
@@ -39,6 +39,16 @@ if (!hasAccess) {
 const integration = await db.query.externalCiIntegrations.findFirst({
   where: eq(schema.externalCiIntegrations.repositoryId, repoData.id),
 });
+const externalConfigs = await db.query.externalCIConfigs.findMany({
+  where: and(
+    eq(schema.externalCIConfigs.repositoryId, repoData.id),
+    inArray(schema.externalCIConfigs.provider, ["gitlab", "circleci", "buildkite", "jenkins"])
+  ),
+});
+const gitlabConfig = externalConfigs.find((config) => config.provider === "gitlab");
+const circleciConfig = externalConfigs.find((config) => config.provider === "circleci");
+const buildkiteConfig = externalConfigs.find((config) => config.provider === "buildkite");
+const jenkinsConfig = externalConfigs.find((config) => config.provider === "jenkins");
 const qualityConfigs = await db.query.codeQualityConfigs.findMany({
   where: eq(schema.codeQualityConfigs.repositoryId, repoData.id),
 });
@@ -191,6 +201,158 @@ const repo = {
 }`}</pre>
             <div class="text-xs text-muted-foreground">
               Supported ingestion payloads: normalized, github_actions, gitlab, circleci, buildkite, jenkins.
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>GitLab CI Integration</CardTitle>
+            <CardDescription>
+              Configure GitLab pipeline sync, webhook secret, and provider-specific setup fields.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div class="grid gap-3 md:grid-cols-3">
+              <div>
+                <label for="gitlab-base-url" class="block text-xs text-muted-foreground mb-1">GitLab Base URL</label>
+                <input id="gitlab-base-url" class="h-8 w-full rounded-md border bg-background px-2 text-xs" value={gitlabConfig?.baseUrl || "https://gitlab.com"} />
+              </div>
+              <div>
+                <label for="gitlab-project-id" class="block text-xs text-muted-foreground mb-1">Project ID</label>
+                <input id="gitlab-project-id" class="h-8 w-full rounded-md border bg-background px-2 text-xs" value={gitlabConfig?.projectId || ""} placeholder="group%2Frepo or numeric id" />
+              </div>
+              <div>
+                <label for="gitlab-api-token" class="block text-xs text-muted-foreground mb-1">API Token</label>
+                <input id="gitlab-api-token" type="password" class="h-8 w-full rounded-md border bg-background px-2 text-xs" placeholder={gitlabConfig ? "•••••••• (leave empty to keep)" : "Token"} />
+              </div>
+            </div>
+            <div class="grid gap-3 md:grid-cols-3">
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="gitlab-sync-status" type="checkbox" checked={gitlabConfig?.syncStatus ?? true} />Sync status to PRs</label>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="gitlab-enabled" type="checkbox" checked={gitlabConfig?.isEnabled ?? true} />Enabled</label>
+            </div>
+            <div class="text-xs text-muted-foreground">Webhook secret: <span id="gitlab-webhook-secret" class="font-mono">{gitlabConfig?.webhookSecret || "Not configured yet"}</span></div>
+            <div class="flex items-center gap-2">
+              <Button id="save-gitlab" variant="outline">Save GitLab CI Config</Button>
+              <span id="gitlab-save-msg" class="text-xs text-muted-foreground"></span>
+            </div>
+            <div class="pt-2 border-t border-white/10">
+              <div class="text-xs font-medium text-muted-foreground mb-2">Recent GitLab Builds</div>
+              <div id="gitlab-builds" class="space-y-1 text-xs text-muted-foreground">Loading builds...</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>CircleCI Integration</CardTitle>
+            <CardDescription>
+              Configure CircleCI pipeline sync and status ingestion for pull request checks.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div class="grid gap-3 md:grid-cols-3">
+              <div>
+                <label for="circleci-base-url" class="block text-xs text-muted-foreground mb-1">CircleCI Base URL</label>
+                <input id="circleci-base-url" class="h-8 w-full rounded-md border bg-background px-2 text-xs" value={circleciConfig?.baseUrl || "https://circleci.com"} />
+              </div>
+              <div>
+                <label for="circleci-project-id" class="block text-xs text-muted-foreground mb-1">Project ID</label>
+                <input id="circleci-project-id" class="h-8 w-full rounded-md border bg-background px-2 text-xs" value={circleciConfig?.projectId || ""} placeholder="gh/org/repo" />
+              </div>
+              <div>
+                <label for="circleci-api-token" class="block text-xs text-muted-foreground mb-1">API Token</label>
+                <input id="circleci-api-token" type="password" class="h-8 w-full rounded-md border bg-background px-2 text-xs" placeholder={circleciConfig ? "•••••••• (leave empty to keep)" : "Token"} />
+              </div>
+            </div>
+            <div class="grid gap-3 md:grid-cols-3">
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="circleci-sync-status" type="checkbox" checked={circleciConfig?.syncStatus ?? true} />Sync status to PRs</label>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="circleci-enabled" type="checkbox" checked={circleciConfig?.isEnabled ?? true} />Enabled</label>
+            </div>
+            <div class="text-xs text-muted-foreground">Webhook secret: <span id="circleci-webhook-secret" class="font-mono">{circleciConfig?.webhookSecret || "Not configured yet"}</span></div>
+            <div class="flex items-center gap-2">
+              <Button id="save-circleci" variant="outline">Save CircleCI Config</Button>
+              <span id="circleci-save-msg" class="text-xs text-muted-foreground"></span>
+            </div>
+            <div class="pt-2 border-t border-white/10">
+              <div class="text-xs font-medium text-muted-foreground mb-2">Recent CircleCI Builds</div>
+              <div id="circleci-builds" class="space-y-1 text-xs text-muted-foreground">Loading builds...</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Buildkite Integration</CardTitle>
+            <CardDescription>
+              Configure Buildkite trigger/status endpoints and synchronized PR checks.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div class="grid gap-3 md:grid-cols-3">
+              <div>
+                <label for="buildkite-base-url" class="block text-xs text-muted-foreground mb-1">Buildkite Base URL</label>
+                <input id="buildkite-base-url" class="h-8 w-full rounded-md border bg-background px-2 text-xs" value={buildkiteConfig?.baseUrl || "https://api.buildkite.com/v2/organizations"} />
+              </div>
+              <div>
+                <label for="buildkite-project-id" class="block text-xs text-muted-foreground mb-1">Pipeline Path</label>
+                <input id="buildkite-project-id" class="h-8 w-full rounded-md border bg-background px-2 text-xs" value={buildkiteConfig?.projectId || ""} placeholder="acme/pipelines/app" />
+              </div>
+              <div>
+                <label for="buildkite-api-token" class="block text-xs text-muted-foreground mb-1">API Token</label>
+                <input id="buildkite-api-token" type="password" class="h-8 w-full rounded-md border bg-background px-2 text-xs" placeholder={buildkiteConfig ? "•••••••• (leave empty to keep)" : "Token"} />
+              </div>
+            </div>
+            <div class="grid gap-3 md:grid-cols-3">
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="buildkite-sync-status" type="checkbox" checked={buildkiteConfig?.syncStatus ?? true} />Sync status to PRs</label>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="buildkite-enabled" type="checkbox" checked={buildkiteConfig?.isEnabled ?? true} />Enabled</label>
+            </div>
+            <div class="text-xs text-muted-foreground">Webhook secret: <span id="buildkite-webhook-secret" class="font-mono">{buildkiteConfig?.webhookSecret || "Not configured yet"}</span></div>
+            <div class="flex items-center gap-2">
+              <Button id="save-buildkite" variant="outline">Save Buildkite Config</Button>
+              <span id="buildkite-save-msg" class="text-xs text-muted-foreground"></span>
+            </div>
+            <div class="pt-2 border-t border-white/10">
+              <div class="text-xs font-medium text-muted-foreground mb-2">Recent Buildkite Builds</div>
+              <div id="buildkite-builds" class="space-y-1 text-xs text-muted-foreground">Loading builds...</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Jenkins Integration</CardTitle>
+            <CardDescription>
+              Configure Jenkins job sync, credentials, and pull request status ingestion.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div class="grid gap-3 md:grid-cols-3">
+              <div>
+                <label for="jenkins-base-url" class="block text-xs text-muted-foreground mb-1">Jenkins Base URL</label>
+                <input id="jenkins-base-url" class="h-8 w-full rounded-md border bg-background px-2 text-xs" value={jenkinsConfig?.baseUrl || "https://jenkins.example.com"} />
+              </div>
+              <div>
+                <label for="jenkins-project-id" class="block text-xs text-muted-foreground mb-1">Job Name</label>
+                <input id="jenkins-project-id" class="h-8 w-full rounded-md border bg-background px-2 text-xs" value={jenkinsConfig?.projectId || ""} placeholder="team/job-name" />
+              </div>
+              <div>
+                <label for="jenkins-api-token" class="block text-xs text-muted-foreground mb-1">API Token</label>
+                <input id="jenkins-api-token" type="password" class="h-8 w-full rounded-md border bg-background px-2 text-xs" placeholder={jenkinsConfig ? "•••••••• (leave empty to keep)" : "Token"} />
+              </div>
+            </div>
+            <div class="grid gap-3 md:grid-cols-3">
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="jenkins-sync-status" type="checkbox" checked={jenkinsConfig?.syncStatus ?? true} />Sync status to PRs</label>
+              <label class="flex items-center gap-2 text-xs text-muted-foreground mt-2"><input id="jenkins-enabled" type="checkbox" checked={jenkinsConfig?.isEnabled ?? true} />Enabled</label>
+            </div>
+            <div class="text-xs text-muted-foreground">Webhook secret: <span id="jenkins-webhook-secret" class="font-mono">{jenkinsConfig?.webhookSecret || "Not configured yet"}</span></div>
+            <div class="flex items-center gap-2">
+              <Button id="save-jenkins" variant="outline">Save Jenkins Config</Button>
+              <span id="jenkins-save-msg" class="text-xs text-muted-foreground"></span>
+            </div>
+            <div class="pt-2 border-t border-white/10">
+              <div class="text-xs font-medium text-muted-foreground mb-2">Recent Jenkins Builds</div>
+              <div id="jenkins-builds" class="space-y-1 text-xs text-muted-foreground">Loading builds...</div>
             </div>
           </CardContent>
         </Card>
@@ -404,11 +566,51 @@ const repo = {
   </div>
 </BaseLayout>
 
-<script define:vars={{ repoOwner: repo.owner, repoName: repo.name, initialCodecovConfigId: codecovConfig?.id || null, initialCoverallsConfigId: coverallsConfig?.id || null, initialSonarConfigId: sonarqubeConfig?.id || null, initialSnykConfigId: snykConfig?.id || null }}>
+<script define:vars={{ repoOwner: repo.owner, repoName: repo.name, initialGitlabConfigId: gitlabConfig?.id || null, initialCircleciConfigId: circleciConfig?.id || null, initialBuildkiteConfigId: buildkiteConfig?.id || null, initialJenkinsConfigId: jenkinsConfig?.id || null, initialCodecovConfigId: codecovConfig?.id || null, initialCoverallsConfigId: coverallsConfig?.id || null, initialSonarConfigId: sonarqubeConfig?.id || null, initialSnykConfigId: snykConfig?.id || null }}>
   const btn = document.getElementById("generate-token");
   const output = document.getElementById("token-output");
   const providerTemplate = document.getElementById("provider-template");
   const payloadTemplate = document.getElementById("payload-template");
+  const saveGitlabBtn = document.getElementById("save-gitlab");
+  const gitlabSaveMsg = document.getElementById("gitlab-save-msg");
+  const gitlabBaseUrl = document.getElementById("gitlab-base-url");
+  const gitlabProjectId = document.getElementById("gitlab-project-id");
+  const gitlabApiToken = document.getElementById("gitlab-api-token");
+  const gitlabSyncStatus = document.getElementById("gitlab-sync-status");
+  const gitlabEnabled = document.getElementById("gitlab-enabled");
+  const gitlabWebhookSecret = document.getElementById("gitlab-webhook-secret");
+  const gitlabBuilds = document.getElementById("gitlab-builds");
+  let gitlabConfigId = initialGitlabConfigId;
+  const saveCircleciBtn = document.getElementById("save-circleci");
+  const circleciSaveMsg = document.getElementById("circleci-save-msg");
+  const circleciBaseUrl = document.getElementById("circleci-base-url");
+  const circleciProjectId = document.getElementById("circleci-project-id");
+  const circleciApiToken = document.getElementById("circleci-api-token");
+  const circleciSyncStatus = document.getElementById("circleci-sync-status");
+  const circleciEnabled = document.getElementById("circleci-enabled");
+  const circleciWebhookSecret = document.getElementById("circleci-webhook-secret");
+  const circleciBuilds = document.getElementById("circleci-builds");
+  let circleciConfigId = initialCircleciConfigId;
+  const saveBuildkiteBtn = document.getElementById("save-buildkite");
+  const buildkiteSaveMsg = document.getElementById("buildkite-save-msg");
+  const buildkiteBaseUrl = document.getElementById("buildkite-base-url");
+  const buildkiteProjectId = document.getElementById("buildkite-project-id");
+  const buildkiteApiToken = document.getElementById("buildkite-api-token");
+  const buildkiteSyncStatus = document.getElementById("buildkite-sync-status");
+  const buildkiteEnabled = document.getElementById("buildkite-enabled");
+  const buildkiteWebhookSecret = document.getElementById("buildkite-webhook-secret");
+  const buildkiteBuilds = document.getElementById("buildkite-builds");
+  let buildkiteConfigId = initialBuildkiteConfigId;
+  const saveJenkinsBtn = document.getElementById("save-jenkins");
+  const jenkinsSaveMsg = document.getElementById("jenkins-save-msg");
+  const jenkinsBaseUrl = document.getElementById("jenkins-base-url");
+  const jenkinsProjectId = document.getElementById("jenkins-project-id");
+  const jenkinsApiToken = document.getElementById("jenkins-api-token");
+  const jenkinsSyncStatus = document.getElementById("jenkins-sync-status");
+  const jenkinsEnabled = document.getElementById("jenkins-enabled");
+  const jenkinsWebhookSecret = document.getElementById("jenkins-webhook-secret");
+  const jenkinsBuilds = document.getElementById("jenkins-builds");
+  let jenkinsConfigId = initialJenkinsConfigId;
   const saveCodecovBtn = document.getElementById("save-codecov");
   const codecovSaveMsg = document.getElementById("codecov-save-msg");
   const codecovProjectKey = document.getElementById("codecov-project-key");
@@ -551,6 +753,99 @@ const repo = {
     }
   });
 
+  function renderBuildList(target, builds, emptyMessage) {
+    if (!target) return;
+    target.innerHTML = builds.length === 0
+      ? emptyMessage
+      : builds.map((build) => `
+      <div class="rounded border border-white/10 bg-white/5 px-2 py-1.5 flex items-center justify-between gap-2">
+        <span>${build.status || "unknown"}</span>
+        <span class="text-[11px] text-muted-foreground">${build.buildNumber ? `#${build.buildNumber}` : (build.externalBuildId || "").slice(0, 12)}</span>
+      </div>
+    `).join("");
+  }
+
+  async function loadExternalCiSummary() {
+    try {
+      const res = await fetch(`/api/repos/${repoOwner}/${repoName}/integrations/external-ci?summary=1`);
+      const payload = await res.json();
+      if (!res.ok) {
+        throw new Error(payload?.error?.message || payload?.message || "Failed to load external CI summary");
+      }
+
+      const data = payload?.data || payload;
+      const configs = data?.configs || [];
+      const builds = data?.builds || [];
+      const configByProvider = {
+        gitlab: configs.find((config) => config.provider === "gitlab"),
+        circleci: configs.find((config) => config.provider === "circleci"),
+        buildkite: configs.find((config) => config.provider === "buildkite"),
+        jenkins: configs.find((config) => config.provider === "jenkins"),
+      };
+
+      if (configByProvider.gitlab) {
+        gitlabConfigId = configByProvider.gitlab.id;
+        if (gitlabWebhookSecret) gitlabWebhookSecret.textContent = configByProvider.gitlab.webhookSecret || "Not configured";
+      }
+      if (configByProvider.circleci) {
+        circleciConfigId = configByProvider.circleci.id;
+        if (circleciWebhookSecret) circleciWebhookSecret.textContent = configByProvider.circleci.webhookSecret || "Not configured";
+      }
+      if (configByProvider.buildkite) {
+        buildkiteConfigId = configByProvider.buildkite.id;
+        if (buildkiteWebhookSecret) buildkiteWebhookSecret.textContent = configByProvider.buildkite.webhookSecret || "Not configured";
+      }
+      if (configByProvider.jenkins) {
+        jenkinsConfigId = configByProvider.jenkins.id;
+        if (jenkinsWebhookSecret) jenkinsWebhookSecret.textContent = configByProvider.jenkins.webhookSecret || "Not configured";
+      }
+
+      renderBuildList(
+        gitlabBuilds,
+        builds.filter((build) => build.configId === configByProvider.gitlab?.id).slice(0, 5),
+        "No GitLab builds synced yet."
+      );
+      renderBuildList(
+        circleciBuilds,
+        builds.filter((build) => build.configId === configByProvider.circleci?.id).slice(0, 5),
+        "No CircleCI builds synced yet."
+      );
+      renderBuildList(
+        buildkiteBuilds,
+        builds.filter((build) => build.configId === configByProvider.buildkite?.id).slice(0, 5),
+        "No Buildkite builds synced yet."
+      );
+      renderBuildList(
+        jenkinsBuilds,
+        builds.filter((build) => build.configId === configByProvider.jenkins?.id).slice(0, 5),
+        "No Jenkins builds synced yet."
+      );
+    } catch (error) {
+      if (gitlabBuilds) gitlabBuilds.textContent = error.message || "Failed to load builds";
+      if (circleciBuilds) circleciBuilds.textContent = error.message || "Failed to load builds";
+      if (buildkiteBuilds) buildkiteBuilds.textContent = error.message || "Failed to load builds";
+      if (jenkinsBuilds) jenkinsBuilds.textContent = error.message || "Failed to load builds";
+    }
+  }
+
+  async function saveExternalCiProvider(options) {
+    const res = await fetch(
+      options.configId
+        ? `/api/repos/${repoOwner}/${repoName}/integrations/external-ci/${options.configId}`
+        : `/api/repos/${repoOwner}/${repoName}/integrations/external-ci`,
+      {
+        method: options.configId ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(options.payload),
+      },
+    );
+    const body = await res.json();
+    if (!res.ok) {
+      throw new Error(body?.error?.message || body?.message || "Failed to save external CI config");
+    }
+    return body?.data || body;
+  }
+
   async function loadQualitySummary() {
     try {
       const res = await fetch(`/api/repos/${repoOwner}/${repoName}/integrations/code-quality?summary=1`);
@@ -621,6 +916,106 @@ const repo = {
       if (snykIssues) snykIssues.textContent = error.message || "Failed to load security issues";
     }
   }
+
+  saveGitlabBtn?.addEventListener("click", async () => {
+    if (!gitlabSaveMsg) return;
+    gitlabSaveMsg.textContent = "Saving GitLab config...";
+    try {
+      const saved = await saveExternalCiProvider({
+        configId: gitlabConfigId,
+        payload: {
+          provider: "gitlab",
+          name: "GitLab CI",
+          baseUrl: gitlabBaseUrl?.value?.trim(),
+          projectId: gitlabProjectId?.value?.trim() || undefined,
+          apiToken: gitlabApiToken?.value?.trim() || undefined,
+          syncStatus: !!gitlabSyncStatus?.checked,
+          isEnabled: !!gitlabEnabled?.checked,
+        },
+      });
+      if (saved?.id) gitlabConfigId = saved.id;
+      if (gitlabApiToken) gitlabApiToken.value = "";
+      gitlabSaveMsg.textContent = "GitLab CI configuration saved.";
+      loadExternalCiSummary();
+    } catch (error) {
+      gitlabSaveMsg.textContent = error.message || "Failed to save GitLab config";
+    }
+  });
+
+  saveCircleciBtn?.addEventListener("click", async () => {
+    if (!circleciSaveMsg) return;
+    circleciSaveMsg.textContent = "Saving CircleCI config...";
+    try {
+      const saved = await saveExternalCiProvider({
+        configId: circleciConfigId,
+        payload: {
+          provider: "circleci",
+          name: "CircleCI",
+          baseUrl: circleciBaseUrl?.value?.trim(),
+          projectId: circleciProjectId?.value?.trim() || undefined,
+          apiToken: circleciApiToken?.value?.trim() || undefined,
+          syncStatus: !!circleciSyncStatus?.checked,
+          isEnabled: !!circleciEnabled?.checked,
+        },
+      });
+      if (saved?.id) circleciConfigId = saved.id;
+      if (circleciApiToken) circleciApiToken.value = "";
+      circleciSaveMsg.textContent = "CircleCI configuration saved.";
+      loadExternalCiSummary();
+    } catch (error) {
+      circleciSaveMsg.textContent = error.message || "Failed to save CircleCI config";
+    }
+  });
+
+  saveBuildkiteBtn?.addEventListener("click", async () => {
+    if (!buildkiteSaveMsg) return;
+    buildkiteSaveMsg.textContent = "Saving Buildkite config...";
+    try {
+      const saved = await saveExternalCiProvider({
+        configId: buildkiteConfigId,
+        payload: {
+          provider: "buildkite",
+          name: "Buildkite",
+          baseUrl: buildkiteBaseUrl?.value?.trim(),
+          projectId: buildkiteProjectId?.value?.trim() || undefined,
+          apiToken: buildkiteApiToken?.value?.trim() || undefined,
+          syncStatus: !!buildkiteSyncStatus?.checked,
+          isEnabled: !!buildkiteEnabled?.checked,
+        },
+      });
+      if (saved?.id) buildkiteConfigId = saved.id;
+      if (buildkiteApiToken) buildkiteApiToken.value = "";
+      buildkiteSaveMsg.textContent = "Buildkite configuration saved.";
+      loadExternalCiSummary();
+    } catch (error) {
+      buildkiteSaveMsg.textContent = error.message || "Failed to save Buildkite config";
+    }
+  });
+
+  saveJenkinsBtn?.addEventListener("click", async () => {
+    if (!jenkinsSaveMsg) return;
+    jenkinsSaveMsg.textContent = "Saving Jenkins config...";
+    try {
+      const saved = await saveExternalCiProvider({
+        configId: jenkinsConfigId,
+        payload: {
+          provider: "jenkins",
+          name: "Jenkins",
+          baseUrl: jenkinsBaseUrl?.value?.trim(),
+          projectId: jenkinsProjectId?.value?.trim() || undefined,
+          apiToken: jenkinsApiToken?.value?.trim() || undefined,
+          syncStatus: !!jenkinsSyncStatus?.checked,
+          isEnabled: !!jenkinsEnabled?.checked,
+        },
+      });
+      if (saved?.id) jenkinsConfigId = saved.id;
+      if (jenkinsApiToken) jenkinsApiToken.value = "";
+      jenkinsSaveMsg.textContent = "Jenkins configuration saved.";
+      loadExternalCiSummary();
+    } catch (error) {
+      jenkinsSaveMsg.textContent = error.message || "Failed to save Jenkins config";
+    }
+  });
 
   saveCodecovBtn?.addEventListener("click", async () => {
     if (!codecovSaveMsg) return;
@@ -764,5 +1159,6 @@ const repo = {
     }
   });
 
+  loadExternalCiSummary();
   loadQualitySummary();
 </script>
