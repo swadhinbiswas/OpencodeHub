@@ -847,6 +847,7 @@ export const openApiSpec = {
             get: {
                 tags: ["Pull Requests"],
                 summary: "Get latest AI review for pull request",
+                description: "Returns latest AI review suggestions filtered by path-scoped read permissions, including `hiddenSuggestions` metadata.",
                 security: [{ bearerAuth: [] }],
                 parameters: [
                     { name: "owner", in: "path", required: true, schema: { type: "string" } },

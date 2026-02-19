@@ -11,6 +11,7 @@ import type { AIProvider } from "@/lib/ai-review";
 import { logger } from "@/lib/logger";
 import { parseAIConfigFromStorage } from "@/lib/ai-config";
 import { canReadRepo } from "@/lib/permissions";
+import { checkPathPermissions } from "@/lib/path-scoping";
 
 export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
     const { owner, repo: repoName, number } = params;
@@ -60,7 +61,19 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
         where: eq(schema.aiReviewSuggestions.aiReviewId, review.id),
     });
 
-    return success({ review, suggestions });
+    const scopedPaths = Array.from(new Set(suggestions.map((item) => item.path).filter(Boolean)));
+    const deniedPaths = new Set<string>();
+    if (scopedPaths.length > 0) {
+        const permission = await checkPathPermissions(user?.id || "__anonymous__", repository.id, scopedPaths, "read");
+        for (const path of permission.deniedPaths || []) deniedPaths.add(path);
+    }
+    const visibleSuggestions = suggestions.filter((item) => !deniedPaths.has(item.path));
+
+    return success({
+        review,
+        suggestions: visibleSuggestions,
+        hiddenSuggestions: suggestions.length - visibleSuggestions.length,
+    });
 });
 
 export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
