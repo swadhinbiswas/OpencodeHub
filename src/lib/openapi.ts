@@ -257,6 +257,13 @@ export const openApiSpec = {
                 },
                 required: ["prIds"],
             },
+            MirrorConfigRequest: {
+                type: "object",
+                properties: {
+                    mirrorUrl: { type: "string", format: "uri" },
+                },
+                required: ["mirrorUrl"],
+            },
         },
     },
     paths: {
@@ -822,6 +829,81 @@ export const openApiSpec = {
                     200: { description: "Suggested order returned" },
                     400: { description: "Invalid PR list or cross-repository IDs", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/repos/{owner}/{repo}/settings/mirror": {
+            get: {
+                tags: ["Repositories"],
+                summary: "Get repository mirror settings",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                ],
+                responses: {
+                    200: { description: "Mirror settings returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+            post: {
+                tags: ["Repositories"],
+                summary: "Configure repository mirror",
+                description: "Configures upstream mirror URL and performs initial synchronization.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/MirrorConfigRequest" },
+                        },
+                    },
+                },
+                responses: {
+                    200: { description: "Mirror configured" },
+                    400: { description: "Invalid mirror URL or sync failure", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+            delete: {
+                tags: ["Repositories"],
+                summary: "Disable repository mirror",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                ],
+                responses: {
+                    200: { description: "Mirror disabled" },
+                    400: { description: "Disable failed", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/repos/{owner}/{repo}/settings/mirror/sync": {
+            post: {
+                tags: ["Repositories"],
+                summary: "Trigger manual mirror sync",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                ],
+                responses: {
+                    200: { description: "Sync completed" },
+                    400: { description: "Sync failed", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                 },
             },
