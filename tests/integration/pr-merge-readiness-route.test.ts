@@ -87,6 +87,11 @@ describe("pull request merge-readiness route", () => {
     expect(response.status).toBe(200);
     expect(body?.data?.canMerge).toBe(false);
     expect(body?.data?.blockers).toContain("At least one approval required");
+    expect(body?.data?.policyReport?.failedGates).toBe(1);
+    expect(body?.data?.policyReport?.failedByType?.review).toBe(1);
+    expect(body?.data?.policyReport?.recommendations).toContain(
+      "Request required approvals and resolve review feedback."
+    );
     expect(evaluateGatesMock).toHaveBeenCalledWith("pr-1");
   });
 
@@ -102,5 +107,9 @@ describe("pull request merge-readiness route", () => {
     expect(response.status).toBe(200);
     expect(body?.data?.canMerge).toBe(false);
     expect(body?.data?.blockers).toEqual(["Pull request is not open"]);
+    expect(body?.data?.policyReport?.failedGates).toBe(0);
+    expect(body?.data?.policyReport?.recommendations).toContain(
+      "Re-open the pull request before attempting to merge."
+    );
   });
 });

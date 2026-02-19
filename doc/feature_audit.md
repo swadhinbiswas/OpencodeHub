@@ -11,7 +11,7 @@
 | **Pull Requests** | 9 | 6 | 0 | 15 |
 | **Code Review** | 9 | 1 | 0 | 10 |
 | **Issues & Planning** | 10 | 0 | 0 | 10 |
-| **CI/CD & Automation** | 4 | 4 | 0 | 8 |
+| **CI/CD & Automation** | 5 | 3 | 0 | 8 |
 | **Third-Party Integrations** | 4 | 18 | 0 | 22 |
 | **Dependency & Impact Awareness** | 1 | 4 | 0 | 5 |
 | **Security** | 9 | 3 | 0 | 12 |
@@ -19,7 +19,7 @@
 | **Notifications & Collaboration** | 5 | 3 | 0 | 8 |
 | **Interfaces & Extensibility** | 5 | 2 | 0 | 7 |
 | **Self-Hosted & Deployment** | 4 | 3 | 0 | 7 |
-| **Total** | **75** | **50** | **0** | **125** |
+| **Total** | **76** | **49** | **0** | **125** |
 
 ---
 
@@ -94,7 +94,7 @@
 | External CI integration | ⚠️ | Provider-aware integration APIs and normalized status ingestion are implemented, with repo-level integration health/status + token rotate/disable APIs (`external-ci`, `external-ci/checks`); provider-specific setup UX still maturing |
 | Self-hosted runners | ✅ | `runner/` with Docker executor |
 | Secrets management | ✅ | Schema + UI for repo/org secrets |
-| Merge checks & gates | ⚠️ | Required status checks + external CI gate readiness are enforced, with explicit PR gate introspection via `pulls/{number}/merge-readiness`, active label/review custom gate evaluation in `ci-gates.ts`, and repository-level gate policy management/reporting APIs (`/repos/{owner}/{repo}/merge-gates`, `/repos/{owner}/{repo}/merge-gates/{id}` including structured policy warnings/breakdowns plus actionable `pullNumber` readiness recommendations); broader policy UX remains |
+| Merge checks & gates | ✅ | Required status checks + external CI gate readiness are enforced, with explicit PR gate introspection via `pulls/{number}/merge-readiness` now including policy reports (`failedByType`, recommendations, pass/fail counts), active label/review/custom gate evaluation in `ci-gates.ts` with gate-type metadata, repository-level gate policy management/reporting APIs (`/repos/{owner}/{repo}/merge-gates`, `/repos/{owner}/{repo}/merge-gates/{id}`), and PR detail merge-gate policy UX for live blockers/breakdowns/remediation guidance |
 | Automation rules engine | ⚠️ | Conditions/actions active with retry + dead-letter audit logging; advanced orchestration still maturing |
 | Webhooks | ✅ | Full implementation with UI |
 | Workflow templates | ⚠️ | Template library plus repo-level listing/apply APIs are now implemented (`workflow/templates`); broader UX/workflow adoption still maturing |

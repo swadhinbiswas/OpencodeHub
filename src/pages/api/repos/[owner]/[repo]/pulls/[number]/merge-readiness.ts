@@ -7,6 +7,43 @@ import { withErrorHandler } from "@/lib/errors";
 import { canReadRepo } from "@/lib/permissions";
 import { evaluateGates } from "@/lib/ci-gates";
 
+function inferGateType(gate: { gateName: string; details?: Record<string, unknown> }) {
+  const detailsType = typeof gate?.details?.gateType === "string" ? gate.details.gateType : null;
+  if (detailsType) return detailsType;
+  if (gate.gateName.startsWith("Status:")) return "status_check";
+  if (gate.gateName === "Review") return "review";
+  if (gate.gateName === "Merge Conflicts") return "conflict";
+  return "custom";
+}
+
+function buildRecommendations(
+  failed: Array<{ gateName: string; message: string; details?: Record<string, unknown> }>
+) {
+  const recommendations = new Set<string>();
+  for (const gate of failed) {
+    const gateType = inferGateType(gate);
+    const message = gate.message.toLowerCase();
+
+    if (gateType === "status_check") {
+      recommendations.add("Re-run or fix failing required status checks.");
+    }
+    if (gateType === "review" || message.includes("approval")) {
+      recommendations.add("Request required approvals and resolve review feedback.");
+    }
+    if (gateType === "label" || message.includes("label")) {
+      recommendations.add("Apply required labels and remove blocked labels.");
+    }
+    if (gateType === "conflict") {
+      recommendations.add("Rebase or merge the base branch to resolve conflicts.");
+    }
+    if (gateType === "custom") {
+      recommendations.add("Review custom merge gate configuration and conditions.");
+    }
+  }
+
+  return [...recommendations.values()];
+}
+
 export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
   const owner = params.owner;
   const repoName = params.repo;
@@ -59,13 +96,31 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
       gateResults: [],
       mergeable: pr.mergeable,
       mergeableState: pr.mergeableState,
+      policyReport: {
+        totalGates: 0,
+        failedGates: 0,
+        passedGates: 0,
+        failedByType: {},
+        recommendations: ["Re-open the pull request before attempting to merge."],
+      },
     });
   }
 
   const gateResult = await evaluateGates(pr.id);
-  const blockers = gateResult.results
-    .filter((result) => !result.passed)
-    .map((result) => result.message);
+  const failed = gateResult.results.filter((result) => !result.passed);
+  const blockers = failed.map((result) => result.message);
+  const failedByType = failed.reduce<Record<string, number>>((acc, gate) => {
+    const gateType = inferGateType(gate as any);
+    acc[gateType] = (acc[gateType] || 0) + 1;
+    return acc;
+  }, {});
+  const recommendations = buildRecommendations(
+    failed.map((gate) => ({
+      gateName: gate.gateName,
+      message: gate.message,
+      details: gate.details,
+    }))
+  );
 
   return success({
     canMerge: gateResult.canMerge,
@@ -73,5 +128,12 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
     gateResults: gateResult.results,
     mergeable: pr.mergeable,
     mergeableState: pr.mergeableState,
+    policyReport: {
+      totalGates: gateResult.results.length,
+      failedGates: failed.length,
+      passedGates: gateResult.results.length - failed.length,
+      failedByType,
+      recommendations,
+    },
   });
 });
