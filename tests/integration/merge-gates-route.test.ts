@@ -117,6 +117,14 @@ describe("merge gates route", () => {
   });
 
   it("returns readiness report when pullNumber is provided", async () => {
+    evaluateGatesMock.mockResolvedValue({
+      canMerge: false,
+      results: [
+        { passed: false, gateName: "Status: ci/build", message: "failed" },
+        { passed: false, gateName: "Review", message: "Needs 1 more approval(s)" },
+      ],
+    });
+
     const response = await mergeGatesGet({
       params: { owner: "owner-1", repo: "demo" },
       locals: { user: { id: "user-1", isAdmin: false } },
@@ -126,7 +134,12 @@ describe("merge gates route", () => {
     const body = await readJson(response);
     expect(response.status).toBe(200);
     expect(evaluateGatesMock).toHaveBeenCalledWith("pr-1");
-    expect(body?.data?.readiness?.canMerge).toBe(true);
+    expect(body?.data?.readiness?.canMerge).toBe(false);
+    expect(body?.data?.readinessReport?.failedGateCount).toBe(2);
+    expect(body?.data?.readinessReport?.failedGateNames).toEqual(["Status: ci/build", "Review"]);
+    expect(body?.data?.readinessReport?.recommendations).toContain(
+      "Re-run or fix failing required status checks."
+    );
   });
 
   it("validates pullNumber query parameter", async () => {
