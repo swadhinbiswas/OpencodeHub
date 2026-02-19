@@ -780,6 +780,22 @@ export const openApiSpec = {
             },
         },
         "/repos/{owner}/{repo}/pulls/{number}/reviews": {
+            get: {
+                tags: ["Pull Requests"],
+                summary: "List pull request reviews",
+                description: "Returns PR reviews with inline comments filtered by path-scoped read permissions, including `hiddenCommentCount` metadata.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "number", in: "path", required: true, schema: { type: "integer" } },
+                ],
+                responses: {
+                    200: { description: "Reviews returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository or pull request not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
             post: {
                 tags: ["Pull Requests"],
                 summary: "Submit pull request review",

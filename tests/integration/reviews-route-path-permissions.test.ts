@@ -33,12 +33,34 @@ vi.mock("@/lib/automations", () => ({
   triggerAutomation: vi.fn(async () => undefined),
 }));
 
-import { POST as reviewPost } from "@/pages/api/repos/[owner]/[repo]/pulls/[number]/reviews";
+import { GET as reviewGet, POST as reviewPost } from "@/pages/api/repos/[owner]/[repo]/pulls/[number]/reviews";
 
 function makeDb() {
   const owner = { id: "owner-1", username: "acme" };
   const repo = { id: "repo-1", ownerId: "owner-1", name: "demo" };
   const pr = { id: "pr-1", repositoryId: "repo-1", number: 42, authorId: "author-1" };
+  const reviews = [
+    {
+      id: "rev-1",
+      pullRequestId: "pr-1",
+      state: "COMMENTED",
+      reviewer: { id: "reviewer-1", username: "reviewer-1", displayName: "Reviewer One" },
+      comments: [
+        {
+          id: "comment-1",
+          path: "src/app.ts",
+          body: "visible",
+          author: { id: "reviewer-1", username: "reviewer-1", displayName: "Reviewer One" },
+        },
+        {
+          id: "comment-2",
+          path: "secure/secret.ts",
+          body: "hidden",
+          author: { id: "reviewer-2", username: "reviewer-2", displayName: "Reviewer Two" },
+        },
+      ],
+    },
+  ];
 
   const insertCalls: Array<{ table: unknown; value: unknown }> = [];
 
@@ -52,6 +74,9 @@ function makeDb() {
       },
       pullRequests: {
         findFirst: vi.fn(async () => pr),
+      },
+      pullRequestReviews: {
+        findMany: vi.fn(async () => reviews),
       },
     },
     insert: vi.fn((table: unknown) => ({
@@ -103,6 +128,32 @@ describe("single review route path permissions", () => {
     expect(mockDb.__state.insertCalls).toHaveLength(0);
   });
 
+  it("filters inline review comments for denied read paths", async () => {
+    checkPathPermissionsMock.mockResolvedValue({
+      allowed: false,
+      deniedPaths: ["secure/secret.ts"],
+      reason: "Insufficient permissions for paths: secure/secret.ts",
+    });
+
+    const response = await reviewGet({
+      params: { owner: "acme", repo: "demo", number: "42" },
+      locals: { user: { id: "reviewer-1", isAdmin: false } },
+    } as any);
+
+    const body = await readJson(response);
+    expect(response.status).toBe(200);
+    expect(body?.data?.reviews).toHaveLength(1);
+    expect(body?.data?.reviews?.[0]?.comments).toHaveLength(1);
+    expect(body?.data?.reviews?.[0]?.comments?.[0]?.path).toBe("src/app.ts");
+    expect(body?.data?.hiddenCommentCount).toBe(1);
+    expect(checkPathPermissionsMock).toHaveBeenCalledWith(
+      "reviewer-1",
+      "repo-1",
+      ["src/app.ts", "secure/secret.ts"],
+      "read"
+    );
+  });
+
   it("creates review and inline comment when path permissions pass", async () => {
     const response = await reviewPost({
       params: { owner: "acme", repo: "demo", number: "42" },
@@ -125,4 +176,3 @@ describe("single review route path permissions", () => {
     expect(mockDb.__state.insertCalls.length).toBe(2);
   });
 });
-

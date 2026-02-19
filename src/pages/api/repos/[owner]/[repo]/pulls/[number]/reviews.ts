@@ -33,6 +33,91 @@ const reviewSchema = z.object({
         .optional(),
 });
 
+export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
+    const { owner: ownerName, repo: repoName, number } = params;
+    const user = locals.user;
+
+    if (!user) return unauthorized();
+    if (!ownerName || !repoName || !number) return badRequest("Missing parameters");
+
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
+    const repoOwner = await db.query.users.findFirst({
+        where: eq(schema.users.username, ownerName),
+    });
+    if (!repoOwner) return notFound("Repository not found");
+
+    const repo = await db.query.repositories.findFirst({
+        where: and(
+            eq(schema.repositories.ownerId, repoOwner.id),
+            eq(schema.repositories.name, repoName)
+        ),
+    });
+    if (!repo) return notFound("Repository not found");
+    if (!(await canReadRepo(user.id, repo, { isAdmin: user.isAdmin }))) return notFound("Repository not found");
+
+    const pr = await db.query.pullRequests.findFirst({
+        where: and(
+            eq(schema.pullRequests.repositoryId, repo.id),
+            eq(schema.pullRequests.number, parseInt(number))
+        )
+    });
+    if (!pr) return notFound("Pull request not found");
+
+    const reviews = await db.query.pullRequestReviews.findMany({
+        where: eq(schema.pullRequestReviews.pullRequestId, pr.id),
+        with: {
+            reviewer: {
+                columns: {
+                    id: true,
+                    username: true,
+                    displayName: true,
+                },
+            },
+            comments: {
+                with: {
+                    author: {
+                        columns: {
+                            id: true,
+                            username: true,
+                            displayName: true,
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    const scopedPaths = Array.from(
+        new Set(
+            reviews
+                .flatMap((review) => review.comments || [])
+                .map((comment) => comment.path)
+                .filter((path): path is string => Boolean(path))
+        )
+    );
+    const deniedPaths = new Set<string>();
+    if (scopedPaths.length > 0) {
+        const permission = await checkPathPermissions(user.id, repo.id, scopedPaths, "read");
+        for (const path of permission.deniedPaths || []) deniedPaths.add(path);
+    }
+
+    let hiddenCommentCount = 0;
+    const filteredReviews = reviews.map((review) => {
+        const comments = (review.comments || []).filter((comment) => {
+            if (!comment.path) return true;
+            const visible = !deniedPaths.has(comment.path);
+            if (!visible) hiddenCommentCount += 1;
+            return visible;
+        });
+        return {
+            ...review,
+            comments,
+        };
+    });
+
+    return success({ reviews: filteredReviews, hiddenCommentCount });
+});
+
 // POST: Submit a review
 export const POST: APIRoute = withErrorHandler(async ({ params, request, locals }) => {
     const { owner: ownerName, repo: repoName, number } = params;
