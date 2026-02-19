@@ -55,6 +55,11 @@ export interface GateResult {
     details?: Record<string, unknown>;
 }
 
+type EvaluatablePullRequest = typeof schema.pullRequests.$inferSelect & {
+    reviews: Array<typeof schema.pullRequestReviews.$inferSelect>;
+    checks: Array<typeof schema.pullRequestChecks.$inferSelect>;
+};
+
 /**
  * Add required status check
  */
@@ -221,17 +226,53 @@ export async function evaluateGates(prId: string): Promise<{
  */
 async function evaluateSingleGate(
     gate: MergeGate,
-    pr: typeof schema.pullRequests.$inferSelect
+    pr: EvaluatablePullRequest
 ): Promise<GateResult> {
+    const db = getDatabase();
     const config = gate.config ? JSON.parse(gate.config) : {};
 
     switch (gate.gateType) {
         case "label": {
-            // Require or block specific labels
-            const requiredLabel = config.required;
-            const blockedLabel = config.blocked;
+            const labelLinks = await db.query.pullRequestLabels?.findMany({
+                where: eq(schema.pullRequestLabels.pullRequestId, pr.id),
+                with: { label: true },
+            }) || [];
+            const labelNames = new Set(
+                labelLinks
+                    .map((item) => item.label?.name)
+                    .filter((name): name is string => Boolean(name))
+            );
 
-            // Would need to fetch labels for PR
+            const requiredLabelsRaw = config.required;
+            const blockedLabelsRaw = config.blocked;
+            const requiredLabels = Array.isArray(requiredLabelsRaw)
+                ? requiredLabelsRaw.filter((value): value is string => typeof value === "string" && value.length > 0)
+                : typeof requiredLabelsRaw === "string" && requiredLabelsRaw.length > 0
+                    ? [requiredLabelsRaw]
+                    : [];
+            const blockedLabels = Array.isArray(blockedLabelsRaw)
+                ? blockedLabelsRaw.filter((value): value is string => typeof value === "string" && value.length > 0)
+                : typeof blockedLabelsRaw === "string" && blockedLabelsRaw.length > 0
+                    ? [blockedLabelsRaw]
+                    : [];
+
+            const missingRequired = requiredLabels.filter((label) => !labelNames.has(label));
+            const presentBlocked = blockedLabels.filter((label) => labelNames.has(label));
+
+            if (missingRequired.length > 0) {
+                return {
+                    passed: false,
+                    gateName: gate.name,
+                    message: `Missing required labels: ${missingRequired.join(", ")}`,
+                };
+            }
+            if (presentBlocked.length > 0) {
+                return {
+                    passed: false,
+                    gateName: gate.name,
+                    message: `Blocked labels present: ${presentBlocked.join(", ")}`,
+                };
+            }
             return {
                 passed: true,
                 gateName: gate.name,
@@ -240,13 +281,41 @@ async function evaluateSingleGate(
         }
 
         case "review": {
-            // Custom review requirements
-            const minReviews = config.minReviews || 1;
-            // Would check against actual review count
+            const minReviews = typeof config.minReviews === "number" && config.minReviews > 0
+                ? Math.floor(config.minReviews)
+                : 1;
+            const latestByReviewer = new Map<string, typeof pr.reviews[number]>();
+            for (const review of pr.reviews || []) {
+                const previous = latestByReviewer.get(review.reviewerId);
+                const reviewTime = review.submittedAt || review.createdAt || new Date(0);
+                const previousTime = previous ? (previous.submittedAt || previous.createdAt || new Date(0)) : new Date(0);
+                if (!previous || reviewTime >= previousTime) {
+                    latestByReviewer.set(review.reviewerId, review);
+                }
+            }
+
+            const latestReviews = [...latestByReviewer.values()];
+            const approvalCount = latestReviews.filter((review) => review.state === "approved").length;
+            const hasChangesRequested = latestReviews.some((review) => review.state === "changes_requested");
+
+            if (hasChangesRequested) {
+                return {
+                    passed: false,
+                    gateName: gate.name,
+                    message: "Changes requested by reviewer",
+                };
+            }
+            if (approvalCount < minReviews) {
+                return {
+                    passed: false,
+                    gateName: gate.name,
+                    message: `Needs ${minReviews - approvalCount} more approval(s)`,
+                };
+            }
             return {
                 passed: true,
                 gateName: gate.name,
-                message: `Review requirements met`,
+                message: `Review requirements met (${approvalCount}/${minReviews})`,
             };
         }
 
