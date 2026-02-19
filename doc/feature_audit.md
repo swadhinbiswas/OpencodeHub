@@ -97,7 +97,7 @@
 | Merge checks & gates | ⚠️ | Required status checks + external CI gate readiness enforced in merge queue; broader policy UX remains |
 | Automation rules engine | ⚠️ | Conditions/actions active with retry + dead-letter audit logging; advanced orchestration still maturing |
 | Webhooks | ✅ | Full implementation with UI |
-| Workflow templates | ⚠️ | Template library exists, broader UX/workflow adoption still maturing |
+| Workflow templates | ⚠️ | Template library plus repo-level listing/apply APIs are now implemented (`workflow/templates`); broader UX/workflow adoption still maturing |
 
 ## 6. Third-Party Integrations
 ### 6.1 Code Quality & Coverage
