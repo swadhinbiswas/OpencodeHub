@@ -993,6 +993,26 @@ export const openApiSpec = {
                 },
             },
         },
+        "/repos/templates": {
+            get: {
+                tags: ["Repositories"],
+                summary: "List repository templates",
+                description: "Returns template repositories visible to the caller. Supports `q`, `owner`, and `visibility` filters.",
+                parameters: [
+                    { name: "q", in: "query", required: false, schema: { type: "string" } },
+                    { name: "owner", in: "query", required: false, schema: { type: "string" } },
+                    {
+                        name: "visibility",
+                        in: "query",
+                        required: false,
+                        schema: { type: "string", enum: ["public", "private", "internal"] },
+                    },
+                ],
+                responses: {
+                    200: { description: "Template repositories returned" },
+                },
+            },
+        },
         "/repos/{owner}/{repo}/workflow/states": {
             get: {
                 tags: ["Workflow"],
