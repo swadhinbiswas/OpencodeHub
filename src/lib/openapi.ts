@@ -505,6 +505,24 @@ export const openApiSpec = {
                 },
             },
         },
+        "/repos/{owner}/{repo}/stacks/{stackId}/merge-readiness": {
+            get: {
+                tags: ["Stacks"],
+                summary: "Get stack merge readiness",
+                description: "Returns whether the full stack can be merged now, including blocking approval reasons.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "stackId", in: "path", required: true, schema: { type: "string" } },
+                ],
+                responses: {
+                    200: { description: "Merge readiness returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository or stack not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
         "/repos/{owner}/{repo}/pulls/{number}/comments": {
             get: {
                 tags: ["Pull Requests"],
