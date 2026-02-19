@@ -200,7 +200,7 @@
 | CLI | ✅ | `cli/` package - 21+ commands |
 | Plugin/extension system | ⚠️ | `plugins.ts` infrastructure exists, but basic |
 | Webhook events | ✅ | Full implementation |
-| API documentation | ⚠️ | OpenAPI coverage now includes AI callback and AI review trigger/read routes, review/comment flows (including path-scoped comment visibility metadata), stack approvals/rebase/auto-update/merge routes, PR bulk-merge/auto-merge/checks/merge/impact/rewrite routes, PR issue-links and file-approvals routes, merge-gate reporting metadata, notifications/email test endpoints, and analytics merge-frequency/workload routes; broader endpoint parity still incomplete |
+| API documentation | ⚠️ | OpenAPI coverage now includes AI callback and AI review trigger/read routes, PR detail/update routes, review/comment flows (including path-scoped comment visibility metadata), stack approvals/rebase/auto-update/merge routes, PR bulk-merge/auto-merge/checks/merge/impact/rewrite routes, PR issue-links and file-approvals routes, merge-gate reporting metadata, notifications/email test endpoints, and analytics merge-frequency/workload routes; broader endpoint parity still incomplete |
 
 ## 12. Self-Hosted & Deployment
 | Feature | Status | Implementation Notes |

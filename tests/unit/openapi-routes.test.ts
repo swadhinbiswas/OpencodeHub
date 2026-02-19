@@ -6,6 +6,7 @@ describe("openapi route parity", () => {
     const paths = openApiSpec.paths as Record<string, unknown>;
 
     expect(paths["/repos/{owner}/{repo}/pulls/{number}/ai-review"]).toBeTruthy();
+    expect(paths["/repos/{owner}/{repo}/pulls/{number}"]).toBeTruthy();
     expect(paths["/repos/{owner}/{repo}/pulls/{number}/merge"]).toBeTruthy();
     expect(paths["/repos/{owner}/{repo}/pulls/{number}/impact"]).toBeTruthy();
     expect(paths["/repos/{owner}/{repo}/pulls/{number}/rewrite"]).toBeTruthy();
