@@ -51,6 +51,10 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
 
     const repoPath = await resolveRepoPath(getRepoPath(owner, repo));
     const changedFiles = await getChangedFiles(repoPath, pr.baseBranch, pr.headBranch);
+    const scopedUserId = locals.user?.id || "__anonymous__";
+    const readScope = await checkPathPermissions(scopedUserId, repository.id, changedFiles, "read");
+    const denied = new Set(readScope.deniedPaths || []);
+    const visibleFiles = changedFiles.filter((path) => !denied.has(path));
 
     const approvals = await db.query.fileApprovals.findMany({
         where: eq(schema.fileApprovals.pullRequestId, pr.id),
@@ -72,7 +76,7 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
         }
     }
 
-    const files = changedFiles.map((path) => {
+    const files = visibleFiles.map((path) => {
         const entry = approvalMap.get(path);
         const stale = entry?.stale || false;
         const approvers = entry?.approvers || [];
@@ -84,7 +88,11 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
         };
     });
 
-    return success({ files, allApproved: files.length > 0 && files.every((file) => file.approved) });
+    return success({
+        files,
+        hiddenPaths: denied.size,
+        allApproved: files.length > 0 && files.every((file) => file.approved),
+    });
 });
 
 export const POST: APIRoute = withErrorHandler(async ({ params, locals, request }) => {
