@@ -45,6 +45,7 @@ export const PUT: APIRoute = withErrorHandler(async ({ params, request, locals }
         return badRequest(parsed.error.issues[0]?.message || "Invalid state payload");
     }
     const { name, displayName, color, description, icon, isFinal, allowMerge, requireCodeOwner, order, reviewers } = parsed.data;
+    const normalizedName = name !== undefined ? name.trim().toLowerCase().replace(/\s+/g, "_") : undefined;
 
     const existing = await db.query.prStateDefinitions.findFirst({
         where: and(
@@ -55,9 +56,22 @@ export const PUT: APIRoute = withErrorHandler(async ({ params, request, locals }
 
     if (!existing) return notFound("State not found");
 
+    if (normalizedName !== undefined && normalizedName !== existing.name) {
+        const duplicate = await db.query.prStateDefinitions.findFirst({
+            where: and(
+                eq(schema.prStateDefinitions.repositoryId, repo.id),
+                eq(schema.prStateDefinitions.name, normalizedName)
+            ),
+            columns: { id: true },
+        });
+        if (duplicate) {
+            return badRequest(`State '${normalizedName}' already exists`);
+        }
+    }
+
     const [updated] = await (db as any).update(schema.prStateDefinitions)
         .set({
-            name: name ?? existing.name,
+            name: normalizedName ?? existing.name,
             displayName: displayName ?? existing.displayName,
             color: color ?? existing.color,
             description: description ?? existing.description,
