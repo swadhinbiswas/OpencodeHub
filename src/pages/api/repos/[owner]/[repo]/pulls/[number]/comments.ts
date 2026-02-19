@@ -89,15 +89,35 @@ export const GET: APIRoute = withErrorHandler(async ({ params, request }) => {
         orderBy: [desc(schema.pullRequestComments.createdAt)],
     });
 
+    const scopedPaths = [...new Set(
+        comments
+            .map((comment) => comment.path)
+            .filter((path): path is string => Boolean(path))
+    )];
+    const deniedPaths = new Set<string>();
+    if (scopedPaths.length > 0) {
+        const permission = await checkPathPermissions(
+            tokenPayload.userId,
+            pr.repositoryId,
+            scopedPaths,
+            "read"
+        );
+        for (const path of permission.deniedPaths || []) {
+            deniedPaths.add(path);
+        }
+    }
+
+    const visibleComments = comments.filter((comment) => !comment.path || !deniedPaths.has(comment.path));
+
     // Organize into threads
     const commentMap = new Map();
     const threads: any[] = [];
 
-    comments.forEach(comment => {
+    visibleComments.forEach(comment => {
         commentMap.set(comment.id, { ...comment, replies: [] });
     });
 
-    comments.forEach(comment => {
+    visibleComments.forEach(comment => {
         const commentWithReplies = commentMap.get(comment.id);
         if (comment.inReplyToId) {
             const parent = commentMap.get(comment.inReplyToId);
@@ -109,7 +129,7 @@ export const GET: APIRoute = withErrorHandler(async ({ params, request }) => {
         }
     });
 
-    return success({ comments: threads });
+    return success({ comments: threads, hiddenCount: comments.length - visibleComments.length });
 });
 
 // POST /api/repos/:owner/:repo/pulls/:number/comments - Create comment

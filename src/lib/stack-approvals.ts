@@ -17,6 +17,7 @@ export interface StackApprovalStatus {
         approvedPrs: number;
         pendingPrs: number;
         totalMissingApprovals: number;
+        totalMissingRequiredReviewerApprovals: number;
     };
     prs: {
         prId: string;
@@ -31,6 +32,10 @@ export interface StackApprovalStatus {
             userId: string;
             username?: string;
             isRequired: boolean;
+        }[];
+        missingRequiredReviewers: {
+            userId: string;
+            username?: string;
         }[];
     }[];
 }
@@ -100,6 +105,13 @@ export async function getStackApprovalStatus(stackId: string): Promise<StackAppr
             matchingRule ? (matchingRule.requiredApprovals ?? 1) : 0
         );
         const missingApprovals = Math.max(requiredApprovals - approvals.length, 0);
+        const missingRequiredReviewers = requestedReviewers
+            .filter((reviewer) => reviewer.isRequired)
+            .filter((reviewer) => latestByReviewer.get(reviewer.userId)?.state !== "approved")
+            .map((reviewer) => ({
+                userId: reviewer.userId,
+                username: reviewer.user?.username,
+            }));
 
         prs.push({
             prId: entry.pr.id,
@@ -115,12 +127,17 @@ export async function getStackApprovalStatus(stackId: string): Promise<StackAppr
                 username: reviewer.user?.username,
                 isRequired: Boolean(reviewer.isRequired),
             })),
+            missingRequiredReviewers,
         });
     }
 
     const approvedPrs = prs.filter((pr) => pr.isApproved).length;
     const pendingPrs = prs.length - approvedPrs;
     const totalMissingApprovals = prs.reduce((total, pr) => total + pr.missingApprovals, 0);
+    const totalMissingRequiredReviewerApprovals = prs.reduce(
+        (total, pr) => total + pr.missingRequiredReviewers.length,
+        0
+    );
 
     return {
         stackId,
@@ -130,6 +147,7 @@ export async function getStackApprovalStatus(stackId: string): Promise<StackAppr
             approvedPrs,
             pendingPrs,
             totalMissingApprovals,
+            totalMissingRequiredReviewerApprovals,
         },
         prs,
     };
@@ -153,6 +171,12 @@ export async function canMergeStack(stackId: string): Promise<{
         if (!pr.isApproved) {
             if (pr.changesRequested) {
                 blockers.push(`PR #${pr.prNumber}: Changes requested`);
+            } else if (pr.missingRequiredReviewers.length > 0) {
+                blockers.push(
+                    `PR #${pr.prNumber}: Missing required reviewer approval(s) from ${pr.missingRequiredReviewers
+                        .map((reviewer) => reviewer.username || reviewer.userId)
+                        .join(", ")}`
+                );
             } else {
                 blockers.push(`PR #${pr.prNumber}: Needs ${pr.requiredApprovals - pr.approvalCount} more approval(s)`);
             }

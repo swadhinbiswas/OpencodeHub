@@ -36,7 +36,7 @@
 | Branch protection rules | ✅ | Schema + UI + API in place |
 | Repository templates | ⚠️ | Template creation and listing are implemented with access-aware discovery filters (`/repos/templates?q=&owner=&visibility=`) including collaborator-visible private templates; dedicated template governance UX remains partial |
 | Repository Wiki | ✅ | Implemented (Phase 8) |
-| File-level permissions | ⚠️ | Path-scoped enforcement now covers PR comment create/edit/delete, single-review inline comments, batch-review comment submission, suggestion-apply, partial file-approval create/revoke and read-filter flows, PR rewrite operations, and PR impact scans; broader endpoint coverage still remains |
+| File-level permissions | ⚠️ | Path-scoped enforcement now covers PR comment create/edit/delete/list filtering, single-review inline comments, batch-review comment submission, suggestion-apply, partial file-approval create/revoke and read-filter flows, PR rewrite operations, and PR impact scans; broader endpoint coverage still remains |
 | Commit signing (GPG) | ✅ | GPG key management UI exists |
 | Commit signing (SSH) | ✅ | SSH key management UI exists |
 
@@ -47,7 +47,7 @@
 | PR dependency graphs (DAG) | ✅ | `getStackVisualization()` implemented |
 | Cross-PR dependency detection | ⚠️ | Automatic branch/file dependency graph API (`pulls/dependencies`) plus stack-order suggestion API (`pulls/stack-order`) implemented; UI-driven workflows remain partial |
 | Stack rebase & auto-update | ⚠️ | Manual rebase + auto-update API endpoints now implemented (`stacks/[stackId]/rebase`, `stacks/[stackId]/auto-update`); workflow automation/UI depth remains partial |
-| Stack-level approvals | ⚠️ | Stack approvals API now returns readiness + blocker context and richer per-stack approval summaries (pending counts/missing approvals/requested reviewers), with dry-run reviewer eligibility previews; higher-level UI orchestration still partial |
+| Stack-level approvals | ⚠️ | Stack approvals API now returns readiness + blocker context and richer per-stack approval summaries (pending counts/missing approvals/requested reviewers/missing required reviewer approvals), with dry-run reviewer eligibility previews; higher-level UI orchestration still partial |
 | Bulk merge (merge stacks) | ⚠️ | Explicit bulk merge queue APIs now exist for stacks (`stacks/[stackId]/merge`) and selected PRs (`pulls/bulk-merge`); higher-level stack orchestration UX remains partial |
 | Custom PR states | ⚠️ | State definitions plus dedicated PR state-transition API are implemented (`workflow/states`, `pulls/{number}/state`); richer UI guidance and automation-driven adoption remain partial |
 | Required reviewers per state | ⚠️ | State reviewer requirements are enforced during transitions, and explicit required-reviewer status introspection is available (`pulls/{number}/required-reviewers`); richer state-specific policy UX remains incomplete |
@@ -94,7 +94,7 @@
 | External CI integration | ⚠️ | Provider-aware integration APIs and normalized status ingestion are implemented, with repo-level integration health/status + token rotate/disable APIs (`external-ci`, `external-ci/checks`); provider-specific setup UX still maturing |
 | Self-hosted runners | ✅ | `runner/` with Docker executor |
 | Secrets management | ✅ | Schema + UI for repo/org secrets |
-| Merge checks & gates | ⚠️ | Required status checks + external CI gate readiness are enforced, with explicit PR gate introspection via `pulls/{number}/merge-readiness`, active label/review custom gate evaluation in `ci-gates.ts`, and repository-level gate policy management/reporting APIs (`/repos/{owner}/{repo}/merge-gates`, `/repos/{owner}/{repo}/merge-gates/{id}` including policy warnings/breakdowns and optional `pullNumber` readiness reports); broader policy UX remains |
+| Merge checks & gates | ⚠️ | Required status checks + external CI gate readiness are enforced, with explicit PR gate introspection via `pulls/{number}/merge-readiness`, active label/review custom gate evaluation in `ci-gates.ts`, and repository-level gate policy management/reporting APIs (`/repos/{owner}/{repo}/merge-gates`, `/repos/{owner}/{repo}/merge-gates/{id}` including structured policy warnings/breakdowns and optional `pullNumber` readiness reports); broader policy UX remains |
 | Automation rules engine | ⚠️ | Conditions/actions active with retry + dead-letter audit logging; advanced orchestration still maturing |
 | Webhooks | ✅ | Full implementation with UI |
 | Workflow templates | ⚠️ | Template library plus repo-level listing/apply APIs are now implemented (`workflow/templates`); broader UX/workflow adoption still maturing |
