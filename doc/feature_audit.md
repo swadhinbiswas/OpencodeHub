@@ -91,7 +91,7 @@
 | Feature | Status | Implementation Notes |
 | :--- | :---: | :--- |
 | Native CI pipeline support | ✅ | `pipeline.ts` - 1066 lines, GitHub Actions compatible |
-| External CI integration | ⚠️ | Provider-aware integration APIs and normalized status ingestion are implemented; UX and provider-specific setup polish are still maturing |
+| External CI integration | ⚠️ | Provider-aware integration APIs and normalized status ingestion are implemented, with repo-level integration health/status + token rotation APIs (`external-ci`, `external-ci/checks`); provider-specific setup UX still maturing |
 | Self-hosted runners | ✅ | `runner/` with Docker executor |
 | Secrets management | ✅ | Schema + UI for repo/org secrets |
 | Merge checks & gates | ⚠️ | Required status checks + external CI gate readiness enforced in merge queue; broader policy UX remains |
