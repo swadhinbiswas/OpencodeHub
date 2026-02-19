@@ -1332,6 +1332,24 @@ export const openApiSpec = {
                 },
             },
         },
+        "/repos/{owner}/{repo}/pulls/{number}/required-reviewers": {
+            get: {
+                tags: ["Pull Requests"],
+                summary: "Get required reviewer approval status",
+                description: "Returns required reviewers for a PR and whether each required reviewer has an approving latest review.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "number", in: "path", required: true, schema: { type: "integer" } },
+                ],
+                responses: {
+                    200: { description: "Required reviewer status returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository or pull request not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
         "/repos/{owner}/{repo}/workflow/templates": {
             get: {
                 tags: ["CI/CD"],

@@ -50,7 +50,7 @@
 | Stack-level approvals | ⚠️ | Basic - individual PR approvals only |
 | Bulk merge (merge stacks) | ⚠️ | Explicit bulk merge queue APIs now exist for stacks (`stacks/[stackId]/merge`) and selected PRs (`pulls/bulk-merge`); higher-level stack orchestration UX remains partial |
 | Custom PR states | ⚠️ | State definitions plus dedicated PR state-transition API are implemented (`workflow/states`, `pulls/{number}/state`); richer UI guidance and automation-driven adoption remain partial |
-| Required reviewers per state | ⚠️ | Basic reviewer requirements exist; full state-specific enforcement remains incomplete |
+| Required reviewers per state | ⚠️ | State reviewer requirements are enforced during transitions, and explicit required-reviewer status introspection is available (`pulls/{number}/required-reviewers`); richer state-specific policy UX remains incomplete |
 | PR merge queues | ✅ | `merge-queue.ts` (590+ lines) |
 | Conflict detection before merge | ✅ | `mergeable` field in PR schema |
 | Auto-merge rules | ⚠️ | Auto-merge rules engine plus explicit PR auto-merge control/status APIs now implemented (`pulls/{number}/auto-merge`); richer policy UX and rule introspection remain partial |
