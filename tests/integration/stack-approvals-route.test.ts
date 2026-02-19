@@ -121,8 +121,69 @@ describe("stack approvals route", () => {
     expect(response.status).toBe(200);
     expect(body?.data?.canMerge).toBe(false);
     expect(body?.data?.blockers).toHaveLength(1);
+    expect(body?.data?.recommendedReviewers).toEqual([]);
+    expect(body?.data?.nextActions?.shouldRequestApprovals).toBe(true);
     expect(body?.data?.status?.summary?.pendingPrs).toBe(1);
     expect(body?.data?.status?.summary?.totalMissingRequiredReviewerApprovals).toBe(1);
+  });
+
+  it("returns deduplicated recommended reviewers from missing required approvals", async () => {
+    getStackApprovalStatusMock.mockResolvedValue({
+      stackId: "stack-1",
+      allApproved: false,
+      summary: {
+        totalPrs: 2,
+        approvedPrs: 0,
+        pendingPrs: 2,
+        totalMissingApprovals: 2,
+        totalMissingRequiredReviewerApprovals: 2,
+      },
+      prs: [
+        {
+          prId: "pr-1",
+          prNumber: 11,
+          title: "PR 1",
+          isApproved: false,
+          approvalCount: 0,
+          requiredApprovals: 1,
+          missingApprovals: 1,
+          changesRequested: false,
+          requestedReviewers: [],
+          missingRequiredReviewers: [
+            { userId: "u-1", username: "alice" },
+            { userId: "u-2", username: "bob" },
+          ],
+        },
+        {
+          prId: "pr-2",
+          prNumber: 12,
+          title: "PR 2",
+          isApproved: false,
+          approvalCount: 0,
+          requiredApprovals: 1,
+          missingApprovals: 1,
+          changesRequested: false,
+          requestedReviewers: [],
+          missingRequiredReviewers: [
+            { userId: "u-1", username: "alice" },
+          ],
+        },
+      ],
+    });
+    canMergeStackMock.mockResolvedValue({
+      canMerge: false,
+      blockers: ["PR #11: Missing required reviewer approval(s) from alice, bob"],
+    });
+
+    const response = await stackApprovalsGet({
+      params: { owner: "owner-1", repo: "demo", stackId: "stack-1" },
+      locals: { user: { id: "actor-1" } },
+    } as any);
+
+    const body = await readJson(response);
+    expect(response.status).toBe(200);
+    expect(body?.data?.recommendedReviewers).toEqual(["alice", "bob"]);
+    expect(body?.data?.nextActions?.pendingPrs).toBe(2);
   });
 
   it("requests approvals only for reviewers with repository access", async () => {
