@@ -1280,6 +1280,24 @@ export const openApiSpec = {
                 },
             },
         },
+        "/repos/{owner}/{repo}/pulls/{number}/merge-readiness": {
+            get: {
+                tags: ["Pull Requests"],
+                summary: "Get pull request merge readiness",
+                description: "Evaluates PR merge gates/checks and returns blockers before merge.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "number", in: "path", required: true, schema: { type: "integer" } },
+                ],
+                responses: {
+                    200: { description: "Merge readiness returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository or pull request not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
         "/repos/{owner}/{repo}/workflow/templates": {
             get: {
                 tags: ["CI/CD"],
