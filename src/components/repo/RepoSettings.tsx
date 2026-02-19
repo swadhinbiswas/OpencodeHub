@@ -46,6 +46,7 @@ export default function RepoSettings({ repo }: RepoSettingsProps) {
         e.preventDefault();
         setLoading(true);
         const formData = new FormData(e.currentTarget);
+        const requestedTemplateState = formData.get("isTemplate") === "on";
         const data = {
             name: formData.get("name"),
             description: formData.get("description"),
@@ -53,7 +54,6 @@ export default function RepoSettings({ repo }: RepoSettingsProps) {
             hasIssues: formData.get("hasIssues") === "on",
             hasWiki: formData.get("hasWiki") === "on",
             hasActions: formData.get("hasActions") === "on",
-            isTemplate: formData.get("isTemplate") === "on",
         };
 
         try {
@@ -64,6 +64,23 @@ export default function RepoSettings({ repo }: RepoSettingsProps) {
             });
 
             if (!res.ok) throw new Error("Failed to update repository");
+
+            if (requestedTemplateState !== repo.isTemplate) {
+                const templateRes = await fetch(`/api/repos/${repo.owner}/${repo.name}/settings/template`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        isTemplate: requestedTemplateState,
+                        acknowledgePrivateCatalogRisk: requestedTemplateState && repo.visibility === "private",
+                    }),
+                });
+
+                if (!templateRes.ok) {
+                    const err = await templateRes.json().catch(() => null);
+                    const msg = err?.error?.message || "Failed to update template governance settings";
+                    throw new Error(msg);
+                }
+            }
 
             toast.success("Repository updated successfully");
             // Short delay to let the toast be seen before reload
@@ -209,6 +226,11 @@ export default function RepoSettings({ repo }: RepoSettingsProps) {
                                 />
                                 <Label htmlFor="isTemplate">Template repository</Label>
                             </div>
+                            {repo.visibility === "private" && (
+                                <p className="text-xs text-muted-foreground">
+                                    Private templates are discoverable only by collaborators with repository access.
+                                </p>
+                            )}
                         </CardContent>
                         <CardFooter className="border-t px-6 py-4">
                             <Button type="submit" disabled={loading}>
