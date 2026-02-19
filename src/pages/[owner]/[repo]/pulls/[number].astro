@@ -534,6 +534,8 @@ try {
                     </button>
                   </div>
                   <div id="stack-approvals-status" class="mt-2 text-muted-foreground"></div>
+                  <div id="stack-approvals-blockers" class="mt-2 space-y-1 text-xs text-amber-500"></div>
+                  <div id="stack-approvals-recommended" class="mt-2 text-xs text-muted-foreground"></div>
                   <div id="stack-approvals-list" class="mt-2 space-y-1"></div>
                   {canWrite && (
                     <div class="mt-3 flex flex-wrap items-center gap-2">
@@ -547,6 +549,18 @@ try {
                         class="h-8 rounded-md border border-primary/30 px-3 text-xs text-primary"
                       >
                         Request approvals
+                      </button>
+                      <button
+                        id="stack-approvals-request-recommended"
+                        class="h-8 rounded-md border border-emerald-500/40 px-3 text-xs text-emerald-600"
+                      >
+                        Request recommended
+                      </button>
+                      <button
+                        id="stack-approvals-preview"
+                        class="h-8 rounded-md border px-3 text-xs text-muted-foreground"
+                      >
+                        Preview eligibility
                       </button>
                       <div id="stack-approvals-msg" class="text-xs text-muted-foreground"></div>
                     </div>
@@ -638,10 +652,15 @@ try {
   const rebaseStackMsg = document.getElementById("rebase-stack-msg");
   const stackApprovalsRefresh = document.getElementById("stack-approvals-refresh");
   const stackApprovalsStatus = document.getElementById("stack-approvals-status");
+  const stackApprovalsBlockers = document.getElementById("stack-approvals-blockers");
+  const stackApprovalsRecommended = document.getElementById("stack-approvals-recommended");
   const stackApprovalsList = document.getElementById("stack-approvals-list");
   const stackApprovalsReviewers = document.getElementById("stack-approvals-reviewers");
   const stackApprovalsRequest = document.getElementById("stack-approvals-request");
+  const stackApprovalsRequestRecommended = document.getElementById("stack-approvals-request-recommended");
+  const stackApprovalsPreview = document.getElementById("stack-approvals-preview");
   const stackApprovalsMsg = document.getElementById("stack-approvals-msg");
+  let stackApprovalRecommendations = [];
 
   // Keyboard Shortcuts
   let currentFileIndex = -1;
@@ -894,6 +913,8 @@ try {
     if (!stackId || !stackApprovalsStatus || !stackApprovalsList) return;
 
     stackApprovalsStatus.textContent = "Loading...";
+    if (stackApprovalsBlockers) stackApprovalsBlockers.innerHTML = "";
+    if (stackApprovalsRecommended) stackApprovalsRecommended.textContent = "";
     stackApprovalsList.innerHTML = "";
 
     try {
@@ -907,9 +928,26 @@ try {
       }
 
       const status = data.status;
+      const blockers = data.blockers || [];
+      stackApprovalRecommendations = data.recommendedReviewers || [];
       stackApprovalsStatus.textContent = status.allApproved
         ? "All PRs approved"
         : "Pending approvals";
+
+      if (stackApprovalsBlockers) {
+        if (blockers.length > 0) {
+          stackApprovalsBlockers.innerHTML = blockers
+            .map((blocker) => `<div>• ${blocker}</div>`)
+            .join("");
+        } else {
+          stackApprovalsBlockers.innerHTML = "";
+        }
+      }
+      if (stackApprovalsRecommended) {
+        stackApprovalsRecommended.textContent = stackApprovalRecommendations.length > 0
+          ? `Recommended reviewers: ${stackApprovalRecommendations.join(", ")}`
+          : "No reviewer recommendations available.";
+      }
 
       status.prs.forEach((pr) => {
         const row = document.createElement("div");
@@ -927,6 +965,36 @@ try {
     }
   }
 
+  function parseReviewerCsv(input) {
+    return input
+      .split(",")
+      .map((name) => name.trim())
+      .filter(Boolean);
+  }
+
+  async function requestStackApprovals(reviewers, dryRun = false) {
+    if (!stackId) {
+      throw new Error("Stack not found");
+    }
+    if (reviewers.length === 0) {
+      throw new Error("Enter at least one username");
+    }
+
+    const res = await fetch(
+      `/api/repos/${repoOwner}/${repoName}/stacks/${stackId}/approvals`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviewers, dryRun }),
+      },
+    );
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data?.error?.message || data?.message || "Failed to request approvals");
+    }
+    return data;
+  }
+
   stackApprovalsRefresh?.addEventListener("click", (event) => {
     event.preventDefault();
     loadStackApprovals();
@@ -936,38 +1004,56 @@ try {
     event.preventDefault();
     if (!stackId || !stackApprovalsReviewers) return;
 
-    const reviewers = stackApprovalsReviewers.value
-      .split(",")
-      .map((name) => name.trim())
-      .filter(Boolean);
-
-    if (reviewers.length === 0) {
-      stackApprovalsMsg.textContent = "Enter at least one username";
-      return;
-    }
+    const reviewers = parseReviewerCsv(stackApprovalsReviewers.value);
 
     stackApprovalsMsg.textContent = "Requesting...";
 
     try {
-      const res = await fetch(
-        `/api/repos/${repoOwner}/${repoName}/stacks/${stackId}/approvals`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reviewers }),
-        },
-      );
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data?.message || "Failed to request approvals");
-      }
-
+      const data = await requestStackApprovals(reviewers, false);
       stackApprovalsMsg.textContent = `Requested: ${data.requested.join(", ")}`;
       stackApprovalsReviewers.value = "";
       loadStackApprovals();
     } catch (e) {
       stackApprovalsMsg.textContent = e.message || "Failed to request approvals";
+    }
+  });
+
+  stackApprovalsPreview?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    if (!stackApprovalsReviewers) return;
+
+    const reviewers = parseReviewerCsv(stackApprovalsReviewers.value);
+    stackApprovalsMsg.textContent = "Previewing...";
+
+    try {
+      const data = await requestStackApprovals(reviewers, true);
+      const parts = [
+        data.requested?.length ? `eligible: ${data.requested.join(", ")}` : "eligible: none",
+      ];
+      if (data.skipped?.length) parts.push(`no-access: ${data.skipped.join(", ")}`);
+      if (data.notFound?.length) parts.push(`not-found: ${data.notFound.join(", ")}`);
+      if (data.requestedDuplicates) parts.push(`duplicates: ${data.requestedDuplicates}`);
+      stackApprovalsMsg.textContent = parts.join(" | ");
+    } catch (e) {
+      stackApprovalsMsg.textContent = e.message || "Failed to preview reviewers";
+    }
+  });
+
+  stackApprovalsRequestRecommended?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    const reviewers = stackApprovalRecommendations || [];
+    if (reviewers.length === 0) {
+      stackApprovalsMsg.textContent = "No recommended reviewers available";
+      return;
+    }
+
+    stackApprovalsMsg.textContent = "Requesting recommended reviewers...";
+    try {
+      const data = await requestStackApprovals(reviewers, false);
+      stackApprovalsMsg.textContent = `Requested: ${data.requested.join(", ")}`;
+      loadStackApprovals();
+    } catch (e) {
+      stackApprovalsMsg.textContent = e.message || "Failed to request recommended reviewers";
     }
   });
 

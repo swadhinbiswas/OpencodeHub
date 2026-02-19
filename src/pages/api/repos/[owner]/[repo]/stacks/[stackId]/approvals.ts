@@ -50,11 +50,21 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
     const status = await getStackApprovalStatus(stackId);
     if (!status) return notFound("Stack not found");
     const readiness = await canMergeStack(stackId);
+    const recommendedReviewers = Array.from(new Set(
+        status.prs.flatMap((pr) => pr.missingRequiredReviewers
+            .map((reviewer) => reviewer.username)
+            .filter((username): username is string => Boolean(username)))
+    ));
 
     return success({
         status,
         canMerge: readiness.canMerge,
         blockers: readiness.blockers,
+        recommendedReviewers,
+        nextActions: {
+            shouldRequestApprovals: !readiness.canMerge,
+            pendingPrs: status.summary.pendingPrs,
+        },
     });
 });
 
