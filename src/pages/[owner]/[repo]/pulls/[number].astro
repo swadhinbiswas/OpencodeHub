@@ -73,6 +73,15 @@ const pr = await db.query.pullRequests.findFirst({
 
 if (!pr) return Astro.redirect("/404");
 
+const customStates = await db.query.prStateDefinitions.findMany({
+  where: eq(schema.prStateDefinitions.repositoryId, repoData.id),
+  orderBy: (states, { asc }) => [asc(states.order)],
+});
+
+const currentCustomState = pr.stateId
+  ? customStates.find((state) => state.id === pr.stateId) || null
+  : null;
+
 // Check Queue Status
 const queueItem = await db.query.mergeQueueItems.findFirst({
   where: eq(schema.mergeQueueItems.pullRequestId, pr.id),
@@ -183,6 +192,16 @@ try {
               )
             }
             {
+              currentCustomState && (
+                <span
+                  class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium border"
+                  style={`background-color: ${currentCustomState.color}20; color: ${currentCustomState.color}; border-color: ${currentCustomState.color}55;`}
+                >
+                  {currentCustomState.displayName}
+                </span>
+              )
+            }
+            {
               pr.state === "merged" && (
                 <span class="inline-flex items-center gap-1 rounded-full bg-purple-500/10 px-2 py-0.5 text-xs font-medium text-purple-500 border border-purple-500/20">
                   <GitMerge className="h-3 w-3" />
@@ -209,7 +228,37 @@ try {
             >
           </div>
         </div>
-        {/* Action buttons could go here */}
+        {canWrite && pr.state !== "merged" && (
+          <div class="w-full max-w-sm rounded-lg border p-3 space-y-2">
+            <div class="text-xs font-medium text-muted-foreground">PR Workflow State</div>
+            <div class="flex items-center gap-2">
+              <select
+                id="pr-state-select"
+                class="h-8 flex-1 rounded-md border bg-background px-2 text-xs"
+              >
+                <option value="builtin:open">Open</option>
+                <option value="builtin:closed">Closed</option>
+                {customStates.map((state) => (
+                  <option
+                    value={`custom:${state.id}`}
+                    data-name={state.name}
+                    data-description={state.description || ""}
+                    data-allow-merge={state.allowMerge ? "true" : "false"}
+                    data-require-codeowner={state.requireCodeOwner ? "true" : "false"}
+                    selected={pr.stateId === state.id}
+                  >
+                    {state.displayName}
+                  </option>
+                ))}
+              </select>
+              <Button id="pr-state-apply" variant="outline" className="h-8 text-xs">
+                Apply
+              </Button>
+            </div>
+            <div id="pr-state-hint" class="text-xs text-muted-foreground"></div>
+            <div id="pr-state-msg" class="text-xs text-muted-foreground"></div>
+          </div>
+        )}
       </div>
 
       <div class="grid gap-6 lg:grid-cols-4">
@@ -647,6 +696,8 @@ try {
       order: entry.order,
     })) : [],
     stackId: stackInfo ? stackInfo.stack.id : null,
+    currentBuiltinState: pr.state,
+    currentCustomStateId: pr.stateId || null,
   }}
 >
   const mergeBtn = document.getElementById("merge-btn");
@@ -677,6 +728,10 @@ try {
   const stackApprovalsRequestRecommended = document.getElementById("stack-approvals-request-recommended");
   const stackApprovalsPreview = document.getElementById("stack-approvals-preview");
   const stackApprovalsMsg = document.getElementById("stack-approvals-msg");
+  const prStateSelect = document.getElementById("pr-state-select");
+  const prStateApply = document.getElementById("pr-state-apply");
+  const prStateHint = document.getElementById("pr-state-hint");
+  const prStateMsg = document.getElementById("pr-state-msg");
   let stackApprovalRecommendations = [];
 
   // Keyboard Shortcuts
@@ -712,6 +767,83 @@ try {
     }
 
     // '[' and ']' to jump specific sections could be added here
+  });
+
+  function updatePrStateHint() {
+    if (!prStateSelect || !prStateHint) return;
+    const value = prStateSelect.value || "";
+    if (!value.startsWith("custom:")) {
+      prStateHint.textContent = value === "builtin:closed"
+        ? "Transition to closed will close this pull request."
+        : "Transition to open keeps the pull request active.";
+      return;
+    }
+
+    const selected = prStateSelect.selectedOptions?.[0];
+    const description = selected?.dataset?.description || "";
+    const allowMerge = selected?.dataset?.allowMerge === "true";
+    const requireCodeOwner = selected?.dataset?.requireCodeowner === "true";
+    const flags = [
+      allowMerge ? "merge-enabled" : null,
+      requireCodeOwner ? "requires code owner approval" : null,
+    ].filter(Boolean);
+
+    const parts = [];
+    if (description) parts.push(description);
+    if (flags.length > 0) parts.push(flags.join(" • "));
+    prStateHint.textContent = parts.join(" | ") || "Custom workflow state.";
+  }
+
+  function getCurrentPrStateSelection() {
+    if (currentCustomStateId) return `custom:${currentCustomStateId}`;
+    return `builtin:${currentBuiltinState || "open"}`;
+  }
+
+  if (prStateSelect) {
+    const currentSelection = getCurrentPrStateSelection();
+    const hasCurrent = Array.from(prStateSelect.options).some((option) => option.value === currentSelection);
+    if (hasCurrent) {
+      prStateSelect.value = currentSelection;
+    } else {
+      prStateSelect.value = currentBuiltinState === "closed" ? "builtin:closed" : "builtin:open";
+    }
+    updatePrStateHint();
+    prStateSelect.addEventListener("change", updatePrStateHint);
+  }
+
+  prStateApply?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    if (!prStateSelect || !prStateMsg) return;
+
+    const targetValue = prStateSelect.value;
+    prStateApply.setAttribute("disabled", "true");
+    prStateMsg.textContent = "Applying state transition...";
+
+    try {
+      const payload = targetValue.startsWith("custom:")
+        ? { stateId: targetValue.replace("custom:", "") }
+        : { state: targetValue.replace("builtin:", "") };
+
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}/state`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error?.message || data?.message || "Failed to transition state");
+      }
+
+      prStateMsg.textContent = "State transition complete.";
+      window.location.reload();
+    } catch (error) {
+      prStateMsg.textContent = error.message || "Failed to transition state";
+    } finally {
+      prStateApply.removeAttribute("disabled");
+    }
   });
 
   aiReviewBtn?.addEventListener("click", async () => {

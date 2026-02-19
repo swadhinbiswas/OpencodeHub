@@ -110,6 +110,15 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
 
     const number = (lastPr?.number || 0) + 1;
 
+    const defaultCustomState = await db.query.prStateDefinitions.findFirst({
+        where: and(
+            eq(schema.prStateDefinitions.repositoryId, repo.id),
+            eq(schema.prStateDefinitions.isDefault, true)
+        ),
+        orderBy: (states, { asc }) => [asc(states.order)],
+        columns: { id: true },
+    });
+
     // Create PR
     const prId = nanoid();
     await db.insert(schema.pullRequests).values({
@@ -126,7 +135,9 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
         baseSha: baseCommit.sha,
         additions,
         deletions,
-        changedFiles
+        changedFiles,
+        stateId: defaultCustomState?.id || null,
+        customStateChangedAt: defaultCustomState ? new Date() : null,
     });
 
     // Auto-detect PR dependencies (stack if base matches another PR's head)
