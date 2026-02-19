@@ -94,7 +94,7 @@
 | External CI integration | ⚠️ | Provider-aware integration APIs and normalized status ingestion are implemented, with repo-level integration health/status + token rotate/disable APIs (`external-ci`, `external-ci/checks`); provider-specific setup UX still maturing |
 | Self-hosted runners | ✅ | `runner/` with Docker executor |
 | Secrets management | ✅ | Schema + UI for repo/org secrets |
-| Merge checks & gates | ⚠️ | Required status checks + external CI gate readiness are enforced, with explicit PR gate introspection via `pulls/{number}/merge-readiness` and repository-level merge gate management APIs (`/repos/{owner}/{repo}/merge-gates`, `/repos/{owner}/{repo}/merge-gates/{id}`); broader policy UX remains |
+| Merge checks & gates | ⚠️ | Required status checks + external CI gate readiness are enforced, with explicit PR gate introspection via `pulls/{number}/merge-readiness`, active label/review custom gate evaluation in `ci-gates.ts`, and repository-level gate management APIs (`/repos/{owner}/{repo}/merge-gates`, `/repos/{owner}/{repo}/merge-gates/{id}`); broader policy UX remains |
 | Automation rules engine | ⚠️ | Conditions/actions active with retry + dead-letter audit logging; advanced orchestration still maturing |
 | Webhooks | ✅ | Full implementation with UI |
 | Workflow templates | ⚠️ | Template library plus repo-level listing/apply APIs are now implemented (`workflow/templates`); broader UX/workflow adoption still maturing |
