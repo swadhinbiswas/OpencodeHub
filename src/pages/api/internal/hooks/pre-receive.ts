@@ -3,8 +3,8 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { logger } from "@/lib/logger";
 import type { APIRoute } from "astro";
 import { eq, and } from "drizzle-orm";
-import micromatch from "micromatch";
 import { resolveRepoPath } from "@/lib/git-storage";
+import { checkPathPermissions } from "@/lib/path-scoping";
 
 export const POST: APIRoute = async ({ request, url }) => {
     const hookSecret = process.env.INTERNAL_HOOK_SECRET;
@@ -227,37 +227,9 @@ export const POST: APIRoute = async ({ request, url }) => {
         }
 
         if (changedFiles.length > 0) {
-            // Check permissions
-            // 1. Get user's teams
-            const userTeams = await db.query.teamMembers.findMany({
-                where: eq(schema.teamMembers.userId, userId),
-                with: { team: true }
-            });
-            const userTeamIds = userTeams.map(tm => tm.teamId);
-
-            // 2. Identify rules that grant access to this user
-            const userAllowedRules = strictPathPermissions.filter(rule =>
-                (rule.userId === userId) || (rule.teamId && userTeamIds.includes(rule.teamId))
-            );
-
-            // 3. Check each file
-            for (const file of changedFiles) {
-                // Find all rules that 'protect' this file (match the path)
-                const protectingRules = strictPathPermissions.filter(rule =>
-                    micromatch.isMatch(file, rule.pathPattern)
-                );
-
-                if (protectingRules.length > 0) {
-                    // File is protected. User must match at least one ALLOWED rule that covers this file.
-                    // (i.e. one of userAllowedRules must match the file)
-                    const hasAccess = userAllowedRules.some(allowed =>
-                        micromatch.isMatch(file, allowed.pathPattern)
-                    );
-
-                    if (!hasAccess) {
-                        return new Response(`Permission denied for ${file}. Protected path.`, { status: 403 });
-                    }
-                }
+            const permission = await checkPathPermissions(userId, repo.id, changedFiles, "write");
+            if (!permission.allowed) {
+                return new Response(permission.reason || "Write access denied by path permissions.", { status: 403 });
             }
         }
     }
