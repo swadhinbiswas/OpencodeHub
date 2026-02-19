@@ -3,7 +3,7 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDatabase, schema } from "@/db";
-import { canWriteRepo } from "@/lib/permissions";
+import { canAdminRepo, canWriteRepo } from "@/lib/permissions";
 import { withErrorHandler } from "@/lib/errors";
 import { badRequest, notFound, success, unauthorized, forbidden } from "@/lib/api";
 import { bulkMergeStack } from "@/lib/bulk-merge";
@@ -48,6 +48,12 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals, request 
   if (!parsed.success) {
     return badRequest(parsed.error.issues[0]?.message || "Invalid merge payload");
   }
+  if (parsed.data.skipApprovalCheck) {
+    const isRepoAdmin = await canAdminRepo(user.id, repo);
+    if (!isRepoAdmin) {
+      return forbidden("Only repository admins can skip approval checks");
+    }
+  }
 
   const result = await bulkMergeStack(stackId, user.id, {
     mergeMethod: parsed.data.mergeMethod,
@@ -56,4 +62,3 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals, request 
 
   return success(result);
 });
-

@@ -534,7 +534,7 @@ export const openApiSpec = {
             post: {
                 tags: ["Stacks"],
                 summary: "Queue merge for all PRs in a stack",
-                description: "Attempts to merge an entire stack in order by enqueuing each eligible PR into the merge queue.",
+                description: "Attempts to merge an entire stack in order by enqueuing each eligible PR into the merge queue. `skipApprovalCheck` requires repository admin privileges.",
                 security: [{ bearerAuth: [] }],
                 parameters: [
                     { name: "owner", in: "path", required: true, schema: { type: "string" } },
