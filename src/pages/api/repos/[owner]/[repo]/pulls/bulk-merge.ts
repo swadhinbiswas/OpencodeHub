@@ -7,6 +7,9 @@ import { badRequest, forbidden, notFound, success, unauthorized } from "@/lib/ap
 import { withErrorHandler } from "@/lib/errors";
 import { canWriteRepo } from "@/lib/permissions";
 import { bulkMergePRs } from "@/lib/bulk-merge";
+import { compareBranches } from "@/lib/git";
+import { resolveRepoPath } from "@/lib/git-storage";
+import { checkPathPermissions } from "@/lib/path-scoping";
 
 const bulkMergeSchema = z.object({
   prIds: z.array(z.string().min(1)).min(1).max(100),
@@ -47,13 +50,27 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals, request 
       eq(schema.pullRequests.repositoryId, repo.id),
       inArray(schema.pullRequests.id, uniquePrIds)
     ),
-    columns: { id: true },
+    columns: { id: true, number: true, baseBranch: true, headBranch: true },
   });
 
   const repoPrIds = new Set(repoPrs.map((pr) => pr.id));
   const invalidIds = uniquePrIds.filter((prId) => !repoPrIds.has(prId));
   if (invalidIds.length > 0) {
     return badRequest("Some pull requests do not belong to this repository");
+  }
+
+  const repoPath = await resolveRepoPath(repo.diskPath);
+  for (const pr of repoPrs) {
+    const { diffs } = await compareBranches(repoPath, pr.baseBranch, pr.headBranch);
+    const changedFiles = diffs.map((diff) => diff.file).filter(Boolean);
+    if (changedFiles.length === 0) continue;
+
+    const permission = await checkPathPermissions(user.id, repo.id, changedFiles, "write");
+    if (!permission.allowed) {
+      return forbidden(
+        permission.reason || `Insufficient path permissions for PR #${pr.number}`
+      );
+    }
   }
 
   const result = await bulkMergePRs(uniquePrIds, user.id, {

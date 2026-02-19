@@ -36,7 +36,7 @@
 | Branch protection rules | ✅ | Schema + UI + API in place |
 | Repository templates | ✅ | Template creation/listing are implemented with access-aware discovery filters (`/repos/templates?q=&owner=&visibility=`) and dedicated governance controls via `settings/template` (publish/unpublish, visibility governance, private-template acknowledgment guardrail, archived/mirror safety checks, and policy introspection surfaced in repo settings UX) |
 | Repository Wiki | ✅ | Implemented (Phase 8) |
-| File-level permissions | ⚠️ | Path-scoped enforcement now covers PR comment create/edit/delete/list filtering, PR review list comment filtering, AI review suggestion read filtering, single-review inline comments, batch-review comment submission, suggestion-apply, partial file-approval create/revoke and read-filter flows, PR rewrite operations, PR impact scan execution checks, PR impact read-result file-path filtering, and PR template discovery path checks; broader endpoint coverage still remains |
+| File-level permissions | ✅ | Path-scoped enforcement now covers PR comment create/edit/delete/list filtering, PR review list comment filtering, AI review suggestion read filtering, single-review inline comments, batch-review comment submission, suggestion-apply, partial file-approval create/revoke and read-filter flows, PR rewrite operations, PR impact scan execution/read filtering, PR template discovery path checks, PR merge operations (single merge, auto-merge enable/disable, bulk-merge), and push-time branch updates via centralized `checkPathPermissions` |
 | Commit signing (GPG) | ✅ | GPG key management UI exists |
 | Commit signing (SSH) | ✅ | SSH key management UI exists |
 

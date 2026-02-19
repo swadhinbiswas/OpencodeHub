@@ -7,6 +7,9 @@ import { badRequest, forbidden, notFound, success, unauthorized } from "@/lib/ap
 import { withErrorHandler } from "@/lib/errors";
 import { canReadRepo, canWriteRepo } from "@/lib/permissions";
 import { disableAutoMerge, enableAutoMerge, getAutoMergeStatus } from "@/lib/auto-merge";
+import { compareBranches } from "@/lib/git";
+import { resolveRepoPath } from "@/lib/git-storage";
+import { checkPathPermissions } from "@/lib/path-scoping";
 
 const enableSchema = z.object({
   mergeMethod: z.enum(["merge", "squash", "rebase"]).optional(),
@@ -75,6 +78,16 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals, request 
     return forbidden();
   }
 
+  const repoPath = await resolveRepoPath(resolved.repo.diskPath);
+  const { diffs } = await compareBranches(repoPath, resolved.pr.baseBranch, resolved.pr.headBranch);
+  const changedFiles = diffs.map((diff) => diff.file).filter(Boolean);
+  if (changedFiles.length > 0) {
+    const permission = await checkPathPermissions(user.id, resolved.repo.id, changedFiles, "write");
+    if (!permission.allowed) {
+      return forbidden(permission.reason || "Insufficient path permissions for one or more changed files");
+    }
+  }
+
   const body = await request.json().catch(() => null);
   const parsed = enableSchema.safeParse(body || {});
   if (!parsed.success) {
@@ -101,6 +114,16 @@ export const DELETE: APIRoute = withErrorHandler(async ({ params, locals }) => {
 
   if (!(await canWriteRepo(user.id, resolved.repo, { isAdmin: user.isAdmin }))) {
     return forbidden();
+  }
+
+  const repoPath = await resolveRepoPath(resolved.repo.diskPath);
+  const { diffs } = await compareBranches(repoPath, resolved.pr.baseBranch, resolved.pr.headBranch);
+  const changedFiles = diffs.map((diff) => diff.file).filter(Boolean);
+  if (changedFiles.length > 0) {
+    const permission = await checkPathPermissions(user.id, resolved.repo.id, changedFiles, "write");
+    if (!permission.allowed) {
+      return forbidden(permission.reason || "Insufficient path permissions for one or more changed files");
+    }
   }
 
   const ok = await disableAutoMerge(resolved.pr.id);
