@@ -25,20 +25,28 @@ function collectRouteFiles(root: string): string[] {
 
 function toOpenApiPath(routeFile: string): string {
   const withoutTs = routeFile.replace(/\.ts$/, "");
-  if (withoutTs === "index") {
-    return "/repos/{owner}/{repo}/pulls/{number}";
+  let relativePath = withoutTs;
+  if (relativePath === "index") {
+    return "/repos/{owner}/{repo}/pulls";
   }
-  const normalized = withoutTs.replace(/\[([^\]]+)\]/g, "{$1}");
-  return `/repos/{owner}/{repo}/pulls/{number}/${normalized}`;
+  if (relativePath.endsWith("/index")) {
+    relativePath = relativePath.slice(0, -"/index".length);
+  }
+  const normalized = relativePath.replace(/\[([^\]]+)\]/g, "{$1}");
+  return `/repos/{owner}/{repo}/pulls/${normalized}`;
 }
 
-describe("openapi pulls[number] parity", () => {
-  it("documents all implemented pull-number routes", () => {
-    const routeRoot = "src/pages/api/repos/[owner]/[repo]/pulls/[number]";
-    const routeFiles = collectRouteFiles(routeRoot);
-    const expectedPaths = routeFiles.map(toOpenApiPath);
+function canonicalizePath(path: string): string {
+  return path.replace(/\{[^}]+\}/g, "{}");
+}
 
-    const openApiPaths = new Set(Object.keys(openApiSpec.paths));
+describe("openapi pulls parity", () => {
+  it("documents all implemented pulls routes", () => {
+    const routeRoot = "src/pages/api/repos/[owner]/[repo]/pulls";
+    const routeFiles = collectRouteFiles(routeRoot);
+    const expectedPaths = routeFiles.map(toOpenApiPath).map(canonicalizePath);
+
+    const openApiPaths = new Set(Object.keys(openApiSpec.paths).map(canonicalizePath));
     const missing = expectedPaths.filter((path) => !openApiPaths.has(path));
 
     expect(missing).toEqual([]);
