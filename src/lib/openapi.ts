@@ -257,6 +257,22 @@ export const openApiSpec = {
                 },
                 required: ["prIds"],
             },
+            PullRequestBulkMergeRequest: {
+                type: "object",
+                properties: {
+                    prIds: {
+                        type: "array",
+                        minItems: 1,
+                        maxItems: 100,
+                        items: { type: "string" },
+                    },
+                    mergeMethod: {
+                        type: "string",
+                        enum: ["merge", "squash", "rebase"],
+                    },
+                },
+                required: ["prIds"],
+            },
             MirrorConfigRequest: {
                 type: "object",
                 properties: {
@@ -1077,6 +1093,33 @@ export const openApiSpec = {
                     200: { description: "Workload insights returned" },
                     400: { description: "Invalid query parameters", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/repos/{owner}/{repo}/pulls/bulk-merge": {
+            post: {
+                tags: ["Pull Requests"],
+                summary: "Queue bulk merge for multiple pull requests",
+                description: "Adds multiple pull requests from the same repository to the merge queue.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/PullRequestBulkMergeRequest" },
+                        },
+                    },
+                },
+                responses: {
+                    200: { description: "Bulk merge queued" },
+                    400: { description: "Invalid payload or repository mismatch", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     404: { description: "Repository not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                 },
             },
