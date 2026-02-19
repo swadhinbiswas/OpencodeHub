@@ -45,7 +45,7 @@
 | :--- | :---: | :--- |
 | Native stacked PRs | ✅ | `stacks.ts` - create, add, reorder, visualize |
 | PR dependency graphs (DAG) | ✅ | `getStackVisualization()` implemented |
-| Cross-PR dependency detection | ⚠️ | Basic via stacks, no automatic detection |
+| Cross-PR dependency detection | ⚠️ | Automatic branch/file dependency graph API now implemented (`pulls/dependencies` via `pr-dependencies.ts`); UI-driven workflows remain partial |
 | Stack rebase & auto-update | ⚠️ | Partial - manual rebase exists |
 | Stack-level approvals | ⚠️ | Basic - individual PR approvals only |
 | Bulk merge (merge stacks) | ⚠️ | Via merge queue, not explicit bulk action |
