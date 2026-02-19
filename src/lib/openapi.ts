@@ -868,6 +868,7 @@ export const openApiSpec = {
             get: {
                 tags: ["Repositories"],
                 summary: "Get repository mirror settings",
+                description: "Returns mirror configuration and derived health fields (`isHealthy`, `isStale`, `lastSyncAgeMinutes`).",
                 security: [{ bearerAuth: [] }],
                 parameters: [
                     { name: "owner", in: "path", required: true, schema: { type: "string" } },
