@@ -1098,6 +1098,19 @@ export const openApiSpec = {
                 },
             },
         },
+        "/notifications/blocking/summary": {
+            get: {
+                tags: ["Notifications"],
+                summary: "Get blocking notification summary",
+                description: "Returns aggregate blocking-alert counts and top prioritized recent blocking notifications for the authenticated user.",
+                security: [{ bearerAuth: [] }],
+                responses: {
+                    200: { description: "Blocking summary returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    500: { description: "Summary load failed", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
         "/repos/templates": {
             get: {
                 tags: ["Repositories"],
