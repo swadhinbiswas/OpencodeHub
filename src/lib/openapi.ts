@@ -1124,6 +1124,70 @@ export const openApiSpec = {
                 },
             },
         },
+        "/repos/{owner}/{repo}/pulls/{number}/auto-merge": {
+            get: {
+                tags: ["Pull Requests"],
+                summary: "Get pull request auto-merge status",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "number", in: "path", required: true, schema: { type: "integer" } },
+                ],
+                responses: {
+                    200: { description: "Auto-merge status returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository or pull request not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+            post: {
+                tags: ["Pull Requests"],
+                summary: "Enable pull request auto-merge",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "number", in: "path", required: true, schema: { type: "integer" } },
+                ],
+                requestBody: {
+                    required: false,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    mergeMethod: { type: "string", enum: ["merge", "squash", "rebase"], default: "merge" },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    200: { description: "Auto-merge enabled" },
+                    400: { description: "Invalid payload or PR not eligible", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository or pull request not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+            delete: {
+                tags: ["Pull Requests"],
+                summary: "Disable pull request auto-merge",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "number", in: "path", required: true, schema: { type: "integer" } },
+                ],
+                responses: {
+                    200: { description: "Auto-merge disabled" },
+                    400: { description: "Disable failed", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository or pull request not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
         "/repos/{owner}/{repo}/workflow/states": {
             get: {
                 tags: ["Workflow"],
