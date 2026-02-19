@@ -8,6 +8,7 @@ type AIKeys = {
   openrouter?: string;
   together?: string;
   google?: string;
+  local?: string;
   externalAgent?: string;
 };
 
@@ -15,6 +16,7 @@ export interface AIConfig {
   provider: string;
   model: string;
   apiKeys: AIKeys;
+  localBaseUrl?: string;
   externalAgentWebhookUrl?: string;
 }
 
@@ -29,8 +31,10 @@ export interface PublicAIConfig {
     openrouter: { isSet: boolean; masked?: string };
     together: { isSet: boolean; masked?: string };
     google: { isSet: boolean; masked?: string };
+    local: { isSet: boolean; masked?: string };
     externalAgent: { isSet: boolean; masked?: string };
   };
+  localBaseUrl?: string;
   externalAgentWebhookUrl?: string;
 }
 
@@ -113,7 +117,7 @@ export function parseAIConfigFromStorage(raw: string | null | undefined): AIConf
     };
 
     const decryptedApiKeys: AIKeys = {};
-    for (const provider of ["openai", "anthropic", "groq", "bytez", "openrouter", "together", "google", "externalAgent"] as const) {
+    for (const provider of ["openai", "anthropic", "groq", "bytez", "openrouter", "together", "google", "local", "externalAgent"] as const) {
       const value = parsed.apiKeys?.[provider];
       if (value) {
         decryptedApiKeys[provider] = decryptValue(value);
@@ -124,6 +128,7 @@ export function parseAIConfigFromStorage(raw: string | null | undefined): AIConf
       provider: parsed.provider || DEFAULT_AI_CONFIG.provider,
       model: parsed.model || DEFAULT_AI_CONFIG.model,
       apiKeys: decryptedApiKeys,
+      localBaseUrl: typeof parsed.localBaseUrl === "string" ? parsed.localBaseUrl : undefined,
       externalAgentWebhookUrl:
         typeof parsed.externalAgentWebhookUrl === "string" ? parsed.externalAgentWebhookUrl : undefined,
     };
@@ -134,7 +139,7 @@ export function parseAIConfigFromStorage(raw: string | null | undefined): AIConf
 
 export function buildStoredAIConfig(config: AIConfig): string {
   const encryptedApiKeys: AIKeys = {};
-  for (const provider of ["openai", "anthropic", "groq", "bytez", "openrouter", "together", "google", "externalAgent"] as const) {
+  for (const provider of ["openai", "anthropic", "groq", "bytez", "openrouter", "together", "google", "local", "externalAgent"] as const) {
     const value = config.apiKeys?.[provider];
     if (value) {
       encryptedApiKeys[provider] = encryptValue(value);
@@ -145,6 +150,7 @@ export function buildStoredAIConfig(config: AIConfig): string {
     provider: config.provider,
     model: config.model,
     apiKeys: encryptedApiKeys,
+    localBaseUrl: config.localBaseUrl,
     externalAgentWebhookUrl: config.externalAgentWebhookUrl,
   });
 }
@@ -188,11 +194,16 @@ export function sanitizeAIConfigForClient(config: AIConfig): PublicAIConfig {
         isSet: Boolean(config.apiKeys.google),
         masked: mask(config.apiKeys.google),
       },
+      local: {
+        isSet: Boolean(config.apiKeys.local),
+        masked: mask(config.apiKeys.local),
+      },
       externalAgent: {
         isSet: Boolean(config.apiKeys.externalAgent),
         masked: mask(config.apiKeys.externalAgent),
       },
     },
+    localBaseUrl: config.localBaseUrl,
     externalAgentWebhookUrl: config.externalAgentWebhookUrl,
   };
 }
@@ -203,6 +214,7 @@ export function mergeAIConfig(
     provider?: string;
     model?: string;
     apiKeys?: Partial<AIKeys>;
+    localBaseUrl?: string;
     externalAgentWebhookUrl?: string;
   }
 ): AIConfig {
@@ -217,8 +229,10 @@ export function mergeAIConfig(
       openrouter: updates.apiKeys?.openrouter ?? existing.apiKeys.openrouter,
       together: updates.apiKeys?.together ?? existing.apiKeys.together,
       google: updates.apiKeys?.google ?? existing.apiKeys.google,
+      local: updates.apiKeys?.local ?? existing.apiKeys.local,
       externalAgent: updates.apiKeys?.externalAgent ?? existing.apiKeys.externalAgent,
     },
+    localBaseUrl: updates.localBaseUrl ?? existing.localBaseUrl,
     externalAgentWebhookUrl:
       updates.externalAgentWebhookUrl ?? existing.externalAgentWebhookUrl,
   };

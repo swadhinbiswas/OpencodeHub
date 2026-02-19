@@ -43,8 +43,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
                 openrouter: typeof apiKeys?.openrouter === "string" && apiKeys.openrouter.trim() !== "" ? apiKeys.openrouter.trim() : undefined,
                 together: typeof apiKeys?.together === "string" && apiKeys.together.trim() !== "" ? apiKeys.together.trim() : undefined,
                 google: typeof apiKeys?.google === "string" && apiKeys.google.trim() !== "" ? apiKeys.google.trim() : undefined,
+                local: typeof apiKeys?.local === "string" && apiKeys.local.trim() !== "" ? apiKeys.local.trim() : undefined,
                 externalAgent: typeof apiKeys?.externalAgent === "string" && apiKeys.externalAgent.trim() !== "" ? apiKeys.externalAgent.trim() : undefined,
             },
+            localBaseUrl:
+                typeof data?.localBaseUrl === "string" && data.localBaseUrl.trim() !== ""
+                    ? data.localBaseUrl.trim()
+                    : undefined,
             externalAgentWebhookUrl:
                 typeof data?.externalAgentWebhookUrl === "string" && data.externalAgentWebhookUrl.trim() !== ""
                     ? data.externalAgentWebhookUrl.trim()
