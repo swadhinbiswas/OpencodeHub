@@ -62,4 +62,26 @@ describe("notifications list route", () => {
     expect(body?.data?.unreadCount).toBe(2);
     expect(mockDb.query.notifications.findMany).toHaveBeenCalledTimes(2);
   });
+
+  it("sorts by priority score when prioritize=true", async () => {
+    getUserFromRequestMock.mockResolvedValue({ userId: "user-1" });
+    mockDb.query.notifications.findMany
+      .mockResolvedValueOnce([
+        { id: "notif-low", type: "comment", reason: "subscribed", isRead: false, createdAt: new Date("2026-02-18T10:00:00Z") },
+        { id: "notif-critical", type: "security_alert", reason: "security_alert", isRead: false, createdAt: new Date("2026-02-18T08:00:00Z") },
+      ])
+      .mockResolvedValueOnce([]);
+
+    const response = await listNotificationsGet({
+      request: new Request("http://localhost/api/notifications?filter=all&prioritize=true"),
+      url: new URL("http://localhost/api/notifications?filter=all&prioritize=true"),
+    } as any);
+
+    const body = await response.json();
+    const ids = body?.data?.notifications?.map((n: any) => n.id) || [];
+
+    expect(response.status).toBe(200);
+    expect(ids[0]).toBe("notif-critical");
+    expect(body?.data?.notifications?.[0]?.priority).toBe("critical");
+  });
 });
