@@ -4,6 +4,7 @@ import RepoHeader from "@/components/repo/RepoHeader.astro";
 import { getDatabase, schema } from "@/db";
 import { eq, and } from "drizzle-orm";
 import { canWriteRepo } from "@/lib/permissions";
+import { getRepositoryWorkflows, getWorkflowTemplates } from "@/lib/workflow-templates";
 
 const { owner: ownerName, repo: repoName } = Astro.params;
 const db = getDatabase();
@@ -48,6 +49,11 @@ const repo = {
   openPrCount: repoData.openPrCount,
   openIssueCount: 0
 };
+
+const [initialTemplates, existingWorkflows] = await Promise.all([
+  getWorkflowTemplates().catch(() => []),
+  getRepositoryWorkflows(repoData.id).catch(() => []),
+]);
 ---
 
 <BaseLayout title={`Actions Settings · ${repo.owner}/${repo.name}`}>
@@ -215,6 +221,107 @@ const repo = {
           </div>
         </div>
 
+        <!-- Workflow Templates -->
+        <div class="relative">
+          <div class="absolute -inset-[1px] bg-gradient-to-r from-emerald-500/20 via-transparent to-teal-500/20 rounded-xl opacity-50"></div>
+          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-6 space-y-4">
+            <h3 class="text-lg font-semibold text-white flex items-center gap-2">
+              <svg class="h-5 w-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16h8M8 12h8m-8-4h8M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H9l-4 4v10a2 2 0 002 2z"></path>
+              </svg>
+              Workflow templates
+            </h3>
+            <p class="text-sm text-gray-500">
+              Browse official workflow templates and apply them directly to this repository.
+            </p>
+
+            <div class="flex flex-wrap items-end gap-3">
+              <div>
+                <label for="template-category-filter" class="block text-xs text-gray-400 mb-1">Category</label>
+                <select id="template-category-filter" class="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white">
+                  <option value="">All categories</option>
+                  <option value="ci">CI</option>
+                  <option value="cd">CD</option>
+                  <option value="security">Security</option>
+                  <option value="quality">Quality</option>
+                </select>
+              </div>
+              <div>
+                <label for="template-language-filter" class="block text-xs text-gray-400 mb-1">Language</label>
+                <select id="template-language-filter" class="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white">
+                  <option value="">Any language</option>
+                  <option value="node">Node.js</option>
+                  <option value="python">Python</option>
+                  <option value="go">Go</option>
+                  <option value="rust">Rust</option>
+                </select>
+              </div>
+              <div>
+                <label for="template-workflow-name" class="block text-xs text-gray-400 mb-1">Workflow file name</label>
+                <input
+                  id="template-workflow-name"
+                  placeholder="ci"
+                  class="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-gray-600"
+                />
+              </div>
+              <button
+                id="template-refresh-btn"
+                class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-500/30 text-emerald-300 text-sm hover:bg-emerald-500/10 transition-colors"
+              >
+                Refresh templates
+              </button>
+            </div>
+
+            <div id="template-action-msg" class="text-xs text-gray-400"></div>
+
+            <div id="template-list" class="space-y-2">
+              {initialTemplates.length === 0 ? (
+                <div class="text-sm text-gray-500">No templates found.</div>
+              ) : (
+                initialTemplates.slice(0, 6).map((template) => (
+                  <div
+                    class="rounded-lg border border-white/10 bg-white/[0.02] p-3 flex items-start justify-between gap-3"
+                    data-template-id={template.id}
+                  >
+                    <div>
+                      <div class="text-sm font-medium text-white">{template.name}</div>
+                      <div class="text-xs text-gray-500 mt-1">
+                        {(template.category || "uncategorized").toUpperCase()}
+                        {template.language ? ` • ${template.language}` : ""}
+                      </div>
+                      {template.description && (
+                        <p class="text-xs text-gray-400 mt-1">{template.description}</p>
+                      )}
+                    </div>
+                    <button
+                      class="apply-template-btn px-3 py-1.5 rounded-lg border border-emerald-500/30 text-emerald-300 text-xs hover:bg-emerald-500/10"
+                      data-template-id={template.id}
+                    >
+                      Apply
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div class="pt-2 border-t border-white/10">
+              <h4 class="text-sm font-medium text-white mb-2">Applied workflows</h4>
+              <div id="applied-workflows-list" class="space-y-1">
+                {existingWorkflows.length === 0 ? (
+                  <div class="text-xs text-gray-500">No workflows applied from templates yet.</div>
+                ) : (
+                  existingWorkflows.map((workflow) => (
+                    <div class="flex items-center justify-between text-xs rounded border border-white/10 bg-white/[0.02] px-2 py-1.5">
+                      <span class="text-gray-300">{workflow.name}</span>
+                      <span class="text-gray-500 font-mono">{workflow.path}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Artifact and Log Retention -->
         <div class="relative">
           <div class="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/20 via-transparent to-blue-500/20 rounded-xl opacity-50"></div>
@@ -308,3 +415,127 @@ const repo = {
     </div>
   </div>
 </BaseLayout>
+
+<script
+  define:vars={{
+    repoOwner: repo.owner,
+    repoName: repo.name,
+  }}
+>
+  const templateList = document.getElementById("template-list");
+  const templateMsg = document.getElementById("template-action-msg");
+  const templateRefreshBtn = document.getElementById("template-refresh-btn");
+  const templateCategoryFilter = document.getElementById("template-category-filter");
+  const templateLanguageFilter = document.getElementById("template-language-filter");
+  const templateWorkflowName = document.getElementById("template-workflow-name");
+  const appliedWorkflowsList = document.getElementById("applied-workflows-list");
+
+  function templateSummary(template) {
+    const category = (template.category || "uncategorized").toUpperCase();
+    return `${category}${template.language ? ` • ${template.language}` : ""}`;
+  }
+
+  function renderTemplates(templates) {
+    if (!templateList) return;
+    if (!templates.length) {
+      templateList.innerHTML = '<div class="text-sm text-gray-500">No templates found.</div>';
+      return;
+    }
+
+    templateList.innerHTML = templates.map((template) => `
+      <div class="rounded-lg border border-white/10 bg-white/[0.02] p-3 flex items-start justify-between gap-3" data-template-id="${template.id}">
+        <div>
+          <div class="text-sm font-medium text-white">${template.name}</div>
+          <div class="text-xs text-gray-500 mt-1">${templateSummary(template)}</div>
+          ${template.description ? `<p class="text-xs text-gray-400 mt-1">${template.description}</p>` : ""}
+        </div>
+        <button
+          class="apply-template-btn px-3 py-1.5 rounded-lg border border-emerald-500/30 text-emerald-300 text-xs hover:bg-emerald-500/10"
+          data-template-id="${template.id}"
+        >
+          Apply
+        </button>
+      </div>
+    `).join("");
+  }
+
+  function renderAppliedWorkflow(workflow) {
+    if (!appliedWorkflowsList) return;
+    const empty = appliedWorkflowsList.querySelector(".text-gray-500");
+    if (empty) {
+      appliedWorkflowsList.innerHTML = "";
+    }
+    const row = document.createElement("div");
+    row.className = "flex items-center justify-between text-xs rounded border border-white/10 bg-white/[0.02] px-2 py-1.5";
+    row.innerHTML = `
+      <span class="text-gray-300">${workflow.name}</span>
+      <span class="text-gray-500 font-mono">${workflow.path}</span>
+    `;
+    appliedWorkflowsList.prepend(row);
+  }
+
+  async function loadTemplates() {
+    if (!templateMsg) return;
+    templateMsg.textContent = "Loading templates...";
+
+    const category = templateCategoryFilter?.value?.trim() || "";
+    const language = templateLanguageFilter?.value?.trim() || "";
+    const query = new URLSearchParams();
+    if (category) query.set("category", category);
+    if (language) query.set("language", language);
+
+    try {
+      const suffix = query.toString() ? `?${query.toString()}` : "";
+      const res = await fetch(`/api/repos/${repoOwner}/${repoName}/workflow/templates${suffix}`);
+      const payload = await res.json();
+      if (!res.ok) {
+        throw new Error(payload?.error?.message || payload?.message || "Failed to load templates");
+      }
+      renderTemplates(payload?.data?.templates || []);
+      templateMsg.textContent = `Loaded ${payload?.data?.templates?.length || 0} template(s).`;
+    } catch (error) {
+      templateMsg.textContent = error.message || "Failed to load templates";
+    }
+  }
+
+  async function applyTemplate(templateId) {
+    if (!templateMsg) return;
+    const workflowName = templateWorkflowName?.value?.trim() || undefined;
+    templateMsg.textContent = "Applying template...";
+
+    try {
+      const res = await fetch(`/api/repos/${repoOwner}/${repoName}/workflow/templates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId, workflowName }),
+      });
+      const payload = await res.json();
+      if (!res.ok) {
+        throw new Error(payload?.error?.message || payload?.message || "Failed to apply template");
+      }
+
+      const workflow = payload?.data?.workflow;
+      if (workflow) {
+        renderAppliedWorkflow(workflow);
+      }
+      templateMsg.textContent = `Applied template to ${workflow?.path || "workflow file"}.`;
+    } catch (error) {
+      templateMsg.textContent = error.message || "Failed to apply template";
+    }
+  }
+
+  templateRefreshBtn?.addEventListener("click", (event) => {
+    event.preventDefault();
+    loadTemplates();
+  });
+  templateCategoryFilter?.addEventListener("change", loadTemplates);
+  templateLanguageFilter?.addEventListener("change", loadTemplates);
+
+  templateList?.addEventListener("click", (event) => {
+    const button = event.target.closest(".apply-template-btn");
+    if (!button) return;
+    const templateId = button.getAttribute("data-template-id");
+    if (!templateId) return;
+    applyTemplate(templateId);
+  });
+</script>
