@@ -522,10 +522,23 @@ try {
                     <Button id="rebase-stack-btn" variant="outline" className="text-sm">
                       Rebase stack
                     </Button>
+                    <select
+                      id="stack-merge-method"
+                      class="h-8 rounded-md border bg-background px-2 text-xs"
+                    >
+                      <option value="merge">Merge</option>
+                      <option value="squash">Squash</option>
+                      <option value="rebase">Rebase</option>
+                    </select>
+                    <Button id="merge-stack-btn" variant="outline" className="text-sm">
+                      Merge stack
+                    </Button>
                     <div id="queue-stack-error" class="text-xs text-red-500 hidden"></div>
                     <div id="rebase-stack-msg" class="text-xs text-muted-foreground hidden"></div>
                   </div>
                 )}
+                <div id="stack-merge-readiness" class="mt-2 text-xs text-muted-foreground"></div>
+                <div id="stack-merge-blockers" class="mt-2 space-y-1 text-xs text-amber-500"></div>
                 <div class="mt-4 rounded-md border border-dashed px-3 py-2 text-xs">
                   <div class="flex items-center justify-between">
                     <div class="text-muted-foreground">Stack approvals</div>
@@ -649,6 +662,10 @@ try {
   const queueStackError = document.getElementById("queue-stack-error");
   const autoUpdateStackBtn = document.getElementById("auto-update-stack-btn");
   const rebaseStackBtn = document.getElementById("rebase-stack-btn");
+  const mergeStackBtn = document.getElementById("merge-stack-btn");
+  const stackMergeMethod = document.getElementById("stack-merge-method");
+  const stackMergeReadiness = document.getElementById("stack-merge-readiness");
+  const stackMergeBlockers = document.getElementById("stack-merge-blockers");
   const rebaseStackMsg = document.getElementById("rebase-stack-msg");
   const stackApprovalsRefresh = document.getElementById("stack-approvals-refresh");
   const stackApprovalsStatus = document.getElementById("stack-approvals-status");
@@ -841,6 +858,39 @@ try {
     }
   }
 
+  async function refreshStackMergeReadiness() {
+    if (!stackId || !stackMergeReadiness) return;
+
+    try {
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/stacks/${stackId}/merge-readiness`,
+      );
+      const data = await res.json();
+      if (!res.ok) return;
+
+      const blockers = data?.blockers || [];
+      stackMergeReadiness.textContent = data?.canMerge
+        ? "Stack is ready to merge."
+        : "Stack is not merge-ready.";
+
+      if (stackMergeBlockers) {
+        stackMergeBlockers.innerHTML = blockers
+          .map((blocker) => `<div>• ${blocker}</div>`)
+          .join("");
+      }
+
+      if (mergeStackBtn) {
+        if (data?.canMerge) {
+          mergeStackBtn.removeAttribute("disabled");
+        } else {
+          mergeStackBtn.setAttribute("disabled", "true");
+        }
+      }
+    } catch {
+      // Non-fatal readiness refresh failure
+    }
+  }
+
   rebaseStackBtn?.addEventListener("click", async () => {
     if (!stackId) return;
 
@@ -906,6 +956,45 @@ try {
     } finally {
       resetStackActionButtons();
       refreshStackMaintenanceStatus();
+    }
+  });
+
+  mergeStackBtn?.addEventListener("click", async () => {
+    if (!stackId) return;
+    const mergeMethod = stackMergeMethod?.value || "merge";
+
+    mergeStackBtn.setAttribute("disabled", "true");
+    mergeStackBtn.textContent = "Merging stack...";
+    showStackActionMessage("Merging stack...");
+
+    try {
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/stacks/${stackId}/merge`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mergeMethod }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error?.message || data?.message || "Failed to merge stack");
+      }
+
+      const mergedCount = data?.merged?.length || 0;
+      const failedCount = data?.failed?.length || 0;
+      const skippedCount = data?.skipped?.length || 0;
+      showStackActionMessage(
+        `Stack merge complete: merged ${mergedCount}, failed ${failedCount}, skipped ${skippedCount}.`
+      );
+      window.location.reload();
+    } catch (e) {
+      showStackActionMessage(e.message || "Failed to merge stack", true);
+    } finally {
+      if (mergeStackBtn) {
+        mergeStackBtn.textContent = "Merge stack";
+      }
+      refreshStackMergeReadiness();
     }
   });
 
@@ -1060,6 +1149,7 @@ try {
   if (stackId) {
     loadStackApprovals();
     refreshStackMaintenanceStatus();
+    refreshStackMergeReadiness();
   }
 
   mergeBtn?.addEventListener("click", async () => {
