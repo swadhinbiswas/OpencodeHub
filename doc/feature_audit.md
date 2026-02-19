@@ -9,7 +9,7 @@
 | :--- | :---: | :---: | :---: | :---: |
 | **Repository & Git** | 9 | 4 | 0 | 13 |
 | **Pull Requests** | 9 | 6 | 0 | 15 |
-| **Code Review** | 8 | 2 | 0 | 10 |
+| **Code Review** | 9 | 1 | 0 | 10 |
 | **Issues & Planning** | 10 | 0 | 0 | 10 |
 | **CI/CD & Automation** | 4 | 4 | 0 | 8 |
 | **Third-Party Integrations** | 4 | 18 | 0 | 22 |
@@ -19,7 +19,7 @@
 | **Notifications & Collaboration** | 5 | 3 | 0 | 8 |
 | **Interfaces & Extensibility** | 5 | 2 | 0 | 7 |
 | **Self-Hosted & Deployment** | 4 | 3 | 0 | 7 |
-| **Total** | **74** | **51** | **0** | **125** |
+| **Total** | **75** | **50** | **0** | **125** |
 
 ---
 
@@ -66,7 +66,7 @@
 | Threaded discussions | ✅ | Reply threading via `replyToId` |
 | Suggested changes | ✅ | Suggestion creation + apply endpoints implemented (`pulls/[pullNumber]/suggestions/apply.ts`) |
 | Batch comments | ✅ | Atomic batch review submission endpoint + PR conversation UI integration (`reviews/batch`) |
-| Code owner enforcement | ⚠️ | Enforced in PR state transitions and merge queue (`pr-codeowner.ts`); branch/rules UX still maturing |
+| Code owner enforcement | ✅ | Enforced in PR state transitions and merge queue (`pr-codeowner.ts`), with dedicated PR policy introspection endpoint (`pulls/{number}/codeowner-enforcement`) and PR UI visibility for active rule source, blockers, and per-file CODEOWNERS approval status |
 | Review templates | ✅ | UI + API + defaults implemented (`review-templates`) |
 | Required approval policies | ✅ | Via branch protection rules |
 | Partial file approvals | ✅ | Implemented via API + PR UI (`partial-file-approvals`, `file-approvals.ts`) |
