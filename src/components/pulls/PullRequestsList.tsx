@@ -112,6 +112,8 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isSuggesting, setIsSuggesting] = useState(false);
     const [isApplying, setIsApplying] = useState(false);
+    const [isBulkMerging, setIsBulkMerging] = useState(false);
+    const [bulkMergeMethod, setBulkMergeMethod] = useState<"merge" | "squash" | "rebase">("merge");
 
     const prById = new Map(pullRequests.map((pr) => [pr.id, pr]));
 
@@ -221,6 +223,41 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
         }
     };
 
+    const bulkMergeSelected = async () => {
+        if (selectedPrIds.length === 0) {
+            setWorkflowMsg("Select at least one open PR to bulk merge.");
+            return;
+        }
+
+        setIsBulkMerging(true);
+        setWorkflowMsg("");
+        try {
+            const response = await fetch(`/api/repos/${repoOwner}/${repoName}/pulls/bulk-merge`, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({
+                    prIds: selectedPrIds,
+                    mergeMethod: bulkMergeMethod,
+                }),
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload?.error?.message || "Failed to bulk merge selected PRs");
+            }
+
+            const merged = payload?.data?.merged?.length || 0;
+            const failed = payload?.data?.failed?.length || 0;
+            const skipped = payload?.data?.skipped?.length || 0;
+            setWorkflowMsg(`Bulk merge complete: merged ${merged}, failed ${failed}, skipped ${skipped}.`);
+            setSelectedPrIds([]);
+            window.location.reload();
+        } catch (error: any) {
+            setWorkflowMsg(error?.message || "Failed to bulk merge selected PRs");
+        } finally {
+            setIsBulkMerging(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Enhanced Header with Glow */}
@@ -325,6 +362,24 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                             >
                                 {isApplying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
                                 Apply As Stack
+                            </button>
+                            <select
+                                value={bulkMergeMethod}
+                                onChange={(event) => setBulkMergeMethod(event.target.value as "merge" | "squash" | "rebase")}
+                                className="rounded-lg border border-white/15 bg-white/[0.04] px-2 py-1.5 text-xs text-gray-200"
+                            >
+                                <option value="merge">Merge</option>
+                                <option value="squash">Squash</option>
+                                <option value="rebase">Rebase</option>
+                            </select>
+                            <button
+                                type="button"
+                                onClick={bulkMergeSelected}
+                                disabled={isBulkMerging || selectedPrIds.length === 0}
+                                className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-emerald-600 to-green-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+                            >
+                                {isBulkMerging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <GitMerge className="h-3.5 w-3.5" />}
+                                Bulk Merge Selected
                             </button>
                         </div>
                     </div>
