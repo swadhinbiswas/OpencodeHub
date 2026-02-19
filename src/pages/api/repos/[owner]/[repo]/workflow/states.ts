@@ -2,78 +2,99 @@
 import type { APIRoute } from "astro";
 import { getDatabase, schema } from "@/db";
 import { eq, and } from "drizzle-orm";
-import { canAdminRepo } from "@/lib/permissions";
+import { canAdminRepo, canReadRepo } from "@/lib/permissions";
 import { generateId } from "@/lib/utils";
 import { z } from "zod";
+import { badRequest, forbidden, notFound, success, unauthorized, withErrorHandler } from "@/lib/api";
 
-export const GET: APIRoute = async ({ params, request, locals }) => {
+const createStateSchema = z.object({
+    name: z.string().min(1),
+    description: z.string().optional(),
+});
+
+function normalizeStateName(name: string): string {
+    return name.toLowerCase().trim().replace(/\s+/g, "_");
+}
+
+async function resolveRepository(db: ReturnType<typeof getDatabase>, owner: string, repo: string) {
+    const ownerUser = await db.query.users.findFirst({
+        where: eq(schema.users.username, owner),
+    });
+    if (!ownerUser) return null;
+    return db.query.repositories.findFirst({
+        where: and(
+            eq(schema.repositories.name, repo),
+            eq(schema.repositories.ownerId, ownerUser.id)
+        ),
+    });
+}
+
+export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
     const { owner, repo } = params;
+    const currentUser = locals.user;
     const db = getDatabase();
 
-    const repository = await db.query.repositories.findFirst({
-        where: and(
-            eq(schema.repositories.name, repo!),
-            eq(schema.repositories.ownerId, (await db.query.users.findFirst({
-                where: eq(schema.users.username, owner!)
-            }))?.id || "")
-        )
-    });
+    if (!currentUser) return unauthorized();
+    if (!owner || !repo) return badRequest("Missing parameters");
 
-    if (!repository) return new Response("Repository not found", { status: 404 });
+    const repository = await resolveRepository(db, owner, repo);
+    if (!repository) return notFound("Repository not found");
+    if (!(await canReadRepo(currentUser.id, repository, { isAdmin: currentUser.isAdmin ?? undefined }))) {
+        return notFound("Repository not found");
+    }
 
     const states = await db.query.prStateDefinitions.findMany({
         where: eq(schema.prStateDefinitions.repositoryId, repository.id),
         orderBy: (states, { asc }) => [asc(states.order)]
     });
 
-    return new Response(JSON.stringify(states), {
-        headers: { "Content-Type": "application/json" }
-    });
-};
+    return success(states);
+});
 
-export const POST: APIRoute = async ({ params, request, locals }) => {
+export const POST: APIRoute = withErrorHandler(async ({ params, request, locals }) => {
     const { owner, repo } = params;
     const db = getDatabase();
     const currentUser = locals.user;
 
-    if (!currentUser) return new Response("Unauthorized", { status: 401 });
-
-    const repository = await db.query.repositories.findFirst({
-        where: and(
-            eq(schema.repositories.name, repo!),
-            eq(schema.repositories.ownerId, (await db.query.users.findFirst({
-                where: eq(schema.users.username, owner!)
-            }))?.id || "")
-        )
-    });
-
-    if (!repository) return new Response("Repository not found", { status: 404 });
+    if (!currentUser) return unauthorized();
+    if (!owner || !repo) return badRequest("Missing parameters");
+    const repository = await resolveRepository(db, owner, repo);
+    if (!repository) return notFound("Repository not found");
 
     if (!await canAdminRepo(currentUser.id, repository)) {
-        return new Response("Forbidden", { status: 403 });
+        return forbidden();
     }
 
-    try {
-        const body = await request.json();
-        const name = z.string().min(1).parse(body.name);
-        const description = z.string().optional().parse(body.description);
-
-        const id = generateId("prstate");
-        const count = await db.$count(schema.prStateDefinitions, eq(schema.prStateDefinitions.repositoryId, repository.id));
-
-        // @ts-expect-error - Drizzle union type mismatch
-        const [newState] = await db.insert(schema.prStateDefinitions).values({
-            id,
-            repositoryId: repository.id,
-            name: name.toLowerCase().replace(/ /g, "_"),
-            displayName: name,
-            description,
-            order: count,
-            color: "#808080", // Default gray
-        }).returning();
-
-        return new Response(JSON.stringify(newState), { status: 201 });
-    } catch (e: any) {
-        return new Response(JSON.stringify({ error: e.message }), { status: 400 });
+    const body = await request.json().catch(() => null);
+    const parsed = createStateSchema.safeParse(body);
+    if (!parsed.success) {
+        return badRequest(parsed.error.issues[0]?.message || "Invalid state payload");
     }
-};
+
+    const normalizedName = normalizeStateName(parsed.data.name);
+    const existingByName = await db.query.prStateDefinitions.findFirst({
+        where: and(
+            eq(schema.prStateDefinitions.repositoryId, repository.id),
+            eq(schema.prStateDefinitions.name, normalizedName)
+        ),
+    });
+    if (existingByName) {
+        return badRequest(`State '${normalizedName}' already exists`);
+    }
+
+    const id = generateId("prstate");
+    const count = await db.$count(schema.prStateDefinitions, eq(schema.prStateDefinitions.repositoryId, repository.id));
+
+    // @ts-expect-error - Drizzle union type mismatch
+    const [newState] = await db.insert(schema.prStateDefinitions).values({
+        id,
+        repositoryId: repository.id,
+        name: normalizedName,
+        displayName: parsed.data.name.trim(),
+        description: parsed.data.description,
+        order: count,
+        color: "#808080",
+    }).returning();
+
+    return success(newState);
+});
