@@ -172,7 +172,7 @@
 | :--- | :---: | :--- |
 | PR cycle time analytics | ✅ | `developer-metrics.ts` |
 | Review latency tracking | ✅ | Metrics schema exists |
-| Merge frequency metrics | ⚠️ | Basic tracking |
+| Merge frequency metrics | ⚠️ | Time-series merge frequency API now available via `GET /repos/{owner}/{repo}/analytics/merge-frequency` (daily/weekly buckets); higher-level dashboarding/forecasting remains partial |
 | Developer workload insights | ⚠️ | Basic - needs enhancement |
 | Hotspot file detection | ✅ | Implemented in analytics library + repository API endpoint |
 | Delivery performance dashboards | ✅ | `insights.astro` pages |
