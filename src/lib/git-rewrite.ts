@@ -87,6 +87,31 @@ export async function rewriteBranchHistory(
     }
 }
 
+export async function getRewriteOperationFiles(
+    repoOwner: string,
+    repoName: string,
+    operations: RewriteOperation[]
+): Promise<string[]> {
+    const repoPath = await acquireRepo(repoOwner, repoName);
+    const git = simpleGit(repoPath);
+
+    try {
+        const files = new Set<string>();
+
+        for (const op of operations) {
+            const output = await git.raw(["show", "--pretty=format:", "--name-only", op.hash]);
+            for (const line of output.split("\n")) {
+                const path = line.trim();
+                if (path.length > 0) files.add(path);
+            }
+        }
+
+        return [...files.values()];
+    } finally {
+        await releaseRepo(repoOwner, repoName, false);
+    }
+}
+
 async function readCommitMessage(git: SimpleGit, rev: string): Promise<string> {
     return (await git.raw(["show", "-s", "--format=%B", rev])).trim();
 }
