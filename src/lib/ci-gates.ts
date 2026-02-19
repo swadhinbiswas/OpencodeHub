@@ -360,3 +360,19 @@ export async function removeRequiredCheck(checkId: string): Promise<boolean> {
         return false;
     }
 }
+
+/**
+ * Delete merge gate
+ */
+export async function removeMergeGate(gateId: string): Promise<boolean> {
+    const db = getDatabase();
+
+    try {
+        // @ts-expect-error - Drizzle multi-db union type issue
+        await db.delete(schema.mergeGates)
+            .where(eq(schema.mergeGates.id, gateId));
+        return true;
+    } catch {
+        return false;
+    }
+}

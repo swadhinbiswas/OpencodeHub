@@ -1067,6 +1067,57 @@ export const openApiSpec = {
                 },
             },
         },
+        "/repos/{owner}/{repo}/merge-gates/{id}": {
+            patch: {
+                tags: ["CI/CD"],
+                summary: "Enable or disable a merge gate",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "id", in: "path", required: true, schema: { type: "string" } },
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    enabled: { type: "boolean" },
+                                },
+                                required: ["enabled"],
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    200: { description: "Merge gate updated" },
+                    400: { description: "Invalid payload or update failure", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository or merge gate not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+            delete: {
+                tags: ["CI/CD"],
+                summary: "Delete merge gate or required check",
+                description: "Deletes a repository-scoped merge gate entry. If the id belongs to a required status check, that check is deleted.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "id", in: "path", required: true, schema: { type: "string" } },
+                ],
+                responses: {
+                    200: { description: "Entry deleted" },
+                    400: { description: "Delete failed", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository or entry not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
         "/user/notification-digests/test": {
             post: {
                 tags: ["Notifications"],
