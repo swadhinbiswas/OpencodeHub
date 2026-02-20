@@ -9,6 +9,9 @@ import { eq, and, inArray } from "drizzle-orm";
 import { logger } from "./logger";
 import { repositories } from "@/db/schema/repositories";
 import { pullRequests } from "@/db/schema/pull-requests";
+import crypto from "node:crypto";
+import { getChangedFiles, getGit } from "./git";
+import { resolveRepoPath } from "./git-storage";
 
 // ============================================================================
 // SCHEMA
@@ -65,9 +68,24 @@ export const migrationDetections = pgTable("migration_detections", {
     createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const apiChangeDetections = pgTable("api_change_detections", {
+    id: text("id").primaryKey(),
+    pullRequestId: text("pull_request_id")
+        .notNull()
+        .references(() => pullRequests.id, { onDelete: "cascade" }),
+    changeType: text("change_type").notNull(), // added, removed, modified
+    path: text("path").notNull(),
+    method: text("method"),
+    breaking: boolean("breaking").default(false),
+    details: text("details").notNull(),
+    affectedFiles: jsonb("affected_files").$type<string[]>(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export type ChangeSet = typeof changeSets.$inferSelect;
 export type BreakingChange = typeof breakingChanges.$inferSelect;
 export type MigrationDetection = typeof migrationDetections.$inferSelect;
+export type APIChangeDetection = typeof apiChangeDetections.$inferSelect;
 
 // ============================================================================
 // CROSS-REPO CHANGE SETS
@@ -160,67 +178,129 @@ export async function detectBreakingChanges(pullRequestId: string): Promise<Brea
 
     if (!pr) return detectedChanges;
 
-    // Analyze diff for breaking changes
-    const patterns = [
+    const repository = await db.query.repositories.findFirst({
+        where: eq(schema.repositories.id, pr.repositoryId),
+    });
+    if (!repository) return detectedChanges;
+
+    const repoPath = await resolveRepoPath(repository.diskPath);
+    const changedFiles = await getChangedFiles(repoPath, pr.baseBranch, pr.headBranch);
+    const git = getGit(repoPath);
+    const diff = await git.raw(["diff", `${pr.baseBranch}...${pr.headBranch}`]);
+
+    // Clear previous detections for idempotent re-runs.
+    // @ts-expect-error - Drizzle multi-db union type issue
+    await db.delete(schema.breakingChanges).where(eq(schema.breakingChanges.pullRequestId, pullRequestId));
+
+    const fileRules = [
         {
-            pattern: /^-\s*export\s+(function|const|class|interface|type)\s+(\w+)/gm,
+            match: (f: string) => /openapi\.(ya?ml|json)$/i.test(f) || /schema\.(graphql|gql)$/i.test(f),
             type: "api",
             severity: "high",
-            template: "Removed export: $2",
+            description: "API contract file changed",
         },
         {
-            pattern: /^-\s*(public|protected)\s+\w+\s*\(/gm,
-            type: "api",
+            match: (f: string) => /migrations?\/.*\.(sql|ts|js)$/i.test(f),
+            type: "schema",
             severity: "medium",
-            template: "Removed public method",
+            description: "Migration file changed",
         },
         {
-            pattern: /\.drop(Table|Column|Index)\s*\(/gi,
-            type: "schema",
-            severity: "critical",
-            template: "Database schema drop detected",
-        },
-        {
-            pattern: /ALTER\s+TABLE.*DROP\s+COLUMN/gi,
-            type: "schema",
-            severity: "critical",
-            template: "Column drop detected",
-        },
-        {
-            pattern: /"version"\s*:\s*"(\d+)\.(\d+)\.(\d+)"/g,
+            match: (f: string) => /package\.json$|pnpm-lock\.yaml$|yarn\.lock$|package-lock\.json$/i.test(f),
             type: "dependency",
             severity: "medium",
-            template: "Major version change in dependencies",
-        },
-        {
-            pattern: /^-\s*"[^"]+"\s*:\s*"[\^~]?\d+/gm,
-            type: "dependency",
-            severity: "low",
-            template: "Dependency removed",
+            description: "Dependency manifest changed",
         },
     ];
 
-    // Simulated diff analysis
-    const diff = ""; // Would be fetched from Git
+    const sourceFiles = changedFiles.filter((file) =>
+        /\.(ts|tsx|js|jsx|mjs|cjs|go|java|kt|py|rb|rs|cs|php)$/i.test(file)
+    );
+    const removedExportPattern = /^-\s*export\s+(?:async\s+)?(?:function|const|class|interface|type)\s+([A-Za-z0-9_]+)/gm;
+    const removedPublicMethodPattern = /^-\s*(?:public|protected)\s+[A-Za-z0-9_]+\s*\(/gm;
+    const schemaDropPattern = /\.drop(Table|Column|Index)\s*\(/gi;
+    const sqlDestructivePattern = /\b(?:DROP\s+(?:TABLE|COLUMN|INDEX)|ALTER\s+TABLE.+DROP\s+COLUMN)\b/gi;
+    const dependencyRemovalPattern = /^-\s*"([^"]+)"\s*:\s*"([^"]+)"/gm;
 
-    for (const { pattern, type, severity, template } of patterns) {
-        const matches = diff.matchAll(pattern);
-        for (const match of matches) {
-            const change = {
-                id: crypto.randomUUID(),
-                pullRequestId,
-                changeType: type,
-                severity,
-                description: template.replace("$2", match[2] || ""),
-                affectedFiles: [],
-                suggestedAction: getSuggestedAction(type, severity),
-                acknowledged: false,
-                createdAt: new Date(),
-            };
+    const seen = new Set<string>();
 
-            // @ts-expect-error - Drizzle multi-db union type issue
-            await db.insert(schema.breakingChanges).values(change);
-            detectedChanges.push(change as BreakingChange);
+    const insertBreakingChange = async (change: {
+        changeType: string;
+        severity: string;
+        description: string;
+        affectedFiles: string[];
+    }) => {
+        const key = `${change.changeType}:${change.severity}:${change.description}:${change.affectedFiles.sort().join(",")}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+
+        const row = {
+            id: crypto.randomUUID(),
+            pullRequestId,
+            changeType: change.changeType,
+            severity: change.severity,
+            description: change.description,
+            affectedFiles: change.affectedFiles,
+            suggestedAction: getSuggestedAction(change.changeType, change.severity),
+            acknowledged: false,
+            createdAt: new Date(),
+        };
+
+        // @ts-expect-error - Drizzle multi-db union type issue
+        await db.insert(schema.breakingChanges).values(row);
+        detectedChanges.push(row as BreakingChange);
+    };
+
+    if (sourceFiles.length > 0) {
+        for (const match of diff.matchAll(removedExportPattern)) {
+            await insertBreakingChange({
+                changeType: "api",
+                severity: "high",
+                description: `Removed exported symbol: ${match[1]}`,
+                affectedFiles: sourceFiles.slice(0, 10),
+            });
+        }
+
+        if (removedPublicMethodPattern.test(diff)) {
+            await insertBreakingChange({
+                changeType: "api",
+                severity: "medium",
+                description: "Removed public/protected method signature",
+                affectedFiles: sourceFiles.slice(0, 10),
+            });
+        }
+    }
+
+    if (schemaDropPattern.test(diff) || sqlDestructivePattern.test(diff)) {
+        await insertBreakingChange({
+            changeType: "schema",
+            severity: "critical",
+            description: "Destructive schema operation detected in diff",
+            affectedFiles: changedFiles.filter((f) => /migrations?|schema|sql|drizzle|prisma/i.test(f)).slice(0, 10),
+        });
+    }
+
+    const removedDependencies = Array.from(diff.matchAll(dependencyRemovalPattern))
+        .map((match) => ({ name: match[1], version: match[2] }))
+        .filter((dep) => !dep.name.startsWith("@types/"));
+    if (removedDependencies.length > 0) {
+        await insertBreakingChange({
+            changeType: "dependency",
+            severity: "medium",
+            description: `Dependency removals detected (${removedDependencies.length})`,
+            affectedFiles: changedFiles.filter((f) => /package\.json$|pnpm-lock\.yaml$|yarn\.lock$|package-lock\.json$/i.test(f)),
+        });
+    }
+
+    for (const file of changedFiles) {
+        for (const rule of fileRules) {
+            if (!rule.match(file)) continue;
+            await insertBreakingChange({
+                changeType: rule.type,
+                severity: rule.severity,
+                description: `${rule.description}: ${file}`,
+                affectedFiles: [file],
+            });
         }
     }
 
@@ -259,6 +339,8 @@ function getSuggestedAction(type: string, severity: string): string {
 export async function detectMigrations(pullRequestId: string, changedFiles: string[]): Promise<MigrationDetection[]> {
     const db = getDatabase();
     const detections: MigrationDetection[] = [];
+    // @ts-expect-error - Drizzle multi-db union type issue
+    await db.delete(schema.migrationDetections).where(eq(schema.migrationDetections.pullRequestId, pullRequestId));
 
     const migrationPatterns = [
         { pattern: /migrations?\/.*\.(sql|ts|js)$/i, tool: "generic", type: "database" },
@@ -286,16 +368,40 @@ export async function detectMigrations(pullRequestId: string, changedFiles: stri
         }
     }
 
+    let pr: typeof schema.pullRequests.$inferSelect | undefined;
+    let repository: typeof schema.repositories.$inferSelect | undefined;
+    let git: ReturnType<typeof getGit> | null = null;
+    if (Object.keys(matchedFiles).length > 0) {
+        pr = await db.query.pullRequests.findFirst({
+            where: eq(schema.pullRequests.id, pullRequestId),
+        });
+        if (pr) {
+            repository = await db.query.repositories.findFirst({
+                where: eq(schema.repositories.id, pr.repositoryId),
+            }) || undefined;
+        }
+        if (repository) {
+            const repoPath = await resolveRepoPath(repository.diskPath);
+            git = getGit(repoPath);
+        }
+    }
+
     for (const [, { tool, type, files }] of Object.entries(matchedFiles)) {
+        const analyzed = await analyzeMigrationFiles({
+            git,
+            baseRef: pr?.baseBranch,
+            headRef: pr?.headBranch,
+            files,
+        });
         const detection = {
             id: crypto.randomUUID(),
             pullRequestId,
             migrationType: type,
             tool,
             files,
-            isReversible: await checkMigrationReversibility(files),
-            requiresDowntime: type === "database" && files.some(f => /drop|alter/i.test(f)),
-            notes: null,
+            isReversible: analyzed.isReversible,
+            requiresDowntime: analyzed.requiresDowntime,
+            notes: analyzed.notes,
             createdAt: new Date(),
         };
 
@@ -307,9 +413,43 @@ export async function detectMigrations(pullRequestId: string, changedFiles: stri
     return detections;
 }
 
-async function checkMigrationReversibility(files: string[]): Promise<boolean> {
-    // Check for down migrations
-    return files.some(f => /down|rollback|revert/i.test(f));
+async function analyzeMigrationFiles(options: {
+    git: ReturnType<typeof getGit> | null;
+    baseRef?: string;
+    headRef?: string;
+    files: string[];
+}): Promise<{ isReversible: boolean; requiresDowntime: boolean; notes: string | null }> {
+    const downFileHint = options.files.some((f) => /down|rollback|revert/i.test(f));
+    let reversibleSignals = downFileHint ? 1 : 0;
+    let downtimeSignals = 0;
+    const noteParts: string[] = [];
+
+    for (const file of options.files) {
+        const headContent = await getFileContentAtRef(options.git, options.headRef, file);
+        const baseContent = await getFileContentAtRef(options.git, options.baseRef, file);
+        const combined = `${baseContent || ""}\n${headContent || ""}`.toLowerCase();
+
+        if (/\b(drop\s+table|drop\s+column|alter\s+table.+drop\s+column)\b/.test(combined)) {
+            downtimeSignals += 2;
+            noteParts.push(`destructive sql in ${file}`);
+        }
+        if (/\b(rename\s+column|alter\s+type|drop\s+constraint)\b/.test(combined)) {
+            downtimeSignals += 1;
+            noteParts.push(`schema transition in ${file}`);
+        }
+        if (/\b(down|rollback|revert|undo)\b/.test(combined)) {
+            reversibleSignals += 1;
+        }
+        if (/\b(create\s+table|add\s+column)\b/.test(combined)) {
+            noteParts.push(`additive migration in ${file}`);
+        }
+    }
+
+    return {
+        isReversible: reversibleSignals > 0,
+        requiresDowntime: downtimeSignals >= 2,
+        notes: noteParts.length > 0 ? Array.from(new Set(noteParts)).join("; ") : null,
+    };
 }
 
 // ============================================================================
@@ -322,6 +462,7 @@ export interface APIChange {
     method?: string;
     breaking: boolean;
     details: string;
+    sourceFile?: string;
 }
 
 export async function detectAPIChanges(
@@ -392,24 +533,185 @@ export async function detectAPIChanges(
         }
     }
 
-    // Store breaking changes
+    await persistAPIChanges(pullRequestId, changes, []);
+
+    return changes;
+}
+
+export async function detectAPIChangesForPullRequest(
+    pullRequestId: string,
+    changedFiles: string[]
+): Promise<APIChange[]> {
     const db = getDatabase();
-    for (const change of changes.filter(c => c.breaking)) {
+    const pr = await db.query.pullRequests.findFirst({
+        where: eq(schema.pullRequests.id, pullRequestId),
+    });
+    if (!pr) return [];
+
+    const repository = await db.query.repositories.findFirst({
+        where: eq(schema.repositories.id, pr.repositoryId),
+    });
+    if (!repository) return [];
+
+    const apiSpecFiles = changedFiles.filter((file) =>
+        /openapi\.(ya?ml|json)$|swagger\.(ya?ml|json)$|schema\.(graphql|gql)$|\.proto$/i.test(file)
+    );
+    if (apiSpecFiles.length === 0) {
+        await persistAPIChanges(pullRequestId, [], []);
+        return [];
+    }
+
+    const repoPath = await resolveRepoPath(repository.diskPath);
+    const git = getGit(repoPath);
+    const changes: APIChange[] = [];
+
+    for (const file of apiSpecFiles) {
+        const oldContent = await getFileContentAtRef(git, pr.baseBranch, file);
+        const newContent = await getFileContentAtRef(git, pr.headBranch, file);
+        const fileChanges = detectAPIChangesFromText(oldContent || "", newContent || "", file);
+        changes.push(...fileChanges);
+    }
+
+    await persistAPIChanges(pullRequestId, changes, apiSpecFiles);
+    return changes;
+}
+
+async function persistAPIChanges(
+    pullRequestId: string,
+    changes: APIChange[],
+    sourceFiles: string[]
+) {
+    const db = getDatabase();
+
+    // @ts-expect-error - Drizzle multi-db union type issue
+    await db.delete(schema.apiChangeDetections).where(eq(schema.apiChangeDetections.pullRequestId, pullRequestId));
+
+    for (const change of changes) {
         // @ts-expect-error - Drizzle multi-db union type issue
-        await db.insert(schema.breakingChanges).values({
+        await db.insert(schema.apiChangeDetections).values({
             id: crypto.randomUUID(),
             pullRequestId,
-            changeType: "api",
-            severity: change.type === "removed" ? "high" : "medium",
-            description: change.details,
-            affectedFiles: [],
-            suggestedAction: "Update API consumers before merging",
-            acknowledged: false,
+            changeType: change.type,
+            path: change.path,
+            method: change.method || null,
+            breaking: change.breaking,
+            details: change.details,
+            affectedFiles: change.sourceFile ? [change.sourceFile] : sourceFiles,
             createdAt: new Date(),
         });
+
+        if (change.breaking) {
+            // @ts-expect-error - Drizzle multi-db union type issue
+            await db.insert(schema.breakingChanges).values({
+                id: crypto.randomUUID(),
+                pullRequestId,
+                changeType: "api",
+                severity: change.type === "removed" ? "high" : "medium",
+                description: change.details,
+                affectedFiles: change.sourceFile ? [change.sourceFile] : sourceFiles,
+                suggestedAction: "Update API consumers before merging",
+                acknowledged: false,
+                createdAt: new Date(),
+            });
+        }
+    }
+}
+
+function detectAPIChangesFromText(oldContent: string, newContent: string, sourceFile: string): APIChange[] {
+    const changes: APIChange[] = [];
+    const oldLines = oldContent.split("\n");
+    const newLines = newContent.split("\n");
+
+    const parseOpenApiSignals = (lines: string[]) => {
+        const endpoints = new Set<string>();
+        for (const raw of lines) {
+            const line = raw.trim();
+            const pathMatch = /^\/[A-Za-z0-9_{}\-./]+:\s*$/.exec(line);
+            if (pathMatch) endpoints.add(pathMatch[0].replace(/:\s*$/, ""));
+        }
+        return { endpoints };
+    };
+
+    const parseGraphqlSignals = (lines: string[]) => {
+        const defs = new Set<string>();
+        for (const raw of lines) {
+            const line = raw.trim();
+            const typeMatch = /^(type|interface|enum|input)\s+([A-Za-z0-9_]+)/.exec(line);
+            if (typeMatch) defs.add(`${typeMatch[1]}:${typeMatch[2]}`);
+            const fieldMatch = /^([A-Za-z0-9_]+)\s*\([^)]*\)?\s*:\s*([A-Za-z0-9_[\]!]+)/.exec(line);
+            if (fieldMatch) defs.add(`field:${fieldMatch[1]}:${fieldMatch[2]}`);
+        }
+        return defs;
+    };
+
+    if (/openapi|swagger/i.test(sourceFile)) {
+        const oldSignals = parseOpenApiSignals(oldLines);
+        const newSignals = parseOpenApiSignals(newLines);
+
+        for (const endpoint of oldSignals.endpoints) {
+            if (!newSignals.endpoints.has(endpoint)) {
+                changes.push({
+                    type: "removed",
+                    path: endpoint,
+                    breaking: true,
+                    details: `Endpoint ${endpoint} removed from spec`,
+                    sourceFile,
+                });
+            }
+        }
+        for (const endpoint of newSignals.endpoints) {
+            if (!oldSignals.endpoints.has(endpoint)) {
+                changes.push({
+                    type: "added",
+                    path: endpoint,
+                    breaking: false,
+                    details: `Endpoint ${endpoint} added to spec`,
+                    sourceFile,
+                });
+            }
+        }
+    } else if (/schema\.(graphql|gql)$|\.proto$/i.test(sourceFile)) {
+        const oldDefs = parseGraphqlSignals(oldLines);
+        const newDefs = parseGraphqlSignals(newLines);
+
+        for (const def of oldDefs) {
+            if (!newDefs.has(def)) {
+                changes.push({
+                    type: "removed",
+                    path: def,
+                    breaking: true,
+                    details: `Schema symbol removed: ${def}`,
+                    sourceFile,
+                });
+            }
+        }
+        for (const def of newDefs) {
+            if (!oldDefs.has(def)) {
+                changes.push({
+                    type: "added",
+                    path: def,
+                    breaking: false,
+                    details: `Schema symbol added: ${def}`,
+                    sourceFile,
+                });
+            }
+        }
     }
 
     return changes;
+}
+
+async function getFileContentAtRef(
+    git: ReturnType<typeof getGit> | null,
+    ref: string | undefined,
+    filePath: string
+): Promise<string | null> {
+    if (!git || !ref || !filePath) return null;
+    try {
+        return await git.show([`${ref}:${filePath}`]);
+    } catch {
+        return null;
+    }
 }
 
 // ============================================================================
@@ -419,7 +721,13 @@ export async function detectAPIChanges(
 export async function analyzeImpact(pullRequestId: string): Promise<{
     breakingChanges: BreakingChange[];
     migrations: MigrationDetection[];
+    apiChanges: APIChangeDetection[];
     affectedRepos: string[];
+    affectedChangeSets: {
+        changeSetId: string;
+        repositoryIds: string[];
+        pullRequestIds: string[];
+    }[];
     riskScore: number;
 }> {
     const db = getDatabase();
@@ -431,10 +739,46 @@ export async function analyzeImpact(pullRequestId: string): Promise<{
     const migrations = await db.query.migrationDetections?.findMany({
         where: eq(schema.migrationDetections.pullRequestId, pullRequestId),
     }) || [];
+    const apiChanges = await db.query.apiChangeDetections?.findMany({
+        where: eq(schema.apiChangeDetections.pullRequestId, pullRequestId),
+    }) || [];
 
-    // Find affected repositories through cross-repo links
-    const crossLinks = await db.query.crossRepoIssueLinks?.findMany({}) || [];
-    const affectedRepos: string[] = [];
+    const pr = await db.query.pullRequests.findFirst({
+        where: eq(schema.pullRequests.id, pullRequestId),
+    });
+    if (!pr) {
+        return { breakingChanges, migrations, apiChanges, affectedRepos: [], affectedChangeSets: [], riskScore: 0 };
+    }
+
+    const sets = await db.query.changeSetItems?.findMany({
+        where: eq(schema.changeSetItems.pullRequestId, pullRequestId),
+    }) || [];
+    const affectedRepoSet = new Set<string>();
+    const affectedChangeSets: {
+        changeSetId: string;
+        repositoryIds: string[];
+        pullRequestIds: string[];
+    }[] = [];
+    for (const item of sets) {
+        const siblings = await db.query.changeSetItems?.findMany({
+            where: eq(schema.changeSetItems.changeSetId, item.changeSetId),
+        }) || [];
+        const repoIds = new Set<string>();
+        const prIds = new Set<string>();
+        for (const sibling of siblings) {
+            repoIds.add(sibling.repositoryId);
+            if (sibling.pullRequestId) prIds.add(sibling.pullRequestId);
+            if (sibling.repositoryId !== pr.repositoryId) {
+                affectedRepoSet.add(sibling.repositoryId);
+            }
+        }
+        affectedChangeSets.push({
+            changeSetId: item.changeSetId,
+            repositoryIds: Array.from(repoIds),
+            pullRequestIds: Array.from(prIds),
+        });
+    }
+    const affectedRepos = Array.from(affectedRepoSet);
 
     // Calculate risk score (0-100)
     let riskScore = 0;
@@ -454,10 +798,13 @@ export async function analyzeImpact(pullRequestId: string): Promise<{
         if (!migration.isReversible) riskScore += 15;
         else riskScore += 5;
     }
+    for (const apiChange of apiChanges) {
+        riskScore += apiChange.breaking ? 12 : 3;
+    }
 
     riskScore = Math.min(100, riskScore);
 
-    return { breakingChanges, migrations, affectedRepos, riskScore };
+    return { breakingChanges, migrations, apiChanges, affectedRepos, affectedChangeSets, riskScore };
 }
 
 // ============================================================================
