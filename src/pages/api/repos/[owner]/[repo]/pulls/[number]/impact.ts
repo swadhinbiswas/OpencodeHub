@@ -11,11 +11,12 @@ import { resolveRepoPath } from "@/lib/git-storage";
 import { checkPathPermissions } from "@/lib/path-scoping";
 import {
   analyzeImpact,
+  detectAPIChangesForPullRequest,
   detectBreakingChanges,
   detectMigrations,
 } from "@/lib/dependency-awareness";
 import { detectIaCFiles, triggerIaCHooks } from "@/lib/iac-hooks";
-import type { BreakingChange, MigrationDetection } from "@/lib/dependency-awareness";
+import type { BreakingChange, MigrationDetection, APIChangeDetection } from "@/lib/dependency-awareness";
 
 const scanSchema = z.object({
   persist: z.boolean().optional().default(true),
@@ -52,18 +53,21 @@ function filterImpactByReadablePaths(options: {
   repositoryId: string;
   breakingChanges: BreakingChange[];
   migrations: MigrationDetection[];
+  apiChanges: APIChangeDetection[];
 }) {
   return (async () => {
     const scopedPaths = Array.from(
       new Set([
         ...options.breakingChanges.flatMap((change) => change.affectedFiles || []),
         ...options.migrations.flatMap((migration) => migration.files || []),
+        ...options.apiChanges.flatMap((change) => change.affectedFiles || []),
       ])
     );
     if (scopedPaths.length === 0) {
       return {
         breakingChanges: options.breakingChanges,
         migrations: options.migrations,
+        apiChanges: options.apiChanges,
         hiddenPathArtifacts: 0,
       };
     }
@@ -94,10 +98,19 @@ function filterImpactByReadablePaths(options: {
         files: visible,
       };
     });
+    const apiChanges = options.apiChanges.map((change) => {
+      const visible = (change.affectedFiles || []).filter((file) => !denied.has(file));
+      hiddenPathArtifacts += (change.affectedFiles || []).length - visible.length;
+      return {
+        ...change,
+        affectedFiles: visible,
+      };
+    });
 
     return {
       breakingChanges,
       migrations,
+      apiChanges,
       hiddenPathArtifacts,
     };
   })();
@@ -122,12 +135,14 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
     repositoryId: resolved.repository.id,
     breakingChanges: impact.breakingChanges,
     migrations: impact.migrations,
+    apiChanges: impact.apiChanges,
   });
 
   return success({
     ...impact,
     breakingChanges: filtered.breakingChanges,
     migrations: filtered.migrations,
+    apiChanges: filtered.apiChanges,
     hiddenPathArtifacts: filtered.hiddenPathArtifacts,
   });
 });
@@ -166,6 +181,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals, request 
 
   const breaking = await detectBreakingChanges(resolved.pr.id);
   const migrations = await detectMigrations(resolved.pr.id, changedFiles);
+  const apiChanges = await detectAPIChangesForPullRequest(resolved.pr.id, changedFiles);
   const impact = await analyzeImpact(resolved.pr.id);
   const iacFiles = detectIaCFiles(changedFiles);
   const iacHookResults =
@@ -181,6 +197,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals, request 
   return success({
     breakingDetected: breaking.length,
     migrationsDetected: migrations.length,
+    apiChangesDetected: apiChanges.length,
     iacFilesDetected: iacFiles.length,
     iacHookRuns: iacHookResults,
     impact,

@@ -1,0 +1,192 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getDatabase, schema } from "@/db";
+import { eq, desc } from "drizzle-orm";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/login");
+
+const db = getDatabase();
+const initialSets = (await db.query.changeSets?.findMany({
+  where: eq(schema.changeSets.createdById, user.id),
+  orderBy: [desc(schema.changeSets.createdAt)],
+  limit: 25,
+})) || [];
+---
+
+<BaseLayout title="Change Sets">
+  <div class="container py-6 space-y-6">
+    <Card>
+      <CardHeader>
+        <CardTitle>Cross-Repo Change Sets</CardTitle>
+        <CardDescription>
+          Group pull requests across repositories into one coordinated change workflow.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div class="grid gap-3 md:grid-cols-2">
+          <input id="change-set-name" class="h-9 rounded-md border bg-background px-3 text-sm" placeholder="Release train: March platform rollout" />
+          <input id="change-set-description" class="h-9 rounded-md border bg-background px-3 text-sm" placeholder="Optional description" />
+        </div>
+        <textarea id="change-set-items" class="min-h-[110px] w-full rounded-md border bg-background px-3 py-2 text-sm" placeholder="One per line: owner/repo#123 or owner/repo"></textarea>
+        <div class="flex items-center gap-2">
+          <Button id="create-change-set" variant="outline">Create Change Set</Button>
+          <span id="create-change-set-msg" class="text-xs text-muted-foreground"></span>
+        </div>
+      </CardContent>
+    </Card>
+
+    <Card>
+      <CardHeader>
+        <CardTitle>Your Change Sets</CardTitle>
+        <CardDescription>Open an item to inspect cross-repository linked pull requests.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div id="change-set-list" class="space-y-2 text-sm">
+          {initialSets.length === 0 ? (
+            <div class="text-muted-foreground">No change sets yet.</div>
+          ) : (
+            initialSets.map((item) => (
+              <button data-id={item.id} class="change-set-entry w-full text-left rounded-md border border-white/10 bg-white/5 px-3 py-2 hover:bg-white/10">
+                <div class="font-medium">{item.name}</div>
+                <div class="text-xs text-muted-foreground">{item.status} · {new Date(item.updatedAt).toLocaleString()}</div>
+              </button>
+            ))
+          )}
+        </div>
+      </CardContent>
+    </Card>
+
+    <Card>
+      <CardHeader>
+        <CardTitle>Selected Change Set</CardTitle>
+        <CardDescription>Cross-repo linked items and execution order.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div id="change-set-detail" class="text-sm text-muted-foreground">Select a change set to inspect details.</div>
+      </CardContent>
+    </Card>
+  </div>
+</BaseLayout>
+
+<script define:vars={{ initialSets }}>
+  const nameInput = document.getElementById("change-set-name");
+  const descInput = document.getElementById("change-set-description");
+  const itemsInput = document.getElementById("change-set-items");
+  const createBtn = document.getElementById("create-change-set");
+  const createMsg = document.getElementById("create-change-set-msg");
+  const listContainer = document.getElementById("change-set-list");
+  const detailContainer = document.getElementById("change-set-detail");
+
+  function parseItems(raw) {
+    return raw
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const match = /^([^\/\s]+)\/([^#\s]+)(?:#(\d+))?$/.exec(line);
+        if (!match) return null;
+        return {
+          owner: match[1],
+          repo: match[2],
+          prNumber: match[3] ? Number.parseInt(match[3], 10) : undefined,
+        };
+      })
+      .filter(Boolean);
+  }
+
+  function renderList(sets) {
+    if (!listContainer) return;
+    if (!sets.length) {
+      listContainer.innerHTML = '<div class="text-muted-foreground">No change sets yet.</div>';
+      return;
+    }
+
+    listContainer.innerHTML = sets.map((item) => `
+      <button data-id="${item.id}" class="change-set-entry w-full text-left rounded-md border border-white/10 bg-white/5 px-3 py-2 hover:bg-white/10">
+        <div class="font-medium">${item.name}</div>
+        <div class="text-xs text-muted-foreground">${item.status} · ${new Date(item.updatedAt).toLocaleString()}</div>
+      </button>
+    `).join("");
+  }
+
+  async function fetchSets() {
+    const res = await fetch("/api/change-sets");
+    const body = await res.json();
+    if (!res.ok) throw new Error(body?.error?.message || body?.message || "Failed to load change sets");
+    const data = body?.data || body;
+    renderList(data);
+    return data;
+  }
+
+  async function fetchSetDetail(id) {
+    const res = await fetch(`/api/change-sets/${id}`);
+    const body = await res.json();
+    if (!res.ok) throw new Error(body?.error?.message || body?.message || "Failed to load change set detail");
+    const data = body?.data || body;
+    if (!detailContainer) return;
+
+    const items = data?.items || [];
+    detailContainer.innerHTML = `
+      <div class="space-y-2">
+        <div class="font-medium">${data.changeSet?.name || "Change set"}</div>
+        <div class="text-xs text-muted-foreground">Status: ${data.changeSet?.status || "draft"}</div>
+        <div class="space-y-1">
+          ${items.length === 0
+            ? '<div class="text-muted-foreground">No linked repositories.</div>'
+            : items.map((item, idx) => `
+              <div class="rounded border border-white/10 bg-white/5 px-2 py-1.5">
+                <div>#${idx + 1} ${item.repository?.name || "repo"}</div>
+                <div class="text-xs text-muted-foreground">PR ${item.pullRequest?.number ? `#${item.pullRequest.number}` : "(none)"}</div>
+              </div>
+            `).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  createBtn?.addEventListener("click", async () => {
+    if (!createMsg) return;
+    createMsg.textContent = "Creating change set...";
+
+    const items = parseItems(itemsInput?.value || "");
+    if (!nameInput?.value?.trim() || items.length === 0) {
+      createMsg.textContent = "Name and at least one valid item are required.";
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/change-sets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: nameInput.value.trim(),
+          description: descInput?.value?.trim() || undefined,
+          items,
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error?.message || body?.message || "Failed to create change set");
+
+      createMsg.textContent = "Change set created.";
+      if (itemsInput) itemsInput.value = "";
+      await fetchSets();
+    } catch (error) {
+      createMsg.textContent = error.message || "Failed to create change set";
+    }
+  });
+
+  listContainer?.addEventListener("click", (event) => {
+    const target = event.target.closest(".change-set-entry");
+    if (!target) return;
+    const id = target.getAttribute("data-id");
+    if (!id) return;
+    fetchSetDetail(id).catch((error) => {
+      if (detailContainer) detailContainer.textContent = error.message || "Failed to load detail";
+    });
+  });
+
+  renderList(initialSets || []);
+</script>

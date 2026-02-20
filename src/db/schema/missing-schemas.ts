@@ -514,6 +514,20 @@ export const migrationDetections = pgTable("migration_detections", {
     createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const apiChangeDetections = pgTable("api_change_detections", {
+    id: text("id").primaryKey(),
+    pullRequestId: text("pull_request_id")
+        .notNull()
+        .references(() => pullRequests.id, { onDelete: "cascade" }),
+    changeType: text("change_type").notNull(), // added, removed, modified
+    path: text("path").notNull(),
+    method: text("method"),
+    breaking: boolean("breaking").default(false),
+    details: text("details").notNull(),
+    affectedFiles: jsonb("affected_files").$type<string[]>(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // ============== Deployments ==============
 
 export const deployments = pgTable("cloud_deployments", {
@@ -556,3 +570,4 @@ export type EmailSetting = typeof emailSettings.$inferSelect;
 export type CoverageReport = typeof coverageReports.$inferSelect;
 export type CustomDashboard = typeof customDashboards.$inferSelect;
 export type Deployment = typeof deployments.$inferSelect;
+export type APIChangeDetection = typeof apiChangeDetections.$inferSelect;

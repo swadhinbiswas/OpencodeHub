@@ -13,13 +13,13 @@
 | **Issues & Planning** | 10 | 0 | 0 | 10 |
 | **CI/CD & Automation** | 7 | 1 | 0 | 8 |
 | **Third-Party Integrations** | 22 | 0 | 0 | 22 |
-| **Dependency & Impact Awareness** | 1 | 4 | 0 | 5 |
+| **Dependency & Impact Awareness** | 5 | 0 | 0 | 5 |
 | **Security** | 9 | 3 | 0 | 12 |
 | **Analytics & Insights** | 6 | 2 | 0 | 8 |
 | **Notifications & Collaboration** | 5 | 3 | 0 | 8 |
 | **Interfaces & Extensibility** | 5 | 2 | 0 | 7 |
 | **Self-Hosted & Deployment** | 4 | 3 | 0 | 7 |
-| **Total** | **96** | **29** | **0** | **125** |
+| **Total** | **100** | **25** | **0** | **125** |
 
 ---
 
@@ -146,10 +146,10 @@
 | Feature | Status | Implementation Notes |
 | :--- | :---: | :--- |
 | PR dependency visualization | ✅ | Stack visualization in `stacks.ts` |
-| Cross-repo change sets | ⚠️ | Implemented via change-set schema/library and API endpoints; UI workflow still limited |
-| Breaking-change detection | ⚠️ | Implemented with PR diff/file heuristics + persistence; semantic precision can be improved |
-| Database migration detection | ⚠️ | Implemented from changed-file pattern detection + persistence; deeper SQL semantic analysis pending |
-| API change awareness | ⚠️ | AI review can detect, no dedicated system |
+| Cross-repo change sets | ✅ | Change-set schema/library and APIs are implemented, and dedicated UI workflow is now available via `src/pages/change-sets.astro` (create/list/detail cross-repo sets with linked PR ordering context) |
+| Breaking-change detection | ✅ | PR diff/file heuristics + persistence are implemented with improved semantic precision (deduplicated detections, source-file aware export/public API change signals, destructive schema/dependency removal scoring) |
+| Database migration detection | ✅ | Migration detection now combines changed-file pattern matching with SQL/content semantics (destructive operation classification, reversibility signal extraction, downtime inference, and persisted explanatory notes) |
+| API change awareness | ✅ | Dedicated API-awareness system is implemented with persisted `api_change_detections`, PR scan/read endpoints (`pulls/{number}/api-changes`), impact scan integration, and breaking API change propagation into merge-impact risk scoring |
 
 ## 8. Security
 | Feature | Status | Implementation Notes |

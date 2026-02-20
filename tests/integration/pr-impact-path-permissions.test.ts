@@ -8,6 +8,7 @@ const {
   analyzeImpactMock,
   detectBreakingChangesMock,
   detectMigrationsMock,
+  detectAPIChangesForPullRequestMock,
   detectIaCFilesMock,
   triggerIaCHooksMock,
   fakeSchema,
@@ -16,9 +17,10 @@ const {
   canWriteRepoMock: vi.fn(async () => true),
   checkPathPermissionsMock: vi.fn(async () => ({ allowed: true, deniedPaths: [] })),
   compareBranchesMock: vi.fn(async () => ({ diffs: [{ file: "src/app.ts" }] })),
-  analyzeImpactMock: vi.fn(async () => ({ breakingChanges: [], migrations: [] })),
+  analyzeImpactMock: vi.fn(async () => ({ breakingChanges: [], migrations: [], apiChanges: [] })),
   detectBreakingChangesMock: vi.fn(async () => []),
   detectMigrationsMock: vi.fn(async () => []),
+  detectAPIChangesForPullRequestMock: vi.fn(async () => []),
   detectIaCFilesMock: vi.fn(() => []),
   triggerIaCHooksMock: vi.fn(async () => []),
   fakeSchema: {
@@ -56,6 +58,7 @@ vi.mock("@/lib/dependency-awareness", () => ({
   analyzeImpact: analyzeImpactMock,
   detectBreakingChanges: detectBreakingChangesMock,
   detectMigrations: detectMigrationsMock,
+  detectAPIChangesForPullRequest: detectAPIChangesForPullRequestMock,
 }));
 
 vi.mock("@/lib/iac-hooks", () => ({
@@ -105,7 +108,9 @@ describe("PR impact path permissions", () => {
       migrations: [
         { id: "mg-1", files: ["db/migrations/001.sql", "secure/secret.sql"] },
       ],
+      apiChanges: [],
       affectedRepos: [],
+      affectedChangeSets: [],
       riskScore: 25,
     });
     checkPathPermissionsMock.mockResolvedValue({
