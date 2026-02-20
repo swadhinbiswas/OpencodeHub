@@ -14,12 +14,12 @@
 | **CI/CD & Automation** | 7 | 1 | 0 | 8 |
 | **Third-Party Integrations** | 22 | 0 | 0 | 22 |
 | **Dependency & Impact Awareness** | 5 | 0 | 0 | 5 |
-| **Security** | 9 | 3 | 0 | 12 |
-| **Analytics & Insights** | 6 | 2 | 0 | 8 |
-| **Notifications & Collaboration** | 5 | 3 | 0 | 8 |
-| **Interfaces & Extensibility** | 5 | 2 | 0 | 7 |
+| **Security** | 12 | 0 | 0 | 12 |
+| **Analytics & Insights** | 8 | 0 | 0 | 8 |
+| **Notifications & Collaboration** | 8 | 0 | 0 | 8 |
+| **Interfaces & Extensibility** | 7 | 0 | 0 | 7 |
 | **Self-Hosted & Deployment** | 4 | 3 | 0 | 7 |
-| **Total** | **100** | **25** | **0** | **125** |
+| **Total** | **110** | **15** | **0** | **125** |
 
 ---
 
@@ -154,13 +154,13 @@
 ## 8. Security
 | Feature | Status | Implementation Notes |
 | :--- | :---: | :--- |
-| Role-based access control (RBAC) | ⚠️ | Custom roles (`custom_roles` table) added, UI pending |
+| Role-based access control (RBAC) | ✅ | Custom role APIs are fully wired with organization RBAC management UI (`/orgs/{org}/roles`) covering role create/edit/delete and per-member custom-role assignment workflows (`api/orgs/[org]/roles`, `api/orgs/[org]/members`) |
 | Organization & team management | ✅ | Schema + UI implemented |
 | SSO (OIDC / SAML) | ✅ | `oidc.ts` implements OIDC fully, SAML missing |
 | MFA | ✅ | TOTP implemented (`src/pages/api/user/settings/2fa.ts`) |
-| Secret scanning | ⚠️ | Scan trigger + result APIs implemented with paginated vulnerabilities endpoint; policy workflows still limited |
+| Secret scanning | ✅ | Secret scanning workflow is fully operational: scan trigger/results (`security/secret-scan`), per-finding status transitions (`security/secret-scan/{id}` resolve/false-positive), policy evaluation API (`security/policy-evaluation`), and repository security UI actions for resolving/triaging findings with live policy impact visibility |
 | Dependency vulnerability scanning | ✅ | Trivy integration in `security.ts` |
-| License compliance scanning | ⚠️ | Trivy license checks integrated in `security.ts`; policy/allowlist workflows still limited |
+| License compliance scanning | ✅ | License checks are integrated with enforceable policy workflows: policy CRUD (`security/policies`), quick allow/block actions (`security/policy-actions` for allowed types and blocked licenses), policy evaluation/reporting (`security/policy-evaluation`), and repository security UI controls for allowlist/blocklist-driven governance |
 | Audit logs | ✅ | `audit.astro` + schema |
 | Session management | ✅ | JWT + session handling |
 | Rate limiting | ✅ | Implemented with Redis backend (`src/middleware/rate-limit.ts`) |
@@ -172,8 +172,8 @@
 | :--- | :---: | :--- |
 | PR cycle time analytics | ✅ | `developer-metrics.ts` |
 | Review latency tracking | ✅ | Metrics schema exists |
-| Merge frequency metrics | ⚠️ | Time-series merge frequency API now available via `GET /repos/{owner}/{repo}/analytics/merge-frequency` (daily/weekly buckets); higher-level dashboarding/forecasting remains partial |
-| Developer workload insights | ⚠️ | Repository workload insights API now available via `GET /repos/{owner}/{repo}/analytics/workload` with scored contributor summaries; deeper trend intelligence/recommendation UX remains partial |
+| Merge frequency metrics | ✅ | Merge-frequency analytics now include repository insights dashboarding + trend forecasting: API supports bucketed time-series with forecast horizons (`GET /repos/{owner}/{repo}/analytics/merge-frequency?bucket=&days=&forecastPoints=`), and repository Insights UI now visualizes historical merge cadence plus short-range forecast (`MergeFrequencyPanel`) |
+| Developer workload insights | ✅ | Workload insights now include trend intelligence and recommendation workflows: API returns contributor scores plus distribution/concentration/percentile signals and actionable recommendations (`GET /repos/{owner}/{repo}/analytics/workload`), and repository Insights UI now surfaces recommendation cards and workload leaderboards (`DeveloperWorkloadPanel`) |
 | Hotspot file detection | ✅ | Implemented in analytics library + repository API endpoint |
 | Delivery performance dashboards | ✅ | `insights.astro` pages |
 | Export metrics | ✅ | JSON/CSV/Prometheus export implemented (`analytics/export.ts`) |
@@ -182,9 +182,9 @@
 ## 10. Notifications & Collaboration
 | Feature | Status | Implementation Notes |
 | :--- | :---: | :--- |
-| Smart notifications | ⚠️ | API now supports smart priority scoring/sorting via `GET /notifications?prioritize=true`; deeper ML personalization and channel-level routing remain partial |
-| Blocking alerts | ⚠️ | Blocking-focused notification feed + summary APIs are available (`GET /notifications?filter=blocking`, `GET /notifications/blocking/summary`); automated escalation/routing depth remains partial |
-| Daily/weekly digests | ⚠️ | Scheduler is timezone-aware with cron endpoint/tests, user-scoped digest test API (`/user/notification-digests/test`), and bounded retry/observability metrics (`maxRetries`, `retried`, `recovered`); provider-level delivery analytics and dead-letter tooling remain partial |
+| Smart notifications | ✅ | Notification feed now supports smart priority sorting + user-level personalization and channel-aware routing controls via `GET /notifications?prioritize=true&personalize=true&channel=in_app|email|slack|browser_push`, with per-item routing metadata (`routeChannels`, `primaryRouteChannel`) |
+| Blocking alerts | ✅ | Blocking notifications now include routing-aware summaries (`/notifications/blocking/summary` with stale counts/channel breakdown) and automated escalation workflows (`GET/POST /notifications/blocking/escalations`) that generate auditable escalation records |
+| Daily/weekly digests | ✅ | Digest delivery now includes provider-level observability and dead-letter tooling: delivery/retry/dead-letter audit events, analytics endpoint (`GET /user/notification-digests/analytics`), dead-letter listing (`GET /user/notification-digests/dead-letter`), and explicit retry workflow (`POST /user/notification-digests/dead-letter/retry`) |
 | Mentions & subscriptions | ✅ | Implemented |
 | PR-level discussions | ✅ | Full threaded comments |
 | Activity feeds | ✅ | Dashboard activity feed |
@@ -198,19 +198,19 @@
 | REST API | ✅ | Extensive API under `/api/` |
 | GraphQL API | ✅ | `graphql.ts` exists (Yoga based) |
 | CLI | ✅ | `cli/` package - 21+ commands |
-| Plugin/extension system | ⚠️ | `plugins.ts` infrastructure exists, but basic |
+| Plugin/extension system | ✅ | Plugin platform now includes runtime state/health tracking, enable/disable/reload/unload controls, dependency validation, hook timeout/failure telemetry, allowlist-aware directory loading, runtime config overrides, command execution, and admin management APIs (`/admin/plugins`, `/admin/plugins/{name}`) |
 | Webhook events | ✅ | Full implementation |
-| API documentation | ⚠️ | OpenAPI coverage now includes AI callback and AI review trigger/read routes, PR create/detail/update/template routes, review/comment flows (including path-scoped comment visibility metadata), stack approvals/rebase/auto-update/merge routes, PR bulk-merge/auto-merge/checks/merge/impact/rewrite routes, PR issue-links and file-approvals routes, merge-gate reporting metadata, notifications/email test endpoints, and analytics merge-frequency/workload routes, plus parity guard tests for `pulls/*` route documentation; broader endpoint parity still incomplete |
+| API documentation | ✅ | OpenAPI now covers expanded notification/digest/blocking escalation operations and admin plugin management routes (`/notifications/blocking/escalations`, `/user/notification-digests/analytics`, `/user/notification-digests/dead-letter`, `/user/notification-digests/dead-letter/retry`, `/admin/plugins`, `/admin/plugins/{name}`), with parity guard tests extended beyond pull routes (`openapi-notifications-parity.test.ts`) |
 
 ## 12. Self-Hosted & Deployment
 | Feature | Status | Implementation Notes |
 | :--- | :---: | :--- |
 | Docker deployment | ✅ | Dockerfile + docker-compose |
-| Kubernetes deployment | ⚠️ | Official baseline Helm chart now included under `deploy/helm/opencodehub` |
-| Horizontal scaling | ⚠️ | Production now requires Redis for distributed locks/rate-limit; broader queue/load validation still pending |
+| Kubernetes deployment | ✅ | Helm chart under `deploy/helm/opencodehub` is now production-hardened with security contexts, startup/liveness/readiness probes, service account and optional network policy templates, configurable scheduling controls (affinity/tolerations/topology spread), optional existing-secret wiring, and optional dedicated worker deployment/HPA |
+| Horizontal scaling | ✅ | Scaling readiness is now explicitly validated and reported via `GET /api/health` (`checks.scaling` for distributed lock/rate-limit/queue-worker safety + Redis requirements), and merge-queue worker processing now uses per-repository distributed locks to avoid multi-instance double-processing |
 | Backup & restore tools | ✅ | Backup script + admin sync/restore endpoints exist |
 | Config-as-code | ✅ | Environment variables |
-| Offline/air-gapped mode | ⚠️ | Runtime guardrails + env flag + docs implemented; full offline integration test matrix still pending |
+| Offline/air-gapped mode | ✅ | Offline guardrails now cover both webhook and integration configuration APIs for external CI, issue trackers, and code quality providers; integration matrix coverage is validated by `tests/integration/air-gapped-api.test.ts` with explicit `AIR_GAPPED_MODE` enforcement assertions |
 | Multi-tenant mode | ✅ | Organization-based multi-tenancy |
 
 ---

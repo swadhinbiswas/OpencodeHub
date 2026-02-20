@@ -9,6 +9,7 @@ import { withErrorHandler } from "@/lib/errors";
 import { getUserFromRequest } from "@/lib/auth";
 import { canReadRepo, canWriteRepo } from "@/lib/permissions";
 import { CI_PROVIDERS } from "@/lib/external-ci";
+import { getAirGappedMessage, isAirGappedMode } from "@/lib/air-gapped";
 
 const SUPPORTED_PROVIDERS = ["gitlab", "circleci", "buildkite", "jenkins"] as const;
 
@@ -53,6 +54,16 @@ function redactConfig(config: any) {
 }
 
 export const GET: APIRoute = withErrorHandler(async ({ params, request, url }) => {
+  if (isAirGappedMode()) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: { code: "AIR_GAPPED_MODE", message: getAirGappedMessage("External CI integrations") },
+      }),
+      { status: 503, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   const owner = params.owner;
   const repoName = params.repo;
   if (!owner || !repoName) return badRequest("Missing route parameters");
@@ -100,6 +111,16 @@ export const GET: APIRoute = withErrorHandler(async ({ params, request, url }) =
 });
 
 export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
+  if (isAirGappedMode()) {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: { code: "AIR_GAPPED_MODE", message: getAirGappedMessage("External CI integrations") },
+      }),
+      { status: 503, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   const owner = params.owner;
   const repoName = params.repo;
   if (!owner || !repoName) return badRequest("Missing route parameters");
