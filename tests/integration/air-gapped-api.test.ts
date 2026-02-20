@@ -1,7 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/auth", () => ({
+  getUserFromRequest: vi.fn(async () => null),
+}));
+
 import { POST as externalCiChecksPost } from "@/pages/api/repos/[owner]/[repo]/external-ci/checks";
 import { POST as issueTrackerWebhookPost } from "@/pages/api/repos/[owner]/[repo]/integrations/issue-trackers/[provider]/webhook";
 import { POST as codeQualityWebhookPost } from "@/pages/api/repos/[owner]/[repo]/integrations/code-quality/webhooks/[provider]";
+import { GET as issueTrackersGet, POST as issueTrackersPost } from "@/pages/api/repos/[owner]/[repo]/integrations/issue-trackers";
+import { GET as codeQualityGet, POST as codeQualityPost } from "@/pages/api/repos/[owner]/[repo]/integrations/code-quality";
+import { GET as externalCiIntegrationsGet, POST as externalCiIntegrationsPost } from "@/pages/api/repos/[owner]/[repo]/integrations/external-ci";
 
 async function readJson(response: Response): Promise<any> {
   return response.json();
@@ -112,5 +120,56 @@ describe("air-gapped mode API enforcement", () => {
     const body = await readJson(response);
     expect(response.status).toBe(401);
     expect(body?.error?.code).toBe("UNAUTHORIZED");
+  });
+
+  it("returns 503 for integration config routes when AIR_GAPPED_MODE=true", async () => {
+    vi.stubEnv("AIR_GAPPED_MODE", "true");
+
+    const responses = await Promise.all([
+      issueTrackersGet({
+        params: { owner: "acme", repo: "demo" },
+        request: new Request("http://localhost/api/repos/acme/demo/integrations/issue-trackers"),
+      } as any),
+      issueTrackersPost({
+        params: { owner: "acme", repo: "demo" },
+        request: new Request("http://localhost/api/repos/acme/demo/integrations/issue-trackers", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ provider: "jira" }),
+        }),
+      } as any),
+      codeQualityGet({
+        params: { owner: "acme", repo: "demo" },
+        request: new Request("http://localhost/api/repos/acme/demo/integrations/code-quality"),
+        url: new URL("http://localhost/api/repos/acme/demo/integrations/code-quality"),
+      } as any),
+      codeQualityPost({
+        params: { owner: "acme", repo: "demo" },
+        request: new Request("http://localhost/api/repos/acme/demo/integrations/code-quality", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ provider: "codecov" }),
+        }),
+      } as any),
+      externalCiIntegrationsGet({
+        params: { owner: "acme", repo: "demo" },
+        request: new Request("http://localhost/api/repos/acme/demo/integrations/external-ci"),
+        url: new URL("http://localhost/api/repos/acme/demo/integrations/external-ci"),
+      } as any),
+      externalCiIntegrationsPost({
+        params: { owner: "acme", repo: "demo" },
+        request: new Request("http://localhost/api/repos/acme/demo/integrations/external-ci", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ provider: "gitlab", baseUrl: "https://gitlab.com" }),
+        }),
+      } as any),
+    ]);
+
+    for (const response of responses) {
+      const body = await readJson(response);
+      expect(response.status).toBe(503);
+      expect(body?.error?.code).toBe("AIR_GAPPED_MODE");
+    }
   });
 });

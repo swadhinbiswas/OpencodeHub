@@ -10,12 +10,13 @@ import { canWriteRepo } from "@/lib/permissions";
 import { getAirGappedMessage, isAirGappedMode } from "@/lib/air-gapped";
 
 const patchSchema = z.object({
-  name: z.string().min(1).max(120).optional(),
-  baseUrl: z.string().url().optional(),
+  projectKey: z.string().min(1).max(200).optional(),
   apiToken: z.string().min(1).optional(),
-  projectId: z.string().min(1).max(300).optional(),
+  serverUrl: z.string().url().optional(),
+  minCoverage: z.number().min(0).max(100).optional(),
+  blockOnFail: z.boolean().optional(),
+  reportOnPR: z.boolean().optional(),
   isEnabled: z.boolean().optional(),
-  syncStatus: z.boolean().optional(),
 });
 
 async function resolveRepository(owner: string, repoName: string) {
@@ -45,7 +46,7 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request }) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: { code: "AIR_GAPPED_MODE", message: getAirGappedMessage("External CI integrations") },
+        error: { code: "AIR_GAPPED_MODE", message: getAirGappedMessage("Code quality integrations") },
       }),
       { status: 503, headers: { "Content-Type": "application/json" } }
     );
@@ -67,13 +68,13 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request }) => {
     return forbidden();
   }
 
-  const config = await db.query.externalCIConfigs.findFirst({
+  const config = await db.query.codeQualityConfigs.findFirst({
     where: and(
-      eq(schema.externalCIConfigs.id, id),
-      eq(schema.externalCIConfigs.repositoryId, repository.id)
+      eq(schema.codeQualityConfigs.id, id),
+      eq(schema.codeQualityConfigs.repositoryId, repository.id)
     ),
   });
-  if (!config) return notFound("External CI config not found");
+  if (!config) return notFound("Code quality config not found");
 
   const parsed = await parseBody(request, patchSchema);
   if ("error" in parsed) return parsed.error;
@@ -82,19 +83,20 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request }) => {
     updatedAt: new Date(),
   };
 
-  if (parsed.data.name !== undefined) updates.name = parsed.data.name;
-  if (parsed.data.baseUrl !== undefined) updates.baseUrl = parsed.data.baseUrl;
+  if (parsed.data.projectKey !== undefined) updates.projectKey = parsed.data.projectKey;
   if (parsed.data.apiToken !== undefined) updates.apiToken = parsed.data.apiToken;
-  if (parsed.data.projectId !== undefined) updates.projectId = parsed.data.projectId;
+  if (parsed.data.serverUrl !== undefined) updates.serverUrl = parsed.data.serverUrl;
+  if (parsed.data.minCoverage !== undefined) updates.minCoverage = parsed.data.minCoverage;
+  if (parsed.data.blockOnFail !== undefined) updates.blockOnFail = parsed.data.blockOnFail;
+  if (parsed.data.reportOnPR !== undefined) updates.reportOnPR = parsed.data.reportOnPR;
   if (parsed.data.isEnabled !== undefined) updates.isEnabled = parsed.data.isEnabled;
-  if (parsed.data.syncStatus !== undefined) updates.syncStatus = parsed.data.syncStatus;
 
-  await db.update(schema.externalCIConfigs)
+  await db.update(schema.codeQualityConfigs)
     .set(updates)
-    .where(eq(schema.externalCIConfigs.id, id));
+    .where(eq(schema.codeQualityConfigs.id, id));
 
-  const updated = await db.query.externalCIConfigs.findFirst({
-    where: eq(schema.externalCIConfigs.id, id),
+  const updated = await db.query.codeQualityConfigs.findFirst({
+    where: eq(schema.codeQualityConfigs.id, id),
   });
 
   return success(updated ? redactConfig(updated) : null);
@@ -105,7 +107,7 @@ export const DELETE: APIRoute = withErrorHandler(async ({ params, request }) => 
     return new Response(
       JSON.stringify({
         success: false,
-        error: { code: "AIR_GAPPED_MODE", message: getAirGappedMessage("External CI integrations") },
+        error: { code: "AIR_GAPPED_MODE", message: getAirGappedMessage("Code quality integrations") },
       }),
       { status: 503, headers: { "Content-Type": "application/json" } }
     );
@@ -127,15 +129,15 @@ export const DELETE: APIRoute = withErrorHandler(async ({ params, request }) => 
     return forbidden();
   }
 
-  const config = await db.query.externalCIConfigs.findFirst({
+  const config = await db.query.codeQualityConfigs.findFirst({
     where: and(
-      eq(schema.externalCIConfigs.id, id),
-      eq(schema.externalCIConfigs.repositoryId, repository.id)
+      eq(schema.codeQualityConfigs.id, id),
+      eq(schema.codeQualityConfigs.repositoryId, repository.id)
     ),
   });
-  if (!config) return notFound("External CI config not found");
+  if (!config) return notFound("Code quality config not found");
 
-  await db.delete(schema.externalCIConfigs).where(eq(schema.externalCIConfigs.id, id));
+  await db.delete(schema.codeQualityConfigs).where(eq(schema.codeQualityConfigs.id, id));
 
   return success({ deleted: true });
 });

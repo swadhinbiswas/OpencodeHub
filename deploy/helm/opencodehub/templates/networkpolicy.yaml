@@ -1,0 +1,38 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "opencodehub.fullname" . }}
+  labels:
+    {{- include "opencodehub.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "opencodehub.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - {{- if or .Values.networkPolicy.allowSameNamespace .Values.networkPolicy.additionalIngress }}
+      from:
+        {{- if .Values.networkPolicy.allowSameNamespace }}
+        - podSelector: {}
+        {{- end }}
+        {{- with .Values.networkPolicy.additionalIngress }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.port }}
+  egress:
+    - {{- if or .Values.networkPolicy.allowSameNamespace .Values.networkPolicy.additionalEgress }}
+      to:
+        {{- if .Values.networkPolicy.allowSameNamespace }}
+        - podSelector: {}
+        {{- end }}
+        {{- with .Values.networkPolicy.additionalEgress }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- end }}
+{{- end }}

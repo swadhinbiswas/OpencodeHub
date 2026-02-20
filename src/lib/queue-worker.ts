@@ -4,6 +4,7 @@ import { logger } from "@/lib/logger";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { mergeBranch, createSpeculativeBranch } from "@/lib/git";
 import { acquireRepo, releaseRepo } from "@/lib/git-storage";
+import { acquireLock, isDistributedLocking } from "@/lib/distributed-lock";
 
 export class QueueWorker {
     private isProcessing = false;
@@ -11,6 +12,17 @@ export class QueueWorker {
     async processQueue(repositoryId: string) {
         if (this.isProcessing) return;
         this.isProcessing = true;
+        const lockKey = `merge-queue-worker:${repositoryId}`;
+        const distributedLock = await acquireLock(lockKey, {
+            ttlSeconds: 120,
+            retryCount: 0,
+        });
+
+        if (!distributedLock) {
+            logger.debug({ repositoryId, lockKey }, "Queue worker skipped - lock held by another instance");
+            this.isProcessing = false;
+            return;
+        }
 
         const db = getDatabase() as NodePgDatabase<typeof schema>;
 
@@ -21,30 +33,6 @@ export class QueueWorker {
                     eq(schema.mergeQueueItems.repositoryId, repositoryId),
                     eq(schema.mergeQueueItems.status, "running")
                 ),
-            });
-
-            if (runningItem) {
-                // In a real system, we'd check if the CI job is still active.
-                // For MVP, we'll assume the previous run crashed if it's been running too long (>10m)
-                const runtime = Date.now() - (runningItem.startedAt?.getTime() || 0);
-                if (runtime > 10 * 60 * 1000) {
-                    logger.warn(`Queue item ${runningItem.id} timed out. Marking failed.`);
-                    await db.update(schema.mergeQueueItems)
-                        .set({ status: "failed", completedAt: new Date() })
-                        .where(eq(schema.mergeQueueItems.id, runningItem.id));
-                    // Continue to next item
-                } else {
-                    return;
-                }
-            }
-
-            // 2. Pick next item
-            const nextItem = await db.query.mergeQueueItems.findFirst({
-                where: and(
-                    eq(schema.mergeQueueItems.repositoryId, repositoryId),
-                    eq(schema.mergeQueueItems.status, "queued")
-                ),
-                orderBy: [asc(schema.mergeQueueItems.queuedAt)],
                 with: {
                     repository: {
                         with: { owner: true }
@@ -53,19 +41,68 @@ export class QueueWorker {
                 }
             });
 
-            if (!nextItem) {
-                return;
+            let itemToProcess: typeof runningItem | null = runningItem ?? null;
+            if (runningItem) {
+                const runtime = Date.now() - (runningItem.startedAt?.getTime() || 0);
+                if (runtime > 10 * 60 * 1000) {
+                    logger.warn(`Queue item ${runningItem.id} timed out. Marking failed.`);
+                    await db.update(schema.mergeQueueItems)
+                        .set({ status: "failed", completedAt: new Date() })
+                        .where(eq(schema.mergeQueueItems.id, runningItem.id));
+                    itemToProcess = null;
+                } else {
+                    const ciState = await this.getQueueItemCIState(runningItem.pullRequestId, db);
+                    if (ciState === "pending") {
+                        logger.info(`Queue item ${runningItem.id} waiting for CI checks.`);
+                        return;
+                    }
+                    if (ciState === "failed") {
+                        await db.update(schema.mergeQueueItems)
+                            .set({ status: "failed", completedAt: new Date() })
+                            .where(eq(schema.mergeQueueItems.id, runningItem.id));
+                        logger.warn(`Queue item ${runningItem.id} failed due to failed checks.`);
+                        itemToProcess = null;
+                    }
+                }
             }
 
-            // 3. Start processing
-            await db.update(schema.mergeQueueItems)
-                .set({
+            // 2. Pick next item
+            if (!itemToProcess) {
+                const nextItem = await db.query.mergeQueueItems.findFirst({
+                    where: and(
+                        eq(schema.mergeQueueItems.repositoryId, repositoryId),
+                        eq(schema.mergeQueueItems.status, "queued")
+                    ),
+                    orderBy: [asc(schema.mergeQueueItems.queuedAt)],
+                    with: {
+                        repository: {
+                            with: { owner: true }
+                        },
+                        pullRequest: true
+                    }
+                });
+
+                if (!nextItem) {
+                    return;
+                }
+
+                await db.update(schema.mergeQueueItems)
+                    .set({
+                        status: "running",
+                        startedAt: new Date(),
+                        attemptCount: (nextItem.attemptCount || 0) + 1,
+                        lastAttemptAt: new Date()
+                    })
+                    .where(eq(schema.mergeQueueItems.id, nextItem.id));
+
+                itemToProcess = {
+                    ...nextItem,
                     status: "running",
-                    startedAt: new Date(),
-                    attemptCount: (nextItem.attemptCount || 0) + 1,
-                    lastAttemptAt: new Date()
-                })
-                .where(eq(schema.mergeQueueItems.id, nextItem.id));
+                } as typeof nextItem;
+            }
+
+            if (!itemToProcess) return;
+            const nextItem = itemToProcess;
 
             logger.info(`Starting merge for PR ${nextItem.pullRequestId} (${nextItem.repository.owner.username}/${nextItem.repository.name})`);
 
@@ -75,26 +112,25 @@ export class QueueWorker {
                 logger.error("Failed to trigger speculative builds", err);
             });
 
+            const ciState = await this.getQueueItemCIState(nextItem.pullRequestId, db);
+            if (ciState === "pending") {
+                logger.info(`Queue item ${nextItem.id} still waiting for CI checks.`);
+                return;
+            }
+            if (ciState === "failed") {
+                await db.update(schema.mergeQueueItems)
+                    .set({ status: "failed", completedAt: new Date() })
+                    .where(eq(schema.mergeQueueItems.id, nextItem.id));
+                logger.warn(`Queue item ${nextItem.id} failed due to failed checks.`);
+                return;
+            }
+
             // 4. Execution
             // A. Acquire Repo (Local or Cloud)
             const repoPath = await acquireRepo(nextItem.repository.owner.username, nextItem.repository.name);
 
-            // B. Simulate CI - In a real world, we'd trigger a workflow here and exit, waiting for a webhook callback.
-            // For MVP "Flesh out", we simulate 'running tests' on the merge result.
-
             // Attempt Merge Locally first to check conflicts
             const result = await mergeBranch(repoPath, nextItem.pullRequest.baseBranch, nextItem.pullRequest.headBranch);
-
-            // B. Simulate CI / Check Speculative Result
-            if (nextItem.executionBranch) {
-                logger.info(`Speculative hit for PR ${nextItem.pullRequestId} using branch ${nextItem.executionBranch}. Skipping build wait.`);
-                // In a real system, we would verify the CI status of executionBranch here.
-                // Since we created it successfully in triggerSpeculativeBuilds, we assume it passed.
-            } else {
-                // Simulate Build Time for non-speculative runs
-                logger.info(`Running CI simulation for PR ${nextItem.pullRequestId}...`);
-                await new Promise(r => setTimeout(r, 5000));
-            }
 
             if (result.success) {
                 // Success!
@@ -138,10 +174,33 @@ export class QueueWorker {
             // Try to release repo if stuck?
             // We don't have scope here easily, but acquireRepo is safe to re-acquire (cleans up).
         } finally {
+            await distributedLock.release();
             this.isProcessing = false;
             // Trigger next immediately?
             // this.processQueue(repositoryId);
         }
+    }
+
+    private async getQueueItemCIState(
+        pullRequestId: string,
+        db: NodePgDatabase<typeof schema>
+    ): Promise<"pending" | "passed" | "failed"> {
+        const checks = await db.query.pullRequestChecks.findMany({
+            where: eq(schema.pullRequestChecks.pullRequestId, pullRequestId),
+        });
+
+        if (checks.length === 0) {
+            // No checks configured/ingested; allow merge queue to proceed.
+            return "passed";
+        }
+
+        const hasPending = checks.some((check) => check.status !== "completed");
+        if (hasPending) return "pending";
+
+        const hasFailed = checks.some((check) =>
+            ["failure", "cancelled", "timed_out", "action_required"].includes(check.conclusion || "")
+        );
+        return hasFailed ? "failed" : "passed";
     }
 
     /**
@@ -220,3 +279,11 @@ export class QueueWorker {
 }
 
 export const queueWorker = new QueueWorker();
+
+export function getQueueWorkerScalingReadiness() {
+    return {
+        inProcessGuardEnabled: true,
+        distributedLockingEnabled: isDistributedLocking,
+        multiInstanceSafe: isDistributedLocking,
+    };
+}

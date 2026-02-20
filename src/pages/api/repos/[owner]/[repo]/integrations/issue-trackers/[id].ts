@@ -11,11 +11,12 @@ import { getAirGappedMessage, isAirGappedMode } from "@/lib/air-gapped";
 
 const patchSchema = z.object({
   name: z.string().min(1).max(120).optional(),
-  baseUrl: z.string().url().optional(),
+  apiUrl: z.string().url().optional(),
   apiToken: z.string().min(1).optional(),
-  projectId: z.string().min(1).max(300).optional(),
+  projectKey: z.string().min(1).max(200).optional(),
   isEnabled: z.boolean().optional(),
-  syncStatus: z.boolean().optional(),
+  syncToExternal: z.boolean().optional(),
+  syncFromExternal: z.boolean().optional(),
 });
 
 async function resolveRepository(owner: string, repoName: string) {
@@ -45,7 +46,7 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request }) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: { code: "AIR_GAPPED_MODE", message: getAirGappedMessage("External CI integrations") },
+        error: { code: "AIR_GAPPED_MODE", message: getAirGappedMessage("Issue tracker integrations") },
       }),
       { status: 503, headers: { "Content-Type": "application/json" } }
     );
@@ -67,13 +68,13 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request }) => {
     return forbidden();
   }
 
-  const config = await db.query.externalCIConfigs.findFirst({
+  const config = await db.query.issueTrackerConfigs.findFirst({
     where: and(
-      eq(schema.externalCIConfigs.id, id),
-      eq(schema.externalCIConfigs.repositoryId, repository.id)
+      eq(schema.issueTrackerConfigs.id, id),
+      eq(schema.issueTrackerConfigs.repositoryId, repository.id)
     ),
   });
-  if (!config) return notFound("External CI config not found");
+  if (!config) return notFound("Issue tracker config not found");
 
   const parsed = await parseBody(request, patchSchema);
   if ("error" in parsed) return parsed.error;
@@ -83,18 +84,19 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request }) => {
   };
 
   if (parsed.data.name !== undefined) updates.name = parsed.data.name;
-  if (parsed.data.baseUrl !== undefined) updates.baseUrl = parsed.data.baseUrl;
+  if (parsed.data.apiUrl !== undefined) updates.apiUrl = parsed.data.apiUrl;
   if (parsed.data.apiToken !== undefined) updates.apiToken = parsed.data.apiToken;
-  if (parsed.data.projectId !== undefined) updates.projectId = parsed.data.projectId;
+  if (parsed.data.projectKey !== undefined) updates.projectKey = parsed.data.projectKey;
   if (parsed.data.isEnabled !== undefined) updates.isEnabled = parsed.data.isEnabled;
-  if (parsed.data.syncStatus !== undefined) updates.syncStatus = parsed.data.syncStatus;
+  if (parsed.data.syncToExternal !== undefined) updates.syncToExternal = parsed.data.syncToExternal;
+  if (parsed.data.syncFromExternal !== undefined) updates.syncFromExternal = parsed.data.syncFromExternal;
 
-  await db.update(schema.externalCIConfigs)
+  await db.update(schema.issueTrackerConfigs)
     .set(updates)
-    .where(eq(schema.externalCIConfigs.id, id));
+    .where(eq(schema.issueTrackerConfigs.id, id));
 
-  const updated = await db.query.externalCIConfigs.findFirst({
-    where: eq(schema.externalCIConfigs.id, id),
+  const updated = await db.query.issueTrackerConfigs.findFirst({
+    where: eq(schema.issueTrackerConfigs.id, id),
   });
 
   return success(updated ? redactConfig(updated) : null);
@@ -105,7 +107,7 @@ export const DELETE: APIRoute = withErrorHandler(async ({ params, request }) => 
     return new Response(
       JSON.stringify({
         success: false,
-        error: { code: "AIR_GAPPED_MODE", message: getAirGappedMessage("External CI integrations") },
+        error: { code: "AIR_GAPPED_MODE", message: getAirGappedMessage("Issue tracker integrations") },
       }),
       { status: 503, headers: { "Content-Type": "application/json" } }
     );
@@ -127,15 +129,15 @@ export const DELETE: APIRoute = withErrorHandler(async ({ params, request }) => 
     return forbidden();
   }
 
-  const config = await db.query.externalCIConfigs.findFirst({
+  const config = await db.query.issueTrackerConfigs.findFirst({
     where: and(
-      eq(schema.externalCIConfigs.id, id),
-      eq(schema.externalCIConfigs.repositoryId, repository.id)
+      eq(schema.issueTrackerConfigs.id, id),
+      eq(schema.issueTrackerConfigs.repositoryId, repository.id)
     ),
   });
-  if (!config) return notFound("External CI config not found");
+  if (!config) return notFound("Issue tracker config not found");
 
-  await db.delete(schema.externalCIConfigs).where(eq(schema.externalCIConfigs.id, id));
+  await db.delete(schema.issueTrackerConfigs).where(eq(schema.issueTrackerConfigs.id, id));
 
   return success({ deleted: true });
 });
