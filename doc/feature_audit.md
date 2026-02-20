@@ -12,14 +12,14 @@
 | **Code Review** | 9 | 1 | 0 | 10 |
 | **Issues & Planning** | 10 | 0 | 0 | 10 |
 | **CI/CD & Automation** | 7 | 1 | 0 | 8 |
-| **Third-Party Integrations** | 16 | 6 | 0 | 22 |
+| **Third-Party Integrations** | 17 | 5 | 0 | 22 |
 | **Dependency & Impact Awareness** | 1 | 4 | 0 | 5 |
 | **Security** | 9 | 3 | 0 | 12 |
 | **Analytics & Insights** | 6 | 2 | 0 | 8 |
 | **Notifications & Collaboration** | 5 | 3 | 0 | 8 |
 | **Interfaces & Extensibility** | 5 | 2 | 0 | 7 |
 | **Self-Hosted & Deployment** | 4 | 3 | 0 | 7 |
-| **Total** | **90** | **35** | **0** | **125** |
+| **Total** | **91** | **34** | **0** | **125** |
 
 ---
 
@@ -131,7 +131,7 @@
 | Slack | ✅ | `slack-notifications.ts` + schema |
 | Microsoft Teams | ✅ | Teams webhook integration implemented (`integrations/teams.ts`) |
 | Discord | ✅ | Discord webhook integration implemented (`integrations/discord.ts`) |
-| Email notifications | ⚠️ | Email delivery test API is now available via `POST /user/email/test` (dry-run + explicit destination + SMTP-config visibility); advanced template/routing/analytics depth remains partial |
+| Email notifications | ✅ | Email delivery test API is available via `POST /user/email/test` (dry-run + explicit destination + SMTP-config visibility), and advanced email capabilities now include template catalog + preview APIs (`/user/email/templates`), event-level routing management APIs (`/user/email/routing`), and delivery/routing analytics APIs (`/user/email/analytics`) |
 
 ### 6.5 Cloud & Infrastructure
 | Feature | Status | Notes |
