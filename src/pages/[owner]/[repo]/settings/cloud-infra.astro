@@ -1,0 +1,445 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getDatabase, schema } from "@/db";
+import { eq, and, inArray, desc } from "drizzle-orm";
+import { canAdminRepo } from "@/lib/permissions";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { CloudCog } from "lucide-react";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(eq(schema.repositories.ownerId, user.id), eq(schema.repositories.name, repoName!)),
+  with: { owner: true },
+});
+if (!repoData) return Astro.redirect("/404");
+
+const currentUser = Astro.locals.user;
+const hasAccess = await canAdminRepo(currentUser?.id, repoData, {
+  isAdmin: currentUser?.isAdmin ?? undefined,
+});
+if (!hasAccess) return Astro.redirect(`/${ownerName}/${repoName}`);
+
+const configs = await db.query.cloudConfigs.findMany({
+  where: and(
+    eq(schema.cloudConfigs.repositoryId, repoData.id),
+    inArray(schema.cloudConfigs.provider, ["aws", "gcp", "azure", "kubernetes", "terraform"])
+  ),
+  orderBy: [desc(schema.cloudConfigs.updatedAt)],
+});
+
+const byProvider = {
+  aws: configs.find((cfg) => cfg.provider === "aws"),
+  gcp: configs.find((cfg) => cfg.provider === "gcp"),
+  azure: configs.find((cfg) => cfg.provider === "azure"),
+  kubernetes: configs.find((cfg) => cfg.provider === "kubernetes"),
+  terraform: configs.find((cfg) => cfg.provider === "terraform"),
+};
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  language: repoData.language || "Unknown",
+  openIssueCount: repoData.openIssueCount,
+  openPrCount: repoData.openPrCount,
+  hasIssues: repoData.hasIssues,
+  hasWiki: repoData.hasWiki,
+  hasActions: repoData.hasActions,
+};
+---
+
+<BaseLayout title={`Cloud & Infra · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="settings" />
+
+    <div class="grid gap-6 md:grid-cols-[240px_1fr]">
+      <nav class="space-y-1">
+        <a href={`/${repo.owner}/${repo.name}/settings`} class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">General</a>
+        <a href={`/${repo.owner}/${repo.name}/settings/collaborators`} class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Collaborators</a>
+        <a href={`/${repo.owner}/${repo.name}/settings/webhooks`} class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Webhooks</a>
+        <a href={`/${repo.owner}/${repo.name}/settings/external-ci`} class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">External CI</a>
+        <a href={`/${repo.owner}/${repo.name}/settings/issue-trackers`} class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Issue Trackers</a>
+        <a href={`/${repo.owner}/${repo.name}/settings/cloud-infra`} class="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm font-medium text-foreground">Cloud & Infra</a>
+        <a href={`/${repo.owner}/${repo.name}/settings/reviews`} class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Reviews</a>
+        <a href={`/${repo.owner}/${repo.name}/settings/actions`} class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Actions</a>
+        <a href={`/${repo.owner}/${repo.name}/settings/deploy-keys`} class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Deploy keys</a>
+        <a href={`/${repo.owner}/${repo.name}/settings/workflow`} class="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground">Workflow</a>
+      </nav>
+
+      <div class="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><CloudCog className="h-5 w-5" />Cloud & Infrastructure Integrations</CardTitle>
+            <CardDescription>
+              Configure AWS, GCP, Azure, Kubernetes, and Terraform for deploy hooks and manual trigger orchestration.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-xs text-muted-foreground">
+            <div>Cloud deploy trigger endpoint: <span class="font-mono">/api/repos/{repo.owner}/{repo.name}/cloud/deploy</span></div>
+            <div>IaC trigger endpoint: <span class="font-mono">/api/repos/{repo.owner}/{repo.name}/iac/hooks</span></div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>AWS</CardTitle><CardDescription>ECS deployment integration and deploy hook orchestration.</CardDescription></CardHeader>
+          <CardContent className="space-y-3">
+            <div class="grid gap-3 md:grid-cols-3">
+              <input id="aws-region" class="h-8 rounded-md border bg-background px-2 text-xs" placeholder="Region (us-east-1)" value={byProvider.aws?.region || "us-east-1"} />
+              <input id="aws-key" class="h-8 rounded-md border bg-background px-2 text-xs" placeholder="Access Key ID" />
+              <input id="aws-secret" type="password" class="h-8 rounded-md border bg-background px-2 text-xs" placeholder="Secret Access Key" />
+            </div>
+            <label class="flex items-center gap-2 text-xs text-muted-foreground"><input id="aws-enabled" type="checkbox" checked={byProvider.aws?.isEnabled ?? true} />Enabled</label>
+            <div class="flex items-center gap-2"><Button id="save-aws" variant="outline">Save AWS</Button><Button id="deploy-aws" variant="outline">Trigger Deploy</Button><span id="aws-msg" class="text-xs text-muted-foreground"></span></div>
+            <div id="aws-deployments" class="space-y-1 text-xs text-muted-foreground">Loading deployments...</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Google Cloud</CardTitle><CardDescription>Cloud Run deployment integration and hooks.</CardDescription></CardHeader>
+          <CardContent className="space-y-3">
+            <div class="grid gap-3 md:grid-cols-3">
+              <input id="gcp-region" class="h-8 rounded-md border bg-background px-2 text-xs" placeholder="Region (us-central1)" value={byProvider.gcp?.region || "us-central1"} />
+              <input id="gcp-project" class="h-8 rounded-md border bg-background px-2 text-xs" placeholder="Project ID" />
+              <input id="gcp-client-email" class="h-8 rounded-md border bg-background px-2 text-xs" placeholder="Service Account Email" />
+            </div>
+            <textarea id="gcp-private-key" class="min-h-[72px] w-full rounded-md border bg-background px-2 py-1 text-xs" placeholder="Service Account Private Key"></textarea>
+            <label class="flex items-center gap-2 text-xs text-muted-foreground"><input id="gcp-enabled" type="checkbox" checked={byProvider.gcp?.isEnabled ?? true} />Enabled</label>
+            <div class="flex items-center gap-2"><Button id="save-gcp" variant="outline">Save GCP</Button><Button id="deploy-gcp" variant="outline">Trigger Deploy</Button><span id="gcp-msg" class="text-xs text-muted-foreground"></span></div>
+            <div id="gcp-deployments" class="space-y-1 text-xs text-muted-foreground">Loading deployments...</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Azure</CardTitle><CardDescription>App Service deployment integration and hooks.</CardDescription></CardHeader>
+          <CardContent className="space-y-3">
+            <div class="grid gap-3 md:grid-cols-2">
+              <input id="azure-subscription" class="h-8 rounded-md border bg-background px-2 text-xs" placeholder="Subscription ID" />
+              <input id="azure-tenant" class="h-8 rounded-md border bg-background px-2 text-xs" placeholder="Tenant ID" />
+              <input id="azure-client" class="h-8 rounded-md border bg-background px-2 text-xs" placeholder="Client ID" />
+              <input id="azure-secret" type="password" class="h-8 rounded-md border bg-background px-2 text-xs" placeholder="Client Secret" />
+            </div>
+            <label class="flex items-center gap-2 text-xs text-muted-foreground"><input id="azure-enabled" type="checkbox" checked={byProvider.azure?.isEnabled ?? true} />Enabled</label>
+            <div class="flex items-center gap-2"><Button id="save-azure" variant="outline">Save Azure</Button><Button id="deploy-azure" variant="outline">Trigger Deploy</Button><span id="azure-msg" class="text-xs text-muted-foreground"></span></div>
+            <div id="azure-deployments" class="space-y-1 text-xs text-muted-foreground">Loading deployments...</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Kubernetes-native</CardTitle><CardDescription>Native Kubernetes deployment integration with Helm-friendly orchestration.</CardDescription></CardHeader>
+          <CardContent className="space-y-3">
+            <div class="grid gap-3 md:grid-cols-2">
+              <input id="k8s-api-server" class="h-8 rounded-md border bg-background px-2 text-xs" placeholder="API Server URL" />
+              <input id="k8s-namespace" class="h-8 rounded-md border bg-background px-2 text-xs" placeholder="Namespace" value="default" />
+            </div>
+            <input id="k8s-token" type="password" class="h-8 w-full rounded-md border bg-background px-2 text-xs" placeholder="Bearer Token" />
+            <label class="flex items-center gap-2 text-xs text-muted-foreground"><input id="k8s-enabled" type="checkbox" checked={byProvider.kubernetes?.isEnabled ?? true} />Enabled</label>
+            <div class="flex items-center gap-2"><Button id="save-k8s" variant="outline">Save Kubernetes</Button><Button id="deploy-k8s" variant="outline">Trigger Deploy</Button><span id="k8s-msg" class="text-xs text-muted-foreground"></span></div>
+            <div id="k8s-deployments" class="space-y-1 text-xs text-muted-foreground">Loading deployments...</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Terraform / IaC Hooks</CardTitle><CardDescription>Terraform Cloud workspace hooks and manual plan/apply orchestration.</CardDescription></CardHeader>
+          <CardContent className="space-y-3">
+            <div class="grid gap-3 md:grid-cols-2">
+              <input id="tf-org" class="h-8 rounded-md border bg-background px-2 text-xs" placeholder="Terraform Organization" />
+              <input id="tf-workspace" class="h-8 rounded-md border bg-background px-2 text-xs" placeholder="Terraform Workspace ID" />
+            </div>
+            <input id="tf-token" type="password" class="h-8 w-full rounded-md border bg-background px-2 text-xs" placeholder="Terraform Cloud Token" />
+            <label class="flex items-center gap-2 text-xs text-muted-foreground"><input id="tf-enabled" type="checkbox" checked={byProvider.terraform?.isEnabled ?? true} />Enabled</label>
+            <div class="grid gap-2 md:grid-cols-3">
+              <input id="tf-message" class="h-8 rounded-md border bg-background px-2 text-xs" placeholder="Plan/apply message" />
+              <input id="tf-runid" class="h-8 rounded-md border bg-background px-2 text-xs" placeholder="Run ID (for apply)" />
+              <select id="tf-action" class="h-8 rounded-md border bg-background px-2 text-xs"><option value="plan">plan</option><option value="apply">apply</option></select>
+            </div>
+            <div class="flex items-center gap-2"><Button id="save-tf" variant="outline">Save Terraform</Button><Button id="run-tf" variant="outline">Run IaC Hook</Button><span id="tf-msg" class="text-xs text-muted-foreground"></span></div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script define:vars={{ repoOwner: repo.owner, repoName: repo.name, initialAwsId: byProvider.aws?.id || null, initialGcpId: byProvider.gcp?.id || null, initialAzureId: byProvider.azure?.id || null, initialK8sId: byProvider.kubernetes?.id || null, initialTfId: byProvider.terraform?.id || null }}>
+  let awsId = initialAwsId;
+  let gcpId = initialGcpId;
+  let azureId = initialAzureId;
+  let k8sId = initialK8sId;
+  let tfId = initialTfId;
+
+  const awsMsg = document.getElementById("aws-msg");
+  const gcpMsg = document.getElementById("gcp-msg");
+  const azureMsg = document.getElementById("azure-msg");
+  const k8sMsg = document.getElementById("k8s-msg");
+  const tfMsg = document.getElementById("tf-msg");
+
+  const awsDeployments = document.getElementById("aws-deployments");
+  const gcpDeployments = document.getElementById("gcp-deployments");
+  const azureDeployments = document.getElementById("azure-deployments");
+  const k8sDeployments = document.getElementById("k8s-deployments");
+
+  function renderDeployments(target, deployments, emptyLabel) {
+    if (!target) return;
+    target.innerHTML = deployments.length === 0
+      ? emptyLabel
+      : deployments.map((item) => `<div class="rounded border border-white/10 bg-white/5 px-2 py-1.5 flex items-center justify-between"><span>${item.status}</span><span class="text-[11px] text-muted-foreground">${(item.commitSha || "").slice(0, 10)}</span></div>`).join("");
+  }
+
+  async function fetchSummary() {
+    const res = await fetch(`/api/repos/${repoOwner}/${repoName}/integrations/cloud?summary=1`);
+    const body = await res.json();
+    if (!res.ok) throw new Error(body?.error?.message || body?.message || "Failed to load cloud summary");
+    return body?.data || body;
+  }
+
+  async function refreshDeployments() {
+    try {
+      const data = await fetchSummary();
+      const cfg = {
+        aws: (data.configs || []).find((c) => c.provider === "aws"),
+        gcp: (data.configs || []).find((c) => c.provider === "gcp"),
+        azure: (data.configs || []).find((c) => c.provider === "azure"),
+        kubernetes: (data.configs || []).find((c) => c.provider === "kubernetes"),
+        terraform: (data.configs || []).find((c) => c.provider === "terraform"),
+      };
+
+      if (cfg.aws?.id) awsId = cfg.aws.id;
+      if (cfg.gcp?.id) gcpId = cfg.gcp.id;
+      if (cfg.azure?.id) azureId = cfg.azure.id;
+      if (cfg.kubernetes?.id) k8sId = cfg.kubernetes.id;
+      if (cfg.terraform?.id) tfId = cfg.terraform.id;
+
+      const deployments = data.deployments || [];
+      renderDeployments(awsDeployments, deployments.filter((d) => d.configId === cfg.aws?.id).slice(0, 5), "No AWS deployments yet.");
+      renderDeployments(gcpDeployments, deployments.filter((d) => d.configId === cfg.gcp?.id).slice(0, 5), "No GCP deployments yet.");
+      renderDeployments(azureDeployments, deployments.filter((d) => d.configId === cfg.azure?.id).slice(0, 5), "No Azure deployments yet.");
+      renderDeployments(k8sDeployments, deployments.filter((d) => d.configId === cfg.kubernetes?.id).slice(0, 5), "No Kubernetes deployments yet.");
+    } catch (error) {
+      if (awsDeployments) awsDeployments.textContent = error.message || "Failed to load deployments";
+      if (gcpDeployments) gcpDeployments.textContent = error.message || "Failed to load deployments";
+      if (azureDeployments) azureDeployments.textContent = error.message || "Failed to load deployments";
+      if (k8sDeployments) k8sDeployments.textContent = error.message || "Failed to load deployments";
+    }
+  }
+
+  async function saveCloudProvider(configId, payload) {
+    const res = await fetch(
+      configId
+        ? `/api/repos/${repoOwner}/${repoName}/integrations/cloud/${configId}`
+        : `/api/repos/${repoOwner}/${repoName}/integrations/cloud`,
+      {
+        method: configId ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }
+    );
+    const body = await res.json();
+    if (!res.ok) throw new Error(body?.error?.message || body?.message || "Failed to save cloud config");
+    return body?.data || body;
+  }
+
+  async function triggerDeploy(configId, payload = {}) {
+    const res = await fetch(`/api/repos/${repoOwner}/${repoName}/cloud/deploy`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ configId, ...payload }),
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body?.error?.message || body?.message || "Failed to trigger deploy");
+    return body?.data || body;
+  }
+
+  async function triggerIaC(payload) {
+    const res = await fetch(`/api/repos/${repoOwner}/${repoName}/iac/hooks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body?.error?.message || body?.message || "Failed to run IaC hook");
+    return body?.data || body;
+  }
+
+  document.getElementById("save-aws")?.addEventListener("click", async () => {
+    try {
+      if (awsMsg) awsMsg.textContent = "Saving AWS config...";
+      const saved = await saveCloudProvider(awsId, {
+        ...(awsId ? {} : { provider: "aws" }),
+        name: "AWS",
+        region: document.getElementById("aws-region")?.value || "us-east-1",
+        isEnabled: !!document.getElementById("aws-enabled")?.checked,
+        credentials: {
+          accessKeyId: document.getElementById("aws-key")?.value || "",
+          secretAccessKey: document.getElementById("aws-secret")?.value || "",
+          region: document.getElementById("aws-region")?.value || "us-east-1",
+        },
+      });
+      if (saved?.id) awsId = saved.id;
+      if (awsMsg) awsMsg.textContent = "AWS saved.";
+      refreshDeployments();
+    } catch (error) {
+      if (awsMsg) awsMsg.textContent = error.message || "Failed to save AWS";
+    }
+  });
+
+  document.getElementById("deploy-aws")?.addEventListener("click", async () => {
+    try {
+      if (awsMsg) awsMsg.textContent = "Triggering AWS deploy...";
+      const result = await triggerDeploy(awsId, {});
+      if (awsMsg) awsMsg.textContent = `Triggered (${result.executed || 0} runs).`;
+      refreshDeployments();
+    } catch (error) {
+      if (awsMsg) awsMsg.textContent = error.message || "Deploy failed";
+    }
+  });
+
+  document.getElementById("save-gcp")?.addEventListener("click", async () => {
+    try {
+      if (gcpMsg) gcpMsg.textContent = "Saving GCP config...";
+      const saved = await saveCloudProvider(gcpId, {
+        ...(gcpId ? {} : { provider: "gcp" }),
+        name: "Google Cloud",
+        region: document.getElementById("gcp-region")?.value || "us-central1",
+        isEnabled: !!document.getElementById("gcp-enabled")?.checked,
+        credentials: {
+          projectId: document.getElementById("gcp-project")?.value || "",
+          clientEmail: document.getElementById("gcp-client-email")?.value || "",
+          privateKey: document.getElementById("gcp-private-key")?.value || "",
+        },
+      });
+      if (saved?.id) gcpId = saved.id;
+      if (gcpMsg) gcpMsg.textContent = "GCP saved.";
+      refreshDeployments();
+    } catch (error) {
+      if (gcpMsg) gcpMsg.textContent = error.message || "Failed to save GCP";
+    }
+  });
+
+  document.getElementById("deploy-gcp")?.addEventListener("click", async () => {
+    try {
+      if (gcpMsg) gcpMsg.textContent = "Triggering GCP deploy...";
+      const result = await triggerDeploy(gcpId, {});
+      if (gcpMsg) gcpMsg.textContent = `Triggered (${result.executed || 0} runs).`;
+      refreshDeployments();
+    } catch (error) {
+      if (gcpMsg) gcpMsg.textContent = error.message || "Deploy failed";
+    }
+  });
+
+  document.getElementById("save-azure")?.addEventListener("click", async () => {
+    try {
+      if (azureMsg) azureMsg.textContent = "Saving Azure config...";
+      const saved = await saveCloudProvider(azureId, {
+        ...(azureId ? {} : { provider: "azure" }),
+        name: "Azure",
+        isEnabled: !!document.getElementById("azure-enabled")?.checked,
+        credentials: {
+          subscriptionId: document.getElementById("azure-subscription")?.value || "",
+          tenantId: document.getElementById("azure-tenant")?.value || "",
+          clientId: document.getElementById("azure-client")?.value || "",
+          clientSecret: document.getElementById("azure-secret")?.value || "",
+        },
+      });
+      if (saved?.id) azureId = saved.id;
+      if (azureMsg) azureMsg.textContent = "Azure saved.";
+      refreshDeployments();
+    } catch (error) {
+      if (azureMsg) azureMsg.textContent = error.message || "Failed to save Azure";
+    }
+  });
+
+  document.getElementById("deploy-azure")?.addEventListener("click", async () => {
+    try {
+      if (azureMsg) azureMsg.textContent = "Triggering Azure deploy...";
+      const result = await triggerDeploy(azureId, {});
+      if (azureMsg) azureMsg.textContent = `Triggered (${result.executed || 0} runs).`;
+      refreshDeployments();
+    } catch (error) {
+      if (azureMsg) azureMsg.textContent = error.message || "Deploy failed";
+    }
+  });
+
+  document.getElementById("save-k8s")?.addEventListener("click", async () => {
+    try {
+      if (k8sMsg) k8sMsg.textContent = "Saving Kubernetes config...";
+      const saved = await saveCloudProvider(k8sId, {
+        ...(k8sId ? {} : { provider: "kubernetes" }),
+        name: "Kubernetes",
+        isEnabled: !!document.getElementById("k8s-enabled")?.checked,
+        credentials: {
+          apiServer: document.getElementById("k8s-api-server")?.value || "",
+          token: document.getElementById("k8s-token")?.value || "",
+          namespace: document.getElementById("k8s-namespace")?.value || "default",
+        },
+      });
+      if (saved?.id) k8sId = saved.id;
+      if (k8sMsg) k8sMsg.textContent = "Kubernetes saved.";
+      refreshDeployments();
+    } catch (error) {
+      if (k8sMsg) k8sMsg.textContent = error.message || "Failed to save Kubernetes";
+    }
+  });
+
+  document.getElementById("deploy-k8s")?.addEventListener("click", async () => {
+    try {
+      if (k8sMsg) k8sMsg.textContent = "Triggering Kubernetes deploy...";
+      const result = await triggerDeploy(k8sId, { namespace: document.getElementById("k8s-namespace")?.value || "default" });
+      if (k8sMsg) k8sMsg.textContent = `Triggered (${result.executed || 0} runs).`;
+      refreshDeployments();
+    } catch (error) {
+      if (k8sMsg) k8sMsg.textContent = error.message || "Deploy failed";
+    }
+  });
+
+  document.getElementById("save-tf")?.addEventListener("click", async () => {
+    try {
+      if (tfMsg) tfMsg.textContent = "Saving Terraform config...";
+      const saved = await saveCloudProvider(tfId, {
+        ...(tfId ? {} : { provider: "terraform" }),
+        name: "Terraform",
+        isEnabled: !!document.getElementById("tf-enabled")?.checked,
+        credentials: {
+          organization: document.getElementById("tf-org")?.value || "",
+          workspace: document.getElementById("tf-workspace")?.value || "",
+          token: document.getElementById("tf-token")?.value || "",
+        },
+      });
+      if (saved?.id) tfId = saved.id;
+      if (tfMsg) tfMsg.textContent = "Terraform saved.";
+    } catch (error) {
+      if (tfMsg) tfMsg.textContent = error.message || "Failed to save Terraform";
+    }
+  });
+
+  document.getElementById("run-tf")?.addEventListener("click", async () => {
+    try {
+      if (tfMsg) tfMsg.textContent = "Running IaC hook...";
+      const action = document.getElementById("tf-action")?.value || "plan";
+      const result = await triggerIaC({
+        action,
+        configId: tfId,
+        runId: document.getElementById("tf-runid")?.value || undefined,
+        message: document.getElementById("tf-message")?.value || undefined,
+      });
+      if (tfMsg) tfMsg.textContent = `IaC ${action} executed (${result.executed || 0} runs).`;
+    } catch (error) {
+      if (tfMsg) tfMsg.textContent = error.message || "IaC hook failed";
+    }
+  });
+
+  refreshDeployments();
+</script>
