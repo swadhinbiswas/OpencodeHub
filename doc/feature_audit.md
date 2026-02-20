@@ -12,14 +12,14 @@
 | **Code Review** | 9 | 1 | 0 | 10 |
 | **Issues & Planning** | 10 | 0 | 0 | 10 |
 | **CI/CD & Automation** | 7 | 1 | 0 | 8 |
-| **Third-Party Integrations** | 17 | 5 | 0 | 22 |
+| **Third-Party Integrations** | 22 | 0 | 0 | 22 |
 | **Dependency & Impact Awareness** | 1 | 4 | 0 | 5 |
 | **Security** | 9 | 3 | 0 | 12 |
 | **Analytics & Insights** | 6 | 2 | 0 | 8 |
 | **Notifications & Collaboration** | 5 | 3 | 0 | 8 |
 | **Interfaces & Extensibility** | 5 | 2 | 0 | 7 |
 | **Self-Hosted & Deployment** | 4 | 3 | 0 | 7 |
-| **Total** | **91** | **34** | **0** | **125** |
+| **Total** | **96** | **29** | **0** | **125** |
 
 ---
 
@@ -136,11 +136,11 @@
 ### 6.5 Cloud & Infrastructure
 | Feature | Status | Notes |
 | :--- | :---: | :--- |
-| AWS | ⚠️ | Provider integration and deploy hooks implemented; broader service coverage can expand |
-| Google Cloud | ⚠️ | Cloud Run deployment integration and hooks implemented |
-| Microsoft Azure | ⚠️ | App Service deployment integration and hooks implemented |
-| Kubernetes-native | ⚠️ | Baseline Helm chart added (`deploy/helm/opencodehub`); operator-grade lifecycle management remains |
-| Terraform/IaC hooks | ⚠️ | Terraform hook triggering implemented via automation + repository API; broader IaC providers can be expanded |
+| AWS | ✅ | Provider integration and deploy hooks are implemented with repository-level cloud config CRUD/summary APIs (`integrations/cloud`), settings UX (`settings/cloud-infra`), and manual deploy trigger orchestration (`cloud/deploy`) including deployment-history surfacing |
+| Google Cloud | ✅ | Cloud Run deployment integration and hooks are implemented with repository-level cloud config CRUD/summary APIs (`integrations/cloud`), settings UX (`settings/cloud-infra`), and manual deploy trigger orchestration (`cloud/deploy`) including deployment-history surfacing |
+| Microsoft Azure | ✅ | App Service deployment integration and hooks are implemented with repository-level cloud config CRUD/summary APIs (`integrations/cloud`), settings UX (`settings/cloud-infra`), and manual deploy trigger orchestration (`cloud/deploy`) including deployment-history surfacing |
+| Kubernetes-native | ✅ | Baseline Helm chart is included (`deploy/helm/opencodehub`) and Kubernetes deploy orchestration now includes repository-level config CRUD/summary APIs (`integrations/cloud`), dedicated settings UX (`settings/cloud-infra`), and manual deployment trigger flows (`cloud/deploy`) with deployment-history surfacing |
+| Terraform/IaC hooks | ✅ | Terraform hook triggering is implemented via automation + repository APIs, and now includes repository-level Terraform config CRUD/summary APIs (`integrations/cloud`), dedicated settings UX (`settings/cloud-infra`), and manual plan/apply orchestration (`iac/hooks`) |
 
 ## 7. Dependency & Impact Awareness
 | Feature | Status | Implementation Notes |
