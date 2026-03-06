@@ -39,7 +39,7 @@ export async function isCloudStorage(): Promise<boolean> {
     const importMetaEnvType = import.meta.env?.STORAGE_TYPE;
     const processEnvType = process.env.STORAGE_TYPE;
     const type = importMetaEnvType || processEnvType || "local";
-    console.log(`[isCloudStorage] import.meta.env.STORAGE_TYPE=${importMetaEnvType}, process.env.STORAGE_TYPE=${processEnvType}, using=${type}`);
+    logger.info(`[isCloudStorage] import.meta.env.STORAGE_TYPE=${importMetaEnvType}, process.env.STORAGE_TYPE=${processEnvType}, using=${type}`);
     return ["gdrive", "s3", "gcs", "azure", "rclone", "onedrive"].includes(type);
 }
 
@@ -77,7 +77,7 @@ export async function downloadRepoFromStorage(
     // If no objects found, repo might not be initialized yet (lazy init)
     // This is OK - just return with empty directory
     if (!result.objects || result.objects.length === 0) {
-        console.log(`[downloadRepoFromStorage] No files found at ${storagePath} - repo may not be initialized yet`);
+        logger.info(`[downloadRepoFromStorage] No files found at ${storagePath} - repo may not be initialized yet`);
         return;
     }
 
@@ -86,7 +86,7 @@ export async function downloadRepoFromStorage(
         const relativePath = obj.key.replace(storagePath, "").replace(/^\//, "");
         if (!relativePath) continue;
 
-        console.log(`[downloadRepoFromStorage] storagePath="${storagePath}", obj.key="${obj.key}", relativePath="${relativePath}"`);
+        logger.info(`[downloadRepoFromStorage] storagePath="${storagePath}", obj.key="${obj.key}", relativePath="${relativePath}"`);
 
         const localFilePath = join(localPath, relativePath);
         const localDir = path.dirname(localFilePath);
@@ -99,7 +99,7 @@ export async function downloadRepoFromStorage(
             const content = await storage.get(obj.key);
             await fs.writeFile(localFilePath, content);
         } catch (err) {
-            console.error(`Failed to download ${obj.key}:`, err);
+            logger.error(`Failed to download ${obj.key}:`, err);
         }
     }
 
@@ -121,17 +121,17 @@ export async function uploadRepoToStorage(
     storagePath: string
 ): Promise<void> {
     const storage = await getStorage();
-    console.log(`[uploadRepoToStorage] Starting upload from ${localPath} to ${storagePath}`);
+    logger.info(`[uploadRepoToStorage] Starting upload from ${localPath} to ${storagePath}`);
 
     // Check if directory exists
     if (!existsSync(localPath)) {
-        console.error(`[uploadRepoToStorage] ERROR: Directory does not exist: ${localPath}`);
+        logger.error(`[uploadRepoToStorage] ERROR: Directory does not exist: ${localPath}`);
         return;
     }
 
     // Check what's in the directory
     const topLevelEntries = readdirSync(localPath, { withFileTypes: true });
-    console.log(`[uploadRepoToStorage] Found ${topLevelEntries.length} top-level entries: ${topLevelEntries.map(e => e.name).join(', ')}`);
+    logger.info(`[uploadRepoToStorage] Found ${topLevelEntries.length} top-level entries: ${topLevelEntries.map(e => e.name).join(', ')}`);
 
     let fileCount = 0;
     async function uploadDir(dirPath: string): Promise<void> {
@@ -139,7 +139,7 @@ export async function uploadRepoToStorage(
         try {
             entries = readdirSync(dirPath, { withFileTypes: true });
         } catch (err) {
-            console.error(`[uploadRepoToStorage] Failed to read directory ${dirPath}:`, err);
+            logger.error(`[uploadRepoToStorage] Failed to read directory ${dirPath}:`, err);
             return;
         }
 
@@ -153,18 +153,18 @@ export async function uploadRepoToStorage(
             } else {
                 try {
                     const content = await fs.readFile(fullPath);
-                    console.log(`[uploadRepoToStorage] Uploading: ${storageKey} (${content.length} bytes)`);
+                    logger.info(`[uploadRepoToStorage] Uploading: ${storageKey} (${content.length} bytes)`);
                     await storage.put(storageKey, content);
                     fileCount++;
                 } catch (err) {
-                    console.error(`[uploadRepoToStorage] Failed to upload ${fullPath}:`, err);
+                    logger.error(`[uploadRepoToStorage] Failed to upload ${fullPath}:`, err);
                 }
             }
         }
     }
 
     await uploadDir(localPath);
-    console.log(`[uploadRepoToStorage] Completed: ${fileCount} files uploaded`);
+    logger.info(`[uploadRepoToStorage] Completed: ${fileCount} files uploaded`);
 }
 
 /**
@@ -228,7 +228,7 @@ export async function acquireRepo(owner: string, repoName: string): Promise<stri
     // 2. Recently created repos where async S3 upload hasn't finished
     const headPath = join(localPath, 'HEAD');
     if (existsSync(localPath) && existsSync(headPath)) {
-        console.log(`[acquireRepo] Local repo exists and has HEAD file, using existing: ${localPath}`);
+        logger.info(`[acquireRepo] Local repo exists and has HEAD file, using existing: ${localPath}`);
         // Add to cache so subsequent requests use it
         repoCache.set(cacheKey, {
             localPath,
@@ -240,7 +240,7 @@ export async function acquireRepo(owner: string, repoName: string): Promise<stri
 
     // Clean up any existing temp files (only if not a valid git repo)
     if (existsSync(localPath)) {
-        console.log(`[acquireRepo] Cleaning up incomplete temp directory: ${localPath}`);
+        logger.info(`[acquireRepo] Cleaning up incomplete temp directory: ${localPath}`);
         rmSync(localPath, { recursive: true, force: true });
     }
 
@@ -248,7 +248,7 @@ export async function acquireRepo(owner: string, repoName: string): Promise<stri
     try {
         await downloadRepoFromStorage(storagePath, localPath);
     } catch (err) {
-        console.error(`[acquireRepo] Failed to download from storage:`, err);
+        logger.error(`[acquireRepo] Failed to download from storage:`, err);
         // If download fails, the repo might not be uploaded yet
         // Try to use local git repos path as fallback
         const gitReposPath = import.meta.env?.GIT_REPOS_PATH || process.env.GIT_REPOS_PATH;
@@ -258,7 +258,7 @@ export async function acquireRepo(owner: string, repoName: string): Promise<stri
         const fallbackPath = join(reposPath, owner, `${repoName}.git`);
 
         if (existsSync(fallbackPath) && existsSync(join(fallbackPath, 'HEAD'))) {
-            console.log(`[acquireRepo] Using fallback local path: ${fallbackPath}`);
+            logger.info(`[acquireRepo] Using fallback local path: ${fallbackPath}`);
             // For local fallback, copy to temp location
             // Remove target dir if exists, then copy
             if (existsSync(localPath)) {
@@ -269,16 +269,16 @@ export async function acquireRepo(owner: string, repoName: string): Promise<stri
             const { execSync } = await import('child_process');
             // Copy directory CONTENTS (using /. to copy contents, not the directory itself)
             execSync(`cp -R "${fallbackPath}/." "${localPath}/"`, { stdio: 'inherit' });
-            console.log(`[acquireRepo] Successfully copied from fallback`);
+            logger.info(`[acquireRepo] Successfully copied from fallback`);
         } else {
-            console.error(`[acquireRepo] No fallback found at: ${fallbackPath}`);
+            logger.error(`[acquireRepo] No fallback found at: ${fallbackPath}`);
             throw new Error(`Repository not found in S3 and local fallback unavailable. S3 upload may still be in progress - try again in a moment.`);
         }
     }
 
     // After download, log if repo was initialized
     // headPath already declared at line 225
-    console.log(`[acquireRepo] After download - HEAD exists: ${existsSync(headPath)}`);
+    logger.info(`[acquireRepo] After download - HEAD exists: ${existsSync(headPath)}`);
 
     // Cache the path
     repoCache.set(cacheKey, {
@@ -363,18 +363,18 @@ export async function initRepoInStorage(
  * Call this after git init operations are complete
  */
 export async function finalizeRepoInit(owner: string, repoName: string): Promise<void> {
-    console.log(`[finalizeRepoInit] Called for ${owner}/${repoName}`);
+    logger.info(`[finalizeRepoInit] Called for ${owner}/${repoName}`);
     const isCloud = await isCloudStorage();
-    console.log(`[finalizeRepoInit] isCloudStorage=${isCloud}`);
+    logger.info(`[finalizeRepoInit] isCloudStorage=${isCloud}`);
 
     if (!isCloud) {
-        console.log(`[finalizeRepoInit] Skipping - not cloud storage`);
+        logger.info(`[finalizeRepoInit] Skipping - not cloud storage`);
         return;
     }
 
     const localPath = getLocalTempPath(owner, repoName);
     const storagePath = getStorageRepoPath(owner, repoName);
-    console.log(`[finalizeRepoInit] Uploading from ${localPath} to ${storagePath}`);
+    logger.info(`[finalizeRepoInit] Uploading from ${localPath} to ${storagePath}`);
 
     await uploadRepoToStorage(localPath, storagePath);
 
@@ -384,7 +384,7 @@ export async function finalizeRepoInit(owner: string, repoName: string): Promise
         lastUsed: new Date(),
         modified: false,
     });
-    console.log(`[finalizeRepoInit] Completed`);
+    logger.info(`[finalizeRepoInit] Completed`);
 }
 
 /**
@@ -403,7 +403,7 @@ export function cleanupCache(): void {
                 try {
                     rmSync(cached.localPath, { recursive: true, force: true });
                 } catch (err) {
-                    console.error(`Failed to cleanup cache ${cached.localPath}:`, err);
+                    logger.error(`Failed to cleanup cache ${cached.localPath}:`, err);
                 }
             }
             repoCache.delete(key);

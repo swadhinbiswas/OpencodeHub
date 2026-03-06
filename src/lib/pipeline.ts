@@ -272,7 +272,7 @@ export class PipelineRunner extends EventEmitter {
       ref?: string;
       paths?: string[];
       action?: string;
-    }
+    },
   ): boolean {
     const trigger = workflow.on;
 
@@ -344,11 +344,11 @@ export class PipelineRunner extends EventEmitter {
       // Simple glob matching
       const regex = new RegExp(
         "^" +
-        pattern
-          .replace(/\*\*/g, ".*")
-          .replace(/\*/g, "[^/]*")
-          .replace(/\?/g, ".") +
-        "$"
+          pattern
+            .replace(/\*\*/g, ".*")
+            .replace(/\*/g, "[^/]*")
+            .replace(/\?/g, ".") +
+          "$",
       );
       return regex.test(str);
     });
@@ -369,7 +369,7 @@ export class PipelineRunner extends EventEmitter {
       inputs?: Record<string, string>;
       secrets?: Record<string, string>;
       variables?: Record<string, string>;
-    }
+    },
   ): Promise<WorkflowRun> {
     const runId = generateId();
     const run: WorkflowRun = {
@@ -386,6 +386,10 @@ export class PipelineRunner extends EventEmitter {
     };
 
     this.emit("workflow:start", run);
+
+    // Initialize log persistence
+    const { LogPersister } = await import("./ci-logs");
+    const logPersister = new LogPersister(runId);
 
     try {
       // Build job dependency graph
@@ -462,7 +466,7 @@ export class PipelineRunner extends EventEmitter {
         let shouldSkip = false;
         for (const dep of needs) {
           const depJob = run.jobs.find(
-            (j) => j.name === (workflow.jobs[dep].name || dep)
+            (j) => j.name === (workflow.jobs[dep].name || dep),
           );
           if (!depJob || depJob.conclusion !== "success") {
             shouldSkip = true;
@@ -493,7 +497,9 @@ export class PipelineRunner extends EventEmitter {
           jobId,
           jobConfig,
           context,
-          options.repositoryPath
+          options.repositoryPath,
+          runId,
+          logPersister,
         );
         run.jobs.push(jobRun);
 
@@ -501,6 +507,7 @@ export class PipelineRunner extends EventEmitter {
           run.status = "completed";
           run.conclusion = "failure";
           run.completedAt = new Date();
+          await logPersister.close();
           this.emit("workflow:complete", run);
           return run;
         }
@@ -508,11 +515,12 @@ export class PipelineRunner extends EventEmitter {
 
       run.status = "completed";
       run.conclusion = run.jobs.every(
-        (j) => j.conclusion === "success" || j.conclusion === "skipped"
+        (j) => j.conclusion === "success" || j.conclusion === "skipped",
       )
         ? "success"
         : "failure";
       run.completedAt = new Date();
+      await logPersister.close();
       this.emit("workflow:complete", run);
 
       return run;
@@ -521,6 +529,7 @@ export class PipelineRunner extends EventEmitter {
       run.conclusion = "failure";
       run.completedAt = new Date();
       run.logs = error instanceof Error ? error.message : String(error);
+      await logPersister.close();
       this.emit("workflow:error", run, error);
       return run;
     }
@@ -565,7 +574,9 @@ export class PipelineRunner extends EventEmitter {
     jobId: string,
     config: JobConfig,
     context: WorkflowContext,
-    repositoryPath: string
+    repositoryPath: string,
+    runId: string,
+    logPersister?: import("./ci-logs").LogPersister,
   ): Promise<JobRun> {
     const jobRun: JobRun = {
       id: generateId(),
@@ -606,12 +617,12 @@ export class PipelineRunner extends EventEmitter {
       const serviceContainers: Map<string, Dockerode.Container> = new Map();
       if (config.services) {
         for (const [serviceName, serviceConfig] of Object.entries(
-          config.services
+          config.services,
         )) {
           const container = await this.docker.createContainer({
             Image: serviceConfig.image,
             Env: Object.entries(serviceConfig.env || {}).map(
-              ([k, v]) => `${k}=${v}`
+              ([k, v]) => `${k}=${v}`,
             ),
             HostConfig: {
               PortBindings: this.parsePortBindings(serviceConfig.ports || []),
@@ -652,7 +663,7 @@ export class PipelineRunner extends EventEmitter {
       });
 
       await jobContainer.start();
-      this.runningJobs.set(jobRun.id, jobContainer);
+      this.runningJobs.set(`${runId}:${jobRun.id}`, jobContainer);
 
       // Run steps
       let stepNumber = 0;
@@ -692,7 +703,7 @@ export class PipelineRunner extends EventEmitter {
                 runId: context.github.run_id,
                 jobId: jobRun.id,
                 stepId: stepRun.id,
-              }
+              },
             );
           } else if (stepConfig.run) {
             // Run shell command
@@ -704,7 +715,7 @@ export class PipelineRunner extends EventEmitter {
                 runId: context.github.run_id,
                 jobId: jobRun.id,
                 stepId: stepRun.id,
-              }
+              },
             );
           }
 
@@ -713,9 +724,27 @@ export class PipelineRunner extends EventEmitter {
           stepRun.completedAt = new Date();
           stepRun.logs = output;
 
+          // Persist step logs
+          if (logPersister) {
+            if (output)
+              logPersister.addLog(jobRun.id, stepRun.id, output, "info");
+            await logPersister.persistStep({
+              id: stepRun.id,
+              jobId: jobRun.id,
+              number: stepRun.number,
+              name: stepRun.name,
+              status: "completed",
+              conclusion: "success",
+              uses: stepConfig.uses,
+              run: stepConfig.run,
+              startedAt: stepRun.startedAt,
+              completedAt: stepRun.completedAt,
+            });
+          }
+
           // Parse outputs
           const outputMatches = output.matchAll(
-            /::set-output name=(\w+)::(.+)/g
+            /::set-output name=(\w+)::(.+)/g,
           );
           stepRun.outputs = {};
           for (const match of outputMatches) {
@@ -735,6 +764,23 @@ export class PipelineRunner extends EventEmitter {
           stepRun.conclusion = "failure";
           stepRun.completedAt = new Date();
           stepRun.logs = error instanceof Error ? error.message : String(error);
+
+          // Persist failed step logs
+          if (logPersister) {
+            logPersister.addLog(jobRun.id, stepRun.id, stepRun.logs, "error");
+            await logPersister.persistStep({
+              id: stepRun.id,
+              jobId: jobRun.id,
+              number: stepRun.number,
+              name: stepRun.name,
+              status: "completed",
+              conclusion: "failure",
+              uses: stepConfig.uses,
+              run: stepConfig.run,
+              startedAt: stepRun.startedAt,
+              completedAt: stepRun.completedAt,
+            });
+          }
 
           context.steps[stepRun.id] = {
             outputs: {},
@@ -756,7 +802,7 @@ export class PipelineRunner extends EventEmitter {
       // Cleanup
       await jobContainer.stop();
       await jobContainer.remove();
-      this.runningJobs.delete(jobRun.id);
+      this.runningJobs.delete(`${runId}:${jobRun.id}`);
 
       for (const container of serviceContainers.values()) {
         await container.stop();
@@ -771,13 +817,13 @@ export class PipelineRunner extends EventEmitter {
       return jobRun;
     } catch (error) {
       // Cleanup on error
-      const container = this.runningJobs.get(jobRun.id);
+      const container = this.runningJobs.get(`${runId}:${jobRun.id}`);
       if (container) {
         try {
           await container.stop();
           await container.remove();
-        } catch { }
-        this.runningJobs.delete(jobRun.id);
+        } catch {}
+        this.runningJobs.delete(`${runId}:${jobRun.id}`);
       }
 
       jobRun.status = "completed";
@@ -798,7 +844,7 @@ export class PipelineRunner extends EventEmitter {
     step: StepConfig,
     context: WorkflowContext,
     repositoryPath: string,
-    logContext?: { runId: string; jobId: string; stepId: string }
+    logContext?: { runId: string; jobId: string; stepId: string },
   ): Promise<string> {
     if (!step.uses) throw new Error("No action specified");
 
@@ -810,24 +856,63 @@ export class PipelineRunner extends EventEmitter {
       // Local action
       actionPath = path.join(repositoryPath, actionRef);
     } else {
-      // Remote action - download from GitHub or cache
-      const [repo, version] = actionRef.split("@");
-      const cacheDir = path.join(
-        this.cacheDir,
-        "actions",
-        repo,
-        version || "main"
-      );
+      // Remote action - download from GitHub or local cache
+      const [repoRef, version] = actionRef.split("@");
+      const ref = version || "main";
+      const cacheDir = path.join(this.cacheDir, "actions", repoRef, ref);
 
-      // Check cache
+      // Check cache — only re-download if cache is missing or stale (>24h)
+      let cacheValid = false;
       try {
-        await fs.access(cacheDir);
-        actionPath = cacheDir;
+        const stat = await fs.stat(path.join(cacheDir, "action.yml"));
+        const age = Date.now() - stat.mtimeMs;
+        cacheValid = age < 24 * 60 * 60 * 1000; // 24h TTL
       } catch {
-        // Download action (simplified - real implementation would clone repo)
-        await fs.mkdir(cacheDir, { recursive: true });
-        actionPath = cacheDir;
+        try {
+          const stat = await fs.stat(path.join(cacheDir, "action.yaml"));
+          const age = Date.now() - stat.mtimeMs;
+          cacheValid = age < 24 * 60 * 60 * 1000;
+        } catch {
+          cacheValid = false;
+        }
       }
+
+      if (!cacheValid) {
+        // Download action via git clone --depth 1
+        await fs.rm(cacheDir, { recursive: true, force: true });
+        await fs.mkdir(cacheDir, { recursive: true });
+        const { execAsync } = await import("./exec");
+        const cloneUrl = `https://github.com/${repoRef}.git`;
+
+        try {
+          // Try cloning with the ref as a branch/tag
+          await execAsync(
+            `git clone --depth 1 --branch ${ref} ${cloneUrl} ${cacheDir}`,
+            { timeout: 60_000 },
+          );
+          logger.info({ action: repoRef, ref }, "Action downloaded");
+        } catch (cloneError) {
+          // If ref is a full SHA or tag that --branch can't resolve, try checkout
+          try {
+            await fs.rm(cacheDir, { recursive: true, force: true });
+            await fs.mkdir(cacheDir, { recursive: true });
+            await execAsync(`git clone ${cloneUrl} ${cacheDir}`, {
+              timeout: 120_000,
+            });
+            await execAsync(`git -C ${cacheDir} checkout ${ref}`);
+            logger.info(
+              { action: repoRef, ref, fallback: true },
+              "Action downloaded via checkout",
+            );
+          } catch (fallbackError) {
+            throw new Error(
+              `Failed to download action ${repoRef}@${ref}: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`,
+            );
+          }
+        }
+      }
+
+      actionPath = cacheDir;
     }
 
     // Read action.yml
@@ -835,13 +920,13 @@ export class PipelineRunner extends EventEmitter {
     try {
       const actionYml = await fs.readFile(
         path.join(actionPath, "action.yml"),
-        "utf-8"
+        "utf-8",
       );
       actionConfig = parseYaml(actionYml);
     } catch {
       const actionYml = await fs.readFile(
         path.join(actionPath, "action.yaml"),
-        "utf-8"
+        "utf-8",
       );
       actionConfig = parseYaml(actionYml);
     }
@@ -876,7 +961,7 @@ export class PipelineRunner extends EventEmitter {
             container,
             subStep,
             context,
-            logContext
+            logContext,
           );
         }
       }
@@ -899,7 +984,7 @@ export class PipelineRunner extends EventEmitter {
     container: Dockerode.Container,
     step: StepConfig,
     context: WorkflowContext,
-    logContext?: { runId: string; jobId: string; stepId: string }
+    logContext?: { runId: string; jobId: string; stepId: string },
   ): Promise<string> {
     if (!step.run) throw new Error("No command specified");
 
@@ -926,7 +1011,7 @@ export class PipelineRunner extends EventEmitter {
     const inspectData = await exec.inspect();
     if (inspectData.ExitCode !== 0) {
       throw new Error(
-        `Command failed with exit code ${inspectData.ExitCode}\n${output}`
+        `Command failed with exit code ${inspectData.ExitCode}\n${output}`,
       );
     }
 
@@ -938,7 +1023,7 @@ export class PipelineRunner extends EventEmitter {
    */
   private async collectOutput(
     stream: NodeJS.ReadableStream,
-    logContext?: { runId: string; jobId: string; stepId: string }
+    logContext?: { runId: string; jobId: string; stepId: string },
   ): Promise<string> {
     return new Promise((resolve, reject) => {
       let output = "";
@@ -969,7 +1054,7 @@ export class PipelineRunner extends EventEmitter {
     if (expr.includes("success()")) return context.job.status === "in_progress";
     if (expr.includes("failure()")) {
       return Object.values(context.steps).some(
-        (s) => s.conclusion === "failure"
+        (s) => s.conclusion === "failure",
       );
     }
     if (expr.includes("cancelled()")) return false;
@@ -1048,7 +1133,7 @@ export class PipelineRunner extends EventEmitter {
         try {
           await container.stop();
           await container.remove();
-        } catch { }
+        } catch {}
         this.runningJobs.delete(jobId);
       }
     }

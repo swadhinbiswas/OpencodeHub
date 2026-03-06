@@ -6,20 +6,8 @@
 export type DatabaseDriver =
   | "sqlite"
   | "postgres"
-  | "mysql"
-  | "mongodb"
   | "turso"
-  | "planetscale"
-  | "redis"
-  | "firestore"
-  | "dynamodb"
-  | "neo4j"
   | "cockroachdb"
-  | "cassandra"
-  | "scylladb"
-  | "surrealdb"
-  | "tidb"
-  | "mariadb"
   | "custom";
 
 export interface DatabaseConfig {
@@ -46,26 +34,26 @@ export interface QueryResult<T = unknown> {
 export interface WhereClause {
   field: string;
   operator:
-  | "="
-  | "!="
-  | ">"
-  | "<"
-  | ">="
-  | "<="
-  | "in"
-  | "not in"
-  | "like"
-  | "ilike"
-  | "is null"
-  | "is not null"
-  | "eq"
-  | "ne"
-  | "lt"
-  | "lte"
-  | "gt"
-  | "gte"
-  | "isNull"
-  | "isNotNull";
+    | "="
+    | "!="
+    | ">"
+    | "<"
+    | ">="
+    | "<="
+    | "in"
+    | "not in"
+    | "like"
+    | "ilike"
+    | "is null"
+    | "is not null"
+    | "eq"
+    | "ne"
+    | "lt"
+    | "lte"
+    | "gt"
+    | "gte"
+    | "isNull"
+    | "isNotNull";
   value: unknown;
 }
 
@@ -100,12 +88,12 @@ export interface DatabaseAdapter {
   update<T>(
     table: string,
     id: string | number,
-    data: Partial<T>
+    data: Partial<T>,
   ): Promise<T | null>;
   updateMany<T>(
     table: string,
     options: QueryOptions,
-    data: Partial<T>
+    data: Partial<T>,
   ): Promise<number>;
 
   delete(table: string, id: string | number): Promise<boolean>;
@@ -188,11 +176,11 @@ export interface ForeignKeyDefinition {
 
 export interface TableAlterCommand {
   type:
-  | "add_column"
-  | "drop_column"
-  | "modify_column"
-  | "add_index"
-  | "drop_index";
+    | "add_column"
+    | "drop_column"
+    | "modify_column"
+    | "add_index"
+    | "drop_index";
   column?: ColumnDefinition;
   columnName?: string;
   index?: IndexDefinition;
@@ -244,12 +232,12 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
   abstract update<T>(
     table: string,
     id: string | number,
-    data: Partial<T>
+    data: Partial<T>,
   ): Promise<T | null>;
   abstract updateMany<T>(
     table: string,
     options: QueryOptions,
-    data: Partial<T>
+    data: Partial<T>,
   ): Promise<number>;
   abstract delete(table: string, id: string | number): Promise<boolean>;
   abstract deleteMany(table: string, options?: QueryOptions): Promise<number>;
@@ -263,7 +251,7 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
 
   abstract rawQuery<T>(
     query: string,
-    params?: unknown[]
+    params?: unknown[],
   ): Promise<QueryResult<T>>;
 
   abstract beginTransaction(): Promise<void>;
@@ -287,7 +275,7 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
   abstract dropTable(table: string): Promise<void>;
   abstract alterTable(
     table: string,
-    changes: TableAlterCommand[]
+    changes: TableAlterCommand[],
   ): Promise<void>;
 
   abstract runMigration(migration: Migration): Promise<void>;
@@ -318,7 +306,7 @@ export abstract class BaseDatabaseAdapter implements DatabaseAdapter {
           const values = clause.value as unknown[];
           const placeholders = values.map(() => "?").join(", ");
           conditions.push(
-            `${clause.field} ${clause.operator.toUpperCase()} (${placeholders})`
+            `${clause.field} ${clause.operator.toUpperCase()} (${placeholders})`,
           );
           params.push(...values);
           break;

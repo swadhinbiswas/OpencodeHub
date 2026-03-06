@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { getDatabase, schema } from "@/db";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import bcrypt from "bcryptjs";
@@ -41,7 +42,7 @@ export async function validateBasicAuth(
         .update(schema.personalAccessTokens)
         .set({ lastUsedAt: new Date() })
         .where(eq(schema.personalAccessTokens.id, pat.id));
-      console.log(`[validateBasicAuth] Authenticated ${username} via PAT`);
+      logger.info(`[validateBasicAuth] Authenticated ${username} via PAT`);
       return user.id;
     }
     // Token format but not valid
@@ -53,7 +54,7 @@ export async function validateBasicAuth(
 
   const isValid = await bcrypt.compare(password, user.passwordHash);
   if (isValid) {
-    console.log(`[validateBasicAuth] Authenticated ${username} via password`);
+    logger.info(`[validateBasicAuth] Authenticated ${username} via password`);
     return user.id;
   }
 

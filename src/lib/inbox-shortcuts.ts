@@ -84,7 +84,7 @@ export function initInboxKeyboardShortcuts() {
         }
     }
 
-    console.log('✅ Inbox keyboard shortcuts active');
+    logger.info('✅ Inbox keyboard shortcuts active');
 }
 
 // Auto-init on page load

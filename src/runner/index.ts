@@ -75,14 +75,15 @@ async function main() {
             const job = await client.poll();
 
             if (job) {
-                logger.info({ jobId: job.id, jobName: job.name }, "Received Job");
+                logger.info({ jobId: job.id, jobName: job.name, stepId: job.stepId, stepName: job.stepName }, "Received Job Step");
 
                 const result = await executor.runJob(job.id, job.run);
 
                 await client.completeJob(job.id, {
                     success: result.success,
                     logs: result.logs,
-                    exitCode: result.exitCode
+                    exitCode: result.exitCode,
+                    stepId: job.stepId
                 });
             } else {
                 // No job, wait

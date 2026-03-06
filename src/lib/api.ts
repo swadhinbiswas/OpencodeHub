@@ -2,6 +2,7 @@
  * API Response helpers
  */
 
+import { logger } from "@/lib/logger";
 import { z } from "zod";
 
 export interface ApiResponse<T = unknown> {
@@ -210,7 +211,7 @@ export const withErrorHandler = (handler: APIRoute): APIRoute => {
     try {
       return await handler(context);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       return serverError(err instanceof Error ? err.message : "Unknown error");
     }
   };

@@ -3,18 +3,14 @@
  * Handles git repository initialization, cloning, and operations
  */
 
-import { logger } from "@/lib/logger";
 import {
-  isCloudStorage,
-  initRepoInStorage,
-  finalizeRepoInit,
   deleteRepoFromStorage,
+  isCloudStorage,
   parseStoragePath,
-  acquireRepo,
-  releaseRepo,
 } from "@/lib/git-storage";
+import { logger } from "@/lib/logger";
 import { spawn } from "child_process";
-import { existsSync, mkdirSync, rmSync, readdirSync, mkdtempSync } from "fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { basename, dirname, extname, join, resolve } from "path";
 import { simpleGit, SimpleGit, SimpleGitOptions } from "simple-git";
@@ -107,7 +103,7 @@ export interface BlameInfo {
  */
 export async function initRepository(
   repoPath: string,
-  options: RepoInitOptions = {}
+  options: RepoInitOptions = {},
 ): Promise<void> {
   const {
     defaultBranch = "main",
@@ -118,7 +114,7 @@ export async function initRepository(
     ownerName = "Owner",
   } = options;
 
-  console.log(`[initRepository] Starting initialization at: ${repoPath}`);
+  logger.info(`[initRepository] Starting initialization at: ${repoPath}`);
 
   // repoPath should already be a valid local path (provided by caller)
   const localRepoPath = repoPath;
@@ -126,35 +122,37 @@ export async function initRepository(
   // Ensure parent directory exists
   const dir = dirname(localRepoPath);
   if (!existsSync(dir)) {
-    console.log(`[initRepository] Creating parent directory: ${dir}`);
+    logger.info(`[initRepository] Creating parent directory: ${dir}`);
     mkdirSync(dir, { recursive: true });
   }
 
   // Ensure the repo directory itself exists
   if (!existsSync(localRepoPath)) {
-    console.log(`[initRepository] Creating repo directory: ${localRepoPath}`);
+    logger.info(`[initRepository] Creating repo directory: ${localRepoPath}`);
     mkdirSync(localRepoPath, { recursive: true });
   }
 
   // Initialize bare repository
   try {
-    console.log(`[initRepository] Running git init --bare at: ${localRepoPath}`);
+    logger.info(
+      `[initRepository] Running git init --bare at: ${localRepoPath}`,
+    );
     const git = simpleGit(localRepoPath);
     await git.init(true);
-    console.log(`[initRepository] git init completed`);
+    logger.info(`[initRepository] git init completed`);
   } catch (err) {
-    console.error(`[initRepository] git init failed:`, err);
+    logger.error(`[initRepository] git init failed:`, err);
     throw err;
   }
 
   // Install hooks
   if (!options.skipHooks) {
     try {
-      console.log(`[initRepository] Installing hooks`);
+      logger.info(`[initRepository] Installing hooks`);
       await installHooks(localRepoPath);
-      console.log(`[initRepository] Hooks installed`);
+      logger.info(`[initRepository] Hooks installed`);
     } catch (err) {
-      console.error(`[initRepository] Hook installation failed:`, err);
+      logger.error(`[initRepository] Hook installation failed:`, err);
       throw err;
     }
   }
@@ -162,7 +160,7 @@ export async function initRepository(
   // If we need initial content, create a temporary working copy
   if (readme || gitignoreTemplate || licenseType) {
     const tempPath = `${localRepoPath}.tmp`;
-    console.log(`[initRepository] Creating temp working copy at: ${tempPath}`);
+    logger.info(`[initRepository] Creating temp working copy at: ${tempPath}`);
     mkdirSync(tempPath, { recursive: true });
 
     try {
@@ -178,7 +176,7 @@ export async function initRepository(
         const fs = await import("fs/promises");
         await fs.writeFile(readmePath, readmeContent);
         await workingGit.add("README.md");
-        console.log(`[initRepository] Created README.md`);
+        logger.info(`[initRepository] Created README.md`);
       }
 
       // Create .gitignore
@@ -188,7 +186,7 @@ export async function initRepository(
         const fs = await import("fs/promises");
         await fs.writeFile(gitignorePath, gitignoreContent);
         await workingGit.add(".gitignore");
-        console.log(`[initRepository] Created .gitignore`);
+        logger.info(`[initRepository] Created .gitignore`);
       }
 
       // Create LICENSE
@@ -199,13 +197,13 @@ export async function initRepository(
           const fs = await import("fs/promises");
           await fs.writeFile(licensePath, licenseContent);
           await workingGit.add("LICENSE");
-          console.log(`[initRepository] Created LICENSE`);
+          logger.info(`[initRepository] Created LICENSE`);
         }
       }
 
       // Create initial commit
       await workingGit.commit("Initial commit");
-      console.log(`[initRepository] Created initial commit`);
+      logger.info(`[initRepository] Created initial commit`);
 
       // Rename branch to default
       if (defaultBranch !== "master") {
@@ -215,13 +213,13 @@ export async function initRepository(
       // Push to bare repository
       await workingGit.addRemote("origin", localRepoPath);
       await workingGit.push("origin", defaultBranch);
-      console.log(`[initRepository] Pushed to bare repo`);
+      logger.info(`[initRepository] Pushed to bare repo`);
 
       // Clean up temp directory
       rmSync(tempPath, { recursive: true, force: true });
-      console.log(`[initRepository] Cleaned up temp directory`);
+      logger.info(`[initRepository] Cleaned up temp directory`);
     } catch (err) {
-      console.error(`[initRepository] Working copy operations failed:`, err);
+      logger.error(`[initRepository] Working copy operations failed:`, err);
       // Clean up temp if it exists
       if (existsSync(tempPath)) {
         rmSync(tempPath, { recursive: true, force: true });
@@ -234,15 +232,15 @@ export async function initRepository(
   try {
     const bareGit = simpleGit(localRepoPath);
     await bareGit.raw(["symbolic-ref", "HEAD", `refs/heads/${defaultBranch}`]);
-    console.log(`[initRepository] Set default branch to ${defaultBranch}`);
+    logger.info(`[initRepository] Set default branch to ${defaultBranch}`);
   } catch (err) {
-    console.error(`[initRepository] Failed to set default branch:`, err);
+    logger.error(`[initRepository] Failed to set default branch:`, err);
     throw err;
   }
 
   // Verify files were created
   const files = readdirSync(localRepoPath);
-  console.log(`[initRepository] Completed. Files in repo: ${files.join(", ")}`);
+  logger.info(`[initRepository] Completed. Files in repo: ${files.join(", ")}`);
 }
 
 /**
@@ -264,7 +262,9 @@ export async function deleteRepository(repoPath: string): Promise<void> {
       // Also try parsing it as a storage path
       const parsed = parseStoragePath(repoPath);
       if (parsed) {
-        await deleteRepoFromStorage(`repos/${parsed.owner}/${parsed.repoName}.git`);
+        await deleteRepoFromStorage(
+          `repos/${parsed.owner}/${parsed.repoName}.git`,
+        );
       }
     }
   }
@@ -273,10 +273,17 @@ export async function deleteRepository(repoPath: string): Promise<void> {
 /**
  * Fork a repository by cloning it as a bare repo
  */
-export async function forkRepository(sourcePath: string, targetPath: string): Promise<void> {
+export async function forkRepository(
+  sourcePath: string,
+  targetPath: string,
+): Promise<void> {
   // Handle paths - if already absolute, use as-is
-  const fullSourcePath = sourcePath.startsWith('/') ? sourcePath : join(process.cwd(), sourcePath);
-  const fullTargetPath = targetPath.startsWith('/') ? targetPath : join(process.cwd(), targetPath);
+  const fullSourcePath = sourcePath.startsWith("/")
+    ? sourcePath
+    : join(process.cwd(), sourcePath);
+  const fullTargetPath = targetPath.startsWith("/")
+    ? targetPath
+    : join(process.cwd(), targetPath);
 
   // Create parent directory if needed
   const parentDir = dirname(fullTargetPath);
@@ -297,9 +304,11 @@ export async function forkRepository(sourcePath: string, targetPath: string): Pr
 }
 
 export function getGit(repoPath: string): SimpleGit {
-  // console.log(`[getGit] Initializing for path: ${repoPath} (Exists: ${require('fs').existsSync(repoPath)})`);
-  if (!repoPath || repoPath === '.' || repoPath === './') {
-    console.warn(`[getGit] WARNING: repoPath is empty or current directory! This might read project git history. Path: '${repoPath}'`);
+  // logger.info(`[getGit] Initializing for path: ${repoPath} (Exists: ${require('fs').existsSync(repoPath)})`);
+  if (!repoPath || repoPath === "." || repoPath === "./") {
+    logger.warn(
+      `[getGit] WARNING: repoPath is empty or current directory! This might read project git history. Path: '${repoPath}'`,
+    );
   }
   // Prevent git from looking in parent directories if the repoPath is not a git repo
   // This fixes the issue where empty temp dirs cause git to read the project's own history
@@ -317,7 +326,7 @@ export function getGit(repoPath: string): SimpleGit {
   // We strictly want to operate ONLY in the intended directory
   git.env({
     ...process.env,
-    GIT_CEILING_DIRECTORIES: ceilingDir
+    GIT_CEILING_DIRECTORIES: ceilingDir,
   });
 
   return git;
@@ -341,7 +350,9 @@ export async function isRepoEmpty(repoPath: string): Promise<boolean> {
  * Get the actual default branch of a repository (from git, not database)
  * Returns null if repository is empty
  */
-export async function getActualDefaultBranch(repoPath: string): Promise<string | null> {
+export async function getActualDefaultBranch(
+  repoPath: string,
+): Promise<string | null> {
   const git = getGit(repoPath);
   try {
     const headRef = await git.raw(["symbolic-ref", "--short", "HEAD"]);
@@ -371,7 +382,7 @@ function isExpectedGitError(error: unknown): boolean {
 export async function listFiles(
   repoPath: string,
   ref: string = "HEAD",
-  path: string = ""
+  path: string = "",
 ): Promise<FileEntry[]> {
   const git = getGit(repoPath);
 
@@ -438,7 +449,7 @@ export async function listFiles(
 export async function getFileContent(
   repoPath: string,
   filePath: string,
-  ref: string = "HEAD"
+  ref: string = "HEAD",
 ): Promise<{ content: string; isBinary: boolean; size: number } | null> {
   const git = getGit(repoPath);
 
@@ -465,7 +476,7 @@ export async function getFileContent(
 async function isFileBinary(
   repoPath: string,
   filePath: string,
-  ref: string
+  ref: string,
 ): Promise<boolean> {
   const git = getGit(repoPath);
 
@@ -533,7 +544,7 @@ export async function getCommits(
     path?: string;
     limit?: number;
     skip?: number;
-  } = {}
+  } = {},
 ): Promise<CommitInfo[]> {
   const git = getGit(repoPath);
   const { ref = "HEAD", path, limit = 30, skip = 0 } = options;
@@ -596,8 +607,8 @@ export async function getCommits(
         verification: {
           status: gpgStatus as any,
           signerKeyId: gpgKeyId || undefined,
-          signerName: gpgSigner || undefined
-        }
+          signerName: gpgSigner || undefined,
+        },
       });
     }
 
@@ -615,7 +626,7 @@ export async function getCommits(
  */
 export async function getCommitActivity(
   repoPath: string,
-  since: string = "1 year ago"
+  since: string = "1 year ago",
 ): Promise<{ date: string; count: number }[]> {
   const git = getGit(repoPath);
 
@@ -629,7 +640,7 @@ export async function getCommitActivity(
       "log",
       `--since=${since}`,
       "--date=short",
-      "--format=%ad"
+      "--format=%ad",
     ]);
 
     const dates = output.trim().split("\n").filter(Boolean);
@@ -662,7 +673,7 @@ export interface SearchResult {
 export async function searchCode(
   repoPath: string,
   query: string,
-  ref: string = "HEAD"
+  ref: string = "HEAD",
 ): Promise<SearchResult[]> {
   const git = getGit(repoPath);
 
@@ -677,7 +688,7 @@ export async function searchCode(
       "-n", // Line numbers
       "-I", // Ignore binary files
       query,
-      ref
+      ref,
     ]);
 
     const results: SearchResult[] = [];
@@ -694,7 +705,7 @@ export async function searchCode(
       results.push({
         file: filePath,
         line: lineNumber,
-        content: content.trim()
+        content: content.trim(),
       });
     }
 
@@ -717,7 +728,7 @@ export async function searchCode(
  */
 export async function getCommitCount(
   repoPath: string,
-  ref: string = "HEAD"
+  ref: string = "HEAD",
 ): Promise<number> {
   const git = getGit(repoPath);
 
@@ -739,7 +750,7 @@ export async function getCommitCount(
  */
 export async function getCommit(
   repoPath: string,
-  sha: string
+  sha: string,
 ): Promise<CommitInfo | null> {
   const commits = await getCommits(repoPath, { ref: sha, limit: 1 });
   return commits[0] || null;
@@ -773,7 +784,7 @@ export async function getBranches(repoPath: string): Promise<BranchInfo[]> {
       const [name, sha] = line.split("|");
 
       // Filter out HEAD and other invalid branch names
-      if (!name || name === 'HEAD' || name.includes('HEAD')) {
+      if (!name || name === "HEAD" || name.includes("HEAD")) {
         continue;
       }
 
@@ -806,7 +817,7 @@ export async function getBranches(repoPath: string): Promise<BranchInfo[]> {
 export async function getChangedFiles(
   repoPath: string,
   baseRef: string,
-  headRef: string
+  headRef: string,
 ): Promise<string[]> {
   const git = getGit(repoPath);
 
@@ -817,7 +828,7 @@ export async function getChangedFiles(
     const output = await git.raw([
       "diff",
       "--name-only",
-      `${baseRef}...${headRef}`
+      `${baseRef}...${headRef}`,
     ]);
 
     return output.trim().split("\n").filter(Boolean);
@@ -872,7 +883,7 @@ export async function getTags(repoPath: string): Promise<TagInfo[]> {
  */
 export async function getCommitDiff(
   repoPath: string,
-  sha: string
+  sha: string,
 ): Promise<DiffInfo[]> {
   const git = getGit(repoPath);
 
@@ -933,7 +944,7 @@ export async function getCommitDiff(
 export async function getBlame(
   repoPath: string,
   filePath: string,
-  ref: string = "HEAD"
+  ref: string = "HEAD",
 ): Promise<BlameInfo[]> {
   const git = getGit(repoPath);
 
@@ -1021,7 +1032,7 @@ export async function getRepoSize(repoPath: string): Promise<number> {
 export async function createBranch(
   repoPath: string,
   branchName: string,
-  startPoint: string = "HEAD"
+  startPoint: string = "HEAD",
 ): Promise<void> {
   const git = getGit(repoPath);
   try {
@@ -1037,7 +1048,7 @@ export async function createBranch(
  */
 export async function deleteBranch(
   repoPath: string,
-  branchName: string
+  branchName: string,
 ): Promise<void> {
   const git = getGit(repoPath);
   try {
@@ -1054,7 +1065,7 @@ export async function deleteBranch(
 export async function getMergeBase(
   repoPath: string,
   base: string,
-  head: string
+  head: string,
 ): Promise<string> {
   const git = getGit(repoPath);
   try {
@@ -1072,23 +1083,23 @@ export async function getMergeBase(
 export async function compareBranches(
   repoPath: string,
   base: string,
-  head: string
+  head: string,
 ): Promise<{ commits: CommitInfo[]; diffs: DiffInfo[] }> {
   // Verify branches exist first to avoid "ambiguous argument" errors
-  const fullBase = base.startsWith('refs/') ? base : `refs/heads/${base}`;
-  const fullHead = head.startsWith('refs/') ? head : `refs/heads/${head}`;
+  const fullBase = base.startsWith("refs/") ? base : `refs/heads/${base}`;
+  const fullHead = head.startsWith("refs/") ? head : `refs/heads/${head}`;
 
   const git = getGit(repoPath);
 
   try {
-    await git.raw(['rev-parse', '--verify', fullBase]);
+    await git.raw(["rev-parse", "--verify", fullBase]);
   } catch {
     logger.warn({ base, fullBase }, "Base branch not found in compareBranches");
     return { commits: [], diffs: [] };
   }
 
   try {
-    await git.raw(['rev-parse', '--verify', fullHead]);
+    await git.raw(["rev-parse", "--verify", fullHead]);
   } catch {
     // Only warn if head is missing but base exists (uncommon but possible)
     logger.warn({ head, fullHead }, "Head branch not found in compareBranches");
@@ -1138,23 +1149,64 @@ export async function compareBranches(
 }
 
 /**
+ * Get unified patch diff between two refs (for compare view)
+ * Returns raw unified diff output suitable for rendering in a diff viewer
+ */
+export async function getComparePatchDiff(
+  repoPath: string,
+  base: string,
+  head: string,
+): Promise<string> {
+  const fullBase = base.startsWith("refs/") ? base : `refs/heads/${base}`;
+  const fullHead = head.startsWith("refs/") ? head : `refs/heads/${head}`;
+  const git = getGit(repoPath);
+
+  try {
+    await git.raw(["rev-parse", "--verify", fullBase]);
+    await git.raw(["rev-parse", "--verify", fullHead]);
+  } catch {
+    return "";
+  }
+
+  try {
+    const output = await git.raw([
+      "diff",
+      `${fullBase}...${fullHead}`,
+      "--unified=5",
+      "-M", // Detect renames
+    ]);
+    return output;
+  } catch (error: any) {
+    logger.error({ err: error }, "Error getting compare patch diff");
+    return "";
+  }
+}
+
+/**
  * Merge a branch into another
+ * Uses --shared + --no-checkout for performance (avoids full clone)
  */
 export async function mergeBranch(
   repoPath: string,
   base: string,
   head: string,
-  message?: string
+  message?: string,
 ): Promise<MergeResult> {
   const tempDir = mkdtempSync(join(tmpdir(), "och-merge-"));
   try {
     const tempGit = simpleGit();
-    await tempGit.clone(repoPath, tempDir);
+    // Use --shared to avoid duplicating objects (local repos only) + shallow depth
+    await tempGit.clone(repoPath, tempDir, [
+      "--shared",
+      "--no-checkout",
+      "--single-branch",
+      "--branch",
+      base,
+    ]);
 
     const workGit = simpleGit(tempDir);
-    await workGit.fetch("origin", base);
-    await workGit.fetch("origin", head);
-    await workGit.checkout(["-B", base, `origin/${base}`]);
+    await workGit.checkout(base);
+    await workGit.fetch("origin", head, ["--depth=1"]);
 
     const commitMsg = message || `Merge pull request from ${head} into ${base}`;
     await workGit.merge(["--no-ff", "-m", commitMsg, `origin/${head}`]);
@@ -1163,7 +1215,6 @@ export async function mergeBranch(
     await workGit.push("origin", `${base}:${base}`);
 
     return { success: true, message: "Merged successfully", sha: newCommitSha };
-
   } catch (error: any) {
     logger.error("Error merging branches:", error);
     return { success: false, message: error.message || "Merge failed" };
@@ -1171,7 +1222,6 @@ export async function mergeBranch(
     rmSync(tempDir, { recursive: true, force: true });
   }
 }
-
 
 /**
  * Get gitignore templates
@@ -1350,7 +1400,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 export async function getLastCommit(
   repoPath: string,
   ref: string,
-  filePath: string
+  filePath: string,
 ): Promise<CommitInfo | null> {
   const git = getGit(repoPath);
   try {
@@ -1388,7 +1438,7 @@ export async function getLastCommit(
 export async function getFileRawContent(
   repoPath: string,
   filePath: string,
-  ref: string = "HEAD"
+  ref: string = "HEAD",
 ): Promise<Buffer | null> {
   return new Promise((resolve, reject) => {
     const git = spawn("git", ["show", `${ref}:${filePath}`], { cwd: repoPath });
@@ -1413,13 +1463,12 @@ export async function getFileRawContent(
   });
 }
 
-
 /**
  * Get contributors list with commit counts
  */
 export async function getContributors(
   repoPath: string,
-  ref: string = "HEAD"
+  ref: string = "HEAD",
 ): Promise<{ name: string; email: string; commits: number }[]> {
   const git = getGit(repoPath);
 
@@ -1453,7 +1502,11 @@ export async function getContributors(
   } catch (error) {
     // Catch "outside repository" error and others
     const errorMessage = error instanceof Error ? error.message : String(error);
-    if (errorMessage.includes("outside repository") || errorMessage.includes("not a git repository") || errorMessage.includes("does not exist")) {
+    if (
+      errorMessage.includes("outside repository") ||
+      errorMessage.includes("not a git repository") ||
+      errorMessage.includes("does not exist")
+    ) {
       // This is expected for empty/missing repos
       return [];
     }
@@ -1473,32 +1526,44 @@ export async function installHooks(repoPath: string) {
   }
 
   // Use environment variable for site URL, fallback to localhost for development
-  const siteUrl = process.env.SITE_URL || process.env.PUBLIC_URL || "http://localhost:3000";
+  const siteUrl =
+    process.env.SITE_URL || process.env.PUBLIC_URL || "http://localhost:3000";
   const hookSecret = process.env.INTERNAL_HOOK_SECRET;
   if (!hookSecret) {
-    throw new Error("INTERNAL_HOOK_SECRET environment variable is required to install git hooks");
+    throw new Error(
+      "INTERNAL_HOOK_SECRET environment variable is required to install git hooks",
+    );
   }
 
   const postReceiveScript = `#!/bin/bash
+# Read hook secret from environment (set by the server process, not stored in this file)
+HOOK_SECRET="\${INTERNAL_HOOK_SECRET}"
+if [ -z "$HOOK_SECRET" ]; then
+    echo "Warning: INTERNAL_HOOK_SECRET not set, hook call may fail"
+fi
 while read oldrev newrev refname
 do
     curl -X POST \\
       -H "Content-Type: application/json" \\
-      -H "X-Hook-Secret: ${hookSecret}" \\
+      -H "X-Hook-Secret: $HOOK_SECRET" \\
       -d "{\\"oldrev\\":\\"$oldrev\\",\\"newrev\\":\\"$newrev\\",\\"refname\\":\\"$refname\\",\\"pusher\\":\\"$REMOTE_USER\\"}" \\
       ${siteUrl}/api/internal/hooks/post-receive?repo=${encodeURIComponent(repoPath)}
 done
 `;
 
   const preReceiveScript = `#!/bin/bash
+HOOK_SECRET="\${INTERNAL_HOOK_SECRET}"
+if [ -z "$HOOK_SECRET" ]; then
+    echo "Warning: INTERNAL_HOOK_SECRET not set, hook call may fail"
+fi
 while read oldrev newrev refname
 do
     RESPONSE=$(curl -s -w "%{http_code}" -X POST \\
       -H "Content-Type: application/json" \\
-      -H "X-Hook-Secret: ${hookSecret}" \\
+      -H "X-Hook-Secret: $HOOK_SECRET" \\
       -d "{\\"oldrev\\":\\"$oldrev\\",\\"newrev\\":\\"$newrev\\",\\"refname\\":\\"$refname\\",\\"pusher\\":\\"$REMOTE_USER\\"}" \\
       ${siteUrl}/api/internal/hooks/pre-receive?repo=${encodeURIComponent(repoPath)})
-    
+
     HTTP_CODE=\${RESPONSE: -3}
     BODY=\${RESPONSE:0:\${#RESPONSE}-3}
 
@@ -1528,13 +1593,15 @@ export async function commitFile(
   filePath: string,
   content: string,
   message: string,
-  author: { name: string; email: string }
+  author: { name: string; email: string },
 ): Promise<string> {
   const git = getGit(repoPath);
 
   // We need to use plumbing commands because it's a bare repo
-  const tempIndexFile = join(repoPath, `temp_index_${Date.now()}_${Math.random().toString(36).substring(7)}`);
-
+  const tempIndexFile = join(
+    repoPath,
+    `temp_index_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+  );
 
   try {
     // 1. Read the tree of the branch into a temporary index
@@ -1551,7 +1618,9 @@ export async function commitFile(
         cwd: repoPath,
       });
       let output = "";
-      gitProcess.stdout.on("data", (data) => { output += data.toString(); });
+      gitProcess.stdout.on("data", (data) => {
+        output += data.toString();
+      });
       gitProcess.on("close", (code) => {
         if (code === 0) resolve(output.trim());
         else reject(new Error(`git hash-object failed with code ${code}`));
@@ -1563,7 +1632,16 @@ export async function commitFile(
 
     // 3. Update the index with the new blob
     // git update-index --add --cacheinfo 100644 <blob_sha> <path>
-    await git.env(env).raw(["update-index", "--add", "--cacheinfo", "100644", blobSha, filePath]);
+    await git
+      .env(env)
+      .raw([
+        "update-index",
+        "--add",
+        "--cacheinfo",
+        "100644",
+        blobSha,
+        filePath,
+      ]);
 
     // 4. Write the new tree
     const writeTreeOutput = await git.env(env).raw(["write-tree"]);
@@ -1573,7 +1651,14 @@ export async function commitFile(
     // We need the parent commit
     const parentSha = (await git.revparse([branch])).trim();
 
-    const commitTreeArgs = ["commit-tree", treeSha, "-p", parentSha, "-m", message];
+    const commitTreeArgs = [
+      "commit-tree",
+      treeSha,
+      "-p",
+      parentSha,
+      "-m",
+      message,
+    ];
 
     // Set author/committer
     const commitEnv = {
@@ -1581,7 +1666,7 @@ export async function commitFile(
       GIT_AUTHOR_NAME: author.name,
       GIT_AUTHOR_EMAIL: author.email,
       GIT_COMMITTER_NAME: author.name,
-      GIT_COMMITTER_EMAIL: author.email
+      GIT_COMMITTER_EMAIL: author.email,
     };
 
     const commitTreeOutput = await git.env(commitEnv).raw(commitTreeArgs);
@@ -1615,13 +1700,13 @@ export function getRepoPath(owner: string, name: string): string {
 export async function createSpeculativeBranch(
   repoPath: string,
   baseBranch: string,
-  prs: { headBranch: string; number: number }[]
+  prs: { headBranch: string; number: number }[],
 ): Promise<{ branchName: string; success: boolean; message?: string }> {
   const git = getGit(repoPath);
 
   // Generate unique temp branch name
   const timestamp = Date.now();
-  const prNumbers = prs.map(p => p.number).join("-");
+  const prNumbers = prs.map((p) => p.number).join("-");
   const branchName = `mq-spec-${timestamp}-${prNumbers}`;
 
   try {
@@ -1642,12 +1727,12 @@ export async function createSpeculativeBranch(
         // Attempt to delete the failed branch
         try {
           await git.deleteLocalBranch(branchName, true);
-        } catch { }
+        } catch {}
 
         return {
           branchName,
           success: false,
-          message: `Conflict merging PR #${pr.number} during speculative build: ${e.message}`
+          message: `Conflict merging PR #${pr.number} during speculative build: ${e.message}`,
         };
       }
     }

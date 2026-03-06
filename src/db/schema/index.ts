@@ -7,8 +7,8 @@
 export * from "./users";
 
 // Repositories and git
-export * from "./repositories";
 export * from "./deploy-keys";
+export * from "./repositories";
 
 // Issues and project management
 export * from "./issues";
@@ -17,24 +17,23 @@ export * from "./issues";
 export * from "./pull-requests";
 
 // CI/CD workflows
-export * from "./workflows";
 export * from "./projects";
-
-
+export * from "./workflows";
 
 // Wiki
 export * from "./wiki";
 
 // Organizations and teams
 export * from "./organizations";
-export * from "./teams";
 export * from "./roles";
+export * from "./teams";
 
 // Activity and notifications
 export * from "./activity";
 
 // Security
 export * from "./security";
+export * from "./security-policies";
 
 // Pipeline Runners
 export * from "./pipeline-runners";
@@ -103,5 +102,8 @@ export * from "./external-ci";
 // Review requirements and reviewer rules
 export * from "./review-rules";
 
-// Missing schemas - resolves pending feature references
-export * from "./missing-schemas";
+// Integrations & extended features (code quality, dashboards, deployments, etc.)
+export * from "./integrations";
+
+// Package Registry
+export * from "./packages";

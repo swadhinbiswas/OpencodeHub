@@ -37,16 +37,56 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
         return forbidden();
     }
 
-    // Get latest scans
+    // Return recent scan summaries only. Vulnerabilities are exposed via paginated endpoint.
     const scans = await db.query.securityScans.findMany({
         where: eq(schema.securityScans.repositoryId, repo.id),
         orderBy: [desc(schema.securityScans.startedAt)],
         limit: 10,
-        with: {
-            vulnerabilities: true // For MVP, return all vuln of recent scans. Ideally separate endpoint.
-            // Actually, listing vulnerabilities for the *latest* scan is usually what's needed.
+        columns: {
+            id: true,
+            status: true,
+            startedAt: true,
+            completedAt: true,
+            criticalCount: true,
+            highCount: true,
+            mediumCount: true,
+            lowCount: true,
+            unknownCount: true,
+            logs: true,
         }
     });
 
-    return success(scans);
+    const latest = scans[0] || null;
+    const summary = latest
+        ? {
+            latestScanId: latest.id,
+            status: latest.status,
+            total:
+                (latest.criticalCount || 0) +
+                (latest.highCount || 0) +
+                (latest.mediumCount || 0) +
+                (latest.lowCount || 0) +
+                (latest.unknownCount || 0),
+            critical: latest.criticalCount || 0,
+            high: latest.highCount || 0,
+            medium: latest.mediumCount || 0,
+            low: latest.lowCount || 0,
+            unknown: latest.unknownCount || 0,
+            policy: (() => {
+                if (!latest.logs) return { policyViolations: 0, blockingViolations: 0, mode: null };
+                try {
+                    const parsed = JSON.parse(latest.logs);
+                    return {
+                        policyViolations: Number(parsed.policyViolations || 0),
+                        blockingViolations: Number(parsed.blockingViolations || 0),
+                        mode: parsed.policyMode || null,
+                    };
+                } catch {
+                    return { policyViolations: 0, blockingViolations: 0, mode: null };
+                }
+            })(),
+        }
+        : null;
+
+    return success({ scans, summary });
 });

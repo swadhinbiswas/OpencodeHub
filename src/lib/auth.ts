@@ -1,18 +1,21 @@
-
 /**
  * Authentication utilities
  * JWT token management, password hashing, 2FA
  */
 
+import { getDatabase, schema } from "@/db";
+import { logger } from "@/lib/logger";
+import { getRepoPermission } from "@/lib/permissions";
+import {
+  hashPersonalAccessToken,
+  verifyPersonalAccessTokenValue,
+} from "@/lib/personal-access-token";
 import bcrypt from "bcryptjs";
+import { and, eq, or } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { JWTPayload, SignJWT, jwtVerify } from "jose";
 import { authenticator } from "otplib";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { getDatabase, schema } from "@/db";
-import { eq, and, or } from "drizzle-orm";
-import { generateId, now } from "./utils";
-import { getRepoPermission } from "@/lib/permissions";
-import { hashPersonalAccessToken, verifyPersonalAccessTokenValue } from "@/lib/personal-access-token";
+import { generateId } from "./utils";
 
 // Types
 export interface TokenPayload extends JWTPayload {
@@ -33,12 +36,18 @@ export interface SessionData {
   createdAt: Date;
 }
 
-// JWT configuration
-const jwtSecretRaw = process.env.JWT_SECRET;
-if (!jwtSecretRaw) {
-  throw new Error("JWT_SECRET environment variable is required");
+// JWT configuration — lazy-initialized to avoid crashing at import time
+let _jwtSecret: Uint8Array | null = null;
+function getJwtSecret(): Uint8Array {
+  if (!_jwtSecret) {
+    const raw = process.env.JWT_SECRET;
+    if (!raw) {
+      throw new Error("JWT_SECRET environment variable is required");
+    }
+    _jwtSecret = new TextEncoder().encode(raw);
+  }
+  return _jwtSecret;
 }
-const JWT_SECRET = new TextEncoder().encode(jwtSecretRaw);
 const JWT_ISSUER = "opencodehub";
 const JWT_AUDIENCE = "opencodehub-api";
 
@@ -46,7 +55,7 @@ const JWT_AUDIENCE = "opencodehub-api";
  * Create a JWT token
  */
 export async function createToken(
-  payload: Omit<TokenPayload, "iat" | "exp" | "iss" | "aud">
+  payload: Omit<TokenPayload, "iat" | "exp" | "iss" | "aud">,
 ): Promise<string> {
   const expiresIn = process.env.JWT_EXPIRES_IN || "7d";
   const expirationTime = parseExpirationTime(expiresIn);
@@ -57,7 +66,7 @@ export async function createToken(
     .setIssuer(JWT_ISSUER)
     .setAudience(JWT_AUDIENCE)
     .setExpirationTime(expirationTime)
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }
 
 /**
@@ -65,7 +74,7 @@ export async function createToken(
  */
 export async function verifyToken(token: string): Promise<TokenPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET, {
+    const { payload } = await jwtVerify(token, getJwtSecret(), {
       issuer: JWT_ISSUER,
       audience: JWT_AUDIENCE,
     });
@@ -88,7 +97,7 @@ export async function hashPassword(password: string): Promise<string> {
  */
 export async function verifyPassword(
   password: string,
-  hash: string
+  hash: string,
 ): Promise<boolean> {
   return bcrypt.compare(password, hash);
 }
@@ -118,7 +127,7 @@ export function verify2FAToken(token: string, secret: string): boolean {
 export async function createSession(
   userId: string,
   userAgent?: string,
-  ipAddress?: string
+  ipAddress?: string,
 ): Promise<SessionData> {
   const expiresIn = process.env.JWT_EXPIRES_IN || "7d";
   const expirationDate = calculateExpirationDate(expiresIn);
@@ -249,7 +258,7 @@ export function extractBearerToken(authHeader: string | null): string | null {
  * Supports both JWT tokens and Personal Access Tokens (PAT)
  */
 export async function getUserFromRequest(
-  request: Request
+  request: Request,
 ): Promise<TokenPayload | null> {
   const authHeader = request.headers.get("Authorization");
   const token = extractBearerToken(authHeader);
@@ -282,7 +291,9 @@ export async function getUserFromRequest(
 /**
  * Verify a Personal Access Token
  */
-async function verifyPersonalAccessToken(token: string): Promise<TokenPayload | null> {
+async function verifyPersonalAccessToken(
+  token: string,
+): Promise<TokenPayload | null> {
   try {
     const db = getDatabase() as NodePgDatabase<typeof schema>;
     const { personalAccessTokens } = schema;
@@ -293,7 +304,7 @@ async function verifyPersonalAccessToken(token: string): Promise<TokenPayload | 
     const pat = await db.query.personalAccessTokens.findFirst({
       where: or(
         eq(personalAccessTokens.token, hashedToken),
-        eq(personalAccessTokens.token, token)
+        eq(personalAccessTokens.token, token),
       ),
       with: {
         user: true,
@@ -327,7 +338,7 @@ async function verifyPersonalAccessToken(token: string): Promise<TokenPayload | 
       isAdmin: pat.user.isAdmin || false,
     };
   } catch (error) {
-    console.error("PAT verification error:", error);
+    logger.error("PAT verification error:", error);
     return null;
   }
 }
@@ -355,7 +366,7 @@ function parseCookies(cookieHeader: string): Record<string, string> {
 export async function getRepoAndUser(
   request: Request,
   ownerName: string,
-  repoName: string
+  repoName: string,
 ) {
   const db = getDatabase();
   const tokenUser = await getUserFromRequest(request);
@@ -372,7 +383,7 @@ export async function getRepoAndUser(
   const repository = await db.query.repositories.findFirst({
     where: and(
       eq(schema.repositories.ownerId, repoOwner.id),
-      eq(schema.repositories.name, repoName)
+      eq(schema.repositories.name, repoName),
     ),
     with: {
       owner: true,
@@ -389,8 +400,8 @@ export async function getRepoAndUser(
 
   const requester = userId
     ? await db.query.users.findFirst({
-      where: eq(schema.users.id, userId),
-    })
+        where: eq(schema.users.id, userId),
+      })
     : null;
 
   return {

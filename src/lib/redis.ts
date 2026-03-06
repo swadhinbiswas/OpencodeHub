@@ -3,11 +3,13 @@ import { logger } from "@/lib/logger";
 
 // Create a Redis client
 // Uses REDIS_URL environment variable by default
-const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
+const redisUrl = import.meta.env?.REDIS_URL || process.env.REDIS_URL || "redis://localhost:6379";
 const safeRedisUrl = redisUrl.replace(/:\/\/([^:@]+)(:[^@]+)?@/, "://$1:***@");
 logger.info({ redisUrl: safeRedisUrl }, "Redis configured");
 
 export const redis = new Redis(redisUrl, {
+    // Some managed Redis providers restrict INFO; avoid noisy ready-check failures.
+    enableReadyCheck: false,
     maxRetriesPerRequest: 3,
     retryStrategy: (times) => {
         const delay = Math.min(times * 50, 2000);
@@ -22,6 +24,35 @@ redis.on("error", (error) => {
 redis.on("connect", () => {
     logger.info("Redis connected");
 });
+
+export async function waitForRedisReady(timeoutMs = 5000): Promise<boolean> {
+    if (redis.status === "ready") return true;
+
+    return await new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+            cleanup();
+            resolve(false);
+        }, timeoutMs);
+
+        const onReady = () => {
+            cleanup();
+            resolve(true);
+        };
+
+        const onError = () => {
+            // Keep waiting until timeout; transient errors are common during startup.
+        };
+
+        const cleanup = () => {
+            clearTimeout(timeout);
+            redis.off("ready", onReady);
+            redis.off("error", onError);
+        };
+
+        redis.on("ready", onReady);
+        redis.on("error", onError);
+    });
+}
 
 /**
  * Set a user session

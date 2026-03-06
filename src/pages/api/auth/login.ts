@@ -2,22 +2,21 @@
  * Auth API - Login
  */
 import { getDatabase, schema } from "@/db";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { sessions, users } from "@/db/schema";
-import { parseBody, serverError, success, unauthorized } from "@/lib/api";
+import { parseBody, success, unauthorized } from "@/lib/api";
 import {
   createSession,
   createToken,
   verify2FAToken,
   verifyPassword,
 } from "@/lib/auth";
-import { now } from "@/lib/utils";
+import { withErrorHandler } from "@/lib/errors";
+import { logger } from "@/lib/logger";
+import { applyRateLimit } from "@/middleware/rate-limit";
 import { type APIRoute } from "astro";
 import { eq } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { z } from "zod";
-import { applyRateLimit } from "@/middleware/rate-limit";
-import { logger } from "@/lib/logger";
-import { withErrorHandler } from "@/lib/errors";
 
 const loginSchema = z.object({
   login: z.string(), // username or email
@@ -56,21 +55,14 @@ export const POST: APIRoute = withErrorHandler(async ({ request, cookies }) => {
 
   // Verify password
   if (!user.passwordHash) {
-    return unauthorized(
-      `Password login not available. No hash for user ${user.username}`
-    );
+    return unauthorized("Invalid credentials");
   }
 
   const isValid = await verifyPassword(password, user.passwordHash);
 
   if (!isValid) {
-    // Use logger instead of returning explicit debug info to client in prod, 
-    // but original code sent it to client. I will keep it but maybe log it safely.
     logger.warn({ user: user.username }, "Invalid password attempt");
-    return unauthorized(
-      `Invalid credentials. Debug: User=${user.username
-      }, Hash=${user.passwordHash.substring(0, 10)}...`
-    );
+    return unauthorized("Invalid credentials");
   }
 
   // Check 2FA if enabled

@@ -1,11 +1,12 @@
 import type { APIRoute } from 'astro';
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { z } from 'zod';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { getDatabase, schema } from '@/db';
-import { success, unauthorized, serverError, parseBody, notFound } from '@/lib/api';
+import { success, unauthorized, parseBody, notFound } from '@/lib/api';
 import { withErrorHandler } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { isLegacyPlainSecret, hashRunnerSecret, verifyRunnerSecret } from "@/lib/runner-secrets";
 
 const pollSchema = z.object({
     runnerId: z.string(),
@@ -24,8 +25,15 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
         where: eq(schema.pipelineRunners.id, runnerId)
     });
 
-    if (!runner || runner.token !== secret) {
+    if (!runner || !verifyRunnerSecret(runner.token, secret)) {
         return unauthorized();
+    }
+
+    if (isLegacyPlainSecret(runner.token)) {
+        await db
+            .update(schema.pipelineRunners)
+            .set({ token: hashRunnerSecret(secret) })
+            .where(eq(schema.pipelineRunners.id, runnerId));
     }
 
     // Update Last Seen
@@ -33,23 +41,56 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
         .set({ status: 'online', lastSeenAt: new Date() })
         .where(eq(schema.pipelineRunners.id, runnerId));
 
-    // Find Queued Jobs for this Repository
-    // 1. Find runs for repo
-    // 2. Find queued jobs in those runs
-    // For specific runner assignment, we would check runnerId on the job, but MVP picks any queued job for the repo.
+    // First, continue any in-progress job already assigned to this runner by dispatching
+    // the next queued executable step.
+    const inProgressJobs = await db.query.workflowJobs.findMany({
+        where: and(
+            eq(schema.workflowJobs.runnerId, runner.id),
+            eq(schema.workflowJobs.status, "in_progress")
+        ),
+        with: {
+            run: true,
+        },
+        limit: 5,
+    });
 
-    // Note: This is an inefficient query logic, ideally we join.
-    // Simplifying: Get all jobs for this repo?
-    // We need to join workflow_jobs -> workflow_runs -> repositories.
-    // Or, since runner is tied to a repo, we look for jobs in runs of that repo.
+    for (const job of inProgressJobs) {
+        if (!job.run || job.run.repositoryId !== runner.repositoryId) continue;
 
-    // Drizzle query using the relations would be best, but manual lookups are easier to reason about right now without complex joins in one go if not confident with Drizzle syntax.
+        const steps = await db.query.workflowSteps.findMany({
+            where: eq(schema.workflowSteps.jobId, job.id),
+            orderBy: (steps, { asc }) => [asc(steps.number)]
+        });
 
-    // Get active runs for repo
+        const nextStep = steps.find((step) => step.status === "queued" && !!step.run);
+        if (!nextStep) {
+            continue;
+        }
+
+        const claimedStep = await db.update(schema.workflowSteps)
+            .set({ status: "in_progress", startedAt: new Date() })
+            .where(and(eq(schema.workflowSteps.id, nextStep.id), eq(schema.workflowSteps.status, "queued")))
+            .returning({ id: schema.workflowSteps.id });
+
+        if (claimedStep.length === 0) {
+            continue;
+        }
+
+        logger.info({ runnerId, jobId: job.id, stepId: nextStep.id }, "Dispatched queued step for in-progress job");
+        return success({
+            id: job.id,
+            name: job.name,
+            stepId: nextStep.id,
+            stepName: nextStep.name || "Execute",
+            run: nextStep.run || "echo \"No run command found\"",
+        });
+    }
+
+    // Find new queued jobs for this repository.
     const activeRuns = await db.query.workflowRuns.findMany({
         where: and(
             eq(schema.workflowRuns.repositoryId, runner.repositoryId!),
-            eq(schema.workflowRuns.status, 'queued') // or in_progress but having queued jobs
+            inArray(schema.workflowRuns.status, ['queued', 'in_progress'])
         ),
         with: {
             jobs: {
@@ -64,35 +105,44 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
         if (run.jobs.length > 0) {
             const job = run.jobs[0];
 
-            // Claim Job
-            await db.update(schema.workflowJobs)
+            // Claim job only if it is still queued to avoid race conditions between runners.
+            const claim = await db.update(schema.workflowJobs)
                 .set({
                     status: 'in_progress',
                     runnerId: runner.id,
                     startedAt: new Date()
                 })
-                .where(eq(schema.workflowJobs.id, job.id));
+                .where(and(eq(schema.workflowJobs.id, job.id), eq(schema.workflowJobs.status, 'queued')))
+                .returning({ id: schema.workflowJobs.id });
+
+            if (claim.length === 0) {
+                continue;
+            }
 
             await db.update(schema.workflowRuns)
                 .set({ status: 'in_progress' })
                 .where(eq(schema.workflowRuns.id, run.id));
 
-            // Fetch steps or just send the command
-            // Assuming simplified job structure where run command is in job definition for MVP? 
-            // In schema, 'run' is in steps.
+            // Fetch steps and provide the first executable run step to the runner.
             const steps = await db.query.workflowSteps.findMany({
                 where: eq(schema.workflowSteps.jobId, job.id),
                 orderBy: (steps, { asc }) => [asc(steps.number)]
             });
 
-            // Just send the first 'run' step for simplicity in MVP
-            const runStep = steps.find(s => s.run);
+            const runStep = steps.find((s) => s.status === "queued" && !!s.run);
+
+            if (runStep) {
+                await db.update(schema.workflowSteps)
+                    .set({ status: "in_progress", startedAt: new Date() })
+                    .where(and(eq(schema.workflowSteps.id, runStep.id), eq(schema.workflowSteps.status, "queued")));
+            }
 
             logger.info({ runnerId, jobId: job.id, runId: run.id }, "Job claimed by runner");
 
             return success({
                 id: job.id,
                 name: job.name,
+                stepId: runStep?.id || null,
                 stepName: runStep?.name || 'Execute',
                 run: runStep?.run || 'echo "No run command found"'
             });

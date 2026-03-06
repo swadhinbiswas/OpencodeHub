@@ -4,7 +4,14 @@
  */
 
 import { relations } from "drizzle-orm";
-import { boolean, pgTable, text, timestamp, primaryKey } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
@@ -28,30 +35,43 @@ export const users = pgTable("users", {
   aiConfig: text("ai_config"), // JSON: { provider, apiKeys: { openai, groq, bytez } }
 });
 
-export const sessions = pgTable("sessions", {
-  id: text("id").primaryKey(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  token: text("token").notNull().unique(),
-  userAgent: text("user_agent"),
-  ipAddress: text("ip_address"),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    token: text("token").notNull().unique(),
+    userAgent: text("user_agent"),
+    ipAddress: text("ip_address"),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    userIdx: index("sessions_user_idx").on(t.userId),
+    expiresIdx: index("sessions_expires_idx").on(t.expiresAt),
+  }),
+);
 
-export const sshKeys = pgTable("ssh_keys", {
-  id: text("id").primaryKey(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  fingerprint: text("fingerprint").notNull().unique(),
-  publicKey: text("public_key").notNull(),
-  keyType: text("key_type").notNull(), // ssh-rsa, ssh-ed25519, etc.
-  lastUsedAt: timestamp("last_used_at"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const sshKeys = pgTable(
+  "ssh_keys",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    fingerprint: text("fingerprint").notNull().unique(),
+    publicKey: text("public_key").notNull(),
+    keyType: text("key_type").notNull(), // ssh-rsa, ssh-ed25519, etc.
+    lastUsedAt: timestamp("last_used_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    userIdx: index("ssh_keys_user_idx").on(t.userId),
+  }),
+);
 
 export const oauthAccounts = pgTable("oauth_accounts", {
   id: text("id").primaryKey(),
@@ -66,18 +86,15 @@ export const oauthAccounts = pgTable("oauth_accounts", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const emailVerificationTokens = pgTable(
-  "email_verification_tokens",
-  {
-    id: text("id").primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    token: text("token").notNull().unique(),
-    expiresAt: timestamp("expires_at").notNull(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-  }
-);
+export const emailVerificationTokens = pgTable("email_verification_tokens", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
 
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: text("id").primaryKey(),
@@ -125,7 +142,7 @@ export const userFollowers = pgTable(
   },
   (t) => ({
     pk: primaryKey({ columns: [t.followerId, t.followeeId] }),
-  })
+  }),
 );
 
 // Relations
@@ -135,8 +152,12 @@ export const usersRelations = relations(users, ({ many }) => ({
   oauthAccounts: many(oauthAccounts),
   gpgKeys: many(gpgKeys),
   personalAccessTokens: many(personalAccessTokens),
-  followers: many(userFollowers, { relationName: "user_followers_followee_id_users_id" }),
-  following: many(userFollowers, { relationName: "user_followers_follower_id_users_id" }),
+  followers: many(userFollowers, {
+    relationName: "user_followers_followee_id_users_id",
+  }),
+  following: many(userFollowers, {
+    relationName: "user_followers_follower_id_users_id",
+  }),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -167,7 +188,7 @@ export const emailVerificationTokensRelations = relations(
       fields: [emailVerificationTokens.userId],
       references: [users.id],
     }),
-  })
+  }),
 );
 
 export const passwordResetTokensRelations = relations(
@@ -177,7 +198,7 @@ export const passwordResetTokensRelations = relations(
       fields: [passwordResetTokens.userId],
       references: [users.id],
     }),
-  })
+  }),
 );
 
 export const gpgKeysRelations = relations(gpgKeys, ({ one }) => ({
@@ -187,12 +208,15 @@ export const gpgKeysRelations = relations(gpgKeys, ({ one }) => ({
   }),
 }));
 
-export const personalAccessTokensRelations = relations(personalAccessTokens, ({ one }) => ({
-  user: one(users, {
-    fields: [personalAccessTokens.userId],
-    references: [users.id],
+export const personalAccessTokensRelations = relations(
+  personalAccessTokens,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [personalAccessTokens.userId],
+      references: [users.id],
+    }),
   }),
-}));
+);
 
 export const userFollowersRelations = relations(userFollowers, ({ one }) => ({
   follower: one(users, {

@@ -1,8 +1,8 @@
 import { getDatabase, schema } from "@/db";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { Repository } from "@/db/schema";
-import { repositoryCollaborators, organizationMembers, customRoles } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
+import { repositoryCollaborators, teamRepositories } from "@/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 export type PermissionLevel = "admin" | "write" | "read" | "none";
 export type OrgPermissionLevel = "owner" | "admin" | "member" | "none";
@@ -15,7 +15,7 @@ export interface PermissionOptions {
 export async function getRepoPermission(
   userId: string | undefined,
   repo: Repository,
-  options?: PermissionOptions
+  options?: PermissionOptions,
 ): Promise<PermissionLevel> {
   // Site-wide admins have full access to all repositories
   if (options?.isAdmin) {
@@ -43,7 +43,7 @@ export async function getRepoPermission(
   const collaborator = await db.query.repositoryCollaborators.findFirst({
     where: and(
       eq(repositoryCollaborators.repositoryId, repo.id),
-      eq(repositoryCollaborators.userId, userId)
+      eq(repositoryCollaborators.userId, userId),
     ),
   });
 
@@ -53,12 +53,12 @@ export async function getRepoPermission(
       const orgMember = await db.query.organizationMembers.findFirst({
         where: and(
           eq(schema.organizationMembers.organizationId, repo.ownerId),
-          eq(schema.organizationMembers.userId, userId)
+          eq(schema.organizationMembers.userId, userId),
         ),
         with: {
           // @ts-ignore - relation added in index.ts/roles.ts but might not be visible in types yet without generation
           // Actually we need to query customRole manually or rely on properly set up relations
-        }
+        },
       });
 
       if (orgMember) {
@@ -68,7 +68,7 @@ export async function getRepoPermission(
 
         if (orgMember.customRoleId) {
           const customRole = await db.query.customRoles.findFirst({
-            where: eq(schema.customRoles.id, orgMember.customRoleId)
+            where: eq(schema.customRoles.id, orgMember.customRoleId),
           });
 
           if (customRole && customRole.permissions) {
@@ -82,6 +82,43 @@ export async function getRepoPermission(
         // Default organization member access
         // Usually members can read internal/private repos
         return "read";
+      }
+    }
+
+    // Check team-based repository permissions
+    const userTeamMemberships = await db.query.teamMembers.findMany({
+      where: eq(schema.teamMembers.userId, userId),
+    });
+
+    if (userTeamMemberships.length > 0) {
+      const userTeamIds = userTeamMemberships.map((tm) => tm.teamId);
+      const teamRepoPerms = await db
+        .select({ permission: teamRepositories.permission })
+        .from(teamRepositories)
+        .where(
+          and(
+            inArray(teamRepositories.teamId, userTeamIds),
+            eq(teamRepositories.repositoryId, repo.id),
+          ),
+        );
+
+      if (teamRepoPerms.length > 0) {
+        // Return the highest permission level found across all teams
+        const permissionRank: Record<string, number> = {
+          admin: 3,
+          write: 2,
+          read: 1,
+        };
+        let highest = "read";
+        let highestRank = 0;
+        for (const tp of teamRepoPerms) {
+          const rank = permissionRank[tp.permission] ?? 0;
+          if (rank > highestRank) {
+            highestRank = rank;
+            highest = tp.permission;
+          }
+        }
+        return highest as PermissionLevel;
       }
     }
 
@@ -104,7 +141,7 @@ export async function getRepoPermission(
 export async function getOrgPermission(
   userId: string | undefined,
   organizationId: string,
-  options?: PermissionOptions
+  options?: PermissionOptions,
 ): Promise<OrgPermissionLevel> {
   if (options?.isAdmin) {
     return "admin";
@@ -116,7 +153,7 @@ export async function getOrgPermission(
   const orgMember = await db.query.organizationMembers.findFirst({
     where: and(
       eq(schema.organizationMembers.organizationId, organizationId),
-      eq(schema.organizationMembers.userId, userId)
+      eq(schema.organizationMembers.userId, userId),
     ),
   });
 
@@ -127,7 +164,7 @@ export async function getOrgPermission(
 
   if (orgMember.customRoleId) {
     const customRole = await db.query.customRoles.findFirst({
-      where: eq(schema.customRoles.id, orgMember.customRoleId)
+      where: eq(schema.customRoles.id, orgMember.customRoleId),
     });
 
     if (customRole && customRole.permissions) {
@@ -142,7 +179,7 @@ export async function getOrgPermission(
 export async function canAdminOrg(
   userId: string | undefined,
   organizationId: string,
-  options?: PermissionOptions
+  options?: PermissionOptions,
 ): Promise<boolean> {
   const permission = await getOrgPermission(userId, organizationId, options);
   return permission === "owner" || permission === "admin";
@@ -151,7 +188,7 @@ export async function canAdminOrg(
 export async function canReadRepo(
   userId: string | undefined,
   repo: Repository,
-  options?: PermissionOptions
+  options?: PermissionOptions,
 ): Promise<boolean> {
   const permission = await getRepoPermission(userId, repo, options);
   return permission !== "none";
@@ -160,7 +197,7 @@ export async function canReadRepo(
 export async function canWriteRepo(
   userId: string | undefined,
   repo: Repository,
-  options?: PermissionOptions
+  options?: PermissionOptions,
 ): Promise<boolean> {
   const permission = await getRepoPermission(userId, repo, options);
   return permission === "write" || permission === "admin";
@@ -169,7 +206,7 @@ export async function canWriteRepo(
 export async function canAdminRepo(
   userId: string | undefined,
   repo: Repository,
-  options?: PermissionOptions
+  options?: PermissionOptions,
 ): Promise<boolean> {
   const permission = await getRepoPermission(userId, repo, options);
   return permission === "admin";

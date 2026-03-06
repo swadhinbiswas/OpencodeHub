@@ -105,7 +105,7 @@ export class RunnerClient {
 
             const data = await res.json();
             if (data.success) {
-                return data.data; // { id, name, stepName, run }
+                return data.data; // { id, name, stepId, stepName, run }
             }
         } catch (error) {
             logger.error(error, "Poll failed");
@@ -113,7 +113,7 @@ export class RunnerClient {
         return null;
     }
 
-    async completeJob(jobId: string, result: { success: boolean, logs: string, exitCode: number }) {
+    async completeJob(jobId: string, result: { success: boolean, logs: string, exitCode: number, stepId?: string | null }) {
         if (!this.credentials) return;
 
         try {
@@ -123,6 +123,7 @@ export class RunnerClient {
                 body: JSON.stringify({
                     runnerId: this.credentials.id,
                     secret: this.credentials.token,
+                    stepId: result.stepId || undefined,
                     status: result.success ? 'success' : 'failure',
                     exitCode: result.exitCode,
                     logs: result.logs

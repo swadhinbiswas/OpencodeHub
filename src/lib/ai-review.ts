@@ -3,361 +3,474 @@
  * LLM-powered code review with stack context and inline suggestions
  */
 
-import { eq, and, desc } from "drizzle-orm";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDatabase, schema } from "@/db";
 import { logger } from "@/lib/logger";
-import { generateId } from "./utils";
-import { getStackForPr } from "./stacks";
-import { acquireRepo, releaseRepo } from "./git-storage";
+import { desc, eq } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { simpleGit } from "simple-git";
-import OpenAI from "openai";
+import { acquireRepo, releaseRepo } from "./git-storage";
+import { getStackForPr } from "./stacks";
+import { generateId } from "./utils";
 
-// Supported AI providers
 // Supported AI providers
 export type AIProvider =
-    | "openai"
-    | "anthropic"
-    | "groq"
-    | "bytez"
-    | "openrouter"
-    | "together"
-    | "google"
-    | "external_agent"
-    | "local";
+  | "openai"
+  | "anthropic"
+  | "groq"
+  | "bytez"
+  | "openrouter"
+  | "together"
+  | "google"
+  | "external_agent"
+  | "local"
+  | "ollama";
 export type AIModel = string; // Allow any string for model flexibility
 
+// Cost per 1M tokens by provider (USD). Used for cost tracking.
+const COST_PER_MILLION_TOKENS: Record<
+  string,
+  { input: number; output: number }
+> = {
+  "openai:gpt-4-turbo": { input: 10, output: 30 },
+  "openai:gpt-4o": { input: 5, output: 15 },
+  "openai:gpt-4o-mini": { input: 0.15, output: 0.6 },
+  "anthropic:claude-3-5-sonnet-latest": { input: 3, output: 15 },
+  "anthropic:claude-3-haiku": { input: 0.25, output: 1.25 },
+  "groq:llama-3.1-70b": { input: 0.59, output: 0.79 },
+  "ollama:*": { input: 0, output: 0 }, // Local — free
+  "local:*": { input: 0, output: 0 },
+};
+
+/**
+ * Estimate cost in USD for a review based on token usage.
+ */
+export function estimateReviewCost(
+  provider: string,
+  model: string,
+  promptTokens: number,
+  completionTokens: number,
+): number {
+  const key = `${provider}:${model}`;
+  const wildcardKey = `${provider}:*`;
+  const pricing =
+    COST_PER_MILLION_TOKENS[key] || COST_PER_MILLION_TOKENS[wildcardKey];
+  if (!pricing) return 0;
+  return (
+    (promptTokens * pricing.input + completionTokens * pricing.output) /
+    1_000_000
+  );
+}
+
+// Rate limiting: max reviews per hour per repository
+const REVIEW_RATE_LIMIT = parseInt(
+  process.env.AI_REVIEW_RATE_LIMIT || "20",
+  10,
+);
+const reviewRateTracker = new Map<
+  string,
+  { count: number; windowStart: number }
+>();
+
+function checkReviewRateLimit(repositoryId: string): void {
+  const now = Date.now();
+  const windowMs = 60 * 60 * 1000; // 1 hour
+  const tracker = reviewRateTracker.get(repositoryId);
+  if (!tracker || now - tracker.windowStart > windowMs) {
+    reviewRateTracker.set(repositoryId, { count: 1, windowStart: now });
+    return;
+  }
+  if (tracker.count >= REVIEW_RATE_LIMIT) {
+    throw new Error(
+      `AI review rate limit exceeded: ${REVIEW_RATE_LIMIT} reviews/hour for this repository`,
+    );
+  }
+  tracker.count++;
+}
+
 export interface AIReviewConfig {
-    provider: AIProvider;
-    model: AIModel;
-    apiKey?: string;
-    baseUrl?: string; // For local models
-    includeStackContext?: boolean;
+  provider: AIProvider;
+  model: AIModel;
+  apiKey?: string;
+  baseUrl?: string; // For local models
+  includeStackContext?: boolean;
 }
 
 type ProviderCallResult = {
-    content: string;
-    summary: string;
-    tokensUsed: number;
-    promptTokens: number;
-    completionTokens: number;
+  content: string;
+  summary: string;
+  tokensUsed: number;
+  promptTokens: number;
+  completionTokens: number;
 };
 
 export interface ReviewSuggestion {
-    path: string;
-    line?: number;
-    endLine?: number;
-    severity: "info" | "warning" | "error" | "critical";
-    type: "bug" | "security" | "performance" | "style" | "documentation" | "suggestion";
-    title: string;
-    message: string;
-    suggestedFix?: string;
-    explanation?: string;
+  path: string;
+  line?: number;
+  endLine?: number;
+  severity: "info" | "warning" | "error" | "critical";
+  type:
+    | "bug"
+    | "security"
+    | "performance"
+    | "style"
+    | "documentation"
+    | "suggestion";
+  title: string;
+  message: string;
+  suggestedFix?: string;
+  explanation?: string;
+  confidence?: number; // 0.0 to 1.0 — AI confidence in the finding
+  category?: string; // Grouping for UI: "Security", "Performance", "Best Practices", etc.
 }
 
 export interface AIReviewResult {
-    reviewId: string;
-    summary: string;
-    overallSeverity: "info" | "warning" | "error" | "critical";
-    suggestions: ReviewSuggestion[];
-    tokensUsed: number;
+  reviewId: string;
+  summary: string;
+  overallSeverity: "info" | "warning" | "error" | "critical";
+  suggestions: ReviewSuggestion[];
+  tokensUsed: number;
 }
 
 /**
  * Trigger an AI review for a pull request
  */
 export async function triggerAIReview(
-    pullRequestId: string,
-    triggeredById: string,
-    config: AIReviewConfig
+  pullRequestId: string,
+  triggeredById: string,
+  config: AIReviewConfig,
+  repositoryId?: string,
 ): Promise<typeof schema.aiReviews.$inferSelect> {
-    const db = getDatabase() as NodePgDatabase<typeof schema>;
+  const db = getDatabase() as NodePgDatabase<typeof schema>;
 
-    // Create review record
-    const reviewId = generateId();
-    const review = {
-        id: reviewId,
-        pullRequestId,
-        status: "pending",
-        model: config.model,
-        provider: config.provider,
-        includesStackContext: config.includeStackContext || false,
-        triggeredById,
-        createdAt: new Date(),
-    };
+  // Rate limit check (per repository)
+  if (repositoryId) {
+    checkReviewRateLimit(repositoryId);
+  }
 
-    await db.insert(schema.aiReviews).values(review);
+  // Create review record
+  const reviewId = generateId();
+  const review = {
+    id: reviewId,
+    pullRequestId,
+    status: "pending",
+    model: config.model,
+    provider: config.provider,
+    includesStackContext: config.includeStackContext || false,
+    triggeredById,
+    createdAt: new Date(),
+  };
 
-    // Start the review asynchronously
-    // In production, this would be queued to a background job
-    runAIReview(reviewId, pullRequestId, config).catch(console.error);
+  await db.insert(schema.aiReviews).values(review);
 
-    return review as typeof schema.aiReviews.$inferSelect;
+  // Start the review asynchronously
+  // In production, this would be queued to a background job
+  runAIReview(reviewId, pullRequestId, config).catch(console.error);
+
+  return review as typeof schema.aiReviews.$inferSelect;
 }
 
 /**
  * Run the AI review (called asynchronously)
  */
 async function runAIReview(
-    reviewId: string,
-    pullRequestId: string,
-    config: AIReviewConfig
+  reviewId: string,
+  pullRequestId: string,
+  config: AIReviewConfig,
 ): Promise<void> {
-    const db = getDatabase() as NodePgDatabase<typeof schema>;
+  const db = getDatabase() as NodePgDatabase<typeof schema>;
 
-    try {
-        // Mark as running
-        await db.update(schema.aiReviews)
-            .set({ status: "running", startedAt: new Date() })
-            .where(eq(schema.aiReviews.id, reviewId));
+  try {
+    // Mark as running
+    await db
+      .update(schema.aiReviews)
+      .set({ status: "running", startedAt: new Date() })
+      .where(eq(schema.aiReviews.id, reviewId));
 
-        // Get PR and diff
-        const pr = await db.query.pullRequests.findFirst({
-            where: eq(schema.pullRequests.id, pullRequestId),
-            with: {
-                repository: {
-                    with: { owner: true }
-                }
-            }
-        });
+    // Get PR and diff
+    const pr = await db.query.pullRequests.findFirst({
+      where: eq(schema.pullRequests.id, pullRequestId),
+      with: {
+        repository: {
+          with: { owner: true },
+        },
+      },
+    });
 
-        if (!pr) {
-            throw new Error("PR not found");
-        }
-
-        // Fetch Diff
-        let diff = "";
-        try {
-            const repoPath = await acquireRepo(pr.repository.owner.username, pr.repository.name);
-            const git = simpleGit(repoPath);
-            await git.fetch();
-            // Get diff between base and head
-            // Ideally we want the merge base to head
-            const mergeBase = await git.raw(["merge-base", `origin/${pr.baseBranch}`, `origin/${pr.headBranch}`]);
-            diff = await git.diff([mergeBase.trim(), `origin/${pr.headBranch}`]);
-            await releaseRepo(pr.repository.owner.username, pr.repository.name, false);
-        } catch (e) {
-            logger.error("Failed to fetch diff for AI review", e);
-            throw new Error("Could not fetch diff from git");
-        }
-
-        if (!diff) {
-            diff = "No changes detected.";
-        }
-
-        // Truncate diff if too large (poor man's token limit)
-        if (diff.length > 50000) {
-            diff = diff.substring(0, 50000) + "\n\n...[Diff truncated due to length]...";
-        }
-
-        // Get stack context if enabled
-        let stackContext = null;
-        if (config.includeStackContext) {
-            const stackInfo = await getStackForPr(pullRequestId);
-            if (stackInfo) {
-                stackContext = JSON.stringify({
-                    stackName: stackInfo.stack.name,
-                    baseBranch: stackInfo.stack.baseBranch,
-                    prsInStack: stackInfo.entries.map(e => ({
-                        number: e.pr.number,
-                        title: e.pr.title,
-                        state: e.pr.state,
-                    })),
-                });
-            }
-        }
-
-        // Generate review prompt
-        const prompt = generateReviewPrompt(pr, stackContext, diff);
-
-        let result: ProviderCallResult | null = null;
-
-        // External agents may run asynchronously and callback later.
-        if (config.provider === "external_agent") {
-            const external = await dispatchExternalAgentReview({
-                config,
-                prompt,
-                reviewId,
-                pullRequestId,
-                pr,
-                diff,
-                stackContext,
-            });
-
-            if (external.acceptedAsync) {
-                await db.update(schema.aiReviews)
-                    .set({
-                        status: "running",
-                        summary: "External agent accepted review request; awaiting callback",
-                        stackContext,
-                        completedAt: null,
-                    })
-                    .where(eq(schema.aiReviews.id, reviewId));
-                return;
-            }
-
-            result = external.result;
-        } else {
-            // Call built-in AI provider synchronously
-            result = await callAIProvider(config, prompt);
-        }
-
-        if (!result) {
-            throw new Error("AI provider returned no result");
-        }
-
-        // Parse and save suggestions
-        const suggestions = parseAIResponse(result.content);
-
-        for (const suggestion of suggestions) {
-            await db.insert(schema.aiReviewSuggestions).values({
-                id: generateId(),
-                aiReviewId: reviewId,
-                path: suggestion.path,
-                line: suggestion.line,
-                endLine: suggestion.endLine,
-                severity: suggestion.severity,
-                type: suggestion.type,
-                title: suggestion.title,
-                message: suggestion.message,
-                suggestedFix: suggestion.suggestedFix,
-                explanation: suggestion.explanation,
-                createdAt: new Date(),
-            });
-        }
-
-        // Determine overall severity
-        const severityOrder: Array<"info" | "warning" | "error" | "critical"> = ["info", "warning", "error", "critical"];
-        let maxSeverity: "info" | "warning" | "error" | "critical" = "info";
-        for (const s of suggestions) {
-            if (severityOrder.indexOf(s.severity) > severityOrder.indexOf(maxSeverity)) {
-                maxSeverity = s.severity;
-            }
-        }
-
-        // Update review with results
-        await db.update(schema.aiReviews)
-            .set({
-                status: "completed",
-                summary: result.summary,
-                overallSeverity: maxSeverity,
-                suggestionsCount: suggestions.length,
-                tokensUsed: result.tokensUsed,
-                promptTokens: result.promptTokens,
-                completionTokens: result.completionTokens,
-                stackContext,
-                completedAt: new Date(),
-            })
-            .where(eq(schema.aiReviews.id, reviewId));
-
-    } catch (error) {
-        console.error("AI review failed:", error);
-        await db.update(schema.aiReviews)
-            .set({
-                status: "failed",
-                errorMessage: error instanceof Error ? error.message : "Unknown error",
-                completedAt: new Date(),
-            })
-            .where(eq(schema.aiReviews.id, reviewId));
+    if (!pr) {
+      throw new Error("PR not found");
     }
+
+    // Fetch Diff
+    let diff = "";
+    try {
+      const repoPath = await acquireRepo(
+        pr.repository.owner.username,
+        pr.repository.name,
+      );
+      const git = simpleGit(repoPath);
+      await git.fetch();
+      // Get diff between base and head
+      // Ideally we want the merge base to head
+      const mergeBase = await git.raw([
+        "merge-base",
+        `origin/${pr.baseBranch}`,
+        `origin/${pr.headBranch}`,
+      ]);
+      diff = await git.diff([mergeBase.trim(), `origin/${pr.headBranch}`]);
+      await releaseRepo(
+        pr.repository.owner.username,
+        pr.repository.name,
+        false,
+      );
+    } catch (e) {
+      logger.error("Failed to fetch diff for AI review", e);
+      throw new Error("Could not fetch diff from git");
+    }
+
+    if (!diff) {
+      diff = "No changes detected.";
+    }
+
+    // Truncate diff if too large (poor man's token limit)
+    if (diff.length > 50000) {
+      diff =
+        diff.substring(0, 50000) + "\n\n...[Diff truncated due to length]...";
+    }
+
+    // Get stack context if enabled
+    let stackContext = null;
+    if (config.includeStackContext) {
+      const stackInfo = await getStackForPr(pullRequestId);
+      if (stackInfo) {
+        stackContext = JSON.stringify({
+          stackName: stackInfo.stack.name,
+          baseBranch: stackInfo.stack.baseBranch,
+          prsInStack: stackInfo.entries.map((e) => ({
+            number: e.pr.number,
+            title: e.pr.title,
+            state: e.pr.state,
+          })),
+        });
+      }
+    }
+
+    // Generate review prompt
+    const prompt = generateReviewPrompt(pr, stackContext, diff);
+
+    let result: ProviderCallResult | null = null;
+
+    // External agents may run asynchronously and callback later.
+    if (config.provider === "external_agent") {
+      const external = await dispatchExternalAgentReview({
+        config,
+        prompt,
+        reviewId,
+        pullRequestId,
+        pr,
+        diff,
+        stackContext,
+      });
+
+      if (external.acceptedAsync) {
+        await db
+          .update(schema.aiReviews)
+          .set({
+            status: "running",
+            summary:
+              "External agent accepted review request; awaiting callback",
+            stackContext,
+            completedAt: null,
+          })
+          .where(eq(schema.aiReviews.id, reviewId));
+        return;
+      }
+
+      result = external.result;
+    } else {
+      // Call built-in AI provider synchronously
+      result = await callAIProvider(config, prompt);
+    }
+
+    if (!result) {
+      throw new Error("AI provider returned no result");
+    }
+
+    // Parse and save suggestions
+    const suggestions = parseAIResponse(result.content);
+
+    for (const suggestion of suggestions) {
+      await db.insert(schema.aiReviewSuggestions).values({
+        id: generateId(),
+        aiReviewId: reviewId,
+        path: suggestion.path,
+        line: suggestion.line,
+        endLine: suggestion.endLine,
+        severity: suggestion.severity,
+        type: suggestion.type,
+        title: suggestion.title,
+        message: suggestion.message,
+        suggestedFix: suggestion.suggestedFix,
+        explanation: suggestion.explanation,
+        createdAt: new Date(),
+      });
+    }
+
+    // Determine overall severity
+    const severityOrder: Array<"info" | "warning" | "error" | "critical"> = [
+      "info",
+      "warning",
+      "error",
+      "critical",
+    ];
+    let maxSeverity: "info" | "warning" | "error" | "critical" = "info";
+    for (const s of suggestions) {
+      if (
+        severityOrder.indexOf(s.severity) > severityOrder.indexOf(maxSeverity)
+      ) {
+        maxSeverity = s.severity;
+      }
+    }
+
+    // Update review with results
+    const estimatedCost = estimateReviewCost(
+      config.provider,
+      config.model,
+      result.promptTokens,
+      result.completionTokens,
+    );
+
+    await db
+      .update(schema.aiReviews)
+      .set({
+        status: "completed",
+        summary: result.summary,
+        overallSeverity: maxSeverity,
+        suggestionsCount: suggestions.length,
+        tokensUsed: result.tokensUsed,
+        promptTokens: result.promptTokens,
+        completionTokens: result.completionTokens,
+        costCents: Math.round(estimatedCost * 100),
+        stackContext,
+        completedAt: new Date(),
+      })
+      .where(eq(schema.aiReviews.id, reviewId));
+  } catch (error) {
+    logger.error("AI review failed:", error);
+    await db
+      .update(schema.aiReviews)
+      .set({
+        status: "failed",
+        errorMessage: error instanceof Error ? error.message : "Unknown error",
+        completedAt: new Date(),
+      })
+      .where(eq(schema.aiReviews.id, reviewId));
+  }
 }
 
 async function dispatchExternalAgentReview(options: {
-    config: AIReviewConfig;
-    prompt: string;
-    reviewId: string;
-    pullRequestId: string;
-    pr: any;
-    diff: string;
-    stackContext: string | null;
+  config: AIReviewConfig;
+  prompt: string;
+  reviewId: string;
+  pullRequestId: string;
+  pr: any;
+  diff: string;
+  stackContext: string | null;
 }): Promise<{
-    acceptedAsync: boolean;
-    result: ProviderCallResult | null;
+  acceptedAsync: boolean;
+  result: ProviderCallResult | null;
 }> {
-    const webhookUrl = options.config.baseUrl || process.env.EXTERNAL_AGENT_WEBHOOK_URL;
-    if (!webhookUrl) {
-        throw new Error("External agent webhook URL not configured");
-    }
+  const webhookUrl =
+    options.config.baseUrl || process.env.EXTERNAL_AGENT_WEBHOOK_URL;
+  if (!webhookUrl) {
+    throw new Error("External agent webhook URL not configured");
+  }
 
-    const callbackSecret =
-        process.env.EXTERNAL_AGENT_CALLBACK_SECRET || process.env.INTERNAL_HOOK_SECRET;
-    const siteUrl = process.env.SITE_URL;
-    const callbackUrl =
-        callbackSecret && siteUrl
-            ? `${siteUrl.replace(/\/$/, "")}/api/repos/${encodeURIComponent(options.pr.repository.owner.username)}/${encodeURIComponent(options.pr.repository.name)}/pulls/${options.pr.number}/ai-review/callback`
-            : undefined;
+  const callbackSecret =
+    process.env.EXTERNAL_AGENT_CALLBACK_SECRET ||
+    process.env.INTERNAL_HOOK_SECRET;
+  const siteUrl = process.env.SITE_URL;
+  const callbackUrl =
+    callbackSecret && siteUrl
+      ? `${siteUrl.replace(/\/$/, "")}/api/repos/${encodeURIComponent(options.pr.repository.owner.username)}/${encodeURIComponent(options.pr.repository.name)}/pulls/${options.pr.number}/ai-review/callback`
+      : undefined;
 
-    const response = await fetch(webhookUrl, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            ...(options.config.apiKey ? { Authorization: `Bearer ${options.config.apiKey}` } : {}),
-        },
-        body: JSON.stringify({
-            source: "opencodehub",
-            reviewId: options.reviewId,
-            pullRequestId: options.pullRequestId,
-            repository: {
-                owner: options.pr.repository.owner.username,
-                name: options.pr.repository.name,
-                id: options.pr.repository.id,
-            },
-            pullRequest: {
-                number: options.pr.number,
-                title: options.pr.title,
-                headBranch: options.pr.headBranch,
-                baseBranch: options.pr.baseBranch,
-            },
-            prompt: options.prompt,
-            diff: options.diff,
-            stackContext: options.stackContext,
-            callback: callbackUrl
-                ? {
-                    url: callbackUrl,
-                    token: callbackSecret,
-                }
-                : undefined,
-        }),
-    });
+  const response = await fetch(webhookUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.config.apiKey
+        ? { Authorization: `Bearer ${options.config.apiKey}` }
+        : {}),
+    },
+    body: JSON.stringify({
+      source: "opencodehub",
+      reviewId: options.reviewId,
+      pullRequestId: options.pullRequestId,
+      repository: {
+        owner: options.pr.repository.owner.username,
+        name: options.pr.repository.name,
+        id: options.pr.repository.id,
+      },
+      pullRequest: {
+        number: options.pr.number,
+        title: options.pr.title,
+        headBranch: options.pr.headBranch,
+        baseBranch: options.pr.baseBranch,
+      },
+      prompt: options.prompt,
+      diff: options.diff,
+      stackContext: options.stackContext,
+      callback: callbackUrl
+        ? {
+            url: callbackUrl,
+            token: callbackSecret,
+          }
+        : undefined,
+    }),
+  });
 
-    if (response.status === 202) {
-        return { acceptedAsync: true, result: null };
-    }
+  if (response.status === 202) {
+    return { acceptedAsync: true, result: null };
+  }
 
-    if (!response.ok) {
-        throw new Error(`External agent error: ${response.status} ${await response.text()}`);
-    }
+  if (!response.ok) {
+    throw new Error(
+      `External agent error: ${response.status} ${await response.text()}`,
+    );
+  }
 
-    const payload = await response.json();
-    const content =
-        typeof payload?.content === "string"
-            ? payload.content
-            : JSON.stringify({
-                summary: payload?.summary || "External agent review completed",
-                suggestions: payload?.suggestions || [],
-            });
+  const payload = await response.json();
+  const content =
+    typeof payload?.content === "string"
+      ? payload.content
+      : JSON.stringify({
+          summary: payload?.summary || "External agent review completed",
+          suggestions: payload?.suggestions || [],
+        });
 
-    return {
-        acceptedAsync: false,
-        result: {
-            content,
-            summary: payload?.summary || "External agent review completed",
-            tokensUsed: Number(payload?.usage?.totalTokens || payload?.tokensUsed || 0),
-            promptTokens: Number(payload?.usage?.inputTokens || 0),
-            completionTokens: Number(payload?.usage?.outputTokens || 0),
-        },
-    };
+  return {
+    acceptedAsync: false,
+    result: {
+      content,
+      summary: payload?.summary || "External agent review completed",
+      tokensUsed: Number(
+        payload?.usage?.totalTokens || payload?.tokensUsed || 0,
+      ),
+      promptTokens: Number(payload?.usage?.inputTokens || 0),
+      completionTokens: Number(payload?.usage?.outputTokens || 0),
+    },
+  };
 }
 
 /**
  * Generate the review prompt
  */
 function generateReviewPrompt(
-    pr: typeof schema.pullRequests.$inferSelect,
-    stackContext: string | null,
-    diff: string
+  pr: typeof schema.pullRequests.$inferSelect,
+  stackContext: string | null,
+  diff: string,
 ): string {
-    let prompt = `You are a senior code reviewer. Review the following pull request and provide actionable feedback.
+  let prompt = `You are a senior code reviewer. Review the following pull request and provide actionable feedback.
 
 ## Pull Request
 - Title: ${pr.title}
@@ -366,21 +479,23 @@ function generateReviewPrompt(
 - Changes: +${pr.additions} -${pr.deletions} in ${pr.changedFiles} files
 `;
 
-    if (stackContext) {
-        prompt += `
+  if (stackContext) {
+    prompt += `
 ## Stack Context
 This PR is part of a stack:
 ${stackContext}
 `;
-    }
+  }
 
-    prompt += `
+  prompt += `
 ## Review Instructions
 1. Identify bugs, security issues, performance problems, and style issues
 2. For each issue, provide:
    - File path and line number (if applicable)
    - Severity: info, warning, error, or critical
    - Type: bug, security, performance, style, documentation, or suggestion
+   - Category: Security, Performance, Best Practices, Code Style, Documentation, Bug Prevention
+   - Confidence: a score from 0.0 to 1.0 indicating how confident you are in the finding
    - Clear explanation
    - Suggested fix (code snippet if applicable)
 3. Provide a brief summary at the end
@@ -395,6 +510,8 @@ Respond in JSON format only:
       "line": 42,
       "severity": "warning",
       "type": "bug",
+      "category": "Bug Prevention",
+      "confidence": 0.85,
       "title": "Potential null pointer",
       "message": "Variable may be null here",
       "suggestedFix": "if (value !== null) { ... }",
@@ -409,7 +526,7 @@ Review the code carefully:
 ${diff}
 `;
 
-    return prompt;
+  return prompt;
 }
 
 /**
@@ -419,127 +536,134 @@ ${diff}
  * Call the AI provider
  */
 async function callAIProvider(
-    config: AIReviewConfig,
-    prompt: string
+  config: AIReviewConfig,
+  prompt: string,
 ): Promise<{
-    content: string;
-    summary: string;
-    tokensUsed: number;
-    promptTokens: number;
-    completionTokens: number;
+  content: string;
+  summary: string;
+  tokensUsed: number;
+  promptTokens: number;
+  completionTokens: number;
 }> {
+  // Import dynamically to avoid circular dependencies if any
+  const { getAIAdapter } = await import("./ai");
 
-    // Import dynamically to avoid circular dependencies if any
-    const { getAIAdapter } = await import("./ai");
+  try {
+    const adapter = getAIAdapter(config.provider);
 
+    const systemPrompt =
+      "You are an expert code reviewer. Response MUST be valid JSON matching the requested format.";
+
+    const result = await adapter.complete(
+      {
+        system: systemPrompt,
+        user: prompt,
+      },
+      {
+        provider: config.provider,
+        model: config.model,
+        apiKey: config.apiKey,
+        baseUrl: config.baseUrl,
+      },
+    );
+
+    // Parse summary from content
+    let summary = "AI Review Completed";
     try {
-        const adapter = getAIAdapter(config.provider);
+      const parsed = JSON.parse(result.content);
+      if (parsed.summary) summary = parsed.summary;
+    } catch (e) {}
 
-        const systemPrompt = "You are an expert code reviewer. Response MUST be valid JSON matching the requested format.";
+    return {
+      content: result.content,
+      summary,
+      tokensUsed: result.usage.totalTokens,
+      promptTokens: result.usage.inputTokens,
+      completionTokens: result.usage.outputTokens,
+    };
+  } catch (error: any) {
+    logger.error(
+      { error: error.message, provider: config.provider },
+      "AI Provider call failed",
+    );
 
-        const result = await adapter.complete({
-            system: systemPrompt,
-            user: prompt
-        }, {
-            provider: config.provider,
-            model: config.model,
-            apiKey: config.apiKey,
-            baseUrl: config.baseUrl
-        });
-
-        // Parse summary from content
-        let summary = "AI Review Completed";
-        try {
-            const parsed = JSON.parse(result.content);
-            if (parsed.summary) summary = parsed.summary;
-        } catch (e) { }
-
-        return {
-            content: result.content,
-            summary,
-            tokensUsed: result.usage.totalTokens,
-            promptTokens: result.usage.inputTokens,
-            completionTokens: result.usage.outputTokens,
-        };
-
-    } catch (error: any) {
-        logger.error({ error: error.message, provider: config.provider }, "AI Provider call failed");
-
-        // Fallback or rethrow? Rethrow to fail the review properly.
-        throw error;
-    }
+    // Fallback or rethrow? Rethrow to fail the review properly.
+    throw error;
+  }
 }
 
 /**
  * Parse AI response into suggestions
  */
 function parseAIResponse(content: string): ReviewSuggestion[] {
-    try {
-        const parsed = JSON.parse(content);
-        return parsed.suggestions || [];
-    } catch {
-        console.error("Failed to parse AI response:", content);
-        return [];
-    }
+  try {
+    const parsed = JSON.parse(content);
+    return parsed.suggestions || [];
+  } catch {
+    logger.error("Failed to parse AI response:", content);
+    return [];
+  }
 }
 
 /**
  * Get the latest AI review for a PR
  */
 export async function getLatestAIReview(pullRequestId: string): Promise<{
-    review: typeof schema.aiReviews.$inferSelect;
-    suggestions: typeof schema.aiReviewSuggestions.$inferSelect[];
+  review: typeof schema.aiReviews.$inferSelect;
+  suggestions: (typeof schema.aiReviewSuggestions.$inferSelect)[];
 } | null> {
-    const db = getDatabase() as NodePgDatabase<typeof schema>;
+  const db = getDatabase() as NodePgDatabase<typeof schema>;
 
-    const review = await db.query.aiReviews.findFirst({
-        where: eq(schema.aiReviews.pullRequestId, pullRequestId),
-        orderBy: [desc(schema.aiReviews.createdAt)],
-    });
+  const review = await db.query.aiReviews.findFirst({
+    where: eq(schema.aiReviews.pullRequestId, pullRequestId),
+    orderBy: [desc(schema.aiReviews.createdAt)],
+  });
 
-    if (!review) return null;
+  if (!review) return null;
 
-    const suggestions = await db.query.aiReviewSuggestions.findMany({
-        where: eq(schema.aiReviewSuggestions.aiReviewId, review.id),
-    });
+  const suggestions = await db.query.aiReviewSuggestions.findMany({
+    where: eq(schema.aiReviewSuggestions.aiReviewId, review.id),
+  });
 
-    return { review, suggestions };
+  return { review, suggestions };
 }
 
 /**
  * Apply an AI suggestion (mark as applied)
  */
 export async function applyAISuggestion(
-    suggestionId: string,
-    appliedById: string
+  suggestionId: string,
+  appliedById: string,
 ): Promise<void> {
-    const db = getDatabase() as NodePgDatabase<typeof schema>;
+  const db = getDatabase() as NodePgDatabase<typeof schema>;
 
-    await db.update(schema.aiReviewSuggestions)
-        .set({
-            isApplied: true,
-            appliedAt: new Date(),
-            appliedById,
-        })
-        .where(eq(schema.aiReviewSuggestions.id, suggestionId));
+  await db
+    .update(schema.aiReviewSuggestions)
+    .set({
+      isApplied: true,
+      appliedAt: new Date(),
+      appliedById,
+    })
+    .where(eq(schema.aiReviewSuggestions.id, suggestionId));
 }
 
 /**
  * Dismiss an AI suggestion
  */
 export async function dismissAISuggestion(
-    suggestionId: string,
-    dismissedById: string,
-    reason?: string
+  suggestionId: string,
+  dismissedById: string,
+  reason?: string,
 ): Promise<void> {
-    const db = getDatabase() as NodePgDatabase<typeof schema>;
+  const db = getDatabase() as NodePgDatabase<typeof schema>;
 
-    await db.update(schema.aiReviewSuggestions)
-        .set({
-            isDismissed: true,
-            dismissedAt: new Date(),
-            dismissedById,
-            dismissReason: reason,
-        })
-        .where(eq(schema.aiReviewSuggestions.id, suggestionId));
+  await db
+    .update(schema.aiReviewSuggestions)
+    .set({
+      isDismissed: true,
+      dismissedAt: new Date(),
+      dismissedById,
+      dismissReason: reason,
+    })
+    .where(eq(schema.aiReviewSuggestions.id, suggestionId));
 }

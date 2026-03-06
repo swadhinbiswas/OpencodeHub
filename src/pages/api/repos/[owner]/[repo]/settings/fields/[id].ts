@@ -1,71 +1,54 @@
 import type { APIRoute } from "astro";
-import { getDatabase, schema } from "@/db";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { eq, and } from "drizzle-orm";
-import { canAdminRepo } from "@/lib/permissions";
+import { and, eq } from "drizzle-orm";
+import { getDatabase, schema } from "@/db";
+import { badRequest, forbidden, notFound, success, unauthorized } from "@/lib/api";
+import { withErrorHandler } from "@/lib/errors";
+import { getUserFromRequest } from "@/lib/auth";
+import { canWriteRepo } from "@/lib/permissions";
+import { deleteCustomField } from "@/lib/custom-fields";
 
-export const DELETE: APIRoute = async ({ params, locals }) => {
-    const { owner, repo, id } = params;
-    const db = getDatabase() as NodePgDatabase<typeof schema>;
+async function resolveRepository(owner: string, repoName: string) {
+  const db = getDatabase() as NodePgDatabase<typeof schema>;
+  const repoOwner = await db.query.users.findFirst({
+    where: eq(schema.users.username, owner),
+  });
+  if (!repoOwner) return null;
 
-    const repository = await db.query.repositories.findFirst({
-        where: and(
-            eq(schema.repositories.name, repo!),
-            eq(schema.repositories.ownerId, (
-                await db.query.users.findFirst({
-                    where: eq(schema.users.username, owner!)
-                })
-            )?.id || "")
-        )
-    });
+  return db.query.repositories.findFirst({
+    where: and(
+      eq(schema.repositories.ownerId, repoOwner.id),
+      eq(schema.repositories.name, repoName)
+    ),
+  });
+}
 
-    if (!repository) return new Response("Repo not found", { status: 404 });
+export const DELETE: APIRoute = withErrorHandler(async ({ params, request }) => {
+  const owner = params.owner;
+  const repoName = params.repo;
+  const id = params.id;
+  if (!owner || !repoName || !id) return badRequest("Missing route parameters");
 
-    const hasAccess = await canAdminRepo(locals.user?.id, repository);
-    if (!hasAccess) return new Response("Unauthorized", { status: 403 });
+  const user = await getUserFromRequest(request);
+  if (!user) return unauthorized();
 
-    await db.delete(schema.customFieldDefinitions)
-        .where(and(
-            eq(schema.customFieldDefinitions.id, id!),
-            eq(schema.customFieldDefinitions.repositoryId, repository.id)
-        ));
+  const db = getDatabase() as NodePgDatabase<typeof schema>;
+  const repository = await resolveRepository(owner, repoName);
+  if (!repository) return notFound("Repository not found");
 
-    return new Response(null, { status: 204 });
-};
+  if (!(await canWriteRepo(user.userId, repository, { isAdmin: user.isAdmin }))) {
+    return forbidden();
+  }
 
-export const PUT: APIRoute = async ({ params, request, locals }) => {
-    const { owner, repo, id } = params;
-    const db = getDatabase() as NodePgDatabase<typeof schema>;
+  const field = await db.query.customFieldDefinitions.findFirst({
+    where: and(
+      eq(schema.customFieldDefinitions.id, id),
+      eq(schema.customFieldDefinitions.repositoryId, repository.id)
+    ),
+  });
+  if (!field) return notFound("Field not found");
 
-    const repository = await db.query.repositories.findFirst({
-        where: and(
-            eq(schema.repositories.name, repo!),
-            eq(schema.repositories.ownerId, (
-                await db.query.users.findFirst({
-                    where: eq(schema.users.username, owner!)
-                })
-            )?.id || "")
-        )
-    });
-
-    if (!repository) return new Response("Repo not found", { status: 404 });
-
-    const hasAccess = await canAdminRepo(locals.user?.id, repository);
-    if (!hasAccess) return new Response("Unauthorized", { status: 403 });
-
-    const body = await request.json();
-
-    await db.update(schema.customFieldDefinitions)
-        .set({
-            ...body,
-            updatedAt: new Date()
-        })
-        .where(and(
-            eq(schema.customFieldDefinitions.id, id!),
-            eq(schema.customFieldDefinitions.repositoryId, repository.id)
-        ));
-
-    return new Response(JSON.stringify({ success: true }), {
-        headers: { "Content-Type": "application/json" }
-    });
-};
+  const ok = await deleteCustomField(id);
+  if (!ok) return badRequest("Failed to delete field");
+  return success({ deleted: true });
+});

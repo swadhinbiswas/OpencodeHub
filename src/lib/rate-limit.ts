@@ -4,16 +4,24 @@ import { logger } from "@/lib/logger";
 // Try to import Redis - may not be configured
 let redis: any = null;
 let redisAvailable = false;
+const isProd = process.env.NODE_ENV === "production" || import.meta.env?.PROD === true;
 
 try {
     const redisModule = await import("@/lib/redis");
     redis = redisModule.redis;
-    // Verify connection works
+    const isReady = await redisModule.waitForRedisReady(6000);
+    if (!isReady) {
+        throw new Error("Redis did not become ready within timeout");
+    }
+    // Verify connection works after ready
     await redis.ping();
     redisAvailable = true;
     logger.info("Distributed rate limiting enabled (Redis)");
 } catch (e) {
-    logger.warn("Redis not available - using in-memory rate limiting (not distributed-safe)");
+    if (isProd) {
+        throw new Error("CRITICAL: Redis is required in production for distributed rate limiting. Please configure REDIS_URL.");
+    }
+    logger.warn({ error: e }, "Redis not available - using in-memory rate limiting (not distributed-safe)");
 }
 
 interface RateLimitEntry {

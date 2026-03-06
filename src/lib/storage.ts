@@ -9,6 +9,7 @@
  * - rclone-compatible remotes
  */
 
+import { logger } from "@/lib/logger";
 import crypto from "crypto";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { createReadStream, createWriteStream } from "fs";
@@ -19,7 +20,16 @@ import { pipeline } from "stream/promises";
 
 // Types
 export interface StorageConfig {
-  type: "local" | "s3" | "gcs" | "azure" | "rclone" | "gdrive" | "onedrive" | "dropbox" | "ftp";
+  type:
+    | "local"
+    | "s3"
+    | "gcs"
+    | "azure"
+    | "rclone"
+    | "gdrive"
+    | "onedrive"
+    | "dropbox"
+    | "ftp";
   basePath: string;
   bucket?: string;
   region?: string;
@@ -106,13 +116,13 @@ export abstract class StorageAdapter {
   abstract put(
     key: string,
     data: Buffer | Readable | ReadableStream,
-    options?: PutOptions
+    options?: PutOptions,
   ): Promise<void>;
 
   async writeStream(
     key: string,
     stream: Readable | ReadableStream,
-    options?: PutOptions
+    options?: PutOptions,
   ): Promise<void> {
     return this.put(key, stream, options);
   }
@@ -140,7 +150,7 @@ export class LocalStorageAdapter extends StorageAdapter {
   async put(
     key: string,
     data: Buffer | Readable | ReadableStream,
-    options?: PutOptions
+    options?: PutOptions,
   ): Promise<void> {
     const fullPath = this.getFullPath(key);
     await fs.mkdir(path.dirname(fullPath), { recursive: true });
@@ -162,7 +172,7 @@ export class LocalStorageAdapter extends StorageAdapter {
           contentType: options.contentType,
           metadata: options.metadata,
           cacheControl: options.cacheControl,
-        })
+        }),
       );
     }
   }
@@ -187,17 +197,17 @@ export class LocalStorageAdapter extends StorageAdapter {
       fullPath,
       options?.range
         ? {
-          start: options.range.start,
-          end: options.range.end,
-        }
-        : undefined
+            start: options.range.start,
+            end: options.range.end,
+          }
+        : undefined,
     );
   }
 
   async delete(key: string): Promise<void> {
     const fullPath = this.getFullPath(key);
-    await fs.unlink(fullPath).catch(() => { });
-    await fs.unlink(`${fullPath}.meta`).catch(() => { });
+    await fs.unlink(fullPath).catch(() => {});
+    await fs.unlink(`${fullPath}.meta`).catch(() => {});
   }
 
   async exists(key: string): Promise<boolean> {
@@ -238,7 +248,7 @@ export class LocalStorageAdapter extends StorageAdapter {
             });
           }
         }
-      } catch { }
+      } catch {}
     };
 
     await walk(basePath, options?.prefix || "");
@@ -280,16 +290,22 @@ export class LocalStorageAdapter extends StorageAdapter {
       const meta = JSON.parse(await fs.readFile(`${fullPath}.meta`, "utf-8"));
       metadata = meta.metadata;
       contentType = meta.contentType;
-    } catch { }
+    } catch {}
+
+    // Stream-based hash to avoid reading entire file into memory
+    const etag = await new Promise<string>((resolve, reject) => {
+      const hash = crypto.createHash("md5");
+      const stream = createReadStream(fullPath);
+      stream.on("data", (chunk) => hash.update(chunk));
+      stream.on("end", () => resolve(hash.digest("hex")));
+      stream.on("error", reject);
+    });
 
     return {
       key,
       size: stats.size,
       lastModified: stats.mtime,
-      etag: crypto
-        .createHash("md5")
-        .update(await fs.readFile(fullPath))
-        .digest("hex"),
+      etag,
       contentType,
       metadata,
     };
@@ -297,7 +313,7 @@ export class LocalStorageAdapter extends StorageAdapter {
 
   async getSignedUploadUrl(
     key: string,
-    _expiresIn: number = 3600
+    _expiresIn: number = 3600,
   ): Promise<string> {
     return `/api/storage/upload/${key}`;
   }
@@ -322,9 +338,9 @@ export class S3StorageAdapter extends StorageAdapter {
         endpoint: this.config.endpoint,
         credentials: this.config.accessKeyId
           ? {
-            accessKeyId: this.config.accessKeyId,
-            secretAccessKey: this.config.secretAccessKey!,
-          }
+              accessKeyId: this.config.accessKeyId,
+              secretAccessKey: this.config.secretAccessKey!,
+            }
           : undefined,
         forcePathStyle: !!this.config.endpoint, // Required for MinIO
       });
@@ -335,7 +351,7 @@ export class S3StorageAdapter extends StorageAdapter {
   async put(
     key: string,
     data: Buffer | Readable,
-    options?: PutOptions
+    options?: PutOptions,
   ): Promise<void> {
     const { PutObjectCommand } = await import("@aws-sdk/client-s3");
     const client = await this.getClient();
@@ -348,14 +364,14 @@ export class S3StorageAdapter extends StorageAdapter {
         ContentType: options?.contentType,
         Metadata: options?.metadata,
         CacheControl: options?.cacheControl,
-      })
+      }),
     );
   }
 
   async writeStream(
     key: string,
     stream: Readable | ReadableStream,
-    options?: PutOptions
+    options?: PutOptions,
   ): Promise<void> {
     const { Upload } = await import("@aws-sdk/lib-storage");
     const client = await this.getClient();
@@ -383,7 +399,9 @@ export class S3StorageAdapter extends StorageAdapter {
     const client = await this.getClient();
 
     const s3Key = path.join(this.config.basePath, key);
-    console.log(`[S3StorageAdapter.get] basePath="${this.config.basePath}", key="${key}", s3Key="${s3Key}"`);
+    logger.info(
+      `[S3StorageAdapter.get] basePath="${this.config.basePath}", key="${key}", s3Key="${s3Key}"`,
+    );
 
     const response = await client.send(
       new GetObjectCommand({
@@ -392,7 +410,7 @@ export class S3StorageAdapter extends StorageAdapter {
         Range: options?.range
           ? `bytes=${options.range.start}-${options.range.end}`
           : undefined,
-      })
+      }),
     );
 
     const chunks: Buffer[] = [];
@@ -413,7 +431,7 @@ export class S3StorageAdapter extends StorageAdapter {
         Range: options?.range
           ? `bytes=${options.range.start}-${options.range.end}`
           : undefined,
-      })
+      }),
     );
 
     return response.Body as Readable;
@@ -427,7 +445,7 @@ export class S3StorageAdapter extends StorageAdapter {
       new DeleteObjectCommand({
         Bucket: this.config.bucket,
         Key: path.join(this.config.basePath, key),
-      })
+      }),
     );
   }
 
@@ -440,7 +458,7 @@ export class S3StorageAdapter extends StorageAdapter {
         new HeadObjectCommand({
           Bucket: this.config.bucket,
           Key: path.join(this.config.basePath, key),
-        })
+        }),
       );
       return true;
     } catch {
@@ -459,7 +477,7 @@ export class S3StorageAdapter extends StorageAdapter {
         Delimiter: options?.delimiter,
         MaxKeys: options?.maxKeys,
         ContinuationToken: options?.continuationToken,
-      })
+      }),
     );
 
     return {
@@ -475,7 +493,7 @@ export class S3StorageAdapter extends StorageAdapter {
       prefixes: response.CommonPrefixes?.map((p: any) =>
         this.config.basePath
           ? p.Prefix!.replace(this.config.basePath + "/", "")
-          : p.Prefix!
+          : p.Prefix!,
       ),
       isTruncated: response.IsTruncated || false,
       continuationToken: response.NextContinuationToken,
@@ -495,7 +513,7 @@ export class S3StorageAdapter extends StorageAdapter {
         Bucket: this.config.bucket,
         CopySource: copySource,
         Key: path.join(this.config.basePath, destKey),
-      })
+      }),
     );
   }
 
@@ -519,7 +537,7 @@ export class S3StorageAdapter extends StorageAdapter {
 
   async getSignedUploadUrl(
     key: string,
-    expiresIn: number = 3600
+    expiresIn: number = 3600,
   ): Promise<string> {
     const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
     const { PutObjectCommand } = await import("@aws-sdk/client-s3");
@@ -541,7 +559,7 @@ export class S3StorageAdapter extends StorageAdapter {
       new HeadObjectCommand({
         Bucket: this.config.bucket,
         Key: path.join(this.config.basePath, key),
-      })
+      }),
     );
 
     return {
@@ -564,25 +582,31 @@ export class RcloneStorageAdapter extends StorageAdapter {
 
   constructor(config: StorageConfig) {
     super(config);
-    this.remote = config.rcloneRemote || 'remote';
+    this.remote = config.rcloneRemote || "remote";
   }
 
   private getRemotePath(key: string): string {
     return `${this.remote}:${path.join(this.config.basePath, key)}`;
   }
 
-  private async execRclone(args: string[]): Promise<{ stdout: string; stderr: string }> {
-    const { spawn } = await import('child_process');
+  private async execRclone(
+    args: string[],
+  ): Promise<{ stdout: string; stderr: string }> {
+    const { spawn } = await import("child_process");
 
     return new Promise((resolve, reject) => {
-      const proc = spawn('rclone', args);
-      let stdout = '';
-      let stderr = '';
+      const proc = spawn("rclone", args);
+      let stdout = "";
+      let stderr = "";
 
-      proc.stdout.on('data', (data) => { stdout += data.toString(); });
-      proc.stderr.on('data', (data) => { stderr += data.toString(); });
+      proc.stdout.on("data", (data) => {
+        stdout += data.toString();
+      });
+      proc.stderr.on("data", (data) => {
+        stderr += data.toString();
+      });
 
-      proc.on('close', (code) => {
+      proc.on("close", (code) => {
         if (code === 0) {
           resolve({ stdout, stderr });
         } else {
@@ -590,17 +614,24 @@ export class RcloneStorageAdapter extends StorageAdapter {
         }
       });
 
-      proc.on('error', (err) => {
+      proc.on("error", (err) => {
         reject(new Error(`rclone not found: ${err.message}`));
       });
     });
   }
 
-  async put(key: string, data: Buffer | Readable, options?: PutOptions): Promise<void> {
+  async put(
+    key: string,
+    data: Buffer | Readable,
+    options?: PutOptions,
+  ): Promise<void> {
     // For rclone, we need to write to a temp file first, then rclone copy
-    const tempDir = path.join(process.cwd(), 'data', 'temp');
+    const tempDir = path.join(process.cwd(), "data", "temp");
     await fs.mkdir(tempDir, { recursive: true });
-    const tempFile = path.join(tempDir, `upload-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`);
+    const tempFile = path.join(
+      tempDir,
+      `upload-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`,
+    );
 
     try {
       if (Buffer.isBuffer(data)) {
@@ -612,33 +643,39 @@ export class RcloneStorageAdapter extends StorageAdapter {
       }
 
       // Use rclone copyto for single file
-      await this.execRclone(['copyto', tempFile, this.getRemotePath(key)]);
+      await this.execRclone(["copyto", tempFile, this.getRemotePath(key)]);
     } finally {
-      await fs.unlink(tempFile).catch(() => { });
+      await fs.unlink(tempFile).catch(() => {});
     }
   }
 
   async writeStream(
     key: string,
     stream: Readable | ReadableStream,
-    options?: PutOptions
+    options?: PutOptions,
   ): Promise<void> {
     // Ensure we have a Node.js Readable stream
-    const readable = stream instanceof Readable ? stream : Readable.from(stream as any);
+    const readable =
+      stream instanceof Readable ? stream : Readable.from(stream as any);
     return this.put(key, readable, options);
   }
 
   async get(key: string, options?: GetOptions): Promise<Buffer> {
-    const tempDir = path.join(process.cwd(), 'data', 'temp');
+    const tempDir = path.join(process.cwd(), "data", "temp");
     await fs.mkdir(tempDir, { recursive: true });
-    const tempFile = path.join(tempDir, `download-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`);
+    const tempFile = path.join(
+      tempDir,
+      `download-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`,
+    );
 
     try {
-      await this.execRclone(['copyto', this.getRemotePath(key), tempFile]);
+      await this.execRclone(["copyto", this.getRemotePath(key), tempFile]);
 
       if (options?.range) {
-        const fd = await fs.open(tempFile, 'r');
-        const buffer = Buffer.alloc(options.range.end - options.range.start + 1);
+        const fd = await fs.open(tempFile, "r");
+        const buffer = Buffer.alloc(
+          options.range.end - options.range.start + 1,
+        );
         await fd.read(buffer, 0, buffer.length, options.range.start);
         await fd.close();
         return buffer;
@@ -646,7 +683,7 @@ export class RcloneStorageAdapter extends StorageAdapter {
 
       return fs.readFile(tempFile);
     } finally {
-      await fs.unlink(tempFile).catch(() => { });
+      await fs.unlink(tempFile).catch(() => {});
     }
   }
 
@@ -657,12 +694,14 @@ export class RcloneStorageAdapter extends StorageAdapter {
   }
 
   async delete(key: string): Promise<void> {
-    await this.execRclone(['deletefile', this.getRemotePath(key)]).catch(() => { });
+    await this.execRclone(["deletefile", this.getRemotePath(key)]).catch(
+      () => {},
+    );
   }
 
   async exists(key: string): Promise<boolean> {
     try {
-      await this.execRclone(['lsf', this.getRemotePath(key)]);
+      await this.execRclone(["lsf", this.getRemotePath(key)]);
       return true;
     } catch {
       return false;
@@ -670,24 +709,26 @@ export class RcloneStorageAdapter extends StorageAdapter {
   }
 
   async list(options?: ListOptions): Promise<ListResult> {
-    const remotePath = `${this.remote}:${path.join(this.config.basePath, options?.prefix || '')}`;
+    const remotePath = `${this.remote}:${path.join(this.config.basePath, options?.prefix || "")}`;
 
     try {
-      const { stdout } = await this.execRclone([
-        'lsjson',
-        remotePath,
-        options?.delimiter === '/' ? '' : '-R',
-        '--no-modtime=false',
-      ].filter(Boolean));
+      const { stdout } = await this.execRclone(
+        [
+          "lsjson",
+          remotePath,
+          options?.delimiter === "/" ? "" : "-R",
+          "--no-modtime=false",
+        ].filter(Boolean),
+      );
 
-      const items = JSON.parse(stdout || '[]');
+      const items = JSON.parse(stdout || "[]");
       const objects: StorageObject[] = [];
       const prefixes = new Set<string>();
 
       for (const item of items) {
         if (item.IsDir) {
-          if (options?.delimiter === '/') {
-            prefixes.add(item.Path + '/');
+          if (options?.delimiter === "/") {
+            prefixes.add(item.Path + "/");
           }
         } else {
           objects.push({
@@ -710,17 +751,28 @@ export class RcloneStorageAdapter extends StorageAdapter {
   }
 
   async copy(sourceKey: string, destKey: string): Promise<void> {
-    await this.execRclone(['copyto', this.getRemotePath(sourceKey), this.getRemotePath(destKey)]);
+    await this.execRclone([
+      "copyto",
+      this.getRemotePath(sourceKey),
+      this.getRemotePath(destKey),
+    ]);
   }
 
   async move(sourceKey: string, destKey: string): Promise<void> {
-    await this.execRclone(['moveto', this.getRemotePath(sourceKey), this.getRemotePath(destKey)]);
+    await this.execRclone([
+      "moveto",
+      this.getRemotePath(sourceKey),
+      this.getRemotePath(destKey),
+    ]);
   }
 
   async getSignedUrl(key: string, _expiresIn?: number): Promise<string> {
     // Rclone link command for supported remotes
     try {
-      const { stdout } = await this.execRclone(['link', this.getRemotePath(key)]);
+      const { stdout } = await this.execRclone([
+        "link",
+        this.getRemotePath(key),
+      ]);
       return stdout.trim();
     } catch {
       // Fall back to local proxy URL
@@ -734,11 +786,14 @@ export class RcloneStorageAdapter extends StorageAdapter {
   }
 
   async stat(key: string): Promise<StorageObject> {
-    const { stdout } = await this.execRclone(['lsjson', this.getRemotePath(key)]);
-    const items = JSON.parse(stdout || '[]');
+    const { stdout } = await this.execRclone([
+      "lsjson",
+      this.getRemotePath(key),
+    ]);
+    const items = JSON.parse(stdout || "[]");
 
     if (items.length === 0) {
-      throw new Error('File not found');
+      throw new Error("File not found");
     }
 
     const item = items[0];
@@ -758,81 +813,125 @@ export class RcloneStorageAdapter extends StorageAdapter {
 export class GoogleDriveStorageAdapter extends StorageAdapter {
   private drive: any;
   private folderId: string;
+  /** LRU cache for folder/file ID resolution (path → { id, expiresAt }) */
+  private pathCache = new Map<string, { id: string; expiresAt: number }>();
+  private static readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+  private static readonly MAX_CACHE_SIZE = 500;
 
   constructor(config: StorageConfig) {
     super(config);
-    this.folderId = config.googleFolderId || 'root';
+    this.folderId = config.googleFolderId || "root";
   }
 
   private async getDrive() {
     if (this.drive) return this.drive;
 
-    const { google } = await import('googleapis');
+    const { google } = await import("googleapis");
     const oauth2Client = new google.auth.OAuth2(
       this.config.googleClientId,
-      this.config.googleClientSecret
+      this.config.googleClientSecret,
     );
     oauth2Client.setCredentials({
       refresh_token: this.config.googleRefreshToken,
     });
 
-    this.drive = google.drive({ version: 'v3', auth: oauth2Client });
+    this.drive = google.drive({ version: "v3", auth: oauth2Client });
     return this.drive;
   }
 
   private async findFileByPath(filePath: string): Promise<string | null> {
+    // Check cache first
+    const cached = this.pathCache.get(filePath);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.id;
+    }
+
     const drive = await this.getDrive();
-    const parts = filePath.split('/').filter(Boolean);
+    const parts = filePath.split("/").filter(Boolean);
     let parentId = this.folderId;
 
     for (let i = 0; i < parts.length; i++) {
       const name = parts[i];
       const isLast = i === parts.length - 1;
-      const mimeType = isLast ? undefined : 'application/vnd.google-apps.folder';
+      const mimeType = isLast
+        ? undefined
+        : "application/vnd.google-apps.folder";
 
-      const q = `name='${name}' and '${parentId}' in parents and trashed=false${mimeType ? ` and mimeType='${mimeType}'` : ''}`;
-      const res = await drive.files.list({ q, fields: 'files(id,name)' });
+      // Check cache for intermediate paths too
+      const partialPath = parts.slice(0, i + 1).join("/");
+      const partialCached = this.pathCache.get(partialPath);
+      if (partialCached && partialCached.expiresAt > Date.now()) {
+        parentId = partialCached.id;
+        continue;
+      }
+
+      const q = `name='${name}' and '${parentId}' in parents and trashed=false${mimeType ? ` and mimeType='${mimeType}'` : ""}`;
+      const res = await drive.files.list({ q, fields: "files(id,name)" });
 
       if (res.data.files?.length === 0) return null;
       parentId = res.data.files[0].id;
+
+      // Cache intermediate + final path
+      this.setCacheEntry(partialPath, parentId);
     }
 
+    // Cache the full path result
+    this.setCacheEntry(filePath, parentId);
     return parentId;
+  }
+
+  /** Set a cache entry, evicting oldest if over limit */
+  private setCacheEntry(key: string, id: string): void {
+    if (this.pathCache.size >= GoogleDriveStorageAdapter.MAX_CACHE_SIZE) {
+      // Evict oldest entry (first key in Map iteration order)
+      const firstKey = this.pathCache.keys().next().value;
+      if (firstKey) this.pathCache.delete(firstKey);
+    }
+    this.pathCache.set(key, {
+      id,
+      expiresAt: Date.now() + GoogleDriveStorageAdapter.CACHE_TTL_MS,
+    });
   }
 
   private async ensureFolderPath(folderPath: string): Promise<string> {
     const drive = await this.getDrive();
-    const parts = folderPath.split('/').filter(Boolean);
+    const parts = folderPath.split("/").filter(Boolean);
     let parentId = this.folderId;
 
     for (const name of parts) {
       if (name === ".") continue; // Skip current directory dot
 
       const q = `name='${name}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
-      const res = await drive.files.list({ q, fields: 'files(id)' });
+      const res = await drive.files.list({ q, fields: "files(id)" });
 
       if (res.data.files?.length > 0) {
         parentId = res.data.files[0].id;
-        // console.log(`[GoogleDrive] Found existing folder '${name}', id=${parentId}`);
+        // logger.info(`[GoogleDrive] Found existing folder '${name}', id=${parentId}`);
       } else {
-        console.log(`[GoogleDrive] Creating folder '${name}' in parent '${parentId}'`);
+        logger.info(
+          `[GoogleDrive] Creating folder '${name}' in parent '${parentId}'`,
+        );
         const folder = await drive.files.create({
           requestBody: {
             name,
-            mimeType: 'application/vnd.google-apps.folder',
+            mimeType: "application/vnd.google-apps.folder",
             parents: [parentId],
           },
-          fields: 'id',
+          fields: "id",
         });
         parentId = folder.data.id;
-        console.log(`[GoogleDrive] Created folder '${name}', id=${parentId}`);
+        logger.info(`[GoogleDrive] Created folder '${name}', id=${parentId}`);
       }
     }
 
     return parentId;
   }
 
-  async put(key: string, data: Buffer | Readable, options?: PutOptions): Promise<void> {
+  async put(
+    key: string,
+    data: Buffer | Readable,
+    options?: PutOptions,
+  ): Promise<void> {
     const drive = await this.getDrive();
     // For Google Drive, use key directly as path relative to the configured folder
     // basePath is for local storage, not needed for cloud folder structure
@@ -844,7 +943,7 @@ export class GoogleDriveStorageAdapter extends StorageAdapter {
     const existingId = await this.findFileByPath(fullPath);
 
     const media = {
-      mimeType: options?.contentType || 'application/octet-stream',
+      mimeType: options?.contentType || "application/octet-stream",
       body: Buffer.isBuffer(data) ? Readable.from(data) : data,
     };
 
@@ -854,7 +953,7 @@ export class GoogleDriveStorageAdapter extends StorageAdapter {
       await drive.files.create({
         requestBody: { name: fileName, parents: [parentId] },
         media,
-        fields: 'id',
+        fields: "id",
       });
     }
   }
@@ -867,8 +966,8 @@ export class GoogleDriveStorageAdapter extends StorageAdapter {
     if (!fileId) throw new Error(`File not found: ${key}`);
 
     const res = await drive.files.get(
-      { fileId, alt: 'media' },
-      { responseType: 'arraybuffer' }
+      { fileId, alt: "media" },
+      { responseType: "arraybuffer" },
     );
 
     const buffer = Buffer.from(res.data);
@@ -898,7 +997,7 @@ export class GoogleDriveStorageAdapter extends StorageAdapter {
   async list(options?: ListOptions): Promise<ListResult> {
     const drive = await this.getDrive();
     // Do not use basePath for Google Drive, use prefix directly
-    const prefix = options?.prefix || '';
+    const prefix = options?.prefix || "";
 
     // If prefix is provided, we MUST find that specific folder.
     // If it doesn't exist, return empty list (or throw).
@@ -917,7 +1016,7 @@ export class GoogleDriveStorageAdapter extends StorageAdapter {
 
     const res = await drive.files.list({
       q: `'${folderId}' in parents and trashed=false`,
-      fields: 'files(id,name,size,modifiedTime,mimeType)',
+      fields: "files(id,name,size,modifiedTime,mimeType)",
       pageSize: options?.maxKeys || 1000,
     });
 
@@ -925,13 +1024,15 @@ export class GoogleDriveStorageAdapter extends StorageAdapter {
     const prefixes: string[] = [];
 
     for (const file of res.data.files || []) {
-      if (file.mimeType === 'application/vnd.google-apps.folder') {
-        prefixes.push(file.name + '/');
+      if (file.mimeType === "application/vnd.google-apps.folder") {
+        prefixes.push(file.name + "/");
       } else {
-        const key = options?.prefix ? path.join(options.prefix, file.name) : file.name;
+        const key = options?.prefix
+          ? path.join(options.prefix, file.name)
+          : file.name;
         objects.push({
           key,
-          size: parseInt(file.size || '0'),
+          size: parseInt(file.size || "0"),
           lastModified: new Date(file.modifiedTime),
         });
       }
@@ -945,7 +1046,7 @@ export class GoogleDriveStorageAdapter extends StorageAdapter {
     const sourcePath = path.join(this.config.basePath, sourceKey);
     const destPath = path.join(this.config.basePath, destKey);
     const sourceId = await this.findFileByPath(sourcePath);
-    if (!sourceId) throw new Error('Source file not found');
+    if (!sourceId) throw new Error("Source file not found");
 
     const parentId = await this.ensureFolderPath(path.dirname(destPath));
     await drive.files.copy({
@@ -962,7 +1063,7 @@ export class GoogleDriveStorageAdapter extends StorageAdapter {
   async getSignedUrl(key: string, _expiresIn?: number): Promise<string> {
     const fullPath = path.join(this.config.basePath, key);
     const fileId = await this.findFileByPath(fullPath);
-    if (!fileId) throw new Error('File not found');
+    if (!fileId) throw new Error("File not found");
     return `https://drive.google.com/uc?id=${fileId}&export=download`;
   }
 
@@ -974,16 +1075,16 @@ export class GoogleDriveStorageAdapter extends StorageAdapter {
     const drive = await this.getDrive();
     const fullPath = path.join(this.config.basePath, key);
     const fileId = await this.findFileByPath(fullPath);
-    if (!fileId) throw new Error('File not found');
+    if (!fileId) throw new Error("File not found");
 
     const res = await drive.files.get({
       fileId,
-      fields: 'id,name,size,modifiedTime,mimeType',
+      fields: "id,name,size,modifiedTime,mimeType",
     });
 
     return {
       key,
-      size: parseInt(res.data.size || '0'),
+      size: parseInt(res.data.size || "0"),
       lastModified: new Date(res.data.modifiedTime),
       contentType: res.data.mimeType,
     };
@@ -1010,13 +1111,13 @@ export class OneDriveStorageAdapter extends StorageAdapter {
       client_id: this.config.onedriveClientId!,
       client_secret: this.config.onedriveClientSecret!,
       refresh_token: this.config.onedriveRefreshToken!,
-      grant_type: 'refresh_token',
+      grant_type: "refresh_token",
     });
 
-    const tenantId = this.config.onedriveTenantId || 'common';
+    const tenantId = this.config.onedriveTenantId || "common";
     const res = await fetch(
       `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
-      { method: 'POST', body: params }
+      { method: "POST", body: params },
     );
 
     const data = await res.json();
@@ -1025,11 +1126,14 @@ export class OneDriveStorageAdapter extends StorageAdapter {
     return this.accessToken!;
   }
 
-  private async graphRequest(endpoint: string, options: RequestInit = {}): Promise<Response> {
+  private async graphRequest(
+    endpoint: string,
+    options: RequestInit = {},
+  ): Promise<Response> {
     const token = await this.getAccessToken();
     const baseUrl = this.config.onedriveFolderId
       ? `https://graph.microsoft.com/v1.0/me/drive/items/${this.config.onedriveFolderId}`
-      : 'https://graph.microsoft.com/v1.0/me/drive/root';
+      : "https://graph.microsoft.com/v1.0/me/drive/root";
 
     return fetch(`${baseUrl}${endpoint}`, {
       ...options,
@@ -1040,34 +1144,49 @@ export class OneDriveStorageAdapter extends StorageAdapter {
     });
   }
 
-  async put(key: string, data: Buffer | Readable, options?: PutOptions): Promise<void> {
+  async put(
+    key: string,
+    data: Buffer | Readable,
+    options?: PutOptions,
+  ): Promise<void> {
     const fullPath = path.join(this.config.basePath, key);
-    const buffer = Buffer.isBuffer(data) ? data : await this.streamToBuffer(data);
+    const buffer = Buffer.isBuffer(data)
+      ? data
+      : await this.streamToBuffer(data);
 
     // Use simple upload for files < 4MB, session upload for larger
     if (buffer.length < 4 * 1024 * 1024) {
       await this.graphRequest(`:/${encodeURIComponent(fullPath)}:/content`, {
-        method: 'PUT',
-        headers: { 'Content-Type': options?.contentType || 'application/octet-stream' },
+        method: "PUT",
+        headers: {
+          "Content-Type": options?.contentType || "application/octet-stream",
+        },
         body: buffer as any,
       });
     } else {
       // Create upload session for large files
       const sessionRes = await this.graphRequest(
         `:/${encodeURIComponent(fullPath)}:/createUploadSession`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) }
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        },
       );
       const session = await sessionRes.json();
 
       // Upload in 10MB chunks
       const chunkSize = 10 * 1024 * 1024;
       for (let i = 0; i < buffer.length; i += chunkSize) {
-        const chunk = buffer.subarray(i, Math.min(i + chunkSize, buffer.length));
+        const chunk = buffer.subarray(
+          i,
+          Math.min(i + chunkSize, buffer.length),
+        );
         await fetch(session.uploadUrl, {
-          method: 'PUT',
+          method: "PUT",
           headers: {
-            'Content-Length': String(chunk.length),
-            'Content-Range': `bytes ${i}-${i + chunk.length - 1}/${buffer.length}`,
+            "Content-Length": String(chunk.length),
+            "Content-Range": `bytes ${i}-${i + chunk.length - 1}/${buffer.length}`,
           },
           body: chunk as any,
         });
@@ -1085,11 +1204,14 @@ export class OneDriveStorageAdapter extends StorageAdapter {
 
   async get(key: string, options?: GetOptions): Promise<Buffer> {
     const fullPath = path.join(this.config.basePath, key);
-    const res = await this.graphRequest(`:/${encodeURIComponent(fullPath)}:/content`, {
-      headers: options?.range
-        ? { Range: `bytes=${options.range.start}-${options.range.end}` }
-        : {},
-    });
+    const res = await this.graphRequest(
+      `:/${encodeURIComponent(fullPath)}:/content`,
+      {
+        headers: options?.range
+          ? { Range: `bytes=${options.range.start}-${options.range.end}` }
+          : {},
+      },
+    );
 
     if (!res.ok) throw new Error(`File not found: ${key}`);
     return Buffer.from(await res.arrayBuffer());
@@ -1102,7 +1224,9 @@ export class OneDriveStorageAdapter extends StorageAdapter {
 
   async delete(key: string): Promise<void> {
     const fullPath = path.join(this.config.basePath, key);
-    await this.graphRequest(`:/${encodeURIComponent(fullPath)}`, { method: 'DELETE' });
+    await this.graphRequest(`:/${encodeURIComponent(fullPath)}`, {
+      method: "DELETE",
+    });
   }
 
   async exists(key: string): Promise<boolean> {
@@ -1112,8 +1236,10 @@ export class OneDriveStorageAdapter extends StorageAdapter {
   }
 
   async list(options?: ListOptions): Promise<ListResult> {
-    const prefix = path.join(this.config.basePath, options?.prefix || '');
-    const res = await this.graphRequest(`:/${encodeURIComponent(prefix)}:/children`);
+    const prefix = path.join(this.config.basePath, options?.prefix || "");
+    const res = await this.graphRequest(
+      `:/${encodeURIComponent(prefix)}:/children`,
+    );
 
     if (!res.ok) return { objects: [], isTruncated: false };
 
@@ -1123,7 +1249,7 @@ export class OneDriveStorageAdapter extends StorageAdapter {
 
     for (const item of data.value || []) {
       if (item.folder) {
-        prefixes.push(item.name + '/');
+        prefixes.push(item.name + "/");
       } else {
         objects.push({
           key: item.name,
@@ -1133,7 +1259,7 @@ export class OneDriveStorageAdapter extends StorageAdapter {
       }
     }
 
-    return { objects, prefixes, isTruncated: !!data['@odata.nextLink'] };
+    return { objects, prefixes, isTruncated: !!data["@odata.nextLink"] };
   }
 
   async copy(sourceKey: string, destKey: string): Promise<void> {
@@ -1143,12 +1269,14 @@ export class OneDriveStorageAdapter extends StorageAdapter {
     const destName = path.basename(destPath);
 
     // Get destination folder ID
-    const folderRes = await this.graphRequest(`:/${encodeURIComponent(destFolder)}`);
+    const folderRes = await this.graphRequest(
+      `:/${encodeURIComponent(destFolder)}`,
+    );
     const folder = await folderRes.json();
 
     await this.graphRequest(`:/${encodeURIComponent(sourcePath)}:/copy`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         parentReference: { id: folder.id },
         name: destName,
@@ -1162,12 +1290,14 @@ export class OneDriveStorageAdapter extends StorageAdapter {
     const destFolder = path.dirname(destPath);
     const destName = path.basename(destPath);
 
-    const folderRes = await this.graphRequest(`:/${encodeURIComponent(destFolder)}`);
+    const folderRes = await this.graphRequest(
+      `:/${encodeURIComponent(destFolder)}`,
+    );
     const folder = await folderRes.json();
 
     await this.graphRequest(`:/${encodeURIComponent(sourcePath)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         parentReference: { id: folder.id },
         name: destName,
@@ -1180,13 +1310,15 @@ export class OneDriveStorageAdapter extends StorageAdapter {
     const res = await this.graphRequest(
       `:/${encodeURIComponent(fullPath)}:/createLink`,
       {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'view', scope: 'anonymous' }),
-      }
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "view", scope: "anonymous" }),
+      },
     );
     const data = await res.json();
-    return data.link?.webUrl || `/api/storage/download/${encodeURIComponent(key)}`;
+    return (
+      data.link?.webUrl || `/api/storage/download/${encodeURIComponent(key)}`
+    );
   }
 
   async getSignedUploadUrl(key: string, _expiresIn?: number): Promise<string> {
@@ -1196,7 +1328,7 @@ export class OneDriveStorageAdapter extends StorageAdapter {
   async stat(key: string): Promise<StorageObject> {
     const fullPath = path.join(this.config.basePath, key);
     const res = await this.graphRequest(`:/${encodeURIComponent(fullPath)}`);
-    if (!res.ok) throw new Error('File not found');
+    if (!res.ok) throw new Error("File not found");
 
     const data = await res.json();
     return {
@@ -1229,7 +1361,11 @@ export class GCSStorageAdapter extends StorageAdapter {
     return this.storage;
   }
 
-  async put(key: string, data: Buffer | Readable, options?: PutOptions): Promise<void> {
+  async put(
+    key: string,
+    data: Buffer | Readable,
+    options?: PutOptions,
+  ): Promise<void> {
     const storage = await this.getStorage();
     const bucket = storage.bucket(this.config.bucket);
     const file = bucket.file(path.join(this.config.basePath, key));
@@ -1237,7 +1373,10 @@ export class GCSStorageAdapter extends StorageAdapter {
     if (Buffer.isBuffer(data)) {
       await file.save(data, { contentType: options?.contentType });
     } else {
-      await pipeline(data as Readable, file.createWriteStream({ contentType: options?.contentType }));
+      await pipeline(
+        data as Readable,
+        file.createWriteStream({ contentType: options?.contentType }),
+      );
     }
   }
 
@@ -1257,26 +1396,38 @@ export class GCSStorageAdapter extends StorageAdapter {
     const storage = await this.getStorage();
     const bucket = storage.bucket(this.config.bucket);
     const file = bucket.file(path.join(this.config.basePath, key));
-    return file.createReadStream(options?.range ? { start: options.range.start, end: options.range.end } : undefined);
+    return file.createReadStream(
+      options?.range
+        ? { start: options.range.start, end: options.range.end }
+        : undefined,
+    );
   }
 
   async delete(key: string): Promise<void> {
     const storage = await this.getStorage();
     const bucket = storage.bucket(this.config.bucket);
-    await bucket.file(path.join(this.config.basePath, key)).delete().catch(() => { });
+    await bucket
+      .file(path.join(this.config.basePath, key))
+      .delete()
+      .catch(() => {});
   }
 
   async exists(key: string): Promise<boolean> {
     const storage = await this.getStorage();
     const bucket = storage.bucket(this.config.bucket);
-    const [exists] = await bucket.file(path.join(this.config.basePath, key)).exists();
+    const [exists] = await bucket
+      .file(path.join(this.config.basePath, key))
+      .exists();
     return exists;
   }
 
   async list(options?: ListOptions): Promise<ListResult> {
     const storage = await this.getStorage();
     const bucket = storage.bucket(this.config.bucket);
-    const [files] = await bucket.getFiles({ prefix: path.join(this.config.basePath, options?.prefix || ""), maxResults: options?.maxKeys });
+    const [files] = await bucket.getFiles({
+      prefix: path.join(this.config.basePath, options?.prefix || ""),
+      maxResults: options?.maxKeys,
+    });
 
     return {
       objects: files.map((f: any) => ({
@@ -1291,7 +1442,9 @@ export class GCSStorageAdapter extends StorageAdapter {
   async copy(sourceKey: string, destKey: string): Promise<void> {
     const storage = await this.getStorage();
     const bucket = storage.bucket(this.config.bucket);
-    await bucket.file(path.join(this.config.basePath, sourceKey)).copy(bucket.file(path.join(this.config.basePath, destKey)));
+    await bucket
+      .file(path.join(this.config.basePath, sourceKey))
+      .copy(bucket.file(path.join(this.config.basePath, destKey)));
   }
 
   async move(sourceKey: string, destKey: string): Promise<void> {
@@ -1302,27 +1455,36 @@ export class GCSStorageAdapter extends StorageAdapter {
   async getSignedUrl(key: string, expiresIn: number = 3600): Promise<string> {
     const storage = await this.getStorage();
     const bucket = storage.bucket(this.config.bucket);
-    const [url] = await bucket.file(path.join(this.config.basePath, key)).getSignedUrl({
-      action: "read",
-      expires: Date.now() + expiresIn * 1000,
-    });
+    const [url] = await bucket
+      .file(path.join(this.config.basePath, key))
+      .getSignedUrl({
+        action: "read",
+        expires: Date.now() + expiresIn * 1000,
+      });
     return url;
   }
 
-  async getSignedUploadUrl(key: string, expiresIn: number = 3600): Promise<string> {
+  async getSignedUploadUrl(
+    key: string,
+    expiresIn: number = 3600,
+  ): Promise<string> {
     const storage = await this.getStorage();
     const bucket = storage.bucket(this.config.bucket);
-    const [url] = await bucket.file(path.join(this.config.basePath, key)).getSignedUrl({
-      action: "write",
-      expires: Date.now() + expiresIn * 1000,
-    });
+    const [url] = await bucket
+      .file(path.join(this.config.basePath, key))
+      .getSignedUrl({
+        action: "write",
+        expires: Date.now() + expiresIn * 1000,
+      });
     return url;
   }
 
   async stat(key: string): Promise<StorageObject> {
     const storage = await this.getStorage();
     const bucket = storage.bucket(this.config.bucket);
-    const [metadata] = await bucket.file(path.join(this.config.basePath, key)).getMetadata();
+    const [metadata] = await bucket
+      .file(path.join(this.config.basePath, key))
+      .getMetadata();
     return {
       key,
       size: parseInt(metadata.size || "0"),
@@ -1344,14 +1506,15 @@ export class AzureStorageAdapter extends StorageAdapter {
 
   private async getClient() {
     if (!this.client) {
-      const { BlobServiceClient, StorageSharedKeyCredential } = await import("@azure/storage-blob");
+      const { BlobServiceClient, StorageSharedKeyCredential } =
+        await import("@azure/storage-blob");
       const credential = new StorageSharedKeyCredential(
         this.config.azureAccountName!,
-        this.config.azureAccountKey!
+        this.config.azureAccountKey!,
       );
       this.client = new BlobServiceClient(
         `https://${this.config.azureAccountName}.blob.core.windows.net`,
-        credential
+        credential,
       );
     }
     return this.client;
@@ -1359,55 +1522,88 @@ export class AzureStorageAdapter extends StorageAdapter {
 
   private async getContainerClient() {
     const client = await this.getClient();
-    return client.getContainerClient(this.config.azureContainerName || "default");
+    return client.getContainerClient(
+      this.config.azureContainerName || "default",
+    );
   }
 
-  async put(key: string, data: Buffer | Readable, options?: PutOptions): Promise<void> {
+  async put(
+    key: string,
+    data: Buffer | Readable,
+    options?: PutOptions,
+  ): Promise<void> {
     const container = await this.getContainerClient();
-    const blob = container.getBlockBlobClient(path.join(this.config.basePath, key));
+    const blob = container.getBlockBlobClient(
+      path.join(this.config.basePath, key),
+    );
 
     if (Buffer.isBuffer(data)) {
-      await blob.upload(data, data.length, { blobHTTPHeaders: { blobContentType: options?.contentType } });
+      await blob.upload(data, data.length, {
+        blobHTTPHeaders: { blobContentType: options?.contentType },
+      });
     } else {
       const chunks: Buffer[] = [];
-      for await (const chunk of data as Readable) { chunks.push(Buffer.from(chunk)); }
+      for await (const chunk of data as Readable) {
+        chunks.push(Buffer.from(chunk));
+      }
       const buffer = Buffer.concat(chunks);
-      await blob.upload(buffer, buffer.length, { blobHTTPHeaders: { blobContentType: options?.contentType } });
+      await blob.upload(buffer, buffer.length, {
+        blobHTTPHeaders: { blobContentType: options?.contentType },
+      });
     }
   }
 
   async get(key: string, options?: GetOptions): Promise<Buffer> {
     const container = await this.getContainerClient();
-    const blob = container.getBlockBlobClient(path.join(this.config.basePath, key));
-    const response = await blob.download(options?.range?.start, options?.range ? options.range.end - options.range.start + 1 : undefined);
+    const blob = container.getBlockBlobClient(
+      path.join(this.config.basePath, key),
+    );
+    const response = await blob.download(
+      options?.range?.start,
+      options?.range ? options.range.end - options.range.start + 1 : undefined,
+    );
 
     const chunks: Buffer[] = [];
-    for await (const chunk of response.readableStreamBody as any) { chunks.push(Buffer.from(chunk)); }
+    for await (const chunk of response.readableStreamBody as any) {
+      chunks.push(Buffer.from(chunk));
+    }
     return Buffer.concat(chunks);
   }
 
   async getStream(key: string, options?: GetOptions): Promise<Readable> {
     const container = await this.getContainerClient();
-    const blob = container.getBlockBlobClient(path.join(this.config.basePath, key));
-    const response = await blob.download(options?.range?.start, options?.range ? options.range.end - options.range.start + 1 : undefined);
+    const blob = container.getBlockBlobClient(
+      path.join(this.config.basePath, key),
+    );
+    const response = await blob.download(
+      options?.range?.start,
+      options?.range ? options.range.end - options.range.start + 1 : undefined,
+    );
     return Readable.from(response.readableStreamBody as any);
   }
 
   async delete(key: string): Promise<void> {
     const container = await this.getContainerClient();
-    await container.getBlockBlobClient(path.join(this.config.basePath, key)).delete().catch(() => { });
+    await container
+      .getBlockBlobClient(path.join(this.config.basePath, key))
+      .delete()
+      .catch(() => {});
   }
 
   async exists(key: string): Promise<boolean> {
     const container = await this.getContainerClient();
-    return container.getBlockBlobClient(path.join(this.config.basePath, key)).exists();
+    return container
+      .getBlockBlobClient(path.join(this.config.basePath, key))
+      .exists();
   }
 
   async list(options?: ListOptions): Promise<ListResult> {
     const container = await this.getContainerClient();
     const objects: StorageObject[] = [];
 
-    for await (const blob of container.listBlobsFlat({ prefix: path.join(this.config.basePath, options?.prefix || "") })) {
+    for await (const blob of container.listBlobsFlat({
+      prefix: path.join(this.config.basePath, options?.prefix || ""),
+    })) {
       objects.push({
         key: blob.name.replace(this.config.basePath + "/", ""),
         size: blob.properties.contentLength || 0,
@@ -1421,8 +1617,12 @@ export class AzureStorageAdapter extends StorageAdapter {
 
   async copy(sourceKey: string, destKey: string): Promise<void> {
     const container = await this.getContainerClient();
-    const sourceBlob = container.getBlockBlobClient(path.join(this.config.basePath, sourceKey));
-    const destBlob = container.getBlockBlobClient(path.join(this.config.basePath, destKey));
+    const sourceBlob = container.getBlockBlobClient(
+      path.join(this.config.basePath, sourceKey),
+    );
+    const destBlob = container.getBlockBlobClient(
+      path.join(this.config.basePath, destKey),
+    );
     await destBlob.beginCopyFromURL(sourceBlob.url);
   }
 
@@ -1432,24 +1632,39 @@ export class AzureStorageAdapter extends StorageAdapter {
   }
 
   async getSignedUrl(key: string, expiresIn: number = 3600): Promise<string> {
-    const { generateBlobSASQueryParameters, BlobSASPermissions, StorageSharedKeyCredential } = await import("@azure/storage-blob");
-    const credential = new StorageSharedKeyCredential(this.config.azureAccountName!, this.config.azureAccountKey!);
-    const sas = generateBlobSASQueryParameters({
-      containerName: this.config.azureContainerName!,
-      blobName: path.join(this.config.basePath, key),
-      permissions: BlobSASPermissions.parse("r"),
-      expiresOn: new Date(Date.now() + expiresIn * 1000),
-    }, credential);
+    const {
+      generateBlobSASQueryParameters,
+      BlobSASPermissions,
+      StorageSharedKeyCredential,
+    } = await import("@azure/storage-blob");
+    const credential = new StorageSharedKeyCredential(
+      this.config.azureAccountName!,
+      this.config.azureAccountKey!,
+    );
+    const sas = generateBlobSASQueryParameters(
+      {
+        containerName: this.config.azureContainerName!,
+        blobName: path.join(this.config.basePath, key),
+        permissions: BlobSASPermissions.parse("r"),
+        expiresOn: new Date(Date.now() + expiresIn * 1000),
+      },
+      credential,
+    );
     return `https://${this.config.azureAccountName}.blob.core.windows.net/${this.config.azureContainerName}/${path.join(this.config.basePath, key)}?${sas}`;
   }
 
-  async getSignedUploadUrl(key: string, expiresIn: number = 3600): Promise<string> {
+  async getSignedUploadUrl(
+    key: string,
+    expiresIn: number = 3600,
+  ): Promise<string> {
     return `/api/storage/upload/${encodeURIComponent(key)}`;
   }
 
   async stat(key: string): Promise<StorageObject> {
     const container = await this.getContainerClient();
-    const blob = container.getBlockBlobClient(path.join(this.config.basePath, key));
+    const blob = container.getBlockBlobClient(
+      path.join(this.config.basePath, key),
+    );
     const props = await blob.getProperties();
     return {
       key,
@@ -1471,8 +1686,14 @@ export class DropboxStorageAdapter extends StorageAdapter {
     this.accessToken = config.dropboxAccessToken || "";
   }
 
-  private async dropboxRequest(endpoint: string, options: RequestInit = {}, isContent = false): Promise<Response> {
-    const baseUrl = isContent ? "https://content.dropboxapi.com/2" : "https://api.dropboxapi.com/2";
+  private async dropboxRequest(
+    endpoint: string,
+    options: RequestInit = {},
+    isContent = false,
+  ): Promise<Response> {
+    const baseUrl = isContent
+      ? "https://content.dropboxapi.com/2"
+      : "https://api.dropboxapi.com/2";
     return fetch(`${baseUrl}${endpoint}`, {
       ...options,
       headers: {
@@ -1482,36 +1703,57 @@ export class DropboxStorageAdapter extends StorageAdapter {
     });
   }
 
-  async put(key: string, data: Buffer | Readable, options?: PutOptions): Promise<void> {
+  async put(
+    key: string,
+    data: Buffer | Readable,
+    options?: PutOptions,
+  ): Promise<void> {
     const fullPath = "/" + path.join(this.config.basePath, key);
-    const buffer = Buffer.isBuffer(data) ? data : await this.streamToBuffer(data as Readable);
+    const buffer = Buffer.isBuffer(data)
+      ? data
+      : await this.streamToBuffer(data as Readable);
 
-    await this.dropboxRequest("/files/upload", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/octet-stream",
-        "Dropbox-API-Arg": JSON.stringify({ path: fullPath, mode: "overwrite" }),
+    await this.dropboxRequest(
+      "/files/upload",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "Dropbox-API-Arg": JSON.stringify({
+            path: fullPath,
+            mode: "overwrite",
+          }),
+        },
+        body: buffer as any,
       },
-      body: buffer as any,
-    }, true);
+      true,
+    );
   }
 
   private async streamToBuffer(stream: Readable): Promise<Buffer> {
     const chunks: Buffer[] = [];
-    for await (const chunk of stream) { chunks.push(Buffer.from(chunk)); }
+    for await (const chunk of stream) {
+      chunks.push(Buffer.from(chunk));
+    }
     return Buffer.concat(chunks);
   }
 
   async get(key: string, options?: GetOptions): Promise<Buffer> {
     const fullPath = "/" + path.join(this.config.basePath, key);
-    const res = await this.dropboxRequest("/files/download", {
-      method: "POST",
-      headers: { "Dropbox-API-Arg": JSON.stringify({ path: fullPath }) },
-    }, true);
+    const res = await this.dropboxRequest(
+      "/files/download",
+      {
+        method: "POST",
+        headers: { "Dropbox-API-Arg": JSON.stringify({ path: fullPath }) },
+      },
+      true,
+    );
 
     if (!res.ok) throw new Error(`File not found: ${key}`);
     const buffer = Buffer.from(await res.arrayBuffer());
-    return options?.range ? buffer.slice(options.range.start, options.range.end + 1) : buffer;
+    return options?.range
+      ? buffer.slice(options.range.start, options.range.end + 1)
+      : buffer;
   }
 
   async getStream(key: string, options?: GetOptions): Promise<Readable> {
@@ -1524,34 +1766,44 @@ export class DropboxStorageAdapter extends StorageAdapter {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ path: fullPath }),
-    }).catch(() => { });
+    }).catch(() => {});
   }
 
   async exists(key: string): Promise<boolean> {
     try {
       await this.stat(key);
       return true;
-    } catch { return false; }
+    } catch {
+      return false;
+    }
   }
 
   async list(options?: ListOptions): Promise<ListResult> {
-    const fullPath = "/" + path.join(this.config.basePath, options?.prefix || "");
+    const fullPath =
+      "/" + path.join(this.config.basePath, options?.prefix || "");
     const res = await this.dropboxRequest("/files/list_folder", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: fullPath === "/" ? "" : fullPath, limit: options?.maxKeys || 100 }),
+      body: JSON.stringify({
+        path: fullPath === "/" ? "" : fullPath,
+        limit: options?.maxKeys || 100,
+      }),
     });
 
     if (!res.ok) return { objects: [], isTruncated: false };
     const data = await res.json();
 
     return {
-      objects: (data.entries || []).filter((e: any) => e[".tag"] === "file").map((e: any) => ({
-        key: e.path_display.replace("/" + this.config.basePath + "/", ""),
-        size: e.size || 0,
-        lastModified: new Date(e.server_modified),
-      })),
-      prefixes: (data.entries || []).filter((e: any) => e[".tag"] === "folder").map((e: any) => e.name + "/"),
+      objects: (data.entries || [])
+        .filter((e: any) => e[".tag"] === "file")
+        .map((e: any) => ({
+          key: e.path_display.replace("/" + this.config.basePath + "/", ""),
+          size: e.size || 0,
+          lastModified: new Date(e.server_modified),
+        })),
+      prefixes: (data.entries || [])
+        .filter((e: any) => e[".tag"] === "folder")
+        .map((e: any) => e.name + "/"),
       isTruncated: data.has_more,
     };
   }
@@ -1602,7 +1854,11 @@ export class DropboxStorageAdapter extends StorageAdapter {
     });
     if (!res.ok) throw new Error("File not found");
     const data = await res.json();
-    return { key, size: data.size || 0, lastModified: new Date(data.server_modified) };
+    return {
+      key,
+      size: data.size || 0,
+      lastModified: new Date(data.server_modified),
+    };
   }
 }
 
@@ -1611,15 +1867,31 @@ export class DropboxStorageAdapter extends StorageAdapter {
  */
 export class FTPStorageAdapter extends StorageAdapter {
   private client: any;
+  private lastActivity: number = 0;
+  private static readonly IDLE_TIMEOUT_MS = 30_000; // 30s idle → reconnect
 
   constructor(config: StorageConfig) {
     super(config);
   }
 
   private async getClient() {
+    const now = Date.now();
+    // Reconnect if client is stale or missing
+    if (
+      this.client &&
+      now - this.lastActivity > FTPStorageAdapter.IDLE_TIMEOUT_MS
+    ) {
+      try {
+        this.client.close();
+      } catch {
+        /* ignore */
+      }
+      this.client = null;
+    }
     if (!this.client) {
       const { Client } = await import("basic-ftp");
       this.client = new Client();
+      this.client.ftp.verbose = false;
       await this.client.access({
         host: this.config.ftpHost,
         port: this.config.ftpPort || 21,
@@ -1628,36 +1900,73 @@ export class FTPStorageAdapter extends StorageAdapter {
         secure: this.config.ftpSecure || false,
       });
     }
+    this.lastActivity = now;
     return this.client;
   }
 
-  async put(key: string, data: Buffer | Readable, options?: PutOptions): Promise<void> {
-    const client = await this.getClient();
-    const fullPath = path.join(this.config.basePath, key);
-    const dir = path.dirname(fullPath);
-
-    await client.ensureDir(dir);
-    if (Buffer.isBuffer(data)) {
-      await client.uploadFrom(Readable.from(data), fullPath);
-    } else {
-      await client.uploadFrom(data as Readable, fullPath);
+  /** Wrapper that retries once on connection error */
+  private async withClient<T>(fn: (client: any) => Promise<T>): Promise<T> {
+    try {
+      const client = await this.getClient();
+      return await fn(client);
+    } catch (error: any) {
+      // On connection-related errors, reset client and retry once
+      if (
+        error?.code === "ECONNRESET" ||
+        error?.code === "ENOTFOUND" ||
+        error?.code === "ETIMEDOUT" ||
+        error?.message?.includes("closed")
+      ) {
+        logger.warn({ err: error }, "[FTP] Connection lost, reconnecting...");
+        try {
+          this.client?.close();
+        } catch {
+          /* ignore */
+        }
+        this.client = null;
+        const client = await this.getClient();
+        return await fn(client);
+      }
+      throw error;
     }
   }
 
-  async get(key: string, options?: GetOptions): Promise<Buffer> {
-    const client = await this.getClient();
-    const fullPath = path.join(this.config.basePath, key);
-    const tempDir = path.join(process.cwd(), "data", "temp");
-    await fs.mkdir(tempDir, { recursive: true });
-    const tempFile = path.join(tempDir, `ftp-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`);
+  async put(
+    key: string,
+    data: Buffer | Readable,
+    options?: PutOptions,
+  ): Promise<void> {
+    await this.withClient(async (client) => {
+      const fullPath = path.join(this.config.basePath, key);
+      const dir = path.dirname(fullPath);
+      await client.ensureDir(dir);
+      if (Buffer.isBuffer(data)) {
+        await client.uploadFrom(Readable.from(data), fullPath);
+      } else {
+        await client.uploadFrom(data as Readable, fullPath);
+      }
+    });
+  }
 
-    try {
-      await client.downloadTo(tempFile, fullPath);
-      const buffer = await fs.readFile(tempFile);
-      return options?.range ? buffer.slice(options.range.start, options.range.end + 1) : buffer;
-    } finally {
-      await fs.unlink(tempFile).catch(() => { });
-    }
+  async get(key: string, options?: GetOptions): Promise<Buffer> {
+    return this.withClient(async (client) => {
+      const fullPath = path.join(this.config.basePath, key);
+      const tempDir = path.join(process.cwd(), "data", "temp");
+      await fs.mkdir(tempDir, { recursive: true });
+      const tempFile = path.join(
+        tempDir,
+        `ftp-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`,
+      );
+      try {
+        await client.downloadTo(tempFile, fullPath);
+        const buffer = await fs.readFile(tempFile);
+        return options?.range
+          ? buffer.slice(options.range.start, options.range.end + 1)
+          : buffer;
+      } finally {
+        await fs.unlink(tempFile).catch(() => {});
+      }
+    });
   }
 
   async getStream(key: string, options?: GetOptions): Promise<Readable> {
@@ -1665,32 +1974,40 @@ export class FTPStorageAdapter extends StorageAdapter {
   }
 
   async delete(key: string): Promise<void> {
-    const client = await this.getClient();
-    await client.remove(path.join(this.config.basePath, key)).catch(() => { });
+    await this.withClient(async (client) => {
+      await client.remove(path.join(this.config.basePath, key)).catch(() => {});
+    });
   }
 
   async exists(key: string): Promise<boolean> {
-    const client = await this.getClient();
-    try {
-      await client.size(path.join(this.config.basePath, key));
-      return true;
-    } catch { return false; }
+    return this.withClient(async (client) => {
+      try {
+        await client.size(path.join(this.config.basePath, key));
+        return true;
+      } catch {
+        return false;
+      }
+    });
   }
 
   async list(options?: ListOptions): Promise<ListResult> {
-    const client = await this.getClient();
-    const fullPath = path.join(this.config.basePath, options?.prefix || "");
-    const files = await client.list(fullPath);
-
-    return {
-      objects: files.filter((f: any) => !f.isDirectory).map((f: any) => ({
-        key: path.join(options?.prefix || "", f.name),
-        size: f.size || 0,
-        lastModified: f.modifiedAt || new Date(),
-      })),
-      prefixes: files.filter((f: any) => f.isDirectory).map((f: any) => f.name + "/"),
-      isTruncated: false,
-    };
+    return this.withClient(async (client) => {
+      const fullPath = path.join(this.config.basePath, options?.prefix || "");
+      const files = await client.list(fullPath);
+      return {
+        objects: files
+          .filter((f: any) => !f.isDirectory)
+          .map((f: any) => ({
+            key: path.join(options?.prefix || "", f.name),
+            size: f.size || 0,
+            lastModified: f.modifiedAt || new Date(),
+          })),
+        prefixes: files
+          .filter((f: any) => f.isDirectory)
+          .map((f: any) => f.name + "/"),
+        isTruncated: false,
+      };
+    });
   }
 
   async copy(sourceKey: string, destKey: string): Promise<void> {
@@ -1699,8 +2016,12 @@ export class FTPStorageAdapter extends StorageAdapter {
   }
 
   async move(sourceKey: string, destKey: string): Promise<void> {
-    const client = await this.getClient();
-    await client.rename(path.join(this.config.basePath, sourceKey), path.join(this.config.basePath, destKey));
+    await this.withClient(async (client) => {
+      await client.rename(
+        path.join(this.config.basePath, sourceKey),
+        path.join(this.config.basePath, destKey),
+      );
+    });
   }
 
   async getSignedUrl(key: string, expiresIn?: number): Promise<string> {
@@ -1712,9 +2033,10 @@ export class FTPStorageAdapter extends StorageAdapter {
   }
 
   async stat(key: string): Promise<StorageObject> {
-    const client = await this.getClient();
-    const size = await client.size(path.join(this.config.basePath, key));
-    return { key, size, lastModified: new Date() };
+    return this.withClient(async (client) => {
+      const size = await client.size(path.join(this.config.basePath, key));
+      return { key, size, lastModified: new Date() };
+    });
   }
 }
 
@@ -1722,7 +2044,9 @@ export class FTPStorageAdapter extends StorageAdapter {
  * Storage factory
  */
 export function createStorageAdapter(config: StorageConfig): StorageAdapter {
-  console.log(`[createStorageAdapter] Creating adapter for type: ${config.type}`);
+  logger.info(
+    `[createStorageAdapter] Creating adapter for type: ${config.type}`,
+  );
   switch (config.type) {
     case "local":
       return new LocalStorageAdapter(config);
@@ -1756,7 +2080,7 @@ let lastConfigHash: string = "";
  * Useful after changing environment variables or for testing
  */
 export function resetStorage(): void {
-  console.log("[resetStorage] Clearing storage singleton");
+  logger.info("[resetStorage] Clearing storage singleton");
   storageInstance = null;
   lastConfigHash = "";
 }
@@ -1765,7 +2089,11 @@ export function resetStorage(): void {
  * Check storage health/connectivity
  * Returns true if storage is accessible, false otherwise
  */
-export async function checkStorageHealth(): Promise<{ healthy: boolean; type: string; error?: string }> {
+export async function checkStorageHealth(): Promise<{
+  healthy: boolean;
+  type: string;
+  error?: string;
+}> {
   try {
     const storage = await getStorage();
     const config = getStorageConfig();
@@ -1783,13 +2111,18 @@ export async function checkStorageHealth(): Promise<{ healthy: boolean; type: st
  * Get current storage configuration from environment
  */
 export function getStorageConfig(): StorageConfig {
-  const storageType = (import.meta.env?.STORAGE_TYPE || process.env.STORAGE_TYPE || "local") as StorageConfig["type"];
+  const storageType = (import.meta.env?.STORAGE_TYPE ||
+    process.env.STORAGE_TYPE ||
+    "local") as StorageConfig["type"];
 
   // BasePath should be empty for cloud storage (S3, GCS, etc)
   // Only use directory path for local storage
   let basePath = "";
   if (storageType === "local") {
-    basePath = import.meta.env?.STORAGE_PATH || process.env.STORAGE_PATH || "./data/storage";
+    basePath =
+      import.meta.env?.STORAGE_PATH ||
+      process.env.STORAGE_PATH ||
+      "./data/storage";
   }
 
   return {
@@ -1798,34 +2131,57 @@ export function getStorageConfig(): StorageConfig {
     bucket: import.meta.env?.STORAGE_BUCKET || process.env.STORAGE_BUCKET,
     region: import.meta.env?.STORAGE_REGION || process.env.STORAGE_REGION,
     endpoint: import.meta.env?.STORAGE_ENDPOINT || process.env.STORAGE_ENDPOINT,
-    accessKeyId: import.meta.env?.STORAGE_ACCESS_KEY_ID || process.env.STORAGE_ACCESS_KEY_ID,
-    secretAccessKey: import.meta.env?.STORAGE_SECRET_ACCESS_KEY || process.env.STORAGE_SECRET_ACCESS_KEY,
+    accessKeyId:
+      import.meta.env?.STORAGE_ACCESS_KEY_ID ||
+      process.env.STORAGE_ACCESS_KEY_ID,
+    secretAccessKey:
+      import.meta.env?.STORAGE_SECRET_ACCESS_KEY ||
+      process.env.STORAGE_SECRET_ACCESS_KEY,
     rcloneRemote: import.meta.env?.RCLONE_REMOTE || process.env.RCLONE_REMOTE,
     // Google Drive
-    googleClientId: import.meta.env?.OAUTH_GOOGLE_CLIENT_ID || process.env.OAUTH_GOOGLE_CLIENT_ID || import.meta.env?.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID,
-    googleClientSecret: import.meta.env?.OAUTH_GOOGLE_CLIENT_SECRET || process.env.OAUTH_GOOGLE_CLIENT_SECRET || import.meta.env?.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET,
-    googleRefreshToken: import.meta.env?.GOOGLE_REFRESH_TOKEN || process.env.GOOGLE_REFRESH_TOKEN,
-    googleFolderId: import.meta.env?.GOOGLE_FOLDER_ID || process.env.GOOGLE_FOLDER_ID,
+    googleClientId:
+      import.meta.env?.OAUTH_GOOGLE_CLIENT_ID ||
+      process.env.OAUTH_GOOGLE_CLIENT_ID ||
+      import.meta.env?.GOOGLE_CLIENT_ID ||
+      process.env.GOOGLE_CLIENT_ID,
+    googleClientSecret:
+      import.meta.env?.OAUTH_GOOGLE_CLIENT_SECRET ||
+      process.env.OAUTH_GOOGLE_CLIENT_SECRET ||
+      import.meta.env?.GOOGLE_CLIENT_SECRET ||
+      process.env.GOOGLE_CLIENT_SECRET,
+    googleRefreshToken:
+      import.meta.env?.GOOGLE_REFRESH_TOKEN || process.env.GOOGLE_REFRESH_TOKEN,
+    googleFolderId:
+      import.meta.env?.GOOGLE_FOLDER_ID || process.env.GOOGLE_FOLDER_ID,
     // FTP
     ftpHost: import.meta.env?.FTP_HOST || process.env.FTP_HOST,
-    ftpPort: parseInt(import.meta.env?.FTP_PORT || process.env.FTP_PORT || "21"),
+    ftpPort: parseInt(
+      import.meta.env?.FTP_PORT || process.env.FTP_PORT || "21",
+    ),
     ftpUser: import.meta.env?.FTP_USER || process.env.FTP_USER,
     ftpPassword: import.meta.env?.FTP_PASSWORD || process.env.FTP_PASSWORD,
     // GCS
     gcsProjectId: import.meta.env?.GCS_PROJECT_ID || process.env.GCS_PROJECT_ID,
     gcsKeyFile: import.meta.env?.GCS_KEY_FILE || process.env.GCS_KEY_FILE,
     // Azure
-    azureAccountName: import.meta.env?.AZURE_STORAGE_ACCOUNT || process.env.AZURE_STORAGE_ACCOUNT,
-    azureAccountKey: import.meta.env?.AZURE_STORAGE_KEY || process.env.AZURE_STORAGE_KEY,
-    azureContainerName: import.meta.env?.AZURE_CONTAINER_NAME || process.env.AZURE_CONTAINER_NAME,
+    azureAccountName:
+      import.meta.env?.AZURE_STORAGE_ACCOUNT ||
+      process.env.AZURE_STORAGE_ACCOUNT,
+    azureAccountKey:
+      import.meta.env?.AZURE_STORAGE_KEY || process.env.AZURE_STORAGE_KEY,
+    azureContainerName:
+      import.meta.env?.AZURE_CONTAINER_NAME || process.env.AZURE_CONTAINER_NAME,
     // Dropbox
-    dropboxAccessToken: import.meta.env?.DROPBOX_ACCESS_TOKEN || process.env.DROPBOX_ACCESS_TOKEN,
+    dropboxAccessToken:
+      import.meta.env?.DROPBOX_ACCESS_TOKEN || process.env.DROPBOX_ACCESS_TOKEN,
   };
 }
 
 export async function getStorage(): Promise<StorageAdapter> {
   // Check if we should prioritize environment variables over database
-  const envPriority = import.meta.env?.STORAGE_ENV_PRIORITY === "true" || process.env.STORAGE_ENV_PRIORITY === "true";
+  const envPriority =
+    import.meta.env?.STORAGE_ENV_PRIORITY === "true" ||
+    process.env.STORAGE_ENV_PRIORITY === "true";
 
   // Check DB for config override (unless env priority is set)
   if (!envPriority) {
@@ -1835,36 +2191,44 @@ export async function getStorage(): Promise<StorageAdapter> {
       const db = getDatabase() as NodePgDatabase<typeof schema>;
 
       const configRow = await db.query.systemConfig.findFirst({
-        where: eq(schema.systemConfig.key, "storage_config")
+        where: eq(schema.systemConfig.key, "storage_config"),
       });
 
       if (configRow) {
         // If config changed, re-init
         if (configRow.value !== lastConfigHash) {
           const config = JSON.parse(configRow.value) as StorageConfig;
-          console.log(`[getStorage] Using DB config: type=${config.type}`);
+          logger.info(`[getStorage] Using DB config: type=${config.type}`);
           storageInstance = createStorageAdapter(config);
           lastConfigHash = configRow.value;
         }
         return storageInstance!;
       }
     } catch (e) {
-      console.warn("[getStorage] Failed to fetch DB config, using env fallback", e);
+      logger.warn(
+        "[getStorage] Failed to fetch DB config, using env fallback",
+        e,
+      );
     }
   } else {
-    console.log("[getStorage] STORAGE_ENV_PRIORITY=true, skipping DB config");
+    logger.info("[getStorage] STORAGE_ENV_PRIORITY=true, skipping DB config");
   }
 
   if (!storageInstance) {
     const config = getStorageConfig();
-    console.log(`[getStorage] Using env config: type=${config.type}, basePath="${config.basePath}"`);
+    logger.info(
+      `[getStorage] Using env config: type=${config.type}, basePath="${config.basePath}"`,
+    );
     storageInstance = createStorageAdapter(config);
     lastConfigHash = JSON.stringify(config);
   }
   return storageInstance;
 }
 
-export async function updateStorageConfig(config: StorageConfig, userId?: string): Promise<void> {
+export async function updateStorageConfig(
+  config: StorageConfig,
+  userId?: string,
+): Promise<void> {
   const { getDatabase, schema } = await import("@/db");
   const { eq } = await import("drizzle-orm");
   const db = getDatabase() as NodePgDatabase<typeof schema>;
@@ -1875,19 +2239,20 @@ export async function updateStorageConfig(config: StorageConfig, userId?: string
   // Save to DB
   const value = JSON.stringify(config);
 
-  await db.insert(schema.systemConfig)
+  await db
+    .insert(schema.systemConfig)
     .values({
       key: "storage_config",
       value,
-      updatedById: userId
+      updatedById: userId,
     })
     .onConflictDoUpdate({
       target: schema.systemConfig.key,
       set: {
         value,
         updatedAt: new Date(),
-        updatedById: userId
-      }
+        updatedById: userId,
+      },
     });
 
   // Force reload next time
@@ -1903,7 +2268,7 @@ export async function updateStorageConfig(config: StorageConfig, userId?: string
 export async function uploadFile(
   key: string,
   filePath: string,
-  options?: PutOptions
+  options?: PutOptions,
 ): Promise<void> {
   const storage = await getStorage();
   const stream = createReadStream(filePath);
@@ -1913,7 +2278,7 @@ export async function uploadFile(
 // Download a file
 export async function downloadFile(
   key: string,
-  destPath: string
+  destPath: string,
 ): Promise<void> {
   const storage = await getStorage();
   const data = await storage.get(key);
@@ -1931,7 +2296,7 @@ export async function getFileAsBase64(key: string): Promise<string> {
 // Calculate file hash
 export async function getFileHash(
   key: string,
-  algorithm: string = "sha256"
+  algorithm: string = "sha256",
 ): Promise<string> {
   const storage = await getStorage();
   const data = await storage.get(key);
@@ -1940,7 +2305,7 @@ export async function getFileHash(
 
 export async function getSignedUploadUrl(
   key: string,
-  expiresIn: number = 3600
+  expiresIn: number = 3600,
 ): Promise<string> {
   const storage = await getStorage();
   return storage.getSignedUploadUrl(key, expiresIn);
@@ -1948,7 +2313,7 @@ export async function getSignedUploadUrl(
 
 export async function getSignedDownloadUrl(
   key: string,
-  expiresIn: number = 3600
+  expiresIn: number = 3600,
 ): Promise<string> {
   const storage = await getStorage();
   return storage.getSignedUrl(key, expiresIn);

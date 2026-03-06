@@ -7,6 +7,11 @@ import { mkdir, rm, writeFile } from "fs/promises";
 import { join } from "path";
 import { simpleGit } from "simple-git";
 import { logger } from "./logger";
+import {
+    evaluateLicensePolicy,
+    evaluateSecretPolicy,
+    getRepositorySecurityPolicy,
+} from "./security-policies";
 
 const TRIVY_IMAGE = "aquasec/trivy:latest";
 
@@ -20,6 +25,8 @@ export async function runSecurityScan(
     const tempDir = join("/tmp", `scan-${scanId}`);
 
     try {
+        const policy = await getRepositorySecurityPolicy(repositoryId);
+
         // 1. Update status to in_progress
         await db
             .update(schema.securityScans)
@@ -99,6 +106,8 @@ export async function runSecurityScan(
 
         // 6. Save Findings
         let critical = 0, high = 0, medium = 0, low = 0, unknown = 0;
+        let policyViolations = 0;
+        let blockingViolations = 0;
 
         if (scanResults.Results) {
             for (const res of scanResults.Results) {
@@ -134,17 +143,32 @@ export async function runSecurityScan(
                 // Handle Secrets
                 if (res.Secrets) {
                     for (const secret of res.Secrets) {
+                        const secretType = String(secret?.RuleID || secret?.Category || secret?.Title || "secret");
+                        const secretSeverity = "CRITICAL";
+                        const policyCheck = evaluateSecretPolicy(policy, secretType, secretSeverity);
+                        if (policyCheck.violated) {
+                            policyViolations++;
+                            if (policy.enforcementMode === "block") {
+                                blockingViolations++;
+                            }
+                        }
                         critical++; // Treat secrets as critical
                         await db.insert(schema.securityVulnerabilities).values({
                             id: generateId(),
                             scanId: scanId,
-                            vulnerabilityId: "SECRET",
+                            vulnerabilityId: `SECRET-${secretType.toUpperCase().replace(/[^A-Z0-9]+/g, "_")}`,
                             pkgName: secret.Title || "Secret Detected",
                             installedVersion: "",
                             fixedVersion: "",
                             severity: "CRITICAL",
-                            title: `Secret found: ${secret.Title}`,
-                            description: `Match: ${secret.Match}`,
+                            title: policyCheck.violated
+                                ? `Policy violation: Secret found: ${secret.Title}`
+                                : `Secret found: ${secret.Title}`,
+                            description: [
+                                `Type: ${secretType}`,
+                                `Match: ${secret.Match}`,
+                                policyCheck.reason ? `Policy: ${policyCheck.reason}` : null,
+                            ].filter(Boolean).join("\n"),
                             target: target,
                             class: "secret"
                         });
@@ -163,6 +187,19 @@ export async function runSecurityScan(
                         else if (severity === "LOW") low++;
                         else unknown++;
 
+                        const policyCheck = evaluateLicensePolicy(
+                            policy,
+                            String(license.Category || "unknown"),
+                            `LICENSE-${license.Name}`,
+                            `License: ${license.Name}`
+                        );
+                        if (policyCheck.violated) {
+                            policyViolations++;
+                            if (policy.enforcementMode === "block") {
+                                blockingViolations++;
+                            }
+                        }
+
                         await db.insert(schema.securityVulnerabilities).values({
                             id: generateId(),
                             scanId: scanId,
@@ -171,8 +208,13 @@ export async function runSecurityScan(
                             installedVersion: "",
                             fixedVersion: "",
                             severity: severity,
-                            title: `License: ${license.Name}`,
-                            description: `Category: ${license.Category}`,
+                            title: policyCheck.violated
+                                ? `Policy violation: License: ${license.Name}`
+                                : `License: ${license.Name}`,
+                            description: [
+                                `Category: ${license.Category}`,
+                                policyCheck.reason ? `Policy: ${policyCheck.reason}` : null,
+                            ].filter(Boolean).join("\n"),
                             target: target,
                             class: "license"
                         });
@@ -191,6 +233,11 @@ export async function runSecurityScan(
                 mediumCount: medium,
                 lowCount: low,
                 unknownCount: unknown,
+                logs: JSON.stringify({
+                    policyMode: policy.enforcementMode,
+                    policyViolations,
+                    blockingViolations,
+                }),
             })
             .where(eq(schema.securityScans.id, scanId));
 

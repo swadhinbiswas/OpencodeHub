@@ -29,7 +29,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "backup": "bun scripts/backup.ts"
+    "backup": "bun scripts/backup.ts",
+    "docs:parity": "node scripts/check-docs-parity.mjs"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.6",
@@ -140,6 +141,7 @@
     "zustand": "^4.5.4"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.0",
     "@faker-js/faker": "^10.1.0",
     "@playwright/test": "^1.57.0",
     "@tailwindcss/typography": "^0.5.19",

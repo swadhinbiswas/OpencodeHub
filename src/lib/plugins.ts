@@ -22,6 +22,9 @@ export interface PluginConfig {
   components?: PluginComponent[];
   settings?: PluginSetting[];
   commands?: PluginCommand[];
+  dependencies?: string[];
+  minCoreVersion?: string;
+  enabledByDefault?: boolean;
 }
 
 // Event hooks
@@ -216,6 +219,17 @@ export interface CommandContext {
   output: (message: string) => void;
 }
 
+export interface PluginRuntimeState {
+  name: string;
+  version: string;
+  path?: string;
+  enabled: boolean;
+  loadedAt: Date;
+  lastError?: string;
+  hookTimeoutMs: number;
+  hookStats: Record<string, { calls: number; failures: number; lastDurationMs: number }>;
+}
+
 // Plugin context provided to all plugin handlers
 export interface PluginContext {
   db: any; // Database connection
@@ -245,26 +259,66 @@ export class PluginManager {
   private plugins: Map<string, PluginConfig> = new Map();
   private hooks: Map<string, Array<{ plugin: string; handler: Function }>> =
     new Map();
+  private states: Map<string, PluginRuntimeState> = new Map();
+  private configs: Map<string, Record<string, unknown>> = new Map();
+  private readonly defaultHookTimeoutMs: number;
+
+  constructor(options?: { hookTimeoutMs?: number }) {
+    const configured = options?.hookTimeoutMs ?? Number.parseInt(process.env.PLUGIN_HOOK_TIMEOUT_MS || "5000", 10);
+    this.defaultHookTimeoutMs = Number.isFinite(configured) ? Math.max(200, configured) : 5000;
+  }
+
+  private registerHooks(config: PluginConfig): void {
+    if (!config.hooks) return;
+    for (const [event, handler] of Object.entries(config.hooks)) {
+      if (!this.hooks.has(event)) {
+        this.hooks.set(event, []);
+      }
+      this.hooks.get(event)!.push({ plugin: config.name, handler });
+    }
+  }
+
+  private unregisterHooks(name: string): void {
+    for (const [event, handlers] of this.hooks) {
+      this.hooks.set(
+        event,
+        handlers.filter((h) => h.plugin !== name)
+      );
+    }
+  }
+
+  private validatePluginConfig(config: PluginConfig, pluginPath?: string): void {
+    if (!config?.name || !config?.version) {
+      throw new Error(`Invalid plugin${pluginPath ? `: ${pluginPath}` : ""}. Missing name/version`);
+    }
+    if (this.plugins.has(config.name)) {
+      throw new Error(`Plugin "${config.name}" already loaded`);
+    }
+    if (config.dependencies?.length) {
+      for (const dependency of config.dependencies) {
+        if (!this.plugins.has(dependency)) {
+          throw new Error(`Plugin "${config.name}" missing dependency "${dependency}"`);
+        }
+      }
+    }
+  }
 
   async loadPlugin(pluginPath: string): Promise<void> {
     const module = await import(pluginPath);
     const config: PluginConfig = module.default;
-
-    if (!config.name || !config.version) {
-      throw new Error(`Invalid plugin: ${pluginPath}`);
-    }
+    this.validatePluginConfig(config, pluginPath);
 
     this.plugins.set(config.name, config);
-
-    // Register hooks
-    if (config.hooks) {
-      for (const [event, handler] of Object.entries(config.hooks)) {
-        if (!this.hooks.has(event)) {
-          this.hooks.set(event, []);
-        }
-        this.hooks.get(event)!.push({ plugin: config.name, handler });
-      }
-    }
+    this.registerHooks(config);
+    this.states.set(config.name, {
+      name: config.name,
+      version: config.version,
+      path: pluginPath,
+      enabled: config.enabledByDefault ?? true,
+      loadedAt: new Date(),
+      hookTimeoutMs: this.defaultHookTimeoutMs,
+      hookStats: {},
+    });
 
     logger.info({ name: config.name, version: config.version }, "Plugin loaded");
   }
@@ -273,16 +327,42 @@ export class PluginManager {
     const config = this.plugins.get(name);
     if (!config) return;
 
-    // Remove hooks
-    for (const [event, handlers] of this.hooks) {
-      this.hooks.set(
-        event,
-        handlers.filter((h) => h.plugin !== name)
-      );
-    }
+    this.unregisterHooks(name);
 
     this.plugins.delete(name);
+    this.states.delete(name);
+    this.configs.delete(name);
     logger.info({ name }, "Plugin unloaded");
+  }
+
+  async reloadPlugin(name: string): Promise<void> {
+    const state = this.states.get(name);
+    if (!state?.path) {
+      throw new Error(`Plugin "${name}" is not reloadable (missing path)`);
+    }
+    await this.unloadPlugin(name);
+    await this.loadPlugin(state.path);
+  }
+
+  enablePlugin(name: string): void {
+    const state = this.states.get(name);
+    if (!state) throw new Error(`Plugin "${name}" not found`);
+    state.enabled = true;
+  }
+
+  disablePlugin(name: string): void {
+    const state = this.states.get(name);
+    if (!state) throw new Error(`Plugin "${name}" not found`);
+    state.enabled = false;
+  }
+
+  setPluginConfig(name: string, config: Record<string, unknown>): void {
+    if (!this.plugins.has(name)) throw new Error(`Plugin "${name}" not found`);
+    this.configs.set(name, { ...(this.configs.get(name) || {}), ...config });
+  }
+
+  getPluginConfig(name: string): Record<string, unknown> {
+    return this.configs.get(name) || {};
   }
 
   async emit<T extends keyof PluginHooks>(
@@ -292,12 +372,56 @@ export class PluginManager {
     const handlers = this.hooks.get(event) || [];
 
     for (const { plugin, handler } of handlers) {
+      const state = this.states.get(plugin);
+      if (!state?.enabled) continue;
+      const started = Date.now();
       try {
-        await handler(data);
+        await Promise.race([
+          handler(data),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("plugin_hook_timeout")), state.hookTimeoutMs)
+          ),
+        ]);
+        const elapsed = Date.now() - started;
+        const current = state.hookStats[String(event)] || { calls: 0, failures: 0, lastDurationMs: 0 };
+        state.hookStats[String(event)] = {
+          calls: current.calls + 1,
+          failures: current.failures,
+          lastDurationMs: elapsed,
+        };
       } catch (error) {
+        const elapsed = Date.now() - started;
+        const current = state.hookStats[String(event)] || { calls: 0, failures: 0, lastDurationMs: 0 };
+        state.hookStats[String(event)] = {
+          calls: current.calls + 1,
+          failures: current.failures + 1,
+          lastDurationMs: elapsed,
+        };
+        state.lastError = error instanceof Error ? error.message : "Plugin error";
         logger.error({ err: error, plugin, event }, "Plugin error");
       }
     }
+  }
+
+  async runCommand(
+    pluginName: string,
+    commandName: string,
+    args: string[],
+    context: CommandContext
+  ): Promise<void> {
+    const plugin = this.plugins.get(pluginName);
+    const state = this.states.get(pluginName);
+    if (!plugin || !state) {
+      throw new Error(`Plugin "${pluginName}" not found`);
+    }
+    if (!state.enabled) {
+      throw new Error(`Plugin "${pluginName}" is disabled`);
+    }
+    const command = (plugin.commands || []).find((item) => item.name === commandName);
+    if (!command) {
+      throw new Error(`Command "${commandName}" not found in plugin "${pluginName}"`);
+    }
+    await command.handler(args, context);
   }
 
   getPlugin(name: string): PluginConfig | undefined {
@@ -306,6 +430,30 @@ export class PluginManager {
 
   getAllPlugins(): PluginConfig[] {
     return Array.from(this.plugins.values());
+  }
+
+  getPluginStates(): PluginRuntimeState[] {
+    return Array.from(this.states.values()).map((state) => ({ ...state }));
+  }
+
+  getPluginState(name: string): PluginRuntimeState | undefined {
+    const state = this.states.get(name);
+    return state ? { ...state } : undefined;
+  }
+
+  getPluginHealth(): {
+    total: number;
+    enabled: number;
+    disabled: number;
+    withErrors: number;
+  } {
+    const states = Array.from(this.states.values());
+    return {
+      total: states.length,
+      enabled: states.filter((state) => state.enabled).length,
+      disabled: states.filter((state) => !state.enabled).length,
+      withErrors: states.filter((state) => !!state.lastError).length,
+    };
   }
 
   getPluginRoutes(): PluginRoute[] {
@@ -346,8 +494,20 @@ export class PluginManager {
 
       const entries = await fs.readdir(directory, { withFileTypes: true });
 
+      const allowListRaw = process.env.PLUGIN_ALLOWLIST || "";
+      const allowList = new Set(
+        allowListRaw
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean)
+      );
+
       for (const entry of entries) {
         if (entry.isDirectory() || (entry.isFile() && (entry.name.endsWith(".js") || entry.name.endsWith(".mjs")))) {
+          if (allowList.size > 0 && !allowList.has(entry.name)) {
+            logger.debug({ plugin: entry.name }, "Plugin skipped by allowlist");
+            continue;
+          }
           const pluginPath = path.join(directory, entry.name);
           try {
             await this.loadPlugin(pluginPath);
@@ -365,8 +525,307 @@ export class PluginManager {
 // Global plugin manager instance
 export const pluginManager = new PluginManager();
 
+// ============================================================================
+// PLUGIN SANDBOXING
+// ============================================================================
+
+/**
+ * Capability manifest — declares what a plugin is allowed to access.
+ * Admin approves these before the plugin can run.
+ */
+export interface PluginCapabilityManifest {
+    /** Network access: list of allowed hostnames or false */
+    network: string[] | false;
+    /** Filesystem paths the plugin can read/write */
+    filesystem: { read: string[]; write: string[] } | false;
+    /** Database tables/collections accessible */
+    database: string[] | false;
+    /** Which hook events can be subscribed */
+    hooks: string[];
+    /** Max memory in MB (default 128) */
+    maxMemoryMB: number;
+    /** Max CPU time per hook invocation in ms (default 5000) */
+    maxCpuTimeMs: number;
+    /** Whether the plugin can make HTTP requests outside the allowed hosts */
+    allowExternalHttp: boolean;
+}
+
+export interface PluginApproval {
+    pluginName: string;
+    approvedBy: string;
+    approvedAt: Date;
+    capabilities: PluginCapabilityManifest;
+    status: "pending" | "approved" | "rejected";
+    rejectionReason?: string;
+}
+
+/** In-memory approval store — replace with DB in production */
+const pluginApprovals = new Map<string, PluginApproval>();
+
+export function getDefaultCapabilities(): PluginCapabilityManifest {
+    return {
+        network: false,
+        filesystem: false,
+        database: false,
+        hooks: [],
+        maxMemoryMB: 128,
+        maxCpuTimeMs: 5000,
+        allowExternalHttp: false,
+    };
+}
+
+export function submitPluginForApproval(
+    pluginName: string,
+    requestedCapabilities: Partial<PluginCapabilityManifest>
+): PluginApproval {
+    const approval: PluginApproval = {
+        pluginName,
+        approvedBy: "",
+        approvedAt: new Date(),
+        capabilities: { ...getDefaultCapabilities(), ...requestedCapabilities },
+        status: "pending",
+    };
+    pluginApprovals.set(pluginName, approval);
+    logger.info({ pluginName }, "Plugin submitted for approval");
+    return approval;
+}
+
+export function approvePlugin(
+    pluginName: string,
+    adminUserId: string,
+    capabilities?: Partial<PluginCapabilityManifest>
+): PluginApproval {
+    const existing = pluginApprovals.get(pluginName);
+    if (!existing) {
+        throw new Error(`No approval request found for plugin "${pluginName}"`);
+    }
+
+    existing.status = "approved";
+    existing.approvedBy = adminUserId;
+    existing.approvedAt = new Date();
+    if (capabilities) {
+        existing.capabilities = { ...existing.capabilities, ...capabilities };
+    }
+
+    logger.info({ pluginName, adminUserId }, "Plugin approved");
+    return existing;
+}
+
+export function rejectPlugin(pluginName: string, adminUserId: string, reason: string): PluginApproval {
+    const existing = pluginApprovals.get(pluginName);
+    if (!existing) {
+        throw new Error(`No approval request found for plugin "${pluginName}"`);
+    }
+
+    existing.status = "rejected";
+    existing.approvedBy = adminUserId;
+    existing.rejectionReason = reason;
+
+    logger.info({ pluginName, adminUserId, reason }, "Plugin rejected");
+    return existing;
+}
+
+export function getPluginApproval(pluginName: string): PluginApproval | undefined {
+    return pluginApprovals.get(pluginName);
+}
+
+export function listPendingApprovals(): PluginApproval[] {
+    return Array.from(pluginApprovals.values()).filter((a) => a.status === "pending");
+}
+
+/**
+ * Sandboxed plugin executor using Worker Threads
+ * Runs plugin hook handlers in isolated worker threads with resource limits
+ */
+export class PluginSandbox {
+    private workers = new Map<string, import("worker_threads").Worker>();
+
+    /**
+     * Execute a plugin hook handler in a sandboxed worker thread
+     */
+    async executeInSandbox(
+        pluginName: string,
+        hookCode: string,
+        eventData: unknown,
+        capabilities: PluginCapabilityManifest
+    ): Promise<{ success: boolean; result?: unknown; error?: string; durationMs: number }> {
+        const started = Date.now();
+
+        try {
+            const { Worker } = await import("worker_threads");
+
+            // Build the sandboxed worker script
+            const workerScript = buildSandboxedWorkerScript(
+                hookCode,
+                eventData,
+                capabilities
+            );
+
+            return await new Promise((resolve) => {
+                const worker = new Worker(workerScript, {
+                    eval: true,
+                    resourceLimits: {
+                        maxOldGenerationSizeMb: capabilities.maxMemoryMB,
+                        maxYoungGenerationSizeMb: Math.ceil(capabilities.maxMemoryMB / 4),
+                        codeRangeSizeMb: 32,
+                        stackSizeMb: 4,
+                    },
+                    // Prevent access to the parent's env
+                    env: {
+                        NODE_ENV: process.env.NODE_ENV || "production",
+                        PLUGIN_NAME: pluginName,
+                    },
+                });
+
+                this.workers.set(pluginName, worker);
+
+                const timeout = setTimeout(() => {
+                    worker.terminate();
+                    resolve({
+                        success: false,
+                        error: `Plugin "${pluginName}" exceeded CPU time limit (${capabilities.maxCpuTimeMs}ms)`,
+                        durationMs: Date.now() - started,
+                    });
+                }, capabilities.maxCpuTimeMs);
+
+                worker.on("message", (msg: { success: boolean; result?: unknown; error?: string }) => {
+                    clearTimeout(timeout);
+                    worker.terminate();
+                    this.workers.delete(pluginName);
+                    resolve({
+                        ...msg,
+                        durationMs: Date.now() - started,
+                    });
+                });
+
+                worker.on("error", (err) => {
+                    clearTimeout(timeout);
+                    this.workers.delete(pluginName);
+                    resolve({
+                        success: false,
+                        error: err.message,
+                        durationMs: Date.now() - started,
+                    });
+                });
+
+                worker.on("exit", (code) => {
+                    clearTimeout(timeout);
+                    this.workers.delete(pluginName);
+                    if (code !== 0) {
+                        resolve({
+                            success: false,
+                            error: `Worker exited with code ${code}`,
+                            durationMs: Date.now() - started,
+                        });
+                    }
+                });
+            });
+        } catch (err) {
+            return {
+                success: false,
+                error: err instanceof Error ? err.message : "Sandbox creation failed",
+                durationMs: Date.now() - started,
+            };
+        }
+    }
+
+    /**
+     * Terminate all running sandboxed workers
+     */
+    async terminateAll(): Promise<void> {
+        for (const [name, worker] of this.workers) {
+            worker.terminate();
+            logger.info({ pluginName: name }, "Sandboxed worker terminated");
+        }
+        this.workers.clear();
+    }
+
+    getRunningPlugins(): string[] {
+        return Array.from(this.workers.keys());
+    }
+}
+
+/**
+ * Build the sandboxed worker script with restricted globals
+ */
+function buildSandboxedWorkerScript(
+    hookCode: string,
+    eventData: unknown,
+    capabilities: PluginCapabilityManifest
+): string {
+    const serializedEvent = JSON.stringify(eventData);
+    const allowedHosts = JSON.stringify(capabilities.network || []);
+
+    return `
+const { parentPort } = require('worker_threads');
+
+// Restrict dangerous globals
+delete globalThis.process.exit;
+delete globalThis.process.kill;
+delete globalThis.process.abort;
+Object.defineProperty(globalThis.process, 'env', {
+    value: Object.freeze({
+        NODE_ENV: process.env.NODE_ENV,
+        PLUGIN_NAME: process.env.PLUGIN_NAME,
+    }),
+    writable: false,
+    configurable: false,
+});
+
+// Restricted require — block fs, child_process, cluster, etc.
+const BLOCKED_MODULES = new Set([
+    'fs', 'fs/promises', 'child_process', 'cluster',
+    'dgram', 'dns', 'net', 'tls', 'vm', 'v8',
+    'worker_threads', 'perf_hooks', 'trace_events',
+    'inspector', 'async_hooks',
+]);
+
+const ALLOWED_HOSTS = ${allowedHosts};
+
+const originalRequire = require;
+globalThis.require = function restrictedRequire(id) {
+    if (BLOCKED_MODULES.has(id)) {
+        throw new Error('Module "' + id + '" is not allowed in sandboxed plugins');
+    }
+    return originalRequire(id);
+};
+
+// Restricted fetch — only allowed hosts
+const originalFetch = globalThis.fetch;
+if (originalFetch && ALLOWED_HOSTS.length > 0) {
+    globalThis.fetch = function restrictedFetch(url, options) {
+        const parsedUrl = new URL(url);
+        if (!ALLOWED_HOSTS.includes(parsedUrl.hostname)) {
+            throw new Error('Network access to "' + parsedUrl.hostname + '" is not allowed');
+        }
+        return originalFetch(url, options);
+    };
+} else if (!${capabilities.allowExternalHttp}) {
+    globalThis.fetch = function() {
+        throw new Error('Network access is not allowed for this plugin');
+    };
+}
+
+// Run the hook
+(async () => {
+    try {
+        const eventData = ${serializedEvent};
+        const handler = new Function('event', 'return (async function() {' + ${JSON.stringify(hookCode)} + '}).call(null)');
+        const result = await handler(eventData);
+        parentPort.postMessage({ success: true, result });
+    } catch (err) {
+        parentPort.postMessage({ success: false, error: err.message || 'Unknown error' });
+    }
+})();
+`;
+}
+
+export const pluginSandbox = new PluginSandbox();
+
 export default {
   definePlugin,
   PluginManager,
   pluginManager,
+  PluginSandbox,
+  pluginSandbox,
 };

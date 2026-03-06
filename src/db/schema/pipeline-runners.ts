@@ -6,7 +6,7 @@ import { repositories } from "./repositories";
 export const pipelineRunners = pgTable("pipeline_runners", {
     id: text("id").primaryKey(),
     repositoryId: text("repository_id").references(() => repositories.id, { onDelete: "cascade" }), // If null, global runner (future)
-    token: text("token").notNull(), // Authentication token (hashed or raw? raw for MVP simplicity, highly secured in real)
+    token: text("token").notNull(), // Stored as a one-way hash
     name: text("name").notNull(),
     os: text("os"),
     arch: text("arch"),

@@ -44,10 +44,28 @@ const envVars: EnvConfig[] = [
         errorMessage: "RUNNER_SECRET must be at least 32 characters",
     },
     {
+        name: "RUNNER_REGISTRATION_TOKEN_TTL_DAYS",
+        required: false,
+        validator: (v) => Number.isFinite(Number(v)) && Number(v) > 0,
+        errorMessage: "RUNNER_REGISTRATION_TOKEN_TTL_DAYS must be a positive number",
+    },
+    {
         name: "AI_CONFIG_ENCRYPTION_KEY",
         required: false,
         validator: (v) => v.length >= 32,
         errorMessage: "AI_CONFIG_ENCRYPTION_KEY should be at least 32 characters",
+    },
+    {
+        name: "WORKFLOW_SECRET_ENCRYPTION_KEY",
+        required: false,
+        validator: (v) => v.length >= 32,
+        errorMessage: "WORKFLOW_SECRET_ENCRYPTION_KEY should be at least 32 characters",
+    },
+    {
+        name: "REDIS_URL",
+        required: false,
+        validator: (v) => v.startsWith("redis://") || v.startsWith("rediss://"),
+        errorMessage: "REDIS_URL must be a valid redis:// or rediss:// URL",
     },
 
     // Application URLs (Critical)
@@ -146,6 +164,13 @@ const envVars: EnvConfig[] = [
         required: false,
         defaultValue: "true",
     },
+    {
+        name: "AIR_GAPPED_MODE",
+        required: false,
+        defaultValue: "false",
+        validator: (v) => ["0", "1", "true", "false", "yes", "no"].includes(v.toLowerCase()),
+        errorMessage: "AIR_GAPPED_MODE must be one of: true/false/1/0/yes/no",
+    },
 
     // Grafana Cloud Loki
     {
@@ -163,7 +188,7 @@ const envVars: EnvConfig[] = [
 ];
 
 export function validateEnvironment(exitOnError: boolean = true): boolean {
-    console.log("🔍 Validating environment configuration...");
+    logger.info("🔍 Validating environment configuration...");
 
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -210,14 +235,28 @@ export function validateEnvironment(exitOnError: boolean = true): boolean {
         if (process.env.CRON_SECRET?.includes("default") || process.env.CRON_SECRET?.includes("dev")) {
             errors.push("❌ CRON_SECRET appears to contain default/weak value. Change it for production!");
         }
-        if (!process.env.AI_CONFIG_ENCRYPTION_KEY) {
-            errors.push("❌ AI_CONFIG_ENCRYPTION_KEY is required in production for encrypted secret storage");
+        if (!process.env.AI_CONFIG_ENCRYPTION_KEY && !process.env.APP_ENCRYPTION_KEY) {
+            errors.push("❌ AI_CONFIG_ENCRYPTION_KEY (or APP_ENCRYPTION_KEY) is required in production for encrypted AI config storage");
+        }
+        if (
+            !process.env.WORKFLOW_SECRET_ENCRYPTION_KEY &&
+            !process.env.APP_ENCRYPTION_KEY &&
+            !process.env.AI_CONFIG_ENCRYPTION_KEY
+        ) {
+            errors.push("❌ WORKFLOW_SECRET_ENCRYPTION_KEY (or APP_ENCRYPTION_KEY) is required in production for encrypted workflow secret storage");
+        }
+        if (!process.env.REDIS_URL) {
+            errors.push("❌ REDIS_URL is required in production for distributed locking and rate limiting");
         }
 
         // Ensure HTTPS in production
         if (process.env.SITE_URL && !process.env.SITE_URL.startsWith("https://")) {
             warnings.push("⚠️  SITE_URL should use HTTPS in production");
         }
+    }
+
+    if (["1", "true", "yes"].includes((process.env.AIR_GAPPED_MODE || "").toLowerCase())) {
+        warnings.push("⚠️  AIR_GAPPED_MODE is enabled: external integrations (AI/cloud/third-party webhooks) should be disabled");
     }
 
     // Google Drive Validation
@@ -243,15 +282,15 @@ export function validateEnvironment(exitOnError: boolean = true): boolean {
 
     // Print results
     if (warnings.length > 0) {
-        console.log("\n⚠️  Warnings:");
-        warnings.forEach((w) => console.log(w));
+        logger.info("\n⚠️  Warnings:");
+        warnings.forEach((w) => logger.info(w));
     }
 
     if (errors.length > 0) {
-        console.error("\n❌ Environment validation failed:");
-        errors.forEach((e) => console.error(e));
-        console.error("\nPlease fix the above errors before starting the application.");
-        console.error("See .env.example for reference.\n");
+        logger.error("\n❌ Environment validation failed:");
+        errors.forEach((e) => logger.error(e));
+        logger.error("\nPlease fix the above errors before starting the application.");
+        logger.error("See .env.example for reference.\n");
 
         if (exitOnError) {
             process.exit(1);
@@ -259,7 +298,7 @@ export function validateEnvironment(exitOnError: boolean = true): boolean {
         return false;
     }
 
-    console.log("✅ Environment validation passed\n");
+    logger.info("✅ Environment validation passed\n");
     return true;
 }
 

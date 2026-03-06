@@ -3,12 +3,18 @@
  */
 import { type APIRoute } from 'astro';
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { eq, desc, and, or } from 'drizzle-orm';
+import { eq, desc, and, or, isNull } from 'drizzle-orm';
 import {  getDatabase , schema } from "@/db";
 import { notifications } from '@/db/schema';
 import { getUserFromRequest } from '@/lib/auth';
 import { success, unauthorized, serverError } from '@/lib/api';
 import { scoreNotificationPriority } from '@/lib/notification-priority';
+import {
+    channelEnabled,
+    computePersonalizationBoost,
+    getRoutingDecision,
+    type NotificationRouteChannel,
+} from "@/lib/notification-routing";
 
 const BLOCKING_NOTIFICATION_TYPES = [
     "ci_failed",
@@ -36,6 +42,12 @@ export const GET: APIRoute = async ({ request, url }) => {
         const db = getDatabase() as NodePgDatabase<typeof schema>;
         const filter = url.searchParams.get('filter') || 'unread';
         const prioritize = url.searchParams.get("prioritize") === "true";
+        const personalize = url.searchParams.get("personalize") === "true";
+        const rawChannel = url.searchParams.get("channel");
+        const allowedChannels: NotificationRouteChannel[] = ["in_app", "email", "slack", "browser_push"];
+        const channelFilter = rawChannel && allowedChannels.includes(rawChannel as NotificationRouteChannel)
+            ? (rawChannel as NotificationRouteChannel)
+            : null;
 
         let conditions = [eq(notifications.userId, tokenPayload.userId)];
 
@@ -60,7 +72,7 @@ export const GET: APIRoute = async ({ request, url }) => {
             conditions.push(eq(notifications.isArchived, false));
         }
 
-        const notifs = await db.query.notifications.findMany({
+        const notifs = (await db.query.notifications.findMany({
             where: and(...conditions),
             orderBy: [desc(notifications.createdAt)],
             limit: 100,
@@ -72,37 +84,98 @@ export const GET: APIRoute = async ({ request, url }) => {
                     columns: { id: true, name: true, slug: true }
                 },
             },
-        });
+        })) || [];
+
+        const prefs = db.query.notificationPreferences
+            ? await db.query.notificationPreferences.findMany({
+                where: and(
+                    eq(schema.notificationPreferences.userId, tokenPayload.userId),
+                    isNull(schema.notificationPreferences.repositoryId)
+                ),
+            })
+            : [];
+
+        const recentHistory = (await db.query.notifications.findMany({
+            where: and(
+                eq(notifications.userId, tokenPayload.userId),
+                eq(notifications.isArchived, false)
+            ),
+            orderBy: [desc(notifications.createdAt)],
+            limit: 500,
+            columns: { type: true, isRead: true },
+        })) || [];
+
+        const readByType: Record<string, number> = {};
+        const unreadByType: Record<string, number> = {};
+        let totalRead = 0;
+        let totalHistory = 0;
+        for (const item of recentHistory) {
+            const type = item.type || "unknown";
+            totalHistory++;
+            if (item.isRead) {
+                totalRead++;
+                readByType[type] = (readByType[type] || 0) + 1;
+            } else {
+                unreadByType[type] = (unreadByType[type] || 0) + 1;
+            }
+        }
+        const baselineReadRatio = totalHistory > 0 ? totalRead / totalHistory : 0.5;
 
         const notificationsWithPriority = notifs.map((notification) => {
             const scored = scoreNotificationPriority(notification);
+            const routing = getRoutingDecision(notification.type, prefs as any);
+            const personalizationBoost = personalize
+                ? computePersonalizationBoost({
+                    eventType: notification.type,
+                    readByType,
+                    unreadByType,
+                    baselineReadRatio,
+                })
+                : 0;
+            const priorityScore = Math.max(0, scored.score + personalizationBoost);
             return {
                 ...notification,
                 priority: scored.priority,
-                priorityScore: scored.score,
+                priorityScore,
                 isBlocking: scored.isBlocking,
+                personalizationBoost,
+                routeChannels: routing.channels,
+                primaryRouteChannel: routing.primaryChannel,
             };
         });
 
+        const routedNotifications = channelFilter
+            ? notificationsWithPriority.filter((item) =>
+                channelEnabled(channelFilter, {
+                    channels: item.routeChannels,
+                    primaryChannel: item.primaryRouteChannel,
+                })
+            )
+            : notificationsWithPriority;
+
         if (prioritize) {
-            notificationsWithPriority.sort((a, b) => {
+            routedNotifications.sort((a, b) => {
                 if (b.priorityScore !== a.priorityScore) return b.priorityScore - a.priorityScore;
                 return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
             });
         }
 
         // Get unread count
-        const unreadNotifs = await db.query.notifications.findMany({
+        const unreadNotifs = (await db.query.notifications.findMany({
             where: and(
                 eq(notifications.userId, tokenPayload.userId),
                 eq(notifications.isRead, false),
                 eq(notifications.isArchived, false)
             ),
-        });
+        })) || [];
 
         return success({
-            notifications: notificationsWithPriority,
+            notifications: routedNotifications,
             unreadCount: unreadNotifs.length,
+            routing: {
+                channelFilter: channelFilter || null,
+                personalized: personalize,
+            },
         });
     } catch (e) {
         console.error('Error fetching notifications:', e);

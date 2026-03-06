@@ -87,13 +87,13 @@ export async function sendSlackMessage(
         const data = await response.json();
 
         if (!data.ok) {
-            console.error("Slack API error:", data.error);
+            logger.error("Slack API error:", data.error);
             return { ok: false, error: data.error };
         }
 
         return { ok: true, ts: data.ts };
     } catch (error) {
-        console.error("Failed to send Slack message:", error);
+        logger.error("Failed to send Slack message:", error);
         return { ok: false, error: error instanceof Error ? error.message : "Unknown error" };
     }
 }

@@ -9,18 +9,23 @@ import { logger } from "./logger";
 // Try to import Redis - may not be configured
 let redis: any = null;
 let redisAvailable = false;
+const isProd = process.env.NODE_ENV === "production" || import.meta.env?.PROD === true;
 
 try {
     const redisModule = await import("./redis");
     redis = redisModule.redis;
+    const isReady = await redisModule.waitForRedisReady(6000);
+    if (!isReady) {
+        throw new Error("Redis did not become ready within timeout");
+    }
     // Test connection
     await redis.ping();
     redisAvailable = true;
 } catch (e) {
-    if (import.meta.env.PROD) {
+    if (isProd) {
         throw new Error("CRITICAL: Redis is required in production for distributed locking. Please configure REDIS_URL.");
     }
-    logger.warn("Redis not available - distributed locks disabled. Using in-memory fallback. NOT SAFE for multi-instance deployments.");
+    logger.warn({ error: e }, "Redis not available - distributed locks disabled. Using in-memory fallback. NOT SAFE for multi-instance deployments.");
 }
 
 export interface LockOptions {

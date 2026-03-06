@@ -3,13 +3,88 @@
  * Handles SSH connections for git push/pull operations
  */
 
+import { logger } from "@/lib/logger";
 import { spawn } from "child_process";
 import { generateKeyPairSync } from "crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import ssh2 from "ssh2";
 const { Server } = ssh2;
-import { logger } from "@/lib/logger";
+
+/**
+ * Per-IP SSH authentication rate limiter.
+ * Tracks failed attempts and blocks IPs that exceed the threshold.
+ */
+const SSH_RATE_LIMIT: {
+  maxFailures: number;
+  windowMs: number;
+  blockMs: number;
+  map: Map<
+    string,
+    { failures: number; firstFailure: number; blockedUntil: number }
+  >;
+} = {
+  maxFailures: 5,
+  windowMs: 60_000, // 1-minute window
+  blockMs: 5 * 60_000, // 5-minute block after threshold
+  map: new Map(),
+};
+
+function checkSshRateLimit(ip: string): {
+  allowed: boolean;
+  retryAfterMs?: number;
+} {
+  const now = Date.now();
+  const entry = SSH_RATE_LIMIT.map.get(ip);
+
+  if (entry) {
+    // Currently blocked?
+    if (entry.blockedUntil > now) {
+      return { allowed: false, retryAfterMs: entry.blockedUntil - now };
+    }
+    // Window expired — reset
+    if (now - entry.firstFailure > SSH_RATE_LIMIT.windowMs) {
+      SSH_RATE_LIMIT.map.delete(ip);
+    }
+  }
+  return { allowed: true };
+}
+
+function recordSshFailure(ip: string): void {
+  const now = Date.now();
+  const entry = SSH_RATE_LIMIT.map.get(ip);
+
+  if (!entry || now - entry.firstFailure > SSH_RATE_LIMIT.windowMs) {
+    SSH_RATE_LIMIT.map.set(ip, {
+      failures: 1,
+      firstFailure: now,
+      blockedUntil: 0,
+    });
+    return;
+  }
+
+  entry.failures += 1;
+  if (entry.failures >= SSH_RATE_LIMIT.maxFailures) {
+    entry.blockedUntil = now + SSH_RATE_LIMIT.blockMs;
+    logger.warn(
+      { ip, failures: entry.failures },
+      "SSH IP blocked due to repeated auth failures",
+    );
+  }
+}
+
+// Periodic cleanup of stale entries (every 5 minutes)
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of SSH_RATE_LIMIT.map) {
+    if (
+      now - entry.firstFailure > SSH_RATE_LIMIT.windowMs &&
+      entry.blockedUntil < now
+    ) {
+      SSH_RATE_LIMIT.map.delete(ip);
+    }
+  }
+}, 5 * 60_000).unref();
 
 export interface SSHServerConfig {
   port: number;
@@ -17,7 +92,7 @@ export interface SSHServerConfig {
   reposPath: string;
   authenticateUser: (
     username: string,
-    key: Buffer
+    key: Buffer,
   ) => Promise<{
     valid: boolean;
     userId?: string;
@@ -27,12 +102,14 @@ export interface SSHServerConfig {
   authorizeRepo: (
     userId: string,
     repoPath: string,
-    operation: "read" | "write"
+    operation: "read" | "write",
   ) => Promise<boolean>;
   onPush?: (userId: string, repoPath: string, refs: string[]) => Promise<void>;
 }
 
-export function createSSHServer(config: SSHServerConfig): InstanceType<typeof Server> {
+export function createSSHServer(
+  config: SSHServerConfig,
+): InstanceType<typeof Server> {
   const {
     port,
     hostKeyPath,
@@ -49,12 +126,21 @@ export function createSSHServer(config: SSHServerConfig): InstanceType<typeof Se
     {
       hostKeys: [hostKey],
     },
-    (client) => {
+    (client, info) => {
       let userId: string | undefined;
       let username: string | undefined;
       let canWrite = false;
+      const clientIp = info?.ip || info?.header?.identRaw || "unknown";
 
       client.on("authentication", async (ctx) => {
+        // Rate-limit check
+        const rl = checkSshRateLimit(clientIp);
+        if (!rl.allowed) {
+          logger.warn({ ip: clientIp }, "SSH auth rejected — IP rate-limited");
+          ctx.reject(["publickey"]);
+          return;
+        }
+
         if (ctx.method === "publickey") {
           try {
             const result = await authenticateUser(ctx.username, ctx.key.data);
@@ -69,6 +155,7 @@ export function createSSHServer(config: SSHServerConfig): InstanceType<typeof Se
             logger.error({ err: error }, "SSH auth error");
           }
         }
+        recordSshFailure(clientIp);
         ctx.reject(["publickey"]);
       });
 
@@ -99,10 +186,10 @@ export function createSSHServer(config: SSHServerConfig): InstanceType<typeof Se
             const isWrite = operation === "git-receive-pack";
             const authorized = userId
               ? await authorizeRepo(
-                userId,
-                normalizedPath,
-                isWrite ? "write" : "read"
-              )
+                  userId,
+                  normalizedPath,
+                  isWrite ? "write" : "read",
+                )
               : false;
 
             if (!authorized) {
@@ -138,7 +225,7 @@ export function createSSHServer(config: SSHServerConfig): InstanceType<typeof Se
                 ...process.env,
                 REMOTE_USER: userId || "anonymous",
                 GL_ID: userId || "anonymous", // GitLab compatibility
-              }
+              },
             });
 
             // Track refs for push hook
@@ -155,7 +242,7 @@ export function createSSHServer(config: SSHServerConfig): InstanceType<typeof Se
                 for (const line of lines) {
                   // Format: oldsha newsha refname
                   const match = line.match(
-                    /^([a-f0-9]+)\s+([a-f0-9]+)\s+(.+)$/
+                    /^([a-f0-9]+)\s+([a-f0-9]+)\s+(.+)$/,
                   );
                   if (match) {
                     receivedRefs.push(match[3]);
@@ -206,7 +293,7 @@ export function createSSHServer(config: SSHServerConfig): InstanceType<typeof Se
       client.on("end", () => {
         logger.info({ username }, "SSH client disconnected");
       });
-    }
+    },
   );
 
   return server;
@@ -216,11 +303,11 @@ export function createSSHServer(config: SSHServerConfig): InstanceType<typeof Se
  * Parse a git SSH command
  */
 function parseGitCommand(
-  command: string
+  command: string,
 ): { operation: string; repoPath: string } | null {
   // Format: git-upload-pack '/path/to/repo.git' or git-receive-pack '/path/to/repo.git'
   const match = command.match(
-    /^(git-upload-pack|git-receive-pack)\s+'?([^']+)'?$/
+    /^(git-upload-pack|git-receive-pack)\s+'?([^']+)'?$/,
   );
   if (!match) return null;
 
