@@ -35,6 +35,27 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- if .Values.initContainers.dbMigrate.enabled }}
+      initContainers:
+        - name: db-migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            {{- toYaml .Values.initContainers.dbMigrate.command | nindent 12 }}
+          env:
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ default (printf "%s-env" (include "opencodehub.fullname" .)) .Values.envSecrets.existingSecretName }}
+          resources:
+            {{- toYaml .Values.initContainers.dbMigrate.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      {{- end }}
       containers:
         - name: opencodehub
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"

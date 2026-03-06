@@ -1,0 +1,80 @@
+{{- if .Values.backup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "opencodehub.fullname" . }}-backup
+  labels:
+    {{- include "opencodehub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  successfulJobsHistoryLimit: {{ .Values.backup.successfulJobsHistoryLimit | default 3 }}
+  failedJobsHistoryLimit: {{ .Values.backup.failedJobsHistoryLimit | default 3 }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      template:
+        metadata:
+          labels:
+            {{- include "opencodehub.labels" . | nindent 12 }}
+            app.kubernetes.io/component: backup
+        spec:
+          restartPolicy: OnFailure
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          serviceAccountName: {{ include "opencodehub.serviceAccountName" . }}
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          containers:
+            - name: backup
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              command: ["npx", "tsx", "scripts/backup.ts"]
+              {{- if .Values.backup.incremental }}
+              args: ["--incremental"]
+              {{- end }}
+              env:
+                - name: DATABASE_DRIVER
+                  value: {{ .Values.env.DATABASE_TYPE | default "postgres" | quote }}
+                - name: BACKUP_RETENTION_DAYS
+                  value: {{ .Values.backup.retention.days | default 30 | quote }}
+                {{- if .Values.backup.s3.bucket }}
+                - name: BACKUP_S3_BUCKET
+                  value: {{ .Values.backup.s3.bucket | quote }}
+                - name: BACKUP_S3_PREFIX
+                  value: {{ .Values.backup.s3.prefix | default "opencodehub-backups" | quote }}
+                {{- end }}
+                {{- if .Values.backup.encryption.enabled }}
+                - name: BACKUP_ENCRYPTION_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.backup.encryption.keySecretName }}
+                      key: {{ .Values.backup.encryption.keySecretKey | default "encryption-key" }}
+                {{- end }}
+              envFrom:
+                {{- if .Values.envSecrets.create }}
+                - secretRef:
+                    name: {{ include "opencodehub.fullname" . }}-secrets
+                {{- else if .Values.envSecrets.existingSecretName }}
+                - secretRef:
+                    name: {{ .Values.envSecrets.existingSecretName }}
+                {{- end }}
+              resources:
+                {{- toYaml .Values.backup.resources | nindent 16 }}
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                - name: backup-storage
+                  mountPath: /app/backups
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: {{ include "opencodehub.fullname" . }}-data
+            - name: backup-storage
+              emptyDir:
+                sizeLimit: 10Gi
+{{- end }}

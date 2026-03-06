@@ -146,3 +146,85 @@ worker:
     minReplicas: 1
     maxReplicas: 5
     targetCPUUtilizationPercentage: 70
+
+# ── Init Container: DB Migration ───────────────────────────────────────────────
+initContainers:
+  dbMigrate:
+    enabled: true
+    command: ["npx", "drizzle-kit", "push"]
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+# ── Backup CronJob ─────────────────────────────────────────────────────────────
+backup:
+  enabled: false
+  schedule: "0 2 * * *" # Daily at 2 AM
+  incremental: false
+  retention:
+    days: 30
+  s3:
+    bucket: ""
+    prefix: "opencodehub-backups"
+  encryption:
+    enabled: false
+    keySecretName: "" # Secret containing BACKUP_ENCRYPTION_KEY
+    keySecretKey: "encryption-key"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+
+# ── Monitoring ─────────────────────────────────────────────────────────────────
+metrics:
+  enabled: true
+  path: /api/metrics
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    namespace: ""
+    labels: {}
+
+# ── Sub-chart: PostgreSQL ──────────────────────────────────────────────────────
+postgresql:
+  enabled: false
+  auth:
+    database: opencodehub
+    username: opencodehub
+    existingSecret: ""
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+
+# ── Sub-chart: Redis ───────────────────────────────────────────────────────────
+redis:
+  enabled: false
+  architecture: standalone
+  auth:
+    enabled: true
+    existingSecret: ""
+  master:
+    persistence:
+      enabled: true
+      size: 5Gi
+
+# ── Sub-chart: MinIO ──────────────────────────────────────────────────────────
+minio:
+  enabled: false
+  auth:
+    rootUser: opencodehub
+    existingSecret: ""
+  defaultBuckets: "opencodehub-storage"
+  persistence:
+    enabled: true
+    size: 50Gi

@@ -1,0 +1,42 @@
+# CI/CD Runner Dockerfile
+FROM docker:24-dind
+
+# Install Node.js and other dependencies
+RUN apk add --no-cache \
+    nodejs \
+    npm \
+    git \
+    openssh-client \
+    curl \
+    bash \
+    jq \
+    python3 \
+    py3-pip \
+    make \
+    gcc \
+    g++ \
+    libc-dev
+
+# Install common build tools
+RUN npm install -g \
+    typescript \
+    @types/node \
+    pnpm \
+    yarn
+
+WORKDIR /runner
+
+# Copy runner script
+COPY scripts/runner.sh /runner/runner.sh
+RUN chmod +x /runner/runner.sh
+
+# Create work directories
+RUN mkdir -p /work /cache
+
+# Environment variables
+ENV RUNNER_WORK_DIR=/work
+ENV RUNNER_CACHE_DIR=/cache
+ENV DOCKER_HOST=unix:///var/run/docker.sock
+
+# Entry point
+ENTRYPOINT ["/runner/runner.sh"]

@@ -1,4 +1,4 @@
-import vercel from "@astrojs/vercel/serverless";
+import node from "@astrojs/node";
 import react from "@astrojs/react";
 import tailwind from "@astrojs/tailwind";
 import { defineConfig } from "astro/config";
@@ -11,13 +11,11 @@ export default defineConfig({
     }),
   ],
   output: "server",
-  adapter: vercel({
-    webAnalytics: {
-      enabled: true,
-    },
+  adapter: node({
+    mode: "standalone",
   }),
   server: {
-    port: 3000,
+    port: parseInt(process.env.PORT || "4321"),
     host: true,
   },
   vite: {
