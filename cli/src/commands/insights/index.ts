@@ -41,7 +41,7 @@ insightsCommand
       }
 
       const res = await getWithAuth(
-        `/api/metrics/user?period=${options.period}`,
+        `/api/user/metrics?period=${options.period}`,
       );
 
       spinner.stop();

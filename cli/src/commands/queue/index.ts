@@ -82,7 +82,7 @@ queueCommands
       }
 
       const result = await postWithAuth<{ data: QueueItem }>(
-        `/api/repos/${repoInfo.owner}/${repoInfo.repo}/merge-queue`,
+        `/api/repos/${repoInfo.owner}/${repoInfo.repo}/queue`,
         {
           pullRequestNumber: parseInt(prNumber),
           priority: parseInt(options.priority),
@@ -131,7 +131,7 @@ queueCommands
       }
 
       const result = await getWithAuth<{ data: QueueItem[] }>(
-        `/api/repos/${repoInfo.owner}/${repoInfo.repo}/merge-queue`,
+        `/api/repos/${repoInfo.owner}/${repoInfo.repo}/queue`,
       );
 
       spinner.stop();
@@ -196,7 +196,7 @@ queueCommands
       }
 
       await deleteWithAuth(
-        `/api/repos/${repoInfo.owner}/${repoInfo.repo}/merge-queue/${prNumber}`,
+        `/api/repos/${repoInfo.owner}/${repoInfo.repo}/queue/${prNumber}`,
       );
 
       spinner.succeed(`Removed PR #${prNumber} from merge queue`);
@@ -247,7 +247,7 @@ queueCommands
 
       // Get queue status
       const result = await getWithAuth<{ data: QueueItem[] }>(
-        `/api/repos/${repoInfo.owner}/${repoInfo.repo}/merge-queue`,
+        `/api/repos/${repoInfo.owner}/${repoInfo.repo}/queue`,
       );
 
       spinner.stop();

@@ -5,32 +5,17 @@
 
 import chalk from "chalk";
 import { Command } from "commander";
-import Conf from "conf";
 import fs from "fs";
 import { applyTlsConfig } from "../../lib/api.js";
-
-interface OchConfig {
-  serverUrl: string;
-  token: string;
-  defaultBranch: string;
-  editor: string;
-  pager: string;
-  caFile: string;
-  insecure: boolean;
-}
-
-const config = new Conf<OchConfig>({
-  projectName: "opencodehub-cli",
-  defaults: {
-    serverUrl: "",
-    token: "",
-    defaultBranch: "main",
-    editor: "",
-    pager: "",
-    caFile: "",
-    insecure: false,
-  },
-});
+import {
+  clearConfig,
+  getConfig,
+  getConfigPath,
+  getTokenStorageMode,
+  saveConfig,
+  supportsSecureTokenStorage,
+  unsetConfigKey,
+} from "../../lib/config.js";
 
 const configDescriptions: Record<string, string> = {
   serverUrl: "OpenCodeHub server URL",
@@ -52,19 +37,13 @@ configCommands
   .alias("ls")
   .description("List all configuration values")
   .action(() => {
+    const currentConfig = getConfig();
     console.log(chalk.bold("\n⚙️ CLI Configuration\n"));
 
-    const keys = [
-      "serverUrl",
-      "defaultBranch",
-      "editor",
-      "pager",
-      "caFile",
-      "insecure",
-    ];
+    const keys = ["serverUrl", "defaultBranch", "editor", "pager", "caFile", "insecure"] as const;
 
     for (const key of keys) {
-      const value = config.get(key as keyof OchConfig);
+      const value = currentConfig[key];
       const desc = configDescriptions[key] || "";
       const displayValue =
         typeof value === "boolean"
@@ -78,13 +57,29 @@ configCommands
     }
 
     // Show token status (not the actual token)
-    const hasToken = !!config.get("token");
+    const hasToken = !!currentConfig.token;
+    const storageMode = getTokenStorageMode(currentConfig.serverUrl);
+    const storageLabel =
+      storageMode === "env"
+        ? "env (OCH_TOKEN)"
+        : storageMode === "keychain"
+          ? "secure keychain"
+          : storageMode === "file"
+            ? "config file fallback"
+            : "not set";
     console.log(
       `${chalk.cyan("token")}: ${hasToken ? chalk.green("●") + " configured" : chalk.dim("(not set)")}`,
     );
-    console.log(chalk.dim("  Personal access token"));
+    console.log(chalk.dim(`  Personal access token (${storageLabel})`));
 
-    console.log(chalk.dim(`\nConfig file: ${config.path}`));
+    console.log(chalk.dim(`\nConfig file: ${getConfigPath()}`));
+    if (!supportsSecureTokenStorage()) {
+      console.log(
+        chalk.yellow(
+          "Secure keychain backend unavailable on this host. Token uses config file fallback unless OCH_TOKEN is set.",
+        ),
+      );
+    }
     console.log("");
   });
 
@@ -93,24 +88,42 @@ configCommands
   .command("get <key>")
   .description("Get a configuration value")
   .action((key: string) => {
-    const value = config.get(key as keyof OchConfig);
+    const currentConfig = getConfig();
 
     if (key === "token") {
-      if (typeof value === "string" && value) {
-        console.log(value.slice(0, 12) + "...");
+      if (typeof currentConfig.token === "string" && currentConfig.token) {
+        console.log(currentConfig.token.slice(0, 12) + "...");
       } else {
         console.log(chalk.dim("(not set)"));
       }
-    } else if (value !== undefined) {
-      console.log(value);
-    } else {
+      return;
+    }
+
+    const validKeys = [
+      "serverUrl",
+      "defaultBranch",
+      "editor",
+      "pager",
+      "caFile",
+      "insecure",
+      "username",
+    ];
+
+    if (!validKeys.includes(key)) {
       console.error(chalk.red(`Unknown config key: ${key}`));
       console.log(
         chalk.dim(
-          "Available keys: serverUrl, token, defaultBranch, editor, pager, caFile, insecure",
+          "Available keys: serverUrl, token, defaultBranch, editor, pager, caFile, insecure, username",
         ),
       );
       process.exit(1);
+    }
+
+    const value = currentConfig[key as keyof typeof currentConfig];
+    if (value !== undefined) {
+      console.log(String(value));
+    } else {
+      console.log(chalk.dim("(not set)"));
     }
   });
 
@@ -135,10 +148,16 @@ configCommands
       process.exit(1);
     }
 
-    const normalizedValue =
-      key === "insecure" ? value === "true" || value === "1" : value;
+    const normalizedValue = key === "insecure" ? value === "true" || value === "1" : value;
 
-    config.set(key as keyof OchConfig, normalizedValue as any);
+    try {
+      saveConfig({ [key]: normalizedValue } as any);
+    } catch (error) {
+      console.error(
+        chalk.red(error instanceof Error ? error.message : "Invalid configuration value"),
+      );
+      process.exit(1);
+    }
     const displayValue =
       key === "token" && typeof normalizedValue === "string"
         ? `${normalizedValue.slice(0, 12)}...`
@@ -167,7 +186,7 @@ configCommands
       process.exit(1);
     }
 
-    config.delete(key as keyof OchConfig);
+    unsetConfigKey(key as any);
     console.log(chalk.green(`✓ Unset ${key}`));
   });
 
@@ -176,7 +195,7 @@ configCommands
   .command("path")
   .description("Show config file path")
   .action(() => {
-    console.log(config.path);
+    console.log(getConfigPath());
   });
 
 // Config Reset
@@ -201,7 +220,7 @@ configCommands
       }
     }
 
-    config.clear();
+    clearConfig();
     console.log(chalk.green("✓ Configuration reset to defaults"));
   });
 
@@ -214,10 +233,11 @@ configCommands
   .action(async () => {
     console.log(chalk.bold("\n🩺 Config Doctor\n"));
 
-    const serverUrl = config.get("serverUrl");
-    const token = config.get("token");
-    const caFile = config.get("caFile");
-    const insecure = config.get("insecure");
+    const currentConfig = getConfig();
+    const serverUrl = currentConfig.serverUrl;
+    const token = currentConfig.token;
+    const caFile = currentConfig.caFile;
+    const insecure = currentConfig.insecure;
 
     let hasIssues = false;
 

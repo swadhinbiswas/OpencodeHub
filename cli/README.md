@@ -1,298 +1,236 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/swadhinbiswas/OpenCodeHub/main/public/logo-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/swadhinbiswas/OpenCodeHub/main/public/logo-light.png">
-    <img src="https://raw.githubusercontent.com/swadhinbiswas/OpenCodeHub/main/public/logo-light.png" alt="OpenCodeHub CLI" width="400" />
-  </picture>
+  <img src="https://raw.githubusercontent.com/swadhinbiswas/OpencodeHub/main/cli/assets/opencodehub-cli-logo.svg" alt="OpenCodeHub CLI" width="860" />
 </p>
 
-<h1 align="center">OpenCodeHub CLI</h1>
+<h1 align="center">OpenCodeHub CLI (OCH)</h1>
 
 <p align="center">
-  <strong>🎨 Production-grade Git workflows with beautiful UI</strong>
+  Production-ready Git workflows and stack-first pull request management from your terminal.
 </p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/opencodehub-cli"><img src="https://img.shields.io/npm/v/opencodehub-cli.svg?style=flat-square" alt="npm version" /></a>
   <a href="https://www.npmjs.com/package/opencodehub-cli"><img src="https://img.shields.io/npm/dm/opencodehub-cli.svg?style=flat-square" alt="npm downloads" /></a>
   <a href="https://github.com/swadhinbiswas/OpencodeHub/blob/main/cli/LICENSE"><img src="https://img.shields.io/npm/l/opencodehub-cli.svg?style=flat-square" alt="license" /></a>
-  <a href="https://github.com/swadhinbiswas/OpencodeHub"><img src="https://img.shields.io/github/stars/swadhinbiswas/OpenCodeHub?style=flat-square" alt="GitHub stars" /></a>
 </p>
 
-<p align="center">
-  <a href="#-installation">Installation</a> •
-  <a href="#-features">Features</a> •
-  <a href="#-commands">Commands</a> •
-  <a href="#-examples">Examples</a> •
-  <a href="#-contributing">Contributing</a>
-</p>
+## Why OCH
 
----
+- Fast command-line workflows for repositories, pull requests, issues, and reviews.
+- Stack-first branch/PR flow for multi-PR delivery.
+- Secure authentication model with OS credential storage support.
+- Built-in API tooling for scripting and automation.
 
-## ✨ Features
-
-- 🎨 **Beautiful UI** - GitHub-like progress indicators, ASCII art, and colored output
-- 📦 **Git Push/Pull** - Fast repository operations with real-time progress
-- 🚀 **Simple Commands** - `och push`, `och clone`, `och create` - that's it!
-- 📊 **Progress Tracking** - See object enumeration, compression, and upload speeds
-- 🎯 **Production Ready** - Professional output that rivals GitHub's CLI
-- ✨ **Spinners & Boxes** - Beautiful feedback for every operation
-
-## 📦 Installation
+## Installation
 
 ```bash
-# Install globally with npm
 npm install -g opencodehub-cli
+```
 
-# Or with yarn
-yarn global add opencodehub-cli
+Verify:
 
-# Or with pnpm
-pnpm add -g opencodehub-cli
-
-# Verify installation
+```bash
 och --version
+och --help
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
-# 1. Login to your OpenCodeHub instance
-och auth login
+# 1) Authenticate
+och auth login --url https://git.example.com
 
-# 2. Navigate to your repository
+# 2) Inspect your setup
+och config doctor
+
+# 3) Push and open PR workflow
 cd your-repo
+och repo push
 
-# 3. Push code with beautiful progress indicators
-och push -b master
-
-# That's it! 🎉
+# 4) Create a pull request
+och pr create --base main --title "feat: add onboarding"
 ```
 
-## 📖 Commands
+## Core Commands
 
-### Authentication
+- `och auth` authentication (`login`, `logout`, `status`)
+- `och config` CLI settings and diagnostics (`list`, `set`, `doctor`)
+- `och repo` repository operations (`create`, `clone`, `push`, `list`)
+- `och pr` pull request lifecycle (`create`, `list`, `view`, `merge`, ...)
+- `och stack` stacked branch/PR workflows (`create`, `submit`, `sync`, ...)
+- `och review` code review + AI review flows
+- `och issue` issue management
+- `och ci`, `och queue`, `och metrics`, `och insights`, `och notify`, `och automate`
+- `och api` direct API requests (useful for scripts)
+
+Run `och <command> --help` for full command options.
+
+## Authentication and Security
+
+### Login
 
 ```bash
-# Interactive login
-och auth login
-
-# Login with token (for CI/CD)
-och auth login --token YOUR_TOKEN
-
-# Check current user
-och auth whoami
-
-# Logout
-och auth logout
+och auth login --url https://git.example.com
 ```
 
-### Repository Operations
+For non-interactive environments:
 
 ```bash
-# Push current repository
-och push                    # Push current branch
-och push -b feature-branch  # Push specific branch
-och push --force           # Force push
-
-# Clone a repository
-och clone owner/repo       # Clone to ./repo
-och clone owner/repo mydir # Clone to ./mydir
-
-# Create new repository
-och create myrepo                    # Create public repo
-och create myrepo --private          # Create private repo
-och create myrepo --description "..." # With description
-
-# List repositories
-och repo list
+och auth login --url https://git.example.com --token <PERSONAL_ACCESS_TOKEN>
 ```
 
-## 🎨 Beautiful Output Examples
+### Token storage behavior
 
-### Push Command
+- `OCH_TOKEN` env var always takes precedence.
+- macOS: Keychain (`security`)
+- Linux: Secret Service (`secret-tool`)
+- Windows: DPAPI-encrypted storage via PowerShell
+- Fallback: local CLI config storage if secure backend is unavailable
 
-```
-ℹ Pushing to swadhinbiswas/myrepo
-  Branch: master
+### Helpful environment variables
 
-✔ Objects prepared
-  Enumerating objects: 159, done.
-  Counting objects: 100% (159/159), done.
-  Delta compression using up to 20 threads
-  Compressing objects: 100% (76/76), done.
-  Writing objects: 100% (90/90), 49.17 KiB | 8.20 MiB/s, done.
-  Total 90 (delta 45), reused 0 (delta 0), pack-reused 0
+- `OCH_TOKEN`: inject token from environment
+- `OCH_HTTP_TIMEOUT_MS`: HTTP timeout in ms (default `15000`)
+- `OCH_DISABLE_KEYCHAIN=1`: disable credential backend (useful in CI/tests)
 
-✔ Uploaded 49.17 KB in 0.52s (94.56 KB/s)
+## Configuration
 
-remote: Processing: 100% (90/90), done.
-remote:
-To https://opencodehub.com/swadhinbiswas/myrepo.git
-   abc1234..def5678  master -> master
+Inspect current configuration:
 
-╭─────────────────────────────────────────╮
-│                                         │
-│   ✨ Push Successful!                  │
-│                                         │
-│   Repository: swadhinbiswas/myrepo      │
-│   Branch: master                        │
-│   Size: 49.17 KB                        │
-│                                         │
-│   View at: https://opencodehub.com/... │
-│                                         │
-╰─────────────────────────────────────────╯
+```bash
+och config list
+och config path
+och config doctor
 ```
 
-### Clone Command
+Set values:
 
-```
-ℹ Cloning swadhinbiswas/awesome-project
-
-✔ Repository found
-
-→ Cloning into awesome-project/...
-Cloning into 'awesome-project'...
-remote: Enumerating objects: 234, done.
-remote: Total 234 (delta 0), reused 0 (delta 0)
-Receiving objects: 100% (234/234), 1.23 MiB | 2.45 MiB/s, done.
-
-╭─────────────────────────────────────────╮
-│                                         │
-│   ✨ Clone Successful!                  │
-│                                         │
-│   Repository: swadhinbiswas/project     │
-│   Location: awesome-project/            │
-│                                         │
-│   cd awesome-project && och push        │
-│                                         │
-╰─────────────────────────────────────────╯
+```bash
+och config set serverUrl https://git.example.com
+och config set defaultBranch main
+och config set insecure false
 ```
 
-### Create Command
+## Common Workflows
 
-```
-ℹ Creating 🌐 my-new-repo
-  Description: An awesome new project
+### Repository lifecycle
 
-✔ Repository created
+```bash
+# Create a remote repository
+och repo create my-service --description "Internal API service"
 
-    ✨ SUCCESS! ✨
+# Clone repository
+och repo clone acme/my-service
 
-    Repository swadhinbiswas/my-new-repo is ready!
-
-╭─────────────────────────────────────────╮
-│                                         │
-│   🎉 Repository Created!                 │
-│                                         │
-│   Repository: swadhinbiswas/my-new-repo │
-│   Visibility: 🌐 Public                 │
-│   Description: An awesome new project   │
-│                                         │
-│   Clone URL: https://...                │
-│                                         │
-│   ✓ Added remote 'opencode'             │
-│                                         │
-│   View at: https://opencodehub.com/... │
-│                                         │
-╰─────────────────────────────────────────╯
+# Push local repository
+och repo push --branch main
 ```
 
-## 🔧 CI/CD Usage
+### Pull request lifecycle
+
+```bash
+# Create PR from current branch
+och pr create --base main --title "feat: add API pagination"
+
+# List open PRs
+och pr list --state open
+
+# View PR details
+och pr view 42
+
+# Merge PR
+och pr merge 42
+```
+
+### Stack workflow
+
+```bash
+# Create first stack branch
+och stack create auth-foundation
+
+# Create subsequent branch
+och stack create auth-ui
+
+# Submit stack and create/update PRs
+och stack submit
+```
+
+### AI review workflow
+
+```bash
+# Trigger AI review
+och review ai 42
+
+# Wait for completion
+och review ai 42 --wait
+
+# Check latest review status
+och review status 42
+```
+
+### API mode for scripting
+
+```bash
+# Read current user
+och api /user
+
+# Create issue via API
+och api /repos/acme/platform/issues -X POST -F title="Bug: timeout" -F body="Steps to reproduce"
+```
+
+## CI Usage Example
 
 ```yaml
-# .github/workflows/deploy.yml
-name: Deploy
-
-on: push
+name: OCH Automation
+on: [push]
 
 jobs:
-  deploy:
+  sync:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
-
-      - name: Install CLI
-        run: npm install -g opencodehub-cli
-
-      - name: Push to OpenCodeHub
-        run: |
-          och auth login --token ${{ secrets.OCH_TOKEN }}
-          och push -b main
+      - run: npm install -g opencodehub-cli
+      - run: |
+          export OCH_TOKEN="${{ secrets.OCH_TOKEN }}"
+          och config set serverUrl https://git.example.com
+          och config doctor
+          och repo push --branch main
 ```
 
-## ⚙️ Configuration
+## Troubleshooting
 
-OCH CLI stores configuration in `~/.ochrc`.
+### `Not logged in. Run 'och auth login' first.`
+
+- Run `och auth login --url <server>`.
+- Or export `OCH_TOKEN` for automation.
+
+### `Server URL not configured`
+
+- Run `och config set serverUrl https://git.example.com`.
+
+### TLS / certificate issues
+
+- Use `och config set caFile /path/to/ca.pem` for custom CA.
+- Use `och config set insecure true` only for temporary debugging.
+
+### Validate setup end-to-end
 
 ```bash
-# View current configuration
-och config list
-
-# Set server URL
-och config set serverUrl https://git.yourcompany.com
-
-# Set default branch
-och config set defaultBranch main
+och config doctor
 ```
 
-## 🎨 UI Features
-
-- **ASCII Art Logos** - Gradient-colored branding
-- **Progress Indicators** - GitHub-style object counting and compression
-- **Upload Speeds** - Real-time speed indicators
-- **Colored Output** - Green for success, red for errors, cyan for info
-- **Spinners** - Smooth animations for long operations
-- **Boxed Messages** - Beautiful bordered success/error boxes
-- **Ref Updates** - Color-coded branch update notifications
-
-## 📦 What's New in v1.1.0
-
-✨ **Production-Grade UI Overhaul**
-
-- GitHub-like progress indicators
-- Beautiful ASCII art and gradients
-- Real-time upload/download speeds
-- Professional boxed messages
-- Color-coded output throughout
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](https://github.com/swadhinbiswas/OpencodeHub/blob/main/CONTRIBUTING.md).
+## Development
 
 ```bash
-# Clone the repo
-git clone https://github.com/swadhinbiswas/OpencodeHub.git
-cd OpenCodeHub/cli
-
-# Install dependencies
+cd cli
 npm install
-
-# Build
 npm run build
-
-# Run in development
-npm run dev
+npm run test
 ```
 
-## 📝 License
+## License
 
-MIT License - see [LICENSE](./LICENSE) for details.
-
-## 🔗 Links
-
-- [OpenCodeHub](https://github.com/swadhinbiswas/OpencodeHub) - The main project
-- [Documentation](https://github.com/swadhinbiswas/OpencodeHub#readme)
-- [Report Issues](https://github.com/swadhinbiswas/OpencodeHub/issues)
-- [npm Package](https://www.npmjs.com/package/opencodehub-cli)
-
----
-
-<p align="center">
-  Made with ❤️ by <a href="https://github.com/swadhinbiswas">Swadhin Biswas</a>
-</p>
+MIT

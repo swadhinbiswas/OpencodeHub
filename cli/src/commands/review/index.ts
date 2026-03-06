@@ -93,7 +93,7 @@ reviewCommands
         while (review.status === "pending" || review.status === "running") {
           await new Promise((resolve) => setTimeout(resolve, 3000));
           const statusResult = await getWithAuth<{ data: AIReview }>(
-            `/api/repos/${repoInfo.owner}/${repoInfo.repo}/pulls/${prNumber}/ai-review/latest`,
+            `/api/repos/${repoInfo.owner}/${repoInfo.repo}/pulls/${prNumber}/ai-review`,
           );
           review = statusResult.data;
         }
@@ -140,7 +140,7 @@ reviewCommands
       }
 
       const result = await getWithAuth<{ data: AIReview }>(
-        `/api/repos/${repoInfo.owner}/${repoInfo.repo}/pulls/${prNumber}/ai-review/latest`,
+        `/api/repos/${repoInfo.owner}/${repoInfo.repo}/pulls/${prNumber}/ai-review`,
       );
 
       spinner.stop();

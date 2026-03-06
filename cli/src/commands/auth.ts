@@ -8,7 +8,12 @@ import { Command } from "commander";
 import inquirer from "inquirer";
 import ora from "ora";
 import { applyTlsConfig } from "../lib/api.js";
-import { getConfig, saveConfig } from "../lib/config.js";
+import {
+  getConfig,
+  normalizeServerUrl,
+  saveConfig,
+  supportsSecureTokenStorage,
+} from "../lib/config.js";
 
 export const authCommands = new Command("auth").description(
   "Authentication commands",
@@ -45,6 +50,7 @@ authCommands
         ]);
         serverUrl = answers.serverUrl;
       }
+      serverUrl = normalizeServerUrl(serverUrl);
 
       if (options.token) {
         // Token provided directly via CLI
@@ -109,9 +115,9 @@ authCommands
       // Validate token
       const spinner = ora("Validating token...").start();
 
-      if (!token.startsWith("och_")) {
+      if (token.trim().length < 8) {
         spinner.fail("Invalid token format");
-        console.error(chalk.red("Token should start with 'och_'"));
+        console.error(chalk.red("Token looks too short"));
         process.exit(1);
       }
 
@@ -150,7 +156,13 @@ authCommands
       });
 
       console.log(chalk.green("\n✓ Logged in to " + serverUrl));
-      console.log(chalk.dim("  Token saved to ~/.opencodehub/config.json"));
+      console.log(
+        chalk.dim(
+          supportsSecureTokenStorage()
+            ? "  Token saved to system keychain"
+            : "  Token saved to CLI config fallback (set OCH_TOKEN to avoid local persistence)",
+        ),
+      );
     } catch (error) {
       console.error(chalk.red("Login failed"));
       console.error(
