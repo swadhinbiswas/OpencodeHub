@@ -1,0 +1,33 @@
+<svg width="1200" height="320" viewBox="0 0 1200 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OpenCodeHub CLI logo">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="320" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B172A"/>
+      <stop offset="1" stop-color="#101F3D"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="130" y1="48" x2="330" y2="248" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#00D1B2"/>
+      <stop offset="1" stop-color="#4EA8FF"/>
+    </linearGradient>
+    <linearGradient id="text" x1="392" y1="90" x2="920" y2="240" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EAF3FF"/>
+      <stop offset="1" stop-color="#BBD2F6"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="320" rx="20" fill="url(#bg)"/>
+
+  <rect x="40" y="40" width="300" height="240" rx="18" fill="#081126" stroke="#1A325E"/>
+  <path d="M96 96H284" stroke="#1A325E" stroke-width="2"/>
+  <circle cx="82" cy="96" r="6" fill="#FF5E6C"/>
+  <circle cx="64" cy="96" r="6" fill="#FFC857"/>
+  <circle cx="46" cy="96" r="6" fill="#00D1B2"/>
+
+  <rect x="96" y="128" width="188" height="118" rx="14" fill="#0F2247" stroke="#244C8A"/>
+  <path d="M130 176L154 200L130 224" stroke="url(#accent)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M250 176L226 200L250 224" stroke="url(#accent)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M176 236L208 164" stroke="url(#accent)" stroke-width="10" stroke-linecap="round"/>
+
+  <text x="392" y="145" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="76" font-weight="750" fill="url(#text)">OpenCodeHub</text>
+  <text x="392" y="210" font-family="'Consolas', 'SFMono-Regular', 'Menlo', monospace" font-size="56" font-weight="700" fill="#00D1B2">CLI</text>
+  <text x="392" y="252" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="28" fill="#9CB8E8">Stack-first Git workflows from your terminal</text>
+</svg>

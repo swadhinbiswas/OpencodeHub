@@ -51,6 +51,14 @@ export const apiCommands = new Command("api")
     }
 
     try {
+      const method = String(options.method || "GET").toUpperCase();
+      const allowedMethods = new Set(["GET", "POST", "PATCH", "PUT", "DELETE"]);
+      if (!allowedMethods.has(method)) {
+        console.error(chalk.red(`Unsupported method: ${options.method}`));
+        console.error(chalk.dim("Allowed methods: GET, POST, PATCH, PUT, DELETE"));
+        process.exit(1);
+      }
+
       // Normalize endpoint
       if (!endpoint.startsWith("/")) {
         endpoint = "/" + endpoint;
@@ -98,12 +106,12 @@ export const apiCommands = new Command("api")
       const url = `${config.serverUrl}${endpoint}`;
 
       if (!options.quiet) {
-        console.error(chalk.dim(`${options.method} ${url}\n`));
+        console.error(chalk.dim(`${method} ${url}\n`));
       }
 
       applyTlsConfig();
       const response = await fetch(url, {
-        method: options.method,
+        method,
         headers,
         body,
       });

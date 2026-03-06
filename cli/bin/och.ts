@@ -136,7 +136,19 @@ program.helpInformation = function () {
     "\n" +
     chalk.hex("#50fa7b").bold("\nCommands:") +
     "\n" +
-    buildCommandTable()
+    buildCommandTable() +
+    "\n" +
+    chalk.hex("#50fa7b").bold("\nQuick Examples:") +
+    "\n" +
+    chalk.hex("#f8f8f2")("  och auth login --url https://git.example.com") +
+    "\n" +
+    chalk.hex("#f8f8f2")("  och config doctor") +
+    "\n" +
+    chalk.hex("#f8f8f2")("  och repo push --branch main") +
+    "\n" +
+    chalk.hex("#f8f8f2")("  och pr create --base main --title \"feat: example\"") +
+    "\n" +
+    chalk.hex("#f8f8f2")("  och stack submit")
   );
 };
 

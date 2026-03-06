@@ -211,11 +211,11 @@ ciCommands
 
 // CI Trace (stream logs)
 ciCommands
-  .command("trace <job-id>")
+  .command("trace <run-id> <job-id>")
   .alias("logs")
   .description("Stream job logs")
   .option("-f, --follow", "Follow log output")
-  .action(async (jobId: string, options) => {
+  .action(async (runId: string, jobId: string, options) => {
     const config = getConfig();
     if (!config.token) {
       console.error(chalk.red("Not logged in. Run 'och auth login' first."));
@@ -232,7 +232,7 @@ ciCommands
       }
 
       const result = await getWithAuth<{ data: { logs: string } }>(
-        `/api/repos/${repoInfo.owner}/${repoInfo.repo}/actions/jobs/${jobId}/logs`,
+        `/api/repos/${repoInfo.owner}/${repoInfo.repo}/actions/runs/${runId}/jobs/${jobId}/logs`,
       );
 
       spinner.stop();
