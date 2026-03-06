@@ -2,15 +2,16 @@
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import RepoHeader from "@/components/repo/RepoHeader.astro";
 import { getDatabase, schema } from "@/db";
-import { eq, and, sql, desc, gte, count } from "drizzle-orm";
+import { eq, and, sql, gte } from "drizzle-orm";
 import { canReadRepo } from "@/lib/permissions";
 import { getContributors, getCommits } from "@/lib/git";
 import { resolveRepoPath } from "@/lib/git-storage";
 import { getRepoStats } from "@/lib/analytics";
 import { getCommitActivity } from "@/lib/git";
 import { InsightsCharts } from "@/components/insights/InsightsCharts";
+import { MergeFrequencyPanel } from "@/components/insights/MergeFrequencyPanel";
+import { DeveloperWorkloadPanel } from "@/components/insights/DeveloperWorkloadPanel";
 import {
-    GitCommit,
     GitPullRequest,
     AlertCircle,
     Users,
@@ -65,17 +66,15 @@ const repo = {
 };
 
 // Fetch real issue count
-const issueCountResult = await db
-    .select({ count: count() })
-    .from(schema.issues)
-    .where(
-        and(
-            eq(schema.issues.repositoryId, repoData.id),
-            eq(schema.issues.state, "open"),
-        ),
-    );
+const issueCountResult = await db.query.issues.findMany({
+    where: and(
+        eq(schema.issues.repositoryId, repoData.id),
+        eq(schema.issues.state, "open"),
+    ),
+    columns: { id: true },
+});
 
-repo.openIssueCount = issueCountResult[0]?.count || 0;
+repo.openIssueCount = issueCountResult.length;
 
 // Gather Insights Data
 
@@ -94,7 +93,7 @@ const thirtyDaysAgo = new Date();
 thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
 const [recentIssues] = await (db as any)
-    .select({ count: count() })
+    .select({ count: sql<number>`cast(count(*) as int)` })
     .from(schema.issues)
     .where(
         and(
@@ -103,7 +102,7 @@ const [recentIssues] = await (db as any)
         ),
     );
 const [recentPRs] = await (db as any)
-    .select({ count: count() })
+    .select({ count: sql<number>`cast(count(*) as int)` })
     .from(schema.pullRequests)
     .where(
         and(
@@ -112,7 +111,7 @@ const [recentPRs] = await (db as any)
         ),
     );
 const [closedIssues] = await (db as any)
-    .select({ count: count() })
+    .select({ count: sql<number>`cast(count(*) as int)` })
     .from(schema.issues)
     .where(
         and(
@@ -123,7 +122,7 @@ const [closedIssues] = await (db as any)
     );
 
 const [mergedPRs] = await (db as any)
-    .select({ count: count() })
+    .select({ count: sql<number>`cast(count(*) as int)` })
     .from(schema.pullRequests)
     .where(
         and(
@@ -276,6 +275,18 @@ const chartData = repoStats.map((stat) => {
                         </div>
                     </div>
                 </section>
+
+                <MergeFrequencyPanel
+                    client:only="react"
+                    owner={repo.owner}
+                    repo={repo.name}
+                />
+
+                <DeveloperWorkloadPanel
+                    client:only="react"
+                    owner={repo.owner}
+                    repo={repo.name}
+                />
 
                 <InsightsCharts client:only="react" data={chartData} />
 

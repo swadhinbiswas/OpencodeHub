@@ -1,0 +1,199 @@
+---
+/**
+ * Package Registry Page
+ * Lists all packages for a repository
+ */
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, and, desc } from "drizzle-orm";
+import { listPackages, listVersions } from "@/lib/packages";
+
+const { owner, repo } = Astro.params;
+
+if (!owner || !repo) {
+    return Astro.redirect("/404");
+}
+
+const db = getDatabase();
+
+// Fetch repository
+const repository = await db.query.repositories?.findFirst({
+    where: and(
+        eq(schema.repositories.name, repo)
+    ),
+    with: { owner: true },
+});
+
+if (!repository) {
+    return Astro.redirect("/404");
+}
+
+const orgId = repository.ownerId;
+
+// Fetch packages
+const typeFilter = Astro.url.searchParams.get("type") as any;
+const search = Astro.url.searchParams.get("q") || undefined;
+
+const { packages, total } = await listPackages({
+    organizationId: orgId,
+    repositoryId: repository.id,
+    type: typeFilter || undefined,
+    search,
+});
+
+// Fetch latest version for each package
+const packagesWithVersions = await Promise.all(
+    packages.map(async (pkg) => {
+        const versions = await listVersions(pkg.id, 1);
+        return { ...pkg, latestVersion: versions[0] || null };
+    })
+);
+
+const packageTypes = [
+    { value: "", label: "All", icon: "📦" },
+    { value: "npm", label: "npm", icon: "📗" },
+    { value: "docker", label: "Docker", icon: "🐳" },
+    { value: "maven", label: "Maven", icon: "☕" },
+    { value: "pypi", label: "PyPI", icon: "🐍" },
+    { value: "nuget", label: "NuGet", icon: "💜" },
+    { value: "rubygems", label: "RubyGems", icon: "💎" },
+];
+
+function formatSize(bytes: number | null): string {
+    if (!bytes) return "—";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function timeAgo(date: Date): string {
+    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (seconds < 60) return "just now";
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    return `${Math.floor(seconds / 86400)}d ago`;
+}
+---
+
+<BaseLayout title={`Packages · ${owner}/${repo}`}>
+    <div class="max-w-6xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Packages</h1>
+                <p class="text-gray-500 dark:text-gray-400 mt-1">
+                    {total} package{total !== 1 ? "s" : ""} published
+                </p>
+            </div>
+            <a
+                href={`/${owner}/${repo}/packages/publish`}
+                class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+                Publish Package
+            </a>
+        </div>
+
+        <!-- Filters -->
+        <div class="flex gap-4 mb-6">
+            <div class="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                {packageTypes.map((pt) => (
+                    <a
+                        href={pt.value ? `?type=${pt.value}` : `/${owner}/${repo}/packages`}
+                        class={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                            (typeFilter || "") === pt.value
+                                ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                        }`}
+                    >
+                        <span class="mr-1">{pt.icon}</span>
+                        {pt.label}
+                    </a>
+                ))}
+            </div>
+            <form class="flex-1" method="get">
+                {typeFilter && <input type="hidden" name="type" value={typeFilter} />}
+                <input
+                    type="text"
+                    name="q"
+                    value={search || ""}
+                    placeholder="Search packages..."
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400"
+                />
+            </form>
+        </div>
+
+        <!-- Package List -->
+        {packagesWithVersions.length === 0 ? (
+            <div class="text-center py-16 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+                <div class="text-4xl mb-4">📦</div>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No packages yet</h3>
+                <p class="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                    Publish your first package using the npm or Docker CLI, or use the API directly.
+                </p>
+                <div class="mt-6 space-y-3 text-left max-w-lg mx-auto">
+                    <div class="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm">
+                        <div class="text-gray-500"># npm</div>
+                        <div>npm publish --registry {process.env.APP_URL}/api/packages/npm</div>
+                        <div class="mt-3 text-gray-500"># Docker</div>
+                        <div>docker push {new URL(process.env.APP_URL || "http://localhost").host}/myimage:latest</div>
+                    </div>
+                </div>
+            </div>
+        ) : (
+            <div class="space-y-3">
+                {packagesWithVersions.map((pkg) => (
+                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:border-blue-300 dark:hover:border-blue-600 transition-colors">
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-center gap-3">
+                                <span class="text-2xl">
+                                    {packageTypes.find((pt) => pt.value === pkg.type)?.icon || "📦"}
+                                </span>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <a
+                                            href={`/${owner}/${repo}/packages/${pkg.type}/${pkg.name}`}
+                                            class="text-lg font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                                        >
+                                            {pkg.name}
+                                        </a>
+                                        <span class={`px-2 py-0.5 text-xs rounded-full ${
+                                            pkg.visibility === "public"
+                                                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                                : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                                        }`}>
+                                            {pkg.visibility}
+                                        </span>
+                                    </div>
+                                    {pkg.description && (
+                                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                                            {pkg.description}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            <div class="text-right text-sm text-gray-500 dark:text-gray-400">
+                                <div class="font-mono">
+                                    {pkg.latestVersion?.version || "—"}
+                                </div>
+                                <div class="text-xs">
+                                    {pkg.latestVersion ? timeAgo(pkg.latestVersion.createdAt) : ""}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 mt-3 text-xs text-gray-500 dark:text-gray-400">
+                            <span>{pkg.type.toUpperCase()}</span>
+                            <span>·</span>
+                            <span>{pkg.downloadCount.toLocaleString()} downloads</span>
+                            {pkg.latestVersion && (
+                                <>
+                                    <span>·</span>
+                                    <span>{formatSize(pkg.latestVersion.sizeBytes)}</span>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        )}
+    </div>
+</BaseLayout>

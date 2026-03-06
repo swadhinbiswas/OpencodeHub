@@ -15,7 +15,7 @@ const {
 ---
 
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -23,6 +23,15 @@ const {
     <meta name="generator" content={Astro.generator} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title}</title>
+    <!-- Theme: apply before paint to prevent FOUC -->
+    <script is:inline>
+      (function() {
+        var t = localStorage.getItem('theme') || 'system';
+        var dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (dark) document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
+      })();
+    </script>
     <!-- Preload fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -32,12 +41,20 @@ const {
     />
   </head>
   <body class="min-h-screen bg-background font-sans antialiased">
+    <!-- Skip to main content link (WCAG 2.4.1) -->
+    <a
+      href="#main-content"
+      class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-ring"
+    >
+      Skip to main content
+    </a>
+
     <div class="relative flex min-h-screen flex-col">
       <Header />
-      <main class="flex-1">
+      <main id="main-content" class="flex-1" role="main" tabindex="-1">
         <slot />
       </main>
-      <footer class="border-t py-6 md:py-0">
+      <footer class="border-t py-6 md:py-0" role="contentinfo" aria-label="Site footer">
         <div
           class="container flex flex-col items-center justify-between gap-4 md:h-16 md:flex-row"
         >
@@ -46,16 +63,17 @@ const {
           >
             Built with ❤️ using OpenCodeHub. Self-hosted and open source.
           </p>
-          <div class="flex items-center gap-4 text-sm text-muted-foreground">
-            <a href="/docs" class="hover:text-foreground">Documentation</a>
-            <a href="/api" class="hover:text-foreground">API</a>
+          <nav class="flex items-center gap-4 text-sm text-muted-foreground" aria-label="Footer navigation">
+            <a href="/docs" class="hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 focus:rounded-sm">Documentation</a>
+            <a href="/api" class="hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 focus:rounded-sm">API</a>
             <a
               href="https://github.com/swadhinbiswas/OpencodeHub"
-              class="hover:text-foreground"
+              class="hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 focus:rounded-sm"
               target="_blank"
-              rel="noopener">GitHub</a
+              rel="noopener noreferrer"
+              aria-label="GitHub repository (opens in new tab)">GitHub</a
             >
-          </div>
+          </nav>
         </div>
       </footer>
     </div>

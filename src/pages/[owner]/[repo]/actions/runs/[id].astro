@@ -63,27 +63,6 @@ const run = await db.query.workflowRuns.findFirst({
 
 if (!run) return Astro.redirect("/404");
 
-// 3. Fetch Logs for the active/first job
-// For MVP, just loading all logs for all jobs might be heavy, but let's do it client side or specific endpoint?
-// Let's fetch logs for the first job rendered or use a separate API for logs.
-// For simplicity in this static file, let's fetch logs for ALL jobs in this run (careful with size).
-// Better: Fetch logs for the jobs.
-const jobIds = run.jobs.map((j) => j.id);
-let logs: any[] = [];
-if (jobIds.length > 0) {
-    // This is not ideal for large logs, but okay for MVP
-    // We can filter in memory or map.
-    // Drizzle `inArray` needed.
-    // Let's just fetch logs for the first job to show initially?
-    // Or just render a simple log viewer component that fetches.
-    // Let's fetch all for now, assuming small logs.
-    const allLogs = await db.query.workflowLogs.findMany({
-        where: (logs, { inArray }) => inArray(logs.jobId, jobIds),
-        orderBy: [asc(schema.workflowLogs.lineNumber)],
-    });
-    logs = allLogs;
-}
-
 const repo = {
     owner: repoData.owner.username,
     name: repoData.name,
@@ -136,6 +115,7 @@ const getStatusColor = (status: string, conclusion?: string | null) => {
 };
 
 const activeJob = run.jobs[0];
+const activeJobId = activeJob?.id || "";
 ---
 
 
@@ -218,8 +198,8 @@ const activeJob = run.jobs[0];
                     {
                         run.jobs.map((job) => (
                             <button
+                                data-job-id={job.id}
                                 class={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between group transition-colors ${job.id === activeJob?.id ? "bg-blue-500/10 text-blue-400" : "text-gray-400 hover:bg-white/5 hover:text-gray-200"}`}
-                                onclick={`document.querySelectorAll('.job-logs').forEach(el => el.classList.add('hidden')); document.getElementById('logs-${job.id}').classList.remove('hidden');`}
                             >
                                 <div class="flex items-center gap-2">
                                     {job.status === "completed" &&
@@ -251,7 +231,6 @@ const activeJob = run.jobs[0];
             <!-- Main: Logs -->
         <div class="flex flex-col min-h-0 bg-[#0d1117] relative" x-data="{ autoScroll: true }">
             {run.jobs.map((job, idx) => {
-                const jobLogs = logs.filter(l => l.jobId === job.id);
                 const isActive = idx === 0; // Default first active
                 
                 return (
@@ -286,53 +265,18 @@ const activeJob = run.jobs[0];
                             x-ref="logContainer"
                             class="flex-1 overflow-y-auto p-4 font-mono text-xs leading-relaxed scroll-smooth"
                         >
-                            {jobLogs.length > 0 ? (
-                                <div class="space-y-0.5">
-                                    {jobLogs.map(log => (
-                                        <div class="flex gap-3 group hover:bg-white/5 -mx-4 px-4 py-0.5 transition-colors">
-                                            <span class="text-gray-600 select-none w-8 text-right shrink-0 opacity-50">{log.lineNumber}</span>
-                                            <span class="text-gray-300 group-hover:text-white break-all whitespace-pre-wrap">{log.message}</span>
-                                        </div>
-                                    ))}
-                                    {job.status === 'in_progress' && (
-                                        <div class="flex gap-3 px-4 py-2 animate-pulse">
-                                            <span class="w-8"></span>
-                                            <span class="h-3 w-2 bg-gray-500 block"></span>
-                                        </div>
-                                    )}
+                            <div id={`log-lines-${job.id}`} class="space-y-0.5"></div>
+                            <div id={`log-state-${job.id}`} class="h-full flex flex-col items-center justify-center text-gray-500 space-y-4">
+                                <div class="text-center opacity-50">
+                                    <Terminal className="h-8 w-8 mx-auto mb-2" />
+                                    <p>Loading logs...</p>
                                 </div>
-                            ) : (
-                                <div class="h-full flex flex-col items-center justify-center text-gray-500 space-y-4">
-                                    {job.status === 'queued' ? (
-                                        <>
-                                            <div class="relative">
-                                                <div class="h-10 w-10 rounded-full border-2 border-white/10"></div>
-                                                <div class="absolute inset-0 h-10 w-10 rounded-full border-2 border-t-orange-500 animate-spin"></div>
-                                            </div>
-                                            <div class="text-center">
-                                                <p class="text-sm font-medium text-gray-300">Queued</p>
-                                                <p class="text-xs mt-1">Waiting for an available runner...</p>
-                                            </div>
-                                        </>
-                                    ) : job.status === 'in_progress' ? (
-                                        <>
-                                             <div class="relative">
-                                                <div class="h-10 w-10 rounded-full border-2 border-white/10"></div>
-                                                <div class="absolute inset-0 h-10 w-10 rounded-full border-2 border-t-yellow-400 animate-spin"></div>
-                                            </div>
-                                            <div class="text-center">
-                                                <p class="text-sm font-medium text-gray-300">Initializing</p>
-                                                <p class="text-xs mt-1">Preparing execution environment...</p>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div class="text-center opacity-50">
-                                            <Terminal className="h-8 w-8 mx-auto mb-2" />
-                                            <p>No logs recorded.</p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                            </div>
+                            <div class="pt-3">
+                                <button id={`load-more-${job.id}`} data-job-id={job.id} class="hidden px-3 py-1.5 rounded-md bg-white/5 border border-white/10 text-xs text-gray-300 hover:bg-white/10 transition-colors">
+                                    Load more
+                                </button>
+                            </div>
                         </div>
                     </div>
                 );
@@ -341,3 +285,109 @@ const activeJob = run.jobs[0];
         </div>
     </div>
 </BaseLayout>
+
+<script define:vars={{ repoOwner: repo.owner, repoName: repo.name, runId: run.id, activeJobId }}>
+    const jobSelectors = Array.from(document.querySelectorAll("[data-job-id]")).filter((el) => el.closest(".border-r"));
+    const jobState = new Map();
+
+    function getState(jobId) {
+        if (!jobState.has(jobId)) {
+            jobState.set(jobId, { loaded: false, loading: false, cursor: 0, hasMore: false });
+        }
+        return jobState.get(jobId);
+    }
+
+    function setActiveJob(jobId) {
+        document.querySelectorAll(".job-logs").forEach((el) => el.classList.add("hidden"));
+        const panel = document.getElementById(`logs-${jobId}`);
+        if (panel) panel.classList.remove("hidden");
+    }
+
+    function renderLogLines(jobId, logs) {
+        const container = document.getElementById(`log-lines-${jobId}`);
+        if (!container) return;
+        const rows = logs.map((log) => {
+            const line = log.lineNumber ?? "";
+            const message = (log.message || "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+            return `
+                <div class="flex gap-3 group hover:bg-white/5 -mx-4 px-4 py-0.5 transition-colors">
+                    <span class="text-gray-600 select-none w-8 text-right shrink-0 opacity-50">${line}</span>
+                    <span class="text-gray-300 group-hover:text-white break-all whitespace-pre-wrap">${message}</span>
+                </div>
+            `;
+        }).join("");
+        container.insertAdjacentHTML("beforeend", rows);
+    }
+
+    function updateLoadMore(jobId, hasMore) {
+        const button = document.getElementById(`load-more-${jobId}`);
+        if (!button) return;
+        if (hasMore) {
+            button.classList.remove("hidden");
+        } else {
+            button.classList.add("hidden");
+        }
+    }
+
+    async function loadLogs(jobId) {
+        const state = getState(jobId);
+        if (state.loading) return;
+        state.loading = true;
+
+        const stateEl = document.getElementById(`log-state-${jobId}`);
+        if (stateEl && !state.loaded) {
+            stateEl.innerHTML = '<div class="text-center opacity-50"><p>Loading logs...</p></div>';
+        }
+
+        try {
+            const res = await fetch(`/api/repos/${repoOwner}/${repoName}/actions/runs/${runId}/jobs/${jobId}/logs?afterLine=${state.cursor}&limit=500`);
+            const payload = await res.json();
+            if (!res.ok || !payload?.success) {
+                throw new Error(payload?.error?.message || "Failed to load logs");
+            }
+
+            const logs = payload.data?.logs || [];
+            renderLogLines(jobId, logs);
+            state.loaded = true;
+            state.cursor = payload.data?.nextAfterLine || state.cursor;
+            state.hasMore = Boolean(payload.data?.hasMore);
+            updateLoadMore(jobId, state.hasMore);
+
+            if (stateEl) {
+                if (logs.length === 0 && state.cursor === 0) {
+                    stateEl.innerHTML = '<div class="text-center opacity-50"><p>No logs recorded.</p></div>';
+                } else {
+                    stateEl.classList.add("hidden");
+                }
+            }
+        } catch (e) {
+            if (stateEl) {
+                stateEl.innerHTML = '<div class="text-center text-red-400"><p>Failed to load logs.</p></div>';
+            }
+        } finally {
+            state.loading = false;
+        }
+    }
+
+    for (const selector of jobSelectors) {
+        selector.addEventListener("click", async () => {
+            const jobId = selector.getAttribute("data-job-id");
+            if (!jobId) return;
+            setActiveJob(jobId);
+            await loadLogs(jobId);
+        });
+    }
+
+    document.querySelectorAll("[id^='load-more-']").forEach((button) => {
+        button.addEventListener("click", async () => {
+            const jobId = button.getAttribute("data-job-id");
+            if (!jobId) return;
+            await loadLogs(jobId);
+        });
+    });
+
+    if (activeJobId) {
+        setActiveJob(activeJobId);
+        loadLogs(activeJobId);
+    }
+</script>

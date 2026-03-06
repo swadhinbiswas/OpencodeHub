@@ -1,0 +1,306 @@
+---
+/**
+ * DORA Metrics & Engineering Insights Dashboard
+ * Tracks Deployment Frequency, Lead Time, Change Failure Rate, and MTTR.
+ */
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDatabase, schema } from "@/db";
+import { eq } from "drizzle-orm";
+import { getDORAMetrics, getPRCycleTime, getReviewerResponseTimes, getCodeChurn } from "@/lib/analytics-advanced";
+
+const { owner, repo } = Astro.params;
+const user = Astro.locals.user;
+
+if (!owner || !repo) return Astro.redirect("/404");
+
+const db = getDatabase();
+const ownerRecord = await db.query.users.findFirst({
+  where: eq(schema.users.username, owner),
+});
+if (!ownerRecord) return Astro.redirect("/404");
+
+const repository = await db.query.repositories.findFirst({
+  where: eq(schema.repositories.name, repo),
+});
+if (!repository) return Astro.redirect("/404");
+
+// Time ranges
+const now = new Date();
+const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+// Fetch DORA metrics for 30-day and 90-day windows
+const dora30 = await getDORAMetrics({
+  repositoryId: repository.id,
+  startDate: thirtyDaysAgo,
+  endDate: now,
+});
+
+const dora90 = await getDORAMetrics({
+  repositoryId: repository.id,
+  startDate: ninetyDaysAgo,
+  endDate: now,
+});
+
+// PR Cycle Time
+const cycleTime = await getPRCycleTime({
+  repositoryId: repository.id,
+  startDate: thirtyDaysAgo,
+  endDate: now,
+});
+
+// Reviewer Response Times
+const reviewerTimes = await getReviewerResponseTimes({
+  repositoryId: repository.id,
+  startDate: thirtyDaysAgo,
+  endDate: now,
+});
+
+// Code Churn (top 10)
+const codeChurn = await getCodeChurn({
+  repositoryId: repository.id,
+  startDate: thirtyDaysAgo,
+  endDate: now,
+  limit: 10,
+});
+
+// DORA performance classification
+function classifyDORA(metric: string, value: number): { level: string; color: string } {
+  switch (metric) {
+    case "deploymentFrequency":
+      if (value >= 1) return { level: "Elite", color: "text-green-500" };
+      if (value >= 0.14) return { level: "High", color: "text-blue-500" };
+      if (value >= 0.03) return { level: "Medium", color: "text-yellow-500" };
+      return { level: "Low", color: "text-red-500" };
+    case "leadTimeForChanges":
+      if (value < 24) return { level: "Elite", color: "text-green-500" };
+      if (value < 168) return { level: "High", color: "text-blue-500" };
+      if (value < 720) return { level: "Medium", color: "text-yellow-500" };
+      return { level: "Low", color: "text-red-500" };
+    case "changeFailureRate":
+      if (value < 5) return { level: "Elite", color: "text-green-500" };
+      if (value < 10) return { level: "High", color: "text-blue-500" };
+      if (value < 30) return { level: "Medium", color: "text-yellow-500" };
+      return { level: "Low", color: "text-red-500" };
+    case "timeToRestoreService":
+      if (value < 1) return { level: "Elite", color: "text-green-500" };
+      if (value < 24) return { level: "High", color: "text-blue-500" };
+      if (value < 168) return { level: "Medium", color: "text-yellow-500" };
+      return { level: "Low", color: "text-red-500" };
+    default:
+      return { level: "Unknown", color: "text-muted-foreground" };
+  }
+}
+
+const dfClass = classifyDORA("deploymentFrequency", dora30.deploymentFrequency);
+const ltClass = classifyDORA("leadTimeForChanges", dora30.leadTimeForChanges);
+const cfrClass = classifyDORA("changeFailureRate", dora30.changeFailureRate);
+const mttrClass = classifyDORA("timeToRestoreService", dora30.timeToRestoreService);
+---
+
+<BaseLayout title={`DORA Metrics — ${owner}/${repo}`}>
+  <div class="container py-8 space-y-8">
+    <!-- Breadcrumb -->
+    <div class="flex items-center gap-2 text-sm text-muted-foreground">
+      <a href={`/${owner}/${repo}`} class="hover:text-foreground transition-colors">{owner}/{repo}</a>
+      <span>/</span>
+      <a href={`/${owner}/${repo}/insights`} class="hover:text-foreground transition-colors">Insights</a>
+      <span>/</span>
+      <span class="text-foreground font-medium">DORA Metrics</span>
+    </div>
+
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold">DORA Metrics</h1>
+        <p class="text-muted-foreground mt-1">Engineering performance metrics based on the DORA framework</p>
+      </div>
+      <div class="flex gap-2 text-sm">
+        <span class="px-3 py-1 rounded-full bg-muted text-muted-foreground">Last 30 days</span>
+      </div>
+    </div>
+
+    <!-- DORA 4 Key Metrics -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Deployment Frequency -->
+      <div class="rounded-xl border bg-card p-6 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-medium text-muted-foreground">Deployment Frequency</span>
+          <span class={`text-xs font-semibold px-2 py-0.5 rounded-full bg-opacity-10 ${dfClass.color}`}>
+            {dfClass.level}
+          </span>
+        </div>
+        <p class="text-3xl font-bold">{dora30.deploymentFrequency.toFixed(2)}</p>
+        <p class="text-xs text-muted-foreground">deployments per day</p>
+        <div class="text-xs text-muted-foreground">
+          90d avg: {dora90.deploymentFrequency.toFixed(2)}/day
+        </div>
+      </div>
+
+      <!-- Lead Time for Changes -->
+      <div class="rounded-xl border bg-card p-6 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-medium text-muted-foreground">Lead Time for Changes</span>
+          <span class={`text-xs font-semibold px-2 py-0.5 rounded-full bg-opacity-10 ${ltClass.color}`}>
+            {ltClass.level}
+          </span>
+        </div>
+        <p class="text-3xl font-bold">{dora30.leadTimeForChanges.toFixed(1)}</p>
+        <p class="text-xs text-muted-foreground">hours (commit to deploy)</p>
+        <div class="text-xs text-muted-foreground">
+          90d avg: {dora90.leadTimeForChanges.toFixed(1)}h
+        </div>
+      </div>
+
+      <!-- Change Failure Rate -->
+      <div class="rounded-xl border bg-card p-6 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-medium text-muted-foreground">Change Failure Rate</span>
+          <span class={`text-xs font-semibold px-2 py-0.5 rounded-full bg-opacity-10 ${cfrClass.color}`}>
+            {cfrClass.level}
+          </span>
+        </div>
+        <p class="text-3xl font-bold">{dora30.changeFailureRate.toFixed(1)}%</p>
+        <p class="text-xs text-muted-foreground">of deployments fail</p>
+        <div class="text-xs text-muted-foreground">
+          90d avg: {dora90.changeFailureRate.toFixed(1)}%
+        </div>
+      </div>
+
+      <!-- Mean Time to Recovery -->
+      <div class="rounded-xl border bg-card p-6 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-medium text-muted-foreground">Time to Restore</span>
+          <span class={`text-xs font-semibold px-2 py-0.5 rounded-full bg-opacity-10 ${mttrClass.color}`}>
+            {mttrClass.level}
+          </span>
+        </div>
+        <p class="text-3xl font-bold">{dora30.timeToRestoreService.toFixed(1)}</p>
+        <p class="text-xs text-muted-foreground">hours to restore service</p>
+        <div class="text-xs text-muted-foreground">
+          90d avg: {dora90.timeToRestoreService.toFixed(1)}h
+        </div>
+      </div>
+    </div>
+
+    <!-- PR Cycle Time Breakdown -->
+    <div class="rounded-xl border bg-card p-6 space-y-4">
+      <h2 class="text-lg font-semibold">PR Cycle Time Breakdown</h2>
+      <p class="text-sm text-muted-foreground">
+        Average time across {cycleTime.prCount} merged pull requests (last 30 days)
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+        <div class="text-center p-4 rounded-lg bg-muted/50">
+          <p class="text-2xl font-bold">{cycleTime.avgDraftHours}h</p>
+          <p class="text-sm text-muted-foreground">Draft → First Review</p>
+        </div>
+        <div class="text-center p-4 rounded-lg bg-muted/50">
+          <p class="text-2xl font-bold">{cycleTime.avgReviewHours}h</p>
+          <p class="text-sm text-muted-foreground">In Review</p>
+        </div>
+        <div class="text-center p-4 rounded-lg bg-muted/50">
+          <p class="text-2xl font-bold">{cycleTime.avgApprovalToMergeHours}h</p>
+          <p class="text-sm text-muted-foreground">Approved → Merged</p>
+        </div>
+        <div class="text-center p-4 rounded-lg bg-primary/10 border border-primary/20">
+          <p class="text-2xl font-bold text-primary">{cycleTime.avgTotalHours}h</p>
+          <p class="text-sm text-muted-foreground">Total Cycle Time</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Two-column layout: Reviewer Times + Code Churn -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Reviewer Response Times -->
+      <div class="rounded-xl border bg-card p-6 space-y-4">
+        <h2 class="text-lg font-semibold">Reviewer Response Times</h2>
+        <p class="text-sm text-muted-foreground">
+          Average time from review request to first response (last 30 days)
+        </p>
+
+        {reviewerTimes.length === 0 ? (
+          <p class="text-sm text-muted-foreground py-4 text-center">No review data available</p>
+        ) : (
+          <div class="space-y-2">
+            {reviewerTimes.slice(0, 10).map((reviewer) => (
+              <div class="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+                <div class="flex items-center gap-2">
+                  <a href={`/${reviewer.username}`} class="text-sm font-medium hover:text-primary transition-colors">
+                    @{reviewer.username}
+                  </a>
+                  <span class="text-xs text-muted-foreground">
+                    ({reviewer.reviewCount} reviews)
+                  </span>
+                </div>
+                <span class={`text-sm font-mono ${
+                  reviewer.avgResponseHours > 48 ? "text-red-500" :
+                  reviewer.avgResponseHours > 24 ? "text-yellow-500" :
+                  "text-green-500"
+                }`}>
+                  {reviewer.avgResponseHours}h avg
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <!-- Code Churn -->
+      <div class="rounded-xl border bg-card p-6 space-y-4">
+        <h2 class="text-lg font-semibold">Code Churn</h2>
+        <p class="text-sm text-muted-foreground">
+          Most frequently modified files (last 30 days)
+        </p>
+
+        {codeChurn.length === 0 ? (
+          <p class="text-sm text-muted-foreground py-4 text-center">No churn data available</p>
+        ) : (
+          <div class="space-y-2">
+            {codeChurn.map((file) => (
+              <div class="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-mono truncate" title={file.file}>
+                    {file.file}
+                  </p>
+                  <p class="text-xs text-muted-foreground">
+                    {file.authors.length} contributor{file.authors.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+                <span class={`text-sm font-semibold shrink-0 ml-4 ${
+                  file.changeCount > 10 ? "text-red-500" :
+                  file.changeCount > 5 ? "text-yellow-500" :
+                  "text-foreground"
+                }`}>
+                  {file.changeCount} changes
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+
+    <!-- DORA Performance Legend -->
+    <div class="rounded-xl border bg-card p-6">
+      <h3 class="text-sm font-semibold mb-3">Performance Levels (based on DORA research)</h3>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+        <div class="space-y-1">
+          <span class="text-green-500 font-semibold">● Elite</span>
+          <p class="text-muted-foreground">Multiple deploys/day, &lt;1h lead time, &lt;5% failure, &lt;1h restore</p>
+        </div>
+        <div class="space-y-1">
+          <span class="text-blue-500 font-semibold">● High</span>
+          <p class="text-muted-foreground">Weekly deploys, &lt;1w lead time, &lt;10% failure, &lt;1d restore</p>
+        </div>
+        <div class="space-y-1">
+          <span class="text-yellow-500 font-semibold">● Medium</span>
+          <p class="text-muted-foreground">Monthly deploys, &lt;1mo lead time, &lt;30% failure, &lt;1w restore</p>
+        </div>
+        <div class="space-y-1">
+          <span class="text-red-500 font-semibold">● Low</span>
+          <p class="text-muted-foreground">Less frequent, &gt;1mo lead time, &gt;30% failure, &gt;1w restore</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

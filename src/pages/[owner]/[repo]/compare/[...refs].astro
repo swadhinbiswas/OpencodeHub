@@ -1,0 +1,258 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, and } from "drizzle-orm";
+import { canReadRepo } from "@/lib/permissions";
+import { compareBranches, getComparePatchDiff, getBranches } from "@/lib/git";
+import { resolveRepoPath } from "@/lib/git-storage";
+import { DiffView } from "@/components/diff/DiffView";
+import { GitCompare, ArrowRight, GitCommit, GitPullRequest } from "lucide-react";
+
+const { owner: ownerName, repo: repoName, refs } = Astro.params;
+const db = getDatabase();
+
+// Fetch Owner
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!),
+  ),
+  with: { owner: true },
+});
+if (!repoData) return Astro.redirect("/404");
+
+const currentUser = Astro.locals.user;
+const hasAccess = await canReadRepo(currentUser?.id, repoData);
+if (!hasAccess) return Astro.redirect("/404");
+
+const resolvedLocalPath = await resolveRepoPath(repoData.diskPath);
+
+// Parse refs: format is "base...head" or "base..head"
+const refStr = refs || "";
+const separator = refStr.includes("...") ? "..." : "..";
+const [base, head] = refStr.split(separator);
+
+if (!base || !head) {
+  // Show branch selector page
+}
+
+// Fetch branches for the dropdown
+const branches = await getBranches(resolvedLocalPath);
+
+// Fetch comparison data
+let comparison = { commits: [] as any[], diffs: [] as any[] };
+let patchDiff = "";
+let error: string | null = null;
+
+if (base && head) {
+  try {
+    comparison = await compareBranches(resolvedLocalPath, base, head);
+    patchDiff = await getComparePatchDiff(resolvedLocalPath, base, head);
+  } catch (e: any) {
+    error = e.message || "Failed to compare branches";
+  }
+}
+
+function timeAgo(date: Date | string | number): string {
+  if (!date) return "";
+  const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  return `${Math.floor(months / 12)}y ago`;
+}
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  updatedAt: repoData.updatedAt,
+  openPrCount: repoData.openPrCount,
+  openIssueCount: repoData.openIssueCount,
+};
+
+const repoUrl = `/${repo.owner}/${repo.name}`;
+---
+
+<BaseLayout title={base && head ? `Comparing ${base}...${head} · ${repo.owner}/${repo.name}` : `Compare · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="code" />
+
+    <div class="space-y-6">
+      <!-- Compare Header -->
+      <div class="rounded-lg border bg-card p-6">
+        <div class="flex items-center gap-3 mb-4">
+          <GitCompare className="h-6 w-6 text-primary" />
+          <h1 class="text-xl font-bold">Compare changes</h1>
+        </div>
+
+        <p class="text-sm text-muted-foreground mb-4">
+          Compare across branches, commits, tags, and more.
+        </p>
+
+        <!-- Branch Selectors -->
+        <form class="flex flex-wrap items-center gap-3" id="compare-form">
+          <div class="relative">
+            <select
+              id="base-select"
+              class="appearance-none rounded-md border bg-background px-4 py-2 pr-8 text-sm font-medium shadow-sm hover:bg-accent cursor-pointer"
+            >
+              {branches.map((b) => (
+                <option value={b.name} selected={b.name === (base || repoData.defaultBranch)}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <ArrowRight className="h-5 w-5 text-muted-foreground shrink-0" />
+
+          <div class="relative">
+            <select
+              id="head-select"
+              class="appearance-none rounded-md border bg-background px-4 py-2 pr-8 text-sm font-medium shadow-sm hover:bg-accent cursor-pointer"
+            >
+              {branches.map((b) => (
+                <option value={b.name} selected={b.name === head}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
+          >
+            Compare
+          </button>
+
+          {base && head && comparison.commits.length > 0 && (
+            <a
+              href={`/${repo.owner}/${repo.name}/pulls/new?base=${base}&head=${head}`}
+              class="inline-flex items-center gap-2 rounded-md border bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 transition-colors ml-auto"
+            >
+              <GitPullRequest className="h-4 w-4" />
+              Create Pull Request
+            </a>
+          )}
+        </form>
+      </div>
+
+      {error && (
+        <div class="rounded-lg border border-destructive bg-destructive/10 p-4 text-destructive text-sm">
+          {error}
+        </div>
+      )}
+
+      {base && head && !error && (
+        <>
+          {comparison.commits.length === 0 && comparison.diffs.length === 0 ? (
+            <div class="rounded-lg border bg-card p-12 text-center">
+              <GitCompare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h2 class="text-lg font-semibold mb-2">There isn't anything to compare.</h2>
+              <p class="text-muted-foreground">
+                <span class="font-mono bg-muted px-1.5 py-0.5 rounded text-sm">{base}</span>
+                {" "}and{" "}
+                <span class="font-mono bg-muted px-1.5 py-0.5 rounded text-sm">{head}</span>
+                {" "}are identical.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Summary */}
+              <div class="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
+                <div class="flex items-center gap-2">
+                  <GitCommit className="h-4 w-4" />
+                  <span class="font-medium text-foreground">{comparison.commits.length}</span> commit{comparison.commits.length !== 1 ? "s" : ""}
+                </div>
+                <div>
+                  <span class="font-medium text-foreground">{comparison.diffs.length}</span> file{comparison.diffs.length !== 1 ? "s" : ""} changed
+                </div>
+              </div>
+
+              {/* Commits list */}
+              <div class="rounded-lg border bg-card">
+                <div class="px-4 py-3 border-b bg-muted/30">
+                  <h3 class="text-sm font-semibold flex items-center gap-2">
+                    <GitCommit className="h-4 w-4" />
+                    Commits
+                  </h3>
+                </div>
+                <div class="divide-y">
+                  {comparison.commits.map((commit: any) => (
+                    <div class="flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition-colors">
+                      <div class="flex items-center gap-3 min-w-0">
+                        <div class="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0">
+                          <span class="text-xs font-medium">
+                            {commit.authorName?.[0]?.toUpperCase() || "?"}
+                          </span>
+                        </div>
+                        <div class="min-w-0">
+                          <a
+                            href={`${repoUrl}/commit/${commit.sha}`}
+                            class="text-sm font-medium hover:text-primary hover:underline truncate block"
+                          >
+                            {commit.message}
+                          </a>
+                          <div class="text-xs text-muted-foreground">
+                            {commit.authorName} committed {timeAgo(commit.authorDate)}
+                          </div>
+                        </div>
+                      </div>
+                      <a
+                        href={`${repoUrl}/commit/${commit.sha}`}
+                        class="text-xs font-mono text-blue-400 hover:underline shrink-0 ml-3"
+                      >
+                        {commit.sha.substring(0, 7)}
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Diff view */}
+              <DiffView
+                client:load
+                rawDiff={patchDiff}
+                repoUrl={repoUrl}
+              />
+            </>
+          )}
+        </>
+      )}
+    </div>
+  </div>
+</BaseLayout>
+
+<script define:vars={{ repoUrl }}>
+  const form = document.getElementById("compare-form");
+  const baseSelect = document.getElementById("base-select");
+  const headSelect = document.getElementById("head-select");
+
+  form?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const base = baseSelect?.value;
+    const head = headSelect?.value;
+    if (base && head) {
+      window.location.href = `${repoUrl}/compare/${base}...${head}`;
+    }
+  });
+</script>

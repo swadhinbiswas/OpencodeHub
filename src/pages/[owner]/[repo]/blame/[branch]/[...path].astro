@@ -1,0 +1,281 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, and } from "drizzle-orm";
+import { canReadRepo } from "@/lib/permissions";
+import { getBlame, getLastCommit } from "@/lib/git";
+import { resolveRepoPath } from "@/lib/git-storage";
+import { GitBranch, ChevronDown, FileCode } from "lucide-react";
+import { createHighlighter } from "shiki";
+
+const { owner: ownerName, repo: repoName, branch, path } = Astro.params;
+const db = getDatabase();
+
+// Fetch Owner
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!),
+  ),
+  with: { owner: true },
+});
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canReadRepo(currentUser?.id, repoData);
+if (!hasAccess) return Astro.redirect("/404");
+
+const currentBranch = branch || repoData.defaultBranch;
+const currentPath = path || "";
+
+const resolvedLocalPath = await resolveRepoPath(repoData.diskPath);
+
+// Fetch blame data
+const blameLines = await getBlame(resolvedLocalPath, currentPath, currentBranch);
+
+if (!blameLines || blameLines.length === 0) {
+  return Astro.redirect("/404");
+}
+
+// Syntax highlighting
+const extension = currentPath.split(".").pop()?.toLowerCase() || "";
+const commonLangs: Record<string, string> = {
+  ts: "typescript", tsx: "tsx", js: "javascript", jsx: "jsx",
+  json: "json", css: "css", html: "html", md: "markdown",
+  py: "python", go: "go", rs: "rust", java: "java",
+  c: "c", cpp: "cpp", h: "c", hpp: "cpp", astro: "astro",
+  yml: "yaml", yaml: "yaml", toml: "toml", sh: "shell",
+  bash: "shell", zsh: "shell", sql: "sql", php: "php",
+};
+const lang = commonLangs[extension] || "text";
+
+// Highlight each line individually for blame row alignment
+let highlightedLines: string[] = [];
+try {
+  const highlighter = await createHighlighter({
+    themes: ["github-dark"],
+    langs: [lang, "text"],
+  });
+  const fullCode = blameLines.map((b) => b.content).join("\n");
+  const html = highlighter.codeToHtml(fullCode, {
+    lang: Object.values(commonLangs).includes(lang) ? lang : "text",
+    theme: "github-dark",
+  });
+  // Extract individual lines from the shiki output
+  const lineMatches = html.match(/<span class="line">.*?<\/span>/gs);
+  highlightedLines = lineMatches || blameLines.map((b) => `<span class="line">${escapeHtml(b.content)}</span>`);
+} catch {
+  highlightedLines = blameLines.map((b) => `<span class="line">${escapeHtml(b.content)}</span>`);
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// Group consecutive lines by same commit SHA to show commit info only once per block
+interface BlameBlock {
+  sha: string;
+  author: string;
+  email: string;
+  date: Date;
+  lines: { lineNum: number; content: string; highlighted: string }[];
+}
+
+const blameBlocks: BlameBlock[] = [];
+let currentBlock: BlameBlock | null = null;
+
+for (let i = 0; i < blameLines.length; i++) {
+  const bl = blameLines[i];
+  if (!currentBlock || currentBlock.sha !== bl.sha) {
+    currentBlock = {
+      sha: bl.sha,
+      author: bl.author,
+      email: bl.email,
+      date: bl.date,
+      lines: [],
+    };
+    blameBlocks.push(currentBlock);
+  }
+  currentBlock.lines.push({
+    lineNum: bl.line,
+    content: bl.content,
+    highlighted: highlightedLines[i] || escapeHtml(bl.content),
+  });
+}
+
+function timeAgo(date: Date | string | number): string {
+  if (!date) return "";
+  const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  return `${Math.floor(months / 12)}y ago`;
+}
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  updatedAt: repoData.updatedAt,
+  openPrCount: repoData.openPrCount,
+  openIssueCount: repoData.openIssueCount,
+};
+---
+
+<BaseLayout title={`Blame · ${currentPath} · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="code" />
+
+    <div class="space-y-4">
+      <!-- Breadcrumbs -->
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-center gap-2">
+          <div class="relative">
+            <button class="inline-flex items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-accent">
+              <GitBranch className="h-4 w-4" />
+              {currentBranch}
+              <ChevronDown className="h-4 w-4" />
+            </button>
+          </div>
+          <div class="flex items-center text-sm text-muted-foreground flex-wrap">
+            <span class="mx-2">/</span>
+            <a href={`/${repo.owner}/${repo.name}/tree/${currentBranch}`} class="hover:text-primary hover:underline font-bold text-blue-500">
+              {repo.name}
+            </a>
+            {currentPath.split("/").map((part, i, arr) => (
+              <span class="flex items-center">
+                <span class="mx-1">/</span>
+                {i === arr.length - 1 ? (
+                  <span class="font-bold text-foreground">{part}</span>
+                ) : (
+                  <a href={`/${repo.owner}/${repo.name}/tree/${currentBranch}/${arr.slice(0, i + 1).join("/")}`} class="hover:text-primary hover:underline text-blue-500">{part}</a>
+                )}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <a href={`/${repo.owner}/${repo.name}/blob/${currentBranch}/${currentPath}`} class="inline-flex items-center gap-1.5 rounded-md border bg-background px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-accent transition-colors">
+            <FileCode className="h-4 w-4" />
+            Normal View
+          </a>
+        </div>
+      </div>
+
+      <!-- Header -->
+      <div class="rounded-t-lg border bg-muted/30 p-3 border-b-0 flex items-center gap-2 text-sm text-muted-foreground">
+        <FileCode className="h-4 w-4" />
+        <span class="font-medium text-foreground">{blameLines.length} lines</span>
+        <span>·</span>
+        <span>Blame view</span>
+      </div>
+
+      <!-- Blame Table -->
+      <div class="border rounded-b-lg -mt-4 shadow-sm overflow-x-auto custom-scrollbar bg-[#0d1117]">
+        <table class="w-full text-sm font-mono border-collapse">
+          <tbody>
+            {blameBlocks.map((block, blockIdx) => (
+              block.lines.map((line, lineIdx) => (
+                <tr class:list={[
+                  "hover:bg-[#161b22] transition-colors",
+                  lineIdx === 0 && blockIdx > 0 ? "border-t border-gray-700" : "",
+                ]}>
+                  {/* Blame info column — show only on first line of block */}
+                  <td class:list={[
+                    "align-top whitespace-nowrap px-3 py-0 text-xs text-gray-400 select-none border-r border-gray-800 min-w-[220px] max-w-[280px]",
+                    lineIdx === 0 ? "pt-1" : "",
+                  ]}>
+                    {lineIdx === 0 && (
+                      <div class="flex items-center gap-2 leading-6">
+                        <a
+                          href={`/${repo.owner}/${repo.name}/commit/${block.sha}`}
+                          class="text-blue-400 hover:text-blue-300 hover:underline font-mono"
+                          title={block.sha}
+                        >
+                          {block.sha.substring(0, 8)}
+                        </a>
+                        <span class="truncate max-w-[100px] text-gray-300" title={block.author}>
+                          {block.author}
+                        </span>
+                        <span class="text-gray-500 shrink-0">
+                          {timeAgo(block.date)}
+                        </span>
+                      </div>
+                    )}
+                  </td>
+                  {/* Line number */}
+                  <td class="text-right px-3 py-0 text-xs text-gray-600 select-none border-r border-gray-800 w-[1%]">
+                    <div class="leading-6">
+                      <a
+                        id={`L${line.lineNum}`}
+                        href={`#L${line.lineNum}`}
+                        class="hover:text-blue-400"
+                      >
+                        {line.lineNum}
+                      </a>
+                    </div>
+                  </td>
+                  {/* Code content */}
+                  <td class="px-4 py-0 whitespace-pre">
+                    <div class="leading-6" set:html={line.highlighted} />
+                  </td>
+                </tr>
+              ))
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style is:global>
+  .custom-scrollbar::-webkit-scrollbar {
+    height: 10px;
+    width: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #30363d;
+    border-radius: 5px;
+    border: 2px solid #0d1117;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #424a53;
+  }
+  .shiki {
+    background-color: transparent !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .shiki code {
+    display: inline;
+  }
+  .shiki .line {
+    display: inline;
+  }
+</style>

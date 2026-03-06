@@ -7,6 +7,7 @@ import { canWriteRepo } from "@/lib/permissions";
 import {
   getRepoPath,
   compareBranches,
+  getComparePatchDiff,
   type CommitInfo,
   type DiffInfo,
 } from "@/lib/git";
@@ -30,6 +31,8 @@ import {
 import { InteractiveRebase } from "@/components/git/InteractiveRebase";
 import { AIReviewSummary } from "@/components/pulls/AIReviewSummary";
 import PRConversation from "@/components/pulls/PRConversation";
+import { DiffView } from "@/components/diff/DiffView";
+import { InlineDiffReview } from "@/components/pulls/InlineDiffReview";
 
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
@@ -155,6 +158,7 @@ let diffData: { commits: CommitInfo[]; diffs: DiffInfo[] } = {
   commits: [],
   diffs: [],
 };
+let patchDiff = "";
 
 import { resolveRepoPath } from "@/lib/git-storage";
 try {
@@ -162,6 +166,7 @@ try {
     getRepoPath(repoData.owner.username, repoData.name),
   );
   diffData = await compareBranches(repoPath, pr.baseBranch, pr.headBranch);
+  patchDiff = await getComparePatchDiff(repoPath, pr.baseBranch, pr.headBranch);
 } catch (error) {
   console.error("Error fetching comparison:", error);
 }
@@ -538,7 +543,18 @@ try {
           {/* File Changes (Visible for MVP, ideally tabbed) */}
           <div id="files" class="space-y-4 pt-4">
             <h3 class="font-semibold text-lg">Files changed</h3>
-            {
+            {patchDiff ? (
+              <InlineDiffReview
+                client:load
+                rawDiff={patchDiff}
+                owner={repo.owner}
+                repo={repo.name}
+                pullNumber={pr.number}
+                repoUrl={`/${repo.owner}/${repo.name}`}
+                currentUser={user}
+                headSha={diffData.commits.length > 0 ? diffData.commits[diffData.commits.length - 1]?.sha : undefined}
+              />
+            ) : (
               diffData.diffs.map((diff) => (
                 <div class="diff-file-card border rounded-lg overflow-hidden scroll-mt-20">
                   <div class="bg-muted/30 px-4 py-2 border-b text-sm font-mono flex items-center justify-between">
@@ -564,7 +580,7 @@ try {
                   </div>
                 </div>
               ))
-            }
+            )}
           </div>
         </div>
 

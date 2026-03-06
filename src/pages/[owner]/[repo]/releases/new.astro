@@ -1,0 +1,187 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, and } from "drizzle-orm";
+import { canWriteRepo } from "@/lib/permissions";
+import { getTags } from "@/lib/git";
+import { resolveRepoPath } from "@/lib/git-storage";
+import { Tag, ArrowLeft } from "lucide-react";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!),
+  ),
+  with: { owner: true },
+});
+if (!repoData) return Astro.redirect("/404");
+
+const currentUser = Astro.locals.user;
+if (!currentUser?.id) return Astro.redirect("/login");
+
+const canWrite = await canWriteRepo(currentUser.id, repoData);
+if (!canWrite) return Astro.redirect("/404");
+
+const resolvedLocalPath = await resolveRepoPath(repoData.diskPath);
+const tags = await getTags(resolvedLocalPath);
+
+const repo = {
+  owner: repoData.owner.username,
+  name: repoData.name,
+  description: repoData.description,
+  visibility: repoData.visibility,
+  defaultBranch: repoData.defaultBranch,
+  stars: repoData.starCount,
+  forks: repoData.forkCount,
+  watchers: repoData.watchCount,
+  updatedAt: repoData.updatedAt,
+  openPrCount: repoData.openPrCount,
+  openIssueCount: repoData.openIssueCount,
+};
+---
+
+<BaseLayout title={`New Release · ${repo.owner}/${repo.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repo} activeTab="code" />
+
+    <div class="max-w-3xl mx-auto space-y-6">
+      <a
+        href={`/${repo.owner}/${repo.name}/releases`}
+        class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to releases
+      </a>
+
+      <h1 class="text-2xl font-bold">Draft a new release</h1>
+
+      <form id="release-form" class="space-y-6">
+        {/* Tag selector */}
+        <div class="space-y-2">
+          <label for="tag-name" class="text-sm font-medium">Choose a tag</label>
+          <div class="flex items-center gap-3">
+            <div class="relative flex-1">
+              <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                id="tag-name"
+                name="tagName"
+                list="tag-suggestions"
+                placeholder="Enter a tag name (e.g., v1.0.0)"
+                class="w-full rounded-md border bg-background pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                required
+              />
+              <datalist id="tag-suggestions">
+                {tags.map((tag) => (
+                  <option value={tag.name} />
+                ))}
+              </datalist>
+            </div>
+          </div>
+          <p class="text-xs text-muted-foreground">
+            Choose an existing tag or create a new one on publish.
+          </p>
+        </div>
+
+        {/* Release title */}
+        <div class="space-y-2">
+          <label for="release-name" class="text-sm font-medium">Release title</label>
+          <input
+            type="text"
+            id="release-name"
+            name="name"
+            placeholder="Release title"
+            class="w-full rounded-md border bg-background px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            required
+          />
+        </div>
+
+        {/* Release notes */}
+        <div class="space-y-2">
+          <label for="release-body" class="text-sm font-medium">Describe this release</label>
+          <textarea
+            id="release-body"
+            name="body"
+            rows="12"
+            placeholder="Write release notes using Markdown..."
+            class="w-full rounded-md border bg-background px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+          />
+        </div>
+
+        {/* Options */}
+        <div class="space-y-3 rounded-lg border p-4">
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" id="is-prerelease" name="isPrerelease" class="rounded border-muted-foreground" />
+            <div>
+              <span class="text-sm font-medium">Set as a pre-release</span>
+              <p class="text-xs text-muted-foreground">This release will be labeled as non-production ready.</p>
+            </div>
+          </label>
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" id="is-draft" name="isDraft" class="rounded border-muted-foreground" />
+            <div>
+              <span class="text-sm font-medium">Set as a draft</span>
+              <p class="text-xs text-muted-foreground">This release will not be visible to the public.</p>
+            </div>
+          </label>
+        </div>
+
+        {/* Actions */}
+        <div class="flex items-center gap-3 pt-2">
+          <button
+            type="submit"
+            class="inline-flex items-center gap-2 rounded-md bg-green-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-green-700 transition-colors"
+          >
+            Publish release
+          </button>
+          <a
+            href={`/${repo.owner}/${repo.name}/releases`}
+            class="inline-flex items-center gap-2 rounded-md border px-6 py-2.5 text-sm font-medium hover:bg-accent transition-colors"
+          >
+            Cancel
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</BaseLayout>
+
+<script define:vars={{ repoOwner: repo.owner, repoName: repo.name }}>
+  const form = document.getElementById("release-form");
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const tagName = document.getElementById("tag-name").value;
+    const name = document.getElementById("release-name").value;
+    const body = document.getElementById("release-body").value;
+    const isPrerelease = document.getElementById("is-prerelease").checked;
+    const isDraft = document.getElementById("is-draft").checked;
+
+    try {
+      const res = await fetch(`/api/repos/${repoOwner}/${repoName}/releases`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tagName, name, body, isPrerelease, isDraft }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        window.location.href = `/${repoOwner}/${repoName}/releases/${data.data?.id || ""}`;
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to create release");
+      }
+    } catch (err) {
+      alert("Failed to create release");
+    }
+  });
+</script>
