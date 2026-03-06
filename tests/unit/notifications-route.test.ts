@@ -47,6 +47,7 @@ describe("notifications list route", () => {
     getUserFromRequestMock.mockResolvedValue({ userId: "user-1" });
     mockDb.query.notifications.findMany
       .mockResolvedValueOnce([{ id: "notif-1", type: "ci_failed" }])
+      .mockResolvedValueOnce([{ id: "history-1", type: "ci_failed", isRead: false }])
       .mockResolvedValueOnce([{ id: "notif-2" }, { id: "notif-3" }]);
 
     const response = await listNotificationsGet({
@@ -60,7 +61,7 @@ describe("notifications list route", () => {
     expect(body?.success).toBe(true);
     expect(body?.data?.notifications).toHaveLength(1);
     expect(body?.data?.unreadCount).toBe(2);
-    expect(mockDb.query.notifications.findMany).toHaveBeenCalledTimes(2);
+    expect(mockDb.query.notifications.findMany).toHaveBeenCalledTimes(3);
   });
 
   it("sorts by priority score when prioritize=true", async () => {
