@@ -1,0 +1,386 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { Button } from "@/components/ui/button";
+import { getDatabase, schema } from "@/db";
+import { canAdminOrg } from "@/lib/permissions";
+import { desc, eq } from "drizzle-orm";
+
+const { org } = Astro.params;
+const currentUser = Astro.locals.user;
+
+if (!currentUser) {
+  return Astro.redirect("/login");
+}
+
+if (!org) {
+  return Astro.redirect("/404");
+}
+
+const db = getDatabase();
+
+const organization = await db.query.organizations.findFirst({
+  where: eq(schema.organizations.name, org),
+});
+
+if (!organization) {
+  return Astro.redirect("/404");
+}
+
+const canManage = await canAdminOrg(currentUser.id, organization.id, {
+  isAdmin: Boolean(currentUser.isAdmin),
+});
+
+if (!canManage) {
+  return Astro.redirect("/404");
+}
+
+const [roles, members] = await Promise.all([
+  db.query.customRoles.findMany({
+    where: eq(schema.customRoles.organizationId, organization.id),
+    orderBy: [desc(schema.customRoles.createdAt)],
+  }),
+  db.query.organizationMembers.findMany({
+    where: eq(schema.organizationMembers.organizationId, organization.id),
+    with: {
+      user: true,
+    },
+  }),
+]);
+
+const assignmentCounts = new Map<string, number>();
+for (const member of members) {
+  if (!member.customRoleId) continue;
+  assignmentCounts.set(member.customRoleId, (assignmentCounts.get(member.customRoleId) || 0) + 1);
+}
+---
+
+<BaseLayout title={`Role Management · ${organization.name}`}>
+  <div class="container py-8 space-y-8">
+    <div>
+      <h1 class="text-2xl font-semibold">Organization RBAC</h1>
+      <p class="text-sm text-muted-foreground mt-1">
+        Manage custom roles and assign them to organization members.
+      </p>
+    </div>
+
+    <section class="border rounded-lg bg-card p-4 space-y-4">
+      <div>
+        <h2 class="text-lg font-medium">Create Custom Role</h2>
+        <p class="text-sm text-muted-foreground">
+          Permissions are stored as a list (for example: <span class="font-mono">repo:read, repo:write, org:admin</span>).
+        </p>
+      </div>
+
+      <form id="create-role-form" class="grid gap-3 md:grid-cols-2">
+        <label class="grid gap-1 text-sm">
+          <span class="text-muted-foreground">Role name</span>
+          <input id="create-role-name" class="rounded border border-border bg-background px-3 py-2" required />
+        </label>
+
+        <label class="grid gap-1 text-sm">
+          <span class="text-muted-foreground">Description</span>
+          <input id="create-role-description" class="rounded border border-border bg-background px-3 py-2" />
+        </label>
+
+        <label class="grid gap-1 text-sm md:col-span-2">
+          <span class="text-muted-foreground">Permissions (comma/newline separated)</span>
+          <textarea id="create-role-permissions" class="rounded border border-border bg-background px-3 py-2 min-h-[84px]"></textarea>
+        </label>
+
+        <div class="md:col-span-2 flex items-center gap-3">
+          <Button id="create-role-btn" type="submit" variant="outline">Create role</Button>
+          <p id="create-role-status" class="text-sm text-muted-foreground"></p>
+        </div>
+      </form>
+    </section>
+
+    <section class="border rounded-lg overflow-hidden">
+      <div class="px-4 py-3 border-b bg-muted/30">
+        <h2 class="text-lg font-medium">Custom Roles</h2>
+      </div>
+      <table class="w-full text-sm text-left">
+        <thead class="bg-muted/50 text-muted-foreground border-b">
+          <tr>
+            <th class="px-4 py-3 font-medium">Name</th>
+            <th class="px-4 py-3 font-medium">Description</th>
+            <th class="px-4 py-3 font-medium">Permissions</th>
+            <th class="px-4 py-3 font-medium">Assigned</th>
+            <th class="px-4 py-3 font-medium text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y" id="roles-table-body">
+          {roles.length === 0 ? (
+            <tr>
+              <td colspan="5" class="px-4 py-6 text-center text-muted-foreground">No custom roles yet.</td>
+            </tr>
+          ) : (
+            roles.map((role) => (
+              <tr>
+                <td class="px-4 py-3 font-medium">{role.name}</td>
+                <td class="px-4 py-3 text-muted-foreground">{role.description || "-"}</td>
+                <td class="px-4 py-3">
+                  <div class="flex flex-wrap gap-1">
+                    {(role.permissions || []).length === 0 ? (
+                      <span class="text-muted-foreground">-</span>
+                    ) : (
+                      (role.permissions || []).map((permission) => (
+                        <span class="inline-flex items-center rounded border border-border bg-muted px-2 py-0.5 text-xs font-mono">
+                          {permission}
+                        </span>
+                      ))
+                    )}
+                  </div>
+                </td>
+                <td class="px-4 py-3">{assignmentCounts.get(role.id) || 0}</td>
+                <td class="px-4 py-3 text-right">
+                  <div class="inline-flex gap-2">
+                    <button
+                      class="px-2 py-1 text-xs rounded border border-border hover:bg-muted edit-role-btn"
+                      data-role-id={role.id}
+                      data-role-name={role.name}
+                      data-role-description={role.description || ""}
+                      data-role-permissions={JSON.stringify(role.permissions || [])}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      class="px-2 py-1 text-xs rounded border border-red-300 text-red-600 hover:bg-red-50 delete-role-btn"
+                      data-role-id={role.id}
+                      data-role-name={role.name}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="border rounded-lg overflow-hidden">
+      <div class="px-4 py-3 border-b bg-muted/30">
+        <h2 class="text-lg font-medium">Member Role Assignments</h2>
+      </div>
+
+      <table class="w-full text-sm text-left">
+        <thead class="bg-muted/50 text-muted-foreground border-b">
+          <tr>
+            <th class="px-4 py-3 font-medium">Member</th>
+            <th class="px-4 py-3 font-medium">Org role</th>
+            <th class="px-4 py-3 font-medium">Custom role</th>
+            <th class="px-4 py-3 font-medium text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y">
+          {members.map((member) => (
+            <tr>
+              <td class="px-4 py-3">
+                <div class="font-medium">{member.user.username}</div>
+                <div class="text-xs text-muted-foreground">{member.user.email}</div>
+              </td>
+              <td class="px-4 py-3 uppercase text-xs">{member.role}</td>
+              <td class="px-4 py-3">
+                <select
+                  class="rounded border border-border bg-background px-2 py-1 text-sm member-custom-role-select"
+                  data-user-id={member.userId}
+                >
+                  <option value="" selected={!member.customRoleId}>No custom role</option>
+                  {roles.map((role) => (
+                    <option value={role.id} selected={member.customRoleId === role.id}>{role.name}</option>
+                  ))}
+                </select>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <button
+                  class="px-2 py-1 text-xs rounded border border-border hover:bg-muted save-member-role-btn"
+                  data-user-id={member.userId}
+                >
+                  Save
+                </button>
+                <span class="text-xs text-muted-foreground ml-2 member-save-status" data-user-id={member.userId}></span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  </div>
+</BaseLayout>
+
+<script define:vars={{ orgName: organization.name }}>
+  const createRoleForm = document.getElementById("create-role-form");
+  const createRoleBtn = document.getElementById("create-role-btn");
+  const createRoleStatus = document.getElementById("create-role-status");
+
+  const parseList = (value) =>
+    value
+      .split(/[\n,]/g)
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+  const setCreateStatus = (message, colorClass) => {
+    if (!createRoleStatus) return;
+    createRoleStatus.textContent = message;
+    createRoleStatus.className = `text-sm ${colorClass}`;
+  };
+
+  createRoleForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const nameInput = document.getElementById("create-role-name");
+    const descriptionInput = document.getElementById("create-role-description");
+    const permissionsInput = document.getElementById("create-role-permissions");
+
+    const name = nameInput?.value?.trim() || "";
+    const description = descriptionInput?.value?.trim() || "";
+    const permissions = parseList(permissionsInput?.value || "");
+
+    if (!name) {
+      setCreateStatus("Role name is required", "text-red-600");
+      return;
+    }
+
+    createRoleBtn?.setAttribute("disabled", "true");
+    setCreateStatus("Creating role...", "text-muted-foreground");
+
+    try {
+      const response = await fetch(`/api/orgs/${orgName}/roles`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, description, permissions }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create role");
+      }
+
+      window.location.reload();
+    } catch (error) {
+      console.error(error);
+      setCreateStatus("Failed to create role", "text-red-600");
+      createRoleBtn?.removeAttribute("disabled");
+    }
+  });
+
+  const editRoleButtons = document.querySelectorAll(".edit-role-btn");
+  editRoleButtons.forEach((button) => {
+    button.addEventListener("click", async () => {
+      const roleId = button.getAttribute("data-role-id");
+      const currentName = button.getAttribute("data-role-name") || "";
+      const currentDescription = button.getAttribute("data-role-description") || "";
+      const rawPermissions = button.getAttribute("data-role-permissions") || "[]";
+      let currentPermissions = [];
+
+      try {
+        currentPermissions = JSON.parse(rawPermissions);
+      } catch {
+        currentPermissions = [];
+      }
+
+      const name = prompt("Role name", currentName);
+      if (name === null) return;
+      const description = prompt("Description", currentDescription);
+      if (description === null) return;
+      const permissionsValue = prompt(
+        "Permissions (comma separated)",
+        Array.isArray(currentPermissions) ? currentPermissions.join(", ") : ""
+      );
+      if (permissionsValue === null) return;
+
+      const permissions = parseList(permissionsValue);
+
+      try {
+        const response = await fetch(`/api/orgs/${orgName}/roles/${roleId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: name.trim(),
+            description: description.trim(),
+            permissions,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to update role");
+        }
+
+        window.location.reload();
+      } catch (error) {
+        console.error(error);
+        alert("Failed to update role");
+      }
+    });
+  });
+
+  const deleteRoleButtons = document.querySelectorAll(".delete-role-btn");
+  deleteRoleButtons.forEach((button) => {
+    button.addEventListener("click", async () => {
+      const roleId = button.getAttribute("data-role-id");
+      const roleName = button.getAttribute("data-role-name") || "this role";
+
+      if (!confirm(`Delete ${roleName}? Members assigned to this role will lose this custom role.`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/orgs/${orgName}/roles/${roleId}`, {
+          method: "DELETE",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to delete role");
+        }
+
+        window.location.reload();
+      } catch (error) {
+        console.error(error);
+        alert("Failed to delete role");
+      }
+    });
+  });
+
+  const saveMemberRoleButtons = document.querySelectorAll(".save-member-role-btn");
+  saveMemberRoleButtons.forEach((button) => {
+    button.addEventListener("click", async () => {
+      const userId = button.getAttribute("data-user-id");
+      if (!userId) return;
+
+      const select = document.querySelector(`.member-custom-role-select[data-user-id="${userId}"]`);
+      const status = document.querySelector(`.member-save-status[data-user-id="${userId}"]`);
+      const customRoleId = select?.value || null;
+
+      button.setAttribute("disabled", "true");
+      if (status) {
+        status.textContent = "Saving...";
+        status.className = "text-xs text-muted-foreground ml-2 member-save-status";
+      }
+
+      try {
+        const response = await fetch(`/api/orgs/${orgName}/members/${userId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ customRoleId }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to save member role");
+        }
+
+        if (status) {
+          status.textContent = "Saved";
+          status.className = "text-xs text-green-600 ml-2 member-save-status";
+        }
+      } catch (error) {
+        console.error(error);
+        if (status) {
+          status.textContent = "Failed";
+          status.className = "text-xs text-red-600 ml-2 member-save-status";
+        }
+      } finally {
+        button.removeAttribute("disabled");
+      }
+    });
+  });
+</script>

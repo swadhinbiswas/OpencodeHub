@@ -14,7 +14,6 @@ import { eq, and } from "drizzle-orm";
 import { canWriteRepo } from "@/lib/permissions";
 import RepoHeader from "@/components/repo/RepoHeader.astro";
 import { Server, Terminal, Copy } from "lucide-react";
-import crypto from "node:crypto";
 
 const { owner: ownerName, repo: repoName } = Astro.params;
 const db = getDatabase();
@@ -51,30 +50,6 @@ const runners = await db.query.pipelineRunners.findMany({
     where: eq(schema.pipelineRunners.repositoryId, repoData.id),
 });
 
-// Generate or Retrieve Registration Token
-// For MVP, we'll generate a signed token or just use a stored secret.
-// Let's check `workflow_secrets` first.
-let tokenSecret = await db.query.workflowSecrets.findFirst({
-    where: and(
-        eq(schema.workflowSecrets.repositoryId, repoData.id),
-        eq(schema.workflowSecrets.name, "ACTIONS_RUNNER_TOKEN"),
-    ),
-});
-
-if (!tokenSecret) {
-    const newToken = crypto.randomBytes(16).toString("hex");
-    // Insert
-    await db.insert(schema.workflowSecrets).values({
-        id: crypto.randomUUID(),
-        repositoryId: repoData.id,
-        name: "ACTIONS_RUNNER_TOKEN",
-        encryptedValue: newToken, // Storing raw for MVP simplicity, usually encrypt!
-        createdById: currentUser?.id,
-    });
-    tokenSecret = { encryptedValue: newToken } as any;
-}
-
-const registrationToken = `${ownerName}/${repoName}:${tokenSecret!.encryptedValue}`;
 const serverUrl = Astro.url.origin;
 
 const repo = {
@@ -234,6 +209,20 @@ const repo = {
                     </CardContent>
                 </Card>
 
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Runner token audit trail</CardTitle>
+                        <CardDescription>
+                            Recent token issuance, revocation, and consumption events.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div id="runner-token-audit-list" class="space-y-2 text-sm text-muted-foreground">
+                            Loading audit history...
+                        </div>
+                    </CardContent>
+                </Card>
+
                 {/* Setup Instructions */}
 
                 <div class="space-y-6">
@@ -262,14 +251,25 @@ const repo = {
                             class="p-6 bg-slate-950 text-slate-50 font-mono text-sm space-y-4"
                         >
                             <p class="text-gray-400 font-sans">
-                                Run this command in your project directory:
+                                Generate a one-time registration token, then run:
                             </p>
                             <div
-                                class="p-4 rounded-lg bg-white/5 border border-white/10 select-all font-mono text-sm break-all"
+                                class="flex flex-wrap gap-2 mb-3"
                             >
-                                och runner config --token {registrationToken} --url
-                                {serverUrl}
+                                <Button variant="outline" size="sm" id="generate-token-btn">
+                                    Generate One-Time Token
+                                </Button>
+                                <Button variant="outline" size="sm" id="revoke-token-btn">
+                                    Revoke Current Token
+                                </Button>
                             </div>
+                            <div
+                                id="registration-command"
+                                class="p-4 rounded-lg bg-white/5 border border-white/10 select-all font-mono text-sm break-all text-gray-400"
+                            >
+                                Generate a token to see command...
+                            </div>
+                            <p id="token-expiry" class="text-xs text-gray-500 font-sans"></p>
                         </div>
                     </div>
                 </div>
@@ -278,8 +278,118 @@ const repo = {
     </div>
 </BaseLayout>
 
-<script define:vars={{ repoId: repoData.id }}>
+<script define:vars={{ repoId: repoData.id, serverUrl }}>
     const triggerBtn = document.getElementById("trigger-test-btn");
+    const generateTokenBtn = document.getElementById("generate-token-btn");
+    const revokeTokenBtn = document.getElementById("revoke-token-btn");
+    const commandEl = document.getElementById("registration-command");
+    const tokenExpiryEl = document.getElementById("token-expiry");
+    const auditListEl = document.getElementById("runner-token-audit-list");
+    let currentTokenId = null;
+
+    function renderAuditEvents(events = []) {
+        if (!auditListEl) return;
+        if (!events.length) {
+            auditListEl.innerHTML = '<div class="text-muted-foreground">No token audit events yet.</div>';
+            return;
+        }
+
+        auditListEl.innerHTML = events.map((event) => {
+            const when = event.createdAt ? new Date(event.createdAt).toLocaleString() : "Unknown time";
+            const tokenId = event.tokenId || "unknown";
+            const actor = event.actorType === "runner"
+                ? `runner ${event.actorId || ""}`.trim()
+                : `user ${event.actorId || ""}`.trim();
+            const action = event.action?.replace("runner_token_", "") || "event";
+            return `
+                <div class="rounded border border-white/10 bg-white/5 p-2">
+                    <div class="font-medium text-white">${action} • token ${tokenId}</div>
+                    <div class="text-xs text-gray-400 mt-1">${when} • ${actor}${event.actorIp ? ` • ${event.actorIp}` : ""}</div>
+                </div>
+            `;
+        }).join("");
+    }
+
+    async function loadAuditEvents() {
+        if (!auditListEl) return;
+        try {
+            const res = await fetch(`/api/actions/runners/registration-tokens?repositoryId=${encodeURIComponent(repoId)}`);
+            const payload = await res.json();
+            if (!res.ok || !payload?.success) {
+                throw new Error(payload?.error?.message || "Failed to load audit trail");
+            }
+            renderAuditEvents(payload.data?.events || []);
+        } catch (e) {
+            auditListEl.innerHTML = '<div class="text-red-400">Failed to load audit trail.</div>';
+        }
+    }
+
+    async function generateRegistrationToken() {
+        if (!generateTokenBtn || !commandEl) return;
+        try {
+            generateTokenBtn.disabled = true;
+            generateTokenBtn.textContent = "Generating...";
+
+            const res = await fetch("/api/actions/runners/registration-tokens", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ repositoryId: repoId }),
+            });
+            const payload = await res.json();
+            if (!res.ok || !payload?.success) {
+                throw new Error(payload?.error?.message || "Failed to generate token");
+            }
+
+            const data = payload.data;
+            currentTokenId = data.tokenId;
+            commandEl.textContent = `och runner config --token ${data.token} --url ${serverUrl}`;
+            commandEl.classList.remove("text-gray-400");
+            if (tokenExpiryEl) {
+                tokenExpiryEl.textContent = `Expires: ${new Date(data.expiresAt).toLocaleString()} (one-time use)`;
+            }
+            await loadAuditEvents();
+        } catch (e) {
+            alert("Error: " + e.message);
+        } finally {
+            generateTokenBtn.disabled = false;
+            generateTokenBtn.textContent = "Generate One-Time Token";
+        }
+    }
+
+    async function revokeRegistrationToken() {
+        if (!revokeTokenBtn) return;
+        try {
+            revokeTokenBtn.disabled = true;
+            revokeTokenBtn.textContent = "Revoking...";
+            const body = { repositoryId: repoId, ...(currentTokenId ? { tokenId: currentTokenId } : {}) };
+            const res = await fetch("/api/actions/runners/registration-tokens", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            if (!res.ok) {
+                const err = await res.text();
+                throw new Error(err || "Failed to revoke token");
+            }
+            currentTokenId = null;
+            if (commandEl) {
+                commandEl.textContent = "Generate a token to see command...";
+                commandEl.classList.add("text-gray-400");
+            }
+            if (tokenExpiryEl) tokenExpiryEl.textContent = "";
+            await loadAuditEvents();
+        } catch (e) {
+            alert("Error: " + e.message);
+        } finally {
+            revokeTokenBtn.disabled = false;
+            revokeTokenBtn.textContent = "Revoke Current Token";
+        }
+    }
+
+    generateTokenBtn?.addEventListener("click", generateRegistrationToken);
+    revokeTokenBtn?.addEventListener("click", revokeRegistrationToken);
+    loadAuditEvents();
+
     triggerBtn?.addEventListener("click", async () => {
         try {
             triggerBtn.disabled = true;

@@ -1,20 +1,21 @@
 ---
 import { GitBranch, Search, Bell, Plus, Menu } from "lucide-react"
 import { GlobalSearch } from "@/components/search/GlobalSearch"
+import { ThemeToggle } from "@/components/ThemeToggle"
 
 const user = Astro.locals.user;
 ---
 
-<header class="sticky top-0 z-50 w-full border-b border-white/5 bg-background/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/40">
+<header class="sticky top-0 z-50 w-full border-b border-white/5 bg-background/60 backdrop-blur-xl supports-[backdrop-filter]:bg-background/40" role="banner">
   <div class="container h-16 flex items-center justify-between gap-4">
     <!-- Logo -->
-    <a href="/" class="flex items-center gap-2 transition-opacity hover:opacity-80">
+    <a href="/" class="flex items-center gap-2 transition-opacity hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:rounded-md" aria-label="OpenCodeHub home">
       <img src="/logo-dark.png" alt="OpenCodeHub" class="h-9 w-auto dark:hidden" />
       <img src="/logo-light.png" alt="OpenCodeHub" class="h-9 w-auto hidden dark:block" />
     </a>
 
     <!-- Navigation -->
-    <nav class="hidden md:flex items-center gap-1 text-sm font-medium">
+    <nav class="hidden md:flex items-center gap-1 text-sm font-medium" aria-label="Main navigation">
       <a href="/explore" class="px-3 py-2 rounded-md text-muted-foreground transition-all hover:text-foreground hover:bg-muted/50">
         Explore
       </a>
@@ -41,12 +42,13 @@ const user = Astro.locals.user;
     </nav>
 
     <!-- Search -->
-    <div class="hidden md:flex flex-1 max-w-sm">
+    <div class="hidden md:flex flex-1 max-w-sm" role="search" aria-label="Site search">
       <div class="relative w-full group">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
         <input
           type="search"
           placeholder="Search..."
+          aria-label="Search repositories, users, and code"
           class="w-full h-9 rounded-full border border-border/50 bg-secondary/30 px-9 text-sm text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all"
         />
         <kbd class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded bg-background/50 px-1.5 font-mono text-[10px] font-medium opacity-50 sm:flex border border-border/50">
@@ -64,14 +66,17 @@ const user = Astro.locals.user;
             <button
               class="flex h-9 w-9 items-center justify-center rounded-full border border-border/50 bg-background transition-all hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               aria-label="Create new"
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-controls="create-dropdown"
             >
               <Plus className="h-4 w-4" />
             </button>
-            <div id="create-dropdown" class="hidden absolute right-0 mt-2 w-48 rounded-lg border bg-popover p-1 shadow-lg animate-in fade-in zoom-in-95 duration-200">
-              <a href="/new" class="flex items-center rounded-md px-2 py-2 text-sm hover:bg-accent transition-colors">
+            <div id="create-dropdown" class="hidden absolute right-0 mt-2 w-48 rounded-lg border bg-popover p-1 shadow-lg animate-in fade-in zoom-in-95 duration-200" role="menu" aria-label="Create new menu">
+              <a href="/new" class="flex items-center rounded-md px-2 py-2 text-sm hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20" role="menuitem">
                 New Repository
               </a>
-              <a href="/new/import" class="flex items-center rounded-md px-2 py-2 text-sm hover:bg-accent transition-colors">
+              <a href="/new/import" class="flex items-center rounded-md px-2 py-2 text-sm hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20" role="menuitem">
                 Import Repository
               </a>
             </div>
@@ -93,8 +98,11 @@ const user = Astro.locals.user;
           <!-- User Menu -->
           <div class="relative" id="user-menu">
             <button
-              class="flex h-9 w-9 items-center justify-center rounded-full bg-muted border border-border/50 ring-offset-2 hover:ring-2 hover:ring-primary/20 overflow-hidden transition-all"
+              class="flex h-9 w-9 items-center justify-center rounded-full bg-muted border border-border/50 ring-offset-2 hover:ring-2 hover:ring-primary/20 overflow-hidden transition-all focus:outline-none focus:ring-2 focus:ring-primary/20"
               aria-label="User menu"
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-controls="user-dropdown"
             >
               {user.avatarUrl ? (
                 <img src={user.avatarUrl} alt={user.username} class="h-full w-full object-cover" />
@@ -102,7 +110,7 @@ const user = Astro.locals.user;
                 <span class="text-sm font-medium">{user.username.charAt(0).toUpperCase()}</span>
               )}
             </button>
-            <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-64 rounded-xl border bg-popover p-2 shadow-xl animate-in fade-in zoom-in-95 duration-200">
+            <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-64 rounded-xl border bg-popover p-2 shadow-xl animate-in fade-in zoom-in-95 duration-200" role="menu" aria-label="User menu">
               <div class="px-3 py-2.5">
                 <p class="font-semibold text-sm text-foreground">{user.displayName || user.username}</p>
                 <p class="text-xs text-muted-foreground truncate">@{user.username}</p>
@@ -144,6 +152,9 @@ const user = Astro.locals.user;
         </div>
       )}
 
+      <!-- Theme Toggle -->
+      <ThemeToggle client:load />
+
       <!-- Mobile Menu -->
       <button
         class="flex h-9 w-9 items-center justify-center rounded-full border border-border/50 bg-background transition-all hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 md:hidden"
@@ -156,19 +167,80 @@ const user = Astro.locals.user;
   </div>
 
   <!-- Mobile Navigation -->
-  <div id="mobile-nav" class="hidden border-t md:hidden bg-background/95 backdrop-blur-xl">
-    <nav class="container py-4 space-y-2">
-      <a href="/explore" class="block px-3 py-2 text-sm font-medium hover:bg-accent rounded-lg transition-colors">Explore</a>
-      <a href="/issues" class="block px-3 py-2 text-sm font-medium hover:bg-accent rounded-lg transition-colors">Issues</a>
-      <a href="/pulls" class="block px-3 py-2 text-sm font-medium hover:bg-accent rounded-lg transition-colors">Pull Requests</a>
-      <a href="/actions" class="block px-3 py-2 text-sm font-medium hover:bg-accent rounded-lg transition-colors">Actions</a>
-      <a href="/cli" class="block px-3 py-2 text-sm font-medium hover:bg-accent rounded-lg transition-colors">CLI</a>
-      <a href="/admin" class="block px-3 py-2 text-sm font-medium text-purple-400 hover:bg-purple-500/10 rounded-lg transition-colors">Mission Control</a>
+  <div id="mobile-nav" class="hidden border-t md:hidden bg-background/95 backdrop-blur-xl" role="dialog" aria-label="Mobile navigation menu">
+    <nav class="container py-4 space-y-1" aria-label="Mobile navigation">
+      <a href="/explore" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium hover:bg-accent rounded-lg transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+        Explore
+      </a>
+      <a href="/issues" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium hover:bg-accent rounded-lg transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Issues
+      </a>
+      <a href="/pulls" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium hover:bg-accent rounded-lg transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>
+        Pull Requests
+      </a>
+      <a href="/actions" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium hover:bg-accent rounded-lg transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+        Actions
+      </a>
+      <a href="/cli" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium hover:bg-accent rounded-lg transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        CLI
+      </a>
+      <a href="/docs/" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium hover:bg-accent rounded-lg transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        Documentation
+      </a>
+      <a href="/admin" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-purple-400 hover:bg-purple-500/10 rounded-lg transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        Mission Control
+      </a>
+
+      <div class="h-px bg-border/50 my-2"></div>
+
+      {user ? (
+        <div class="space-y-1">
+          <div class="flex items-center gap-3 px-3 py-2">
+            {user.avatarUrl ? (
+              <img src={user.avatarUrl} alt={user.username} class="h-8 w-8 rounded-full" />
+            ) : (
+              <div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-sm font-medium">
+                {user.username.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <p class="text-sm font-medium">{user.displayName || user.username}</p>
+              <p class="text-xs text-muted-foreground">@{user.username}</p>
+            </div>
+          </div>
+          <a href="/profile" class="block px-3 py-2 text-sm hover:bg-accent rounded-lg transition-colors">Profile</a>
+          <a href="/repositories" class="block px-3 py-2 text-sm hover:bg-accent rounded-lg transition-colors">Repositories</a>
+          <a href="/settings" class="block px-3 py-2 text-sm hover:bg-accent rounded-lg transition-colors">Settings</a>
+          <a href="/notifications" class="block px-3 py-2 text-sm hover:bg-accent rounded-lg transition-colors">Notifications</a>
+          <form action="/api/auth/logout" method="POST" class="mt-1">
+            <button type="submit" class="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-500/10 rounded-lg transition-colors">
+              Sign Out
+            </button>
+          </form>
+        </div>
+      ) : (
+        <div class="flex gap-2 px-3 py-2">
+          <a href="/login" class="flex-1 inline-flex items-center justify-center rounded-lg text-sm font-medium h-10 border hover:bg-accent transition-colors">
+            Sign in
+          </a>
+          <a href="/register" class="flex-1 inline-flex items-center justify-center rounded-lg text-sm font-medium h-10 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+            Sign up
+          </a>
+        </div>
+      )}
 
       <div class="pt-2">
         <button
-          class="w-full flex items-center h-10 rounded-lg border border-input bg-background/50 px-3 text-sm text-muted-foreground text-left"
+          class="w-full flex items-center h-10 rounded-lg border border-input bg-background/50 px-3 text-sm text-muted-foreground text-left focus:outline-none focus:ring-2 focus:ring-primary/20"
           id="mobile-search-trigger"
+          aria-label="Open search"
         >
           <Search className="mr-2 h-4 w-4" />
           Search...
@@ -181,29 +253,105 @@ const user = Astro.locals.user;
 </header>
 
 <script>
-  // Dropdown toggle functionality
+  // Dropdown toggle functionality with keyboard support
   function setupDropdown(triggerId: string, dropdownId: string) {
     const trigger = document.getElementById(triggerId)
     const dropdown = document.getElementById(dropdownId)
+    const button = trigger?.querySelector('button')
 
-    if (trigger && dropdown) {
-      trigger.addEventListener('click', (e) => {
+    if (!trigger || !dropdown) return
+
+    function openMenu() {
+      dropdown!.classList.remove('hidden')
+      button?.setAttribute('aria-expanded', 'true')
+      // Focus first menu item
+      const firstItem = dropdown!.querySelector<HTMLElement>('[role="menuitem"], a, button')
+      firstItem?.focus()
+    }
+
+    function closeMenu() {
+      dropdown!.classList.add('hidden')
+      button?.setAttribute('aria-expanded', 'false')
+      button?.focus()
+    }
+
+    if (button) {
+      button.addEventListener('click', (e) => {
         e.stopPropagation()
-        dropdown.classList.toggle('hidden')
+        const isOpen = !dropdown.classList.contains('hidden')
+        if (isOpen) {
+          closeMenu()
+        } else {
+          openMenu()
+        }
+      })
+
+      // Keyboard: Enter/Space opens, Escape closes
+      button.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeMenu()
+        }
       })
     }
+
+    // Keyboard navigation inside dropdown
+    dropdown.addEventListener('keydown', (e) => {
+      const items = Array.from(dropdown.querySelectorAll<HTMLElement>('a, button[type="submit"]'))
+      const current = document.activeElement as HTMLElement
+      const idx = items.indexOf(current)
+
+      switch (e.key) {
+        case 'Escape':
+          e.preventDefault()
+          closeMenu()
+          break
+        case 'ArrowDown':
+          e.preventDefault()
+          items[(idx + 1) % items.length]?.focus()
+          break
+        case 'ArrowUp':
+          e.preventDefault()
+          items[(idx - 1 + items.length) % items.length]?.focus()
+          break
+        case 'Tab':
+          // Allow tab to naturally move focus; close menu
+          closeMenu()
+          break
+        case 'Home':
+          e.preventDefault()
+          items[0]?.focus()
+          break
+        case 'End':
+          e.preventDefault()
+          items[items.length - 1]?.focus()
+          break
+      }
+    })
   }
 
   setupDropdown('create-menu', 'create-dropdown')
   setupDropdown('user-menu', 'user-dropdown')
 
-  // Mobile menu toggle
+  // Mobile menu toggle with aria-expanded
   const mobileBtn = document.getElementById('mobile-menu-btn')
   const mobileNav = document.getElementById('mobile-nav')
 
   if (mobileBtn && mobileNav) {
+    mobileBtn.setAttribute('aria-expanded', 'false')
+    mobileBtn.setAttribute('aria-controls', 'mobile-nav')
+
     mobileBtn.addEventListener('click', () => {
-      mobileNav.classList.toggle('hidden')
+      const isHidden = mobileNav.classList.toggle('hidden')
+      mobileBtn.setAttribute('aria-expanded', String(!isHidden))
+    })
+
+    // Close mobile menu on Escape
+    mobileNav.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        mobileNav.classList.add('hidden')
+        mobileBtn.setAttribute('aria-expanded', 'false')
+        mobileBtn.focus()
+      }
     })
   }
 
@@ -212,6 +360,29 @@ const user = Astro.locals.user;
     document.querySelectorAll('[id$="-dropdown"]').forEach(el => {
       el.classList.add('hidden')
     })
+    // Reset aria-expanded on all dropdown triggers
+    document.querySelectorAll('[aria-haspopup="true"]').forEach(btn => {
+      btn.setAttribute('aria-expanded', 'false')
+    })
+  })
+
+  // Global keyboard shortcut: Escape closes any open dropdown
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('[id$="-dropdown"]').forEach(el => {
+        if (!el.classList.contains('hidden')) {
+          el.classList.add('hidden')
+        }
+      })
+      document.querySelectorAll('[aria-haspopup="true"]').forEach(btn => {
+        btn.setAttribute('aria-expanded', 'false')
+      })
+      // Also close mobile nav
+      if (mobileNav && !mobileNav.classList.contains('hidden')) {
+        mobileNav.classList.add('hidden')
+        mobileBtn?.setAttribute('aria-expanded', 'false')
+      }
+    }
   })
 
   // Search Triggers
@@ -228,7 +399,6 @@ const user = Astro.locals.user;
           searchInput.blur(); // Don't actually focus
           openSearch();
       });
-      // Also handle keydown k if focused (though usually we intercept global k)
   }
 
   if (mobileSearchTrigger) {

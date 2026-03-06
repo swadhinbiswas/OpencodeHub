@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { canReadRepo, canWriteRepo } from "@/lib/permissions";
-import { and, desc, eq, sql, count } from "drizzle-orm";
-import { AlertCircle, CheckCircle, Shield, Play, Loader2 } from "lucide-react";
+import { and, desc, eq } from "drizzle-orm";
+import { CheckCircle, Shield, Play, Loader2 } from "lucide-react";
 
 const { owner: ownerName, repo: repoName } = Astro.params;
 const db = getDatabase();
@@ -29,24 +29,22 @@ const repoData = await db.query.repositories.findFirst({
 if (!repoData) return Astro.redirect("/404");
 
 const currentUser = Astro.locals.user;
+const isAuthenticated = Boolean(currentUser);
 const hasAccess = await canReadRepo(currentUser?.id, repoData);
 const canWrite = await canWriteRepo(currentUser?.id, repoData);
 
 if (!hasAccess) return Astro.redirect("/404");
 
 // Fetch counts
-const openIssueCount =
-    (
-        await db
-            .select({ count: count() })
-            .from(schema.issues)
-            .where(
-                and(
-                    eq(schema.issues.repositoryId, repoData.id),
-                    eq(schema.issues.state, "open"),
-                ),
-            )
-    )[0]?.count || 0;
+const openIssueCount = (
+    await db.query.issues.findMany({
+        where: and(
+            eq(schema.issues.repositoryId, repoData.id),
+            eq(schema.issues.state, "open"),
+        ),
+        columns: { id: true },
+    })
+).length;
 
 const repoInfo = {
     owner: repoData.owner.username,
@@ -83,6 +81,23 @@ const secretResults = await db.query.secretScanResults.findMany({
 });
 
 const openSecretCount = secretResults.filter((result) => result.status === "open").length;
+
+const rawPolicy = await db.query.securityPolicies.findFirst({
+    where: eq(schema.securityPolicies.repositoryId, repoData.id),
+});
+
+const currentPolicy = {
+    enforcementMode: rawPolicy?.enforcementMode === "block" ? "block" : "warn",
+    secretBlockedTypes: rawPolicy?.secretBlockedTypes ? JSON.parse(rawPolicy.secretBlockedTypes) : [],
+    secretMinSeverity: rawPolicy?.secretMinSeverity || "HIGH",
+    licenseAllowedTypes: rawPolicy?.licenseAllowedTypes
+        ? JSON.parse(rawPolicy.licenseAllowedTypes)
+        : ["permissive"],
+    licenseBlockedLicenses: rawPolicy?.licenseBlockedLicenses
+        ? JSON.parse(rawPolicy.licenseBlockedLicenses)
+        : [],
+    isEnabled: rawPolicy?.isEnabled ?? true,
+};
 
 const vulns = latestScan?.vulnerabilities || [];
 // Sort vulns by severity
@@ -342,12 +357,13 @@ vulns.sort(
                             <th class="px-4 py-3 font-medium">Snippet</th>
                             <th class="px-4 py-3 font-medium">Severity</th>
                             <th class="px-4 py-3 font-medium">Status</th>
+                            {canWrite && <th class="px-4 py-3 font-medium text-right">Actions</th>}
                         </tr>
                     </thead>
                     <tbody class="divide-y">
                         {secretResults.length === 0 ? (
                             <tr>
-                                <td colspan="6" class="px-4 py-6 text-center text-muted-foreground">
+                                <td colspan={canWrite ? "7" : "6"} class="px-4 py-6 text-center text-muted-foreground">
                                     No secrets detected yet.
                                 </td>
                             </tr>
@@ -374,6 +390,30 @@ vulns.sort(
                                     <td class="px-4 py-3 text-xs">
                                         {secret.status}
                                     </td>
+                                    {canWrite && (
+                                        <td class="px-4 py-3 text-right">
+                                            {secret.status === "open" ? (
+                                                <div class="inline-flex gap-2">
+                                                    <button
+                                                        class="px-2 py-1 text-xs rounded border border-border hover:bg-muted secret-action-btn"
+                                                        data-secret-id={secret.id}
+                                                        data-secret-status="resolved"
+                                                    >
+                                                        Resolve
+                                                    </button>
+                                                    <button
+                                                        class="px-2 py-1 text-xs rounded border border-border hover:bg-muted secret-action-btn"
+                                                        data-secret-id={secret.id}
+                                                        data-secret-status="false_positive"
+                                                    >
+                                                        False positive
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span class="text-xs text-muted-foreground">-</span>
+                                            )}
+                                        </td>
+                                    )}
                                 </tr>
                             ))
                         )}
@@ -381,16 +421,198 @@ vulns.sort(
                 </table>
             </div>
         </div>
+
+        <div class="mt-8 space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold">Security Policy</h2>
+                    <p class="text-muted-foreground text-sm">
+                        Configure secret and license policy thresholds and enforcement.
+                    </p>
+                </div>
+            </div>
+
+            <div class="border rounded-lg p-4 bg-card">
+                <form id="security-policy-form" class="grid gap-4 md:grid-cols-2">
+                    <label class="flex items-center gap-2 text-sm font-medium text-foreground md:col-span-2">
+                        <input
+                            id="policy-enabled"
+                            type="checkbox"
+                            class="rounded border-border"
+                            checked={currentPolicy.isEnabled}
+                            disabled={!canWrite}
+                        />
+                        Policy enforcement enabled
+                    </label>
+
+                    <label class="grid gap-2 text-sm">
+                        <span class="text-muted-foreground">Enforcement mode</span>
+                        <select id="policy-mode" class="rounded border border-border bg-background px-3 py-2" disabled={!canWrite}>
+                            <option value="warn" selected={currentPolicy.enforcementMode === "warn"}>Warn only</option>
+                            <option value="block" selected={currentPolicy.enforcementMode === "block"}>Block on violations</option>
+                        </select>
+                    </label>
+
+                    <label class="grid gap-2 text-sm">
+                        <span class="text-muted-foreground">Secret minimum severity</span>
+                        <select id="policy-secret-min-severity" class="rounded border border-border bg-background px-3 py-2" disabled={!canWrite}>
+                            <option value="CRITICAL" selected={currentPolicy.secretMinSeverity === "CRITICAL"}>CRITICAL</option>
+                            <option value="HIGH" selected={currentPolicy.secretMinSeverity === "HIGH"}>HIGH</option>
+                            <option value="MEDIUM" selected={currentPolicy.secretMinSeverity === "MEDIUM"}>MEDIUM</option>
+                            <option value="LOW" selected={currentPolicy.secretMinSeverity === "LOW"}>LOW</option>
+                            <option value="UNKNOWN" selected={currentPolicy.secretMinSeverity === "UNKNOWN"}>UNKNOWN</option>
+                        </select>
+                    </label>
+
+                    <label class="grid gap-2 text-sm md:col-span-2">
+                        <span class="text-muted-foreground">Blocked secret types (comma or newline separated)</span>
+                        <textarea
+                            id="policy-secret-types"
+                            class="rounded border border-border bg-background px-3 py-2 min-h-[84px]"
+                            disabled={!canWrite}
+                        >{currentPolicy.secretBlockedTypes.join(", ")}</textarea>
+                    </label>
+
+                    <label class="grid gap-2 text-sm">
+                        <span class="text-muted-foreground">Allowed license types (comma separated)</span>
+                        <input
+                            id="policy-license-types"
+                            type="text"
+                            class="rounded border border-border bg-background px-3 py-2"
+                            value={currentPolicy.licenseAllowedTypes.join(", ")}
+                            disabled={!canWrite}
+                        />
+                    </label>
+
+                    <label class="grid gap-2 text-sm">
+                        <span class="text-muted-foreground">Blocked licenses (comma separated)</span>
+                        <input
+                            id="policy-blocked-licenses"
+                            type="text"
+                            class="rounded border border-border bg-background px-3 py-2"
+                            value={currentPolicy.licenseBlockedLicenses.join(", ")}
+                            disabled={!canWrite}
+                        />
+                    </label>
+
+                    <div class="md:col-span-2 flex items-center gap-3">
+                        {canWrite && (
+                            <Button id="policy-save-btn" type="submit" variant="outline">
+                                Save Policy
+                            </Button>
+                        )}
+                        <p id="policy-save-status" class="text-sm text-muted-foreground"></p>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="mt-8 space-y-4">
+            <div>
+                <h2 class="text-lg font-semibold">Policy Workflow</h2>
+                <p class="text-muted-foreground text-sm">
+                    Evaluate current findings against policy and apply quick allow/block actions.
+                </p>
+            </div>
+
+            <div class="grid gap-4 md:grid-cols-3">
+                <div class="border rounded-lg p-4 bg-card">
+                    <div class="text-sm font-medium text-muted-foreground">Secret policy violations</div>
+                    <div id="policy-eval-secret-violations" class="text-2xl font-bold text-orange-600">-</div>
+                </div>
+                <div class="border rounded-lg p-4 bg-card">
+                    <div class="text-sm font-medium text-muted-foreground">License policy violations</div>
+                    <div id="policy-eval-license-violations" class="text-2xl font-bold text-orange-600">-</div>
+                </div>
+                <div class="border rounded-lg p-4 bg-card">
+                    <div class="text-sm font-medium text-muted-foreground">Merge blocked</div>
+                    <div id="policy-eval-merge-blocked" class="text-sm mt-2 text-muted-foreground">-</div>
+                </div>
+            </div>
+
+            {canWrite && (
+                <div class="border rounded-lg p-4 bg-card space-y-3">
+                    <h3 class="text-sm font-medium">Quick Policy Action</h3>
+                    <form id="policy-action-form" class="grid gap-3 md:grid-cols-3">
+                        <select id="policy-action-type" class="rounded border border-border bg-background px-3 py-2 text-sm">
+                            <option value="secret:block_type">Block secret type</option>
+                            <option value="secret:unblock_type">Unblock secret type</option>
+                            <option value="license:block">Block license</option>
+                            <option value="license:unblock">Unblock license</option>
+                            <option value="license:allow_type">Allow license type</option>
+                            <option value="license:disallow_type">Disallow license type</option>
+                        </select>
+                        <input
+                            id="policy-action-value"
+                            type="text"
+                            class="rounded border border-border bg-background px-3 py-2 text-sm"
+                            placeholder="Value (e.g. aws_access_key, GPL-3.0, permissive)"
+                            required
+                        />
+                        <Button id="policy-action-btn" type="submit" variant="outline">Apply</Button>
+                    </form>
+                    <p id="policy-action-status" class="text-sm text-muted-foreground"></p>
+                </div>
+            )}
+        </div>
     </div>
 </BaseLayout>
 
-<script define:vars={{ repoOwner: repoInfo.owner, repoName: repoInfo.name }}>
+<script define:vars={{ repoOwner: repoInfo.owner, repoName: repoInfo.name, isAuthenticated }}>
     const scanBtn = document.getElementById("scan-btn");
     const secretScanBtn = document.getElementById("secret-scan-btn");
+    const policyForm = document.getElementById("security-policy-form");
+    const policySaveBtn = document.getElementById("policy-save-btn");
+    const policySaveStatus = document.getElementById("policy-save-status");
+    const policyEvalSecretViolations = document.getElementById("policy-eval-secret-violations");
+    const policyEvalLicenseViolations = document.getElementById("policy-eval-license-violations");
+    const policyEvalMergeBlocked = document.getElementById("policy-eval-merge-blocked");
+    const policyActionForm = document.getElementById("policy-action-form");
+    const policyActionBtn = document.getElementById("policy-action-btn");
+    const policyActionStatus = document.getElementById("policy-action-status");
+
+    const parseCsvOrLines = (value) =>
+        value
+            .split(/[\n,]/g)
+            .map((item) => item.trim())
+            .filter(Boolean);
+
+    const loadPolicyEvaluation = async () => {
+        if (!isAuthenticated) return;
+        try {
+            const response = await fetch(`/api/repos/${repoOwner}/${repoName}/security/policy-evaluation`);
+            if (!response.ok) {
+                throw new Error("Failed to load policy evaluation");
+            }
+            const payload = await response.json();
+            const data = payload?.data;
+            const summary = data?.summary;
+
+            if (policyEvalSecretViolations) {
+                policyEvalSecretViolations.textContent = String(summary?.secretPolicyViolations ?? 0);
+            }
+            if (policyEvalLicenseViolations) {
+                policyEvalLicenseViolations.textContent = String(summary?.licensePolicyViolations ?? 0);
+            }
+            if (policyEvalMergeBlocked) {
+                policyEvalMergeBlocked.textContent = summary?.mergeBlocked
+                    ? `Yes (${summary?.blockingViolations ?? 0} blocking violations)`
+                    : "No";
+                policyEvalMergeBlocked.className = summary?.mergeBlocked
+                    ? "text-sm mt-2 text-red-600"
+                    : "text-sm mt-2 text-green-600";
+            }
+        } catch (error) {
+            console.error(error);
+            if (policyEvalMergeBlocked) {
+                policyEvalMergeBlocked.textContent = "Failed to load";
+                policyEvalMergeBlocked.className = "text-sm mt-2 text-red-600";
+            }
+        }
+    };
 
     scanBtn?.addEventListener("click", async () => {
         scanBtn.setAttribute("disabled", "true");
-        // Update UI to show loading state
         scanBtn.innerHTML =
             '<span class="mr-2 h-4 w-4 animate-spin inline-block rounded-full border-2 border-current border-t-transparent"></span> Starting...';
 
@@ -441,4 +663,143 @@ vulns.sort(
             secretScanBtn.textContent = "Run Secret Scan";
         }
     });
+
+    const secretActionButtons = document.querySelectorAll(".secret-action-btn");
+    secretActionButtons.forEach((button) => {
+        button.addEventListener("click", async () => {
+            const secretId = button.getAttribute("data-secret-id");
+            const status = button.getAttribute("data-secret-status");
+            if (!secretId || !status) return;
+
+            button.setAttribute("disabled", "true");
+            try {
+                const response = await fetch(`/api/repos/${repoOwner}/${repoName}/security/secret-scan/${secretId}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status }),
+                });
+
+                if (!response.ok) {
+                    throw new Error("Failed to update secret status");
+                }
+                window.location.reload();
+            } catch (error) {
+                console.error(error);
+                alert("Failed to update secret status");
+                button.removeAttribute("disabled");
+            }
+        });
+    });
+
+    policyForm?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!policySaveBtn) return;
+
+        const enabled = document.getElementById("policy-enabled");
+        const mode = document.getElementById("policy-mode");
+        const minSeverity = document.getElementById("policy-secret-min-severity");
+        const secretTypes = document.getElementById("policy-secret-types");
+        const allowedLicenseTypes = document.getElementById("policy-license-types");
+        const blockedLicenses = document.getElementById("policy-blocked-licenses");
+
+        policySaveBtn.setAttribute("disabled", "true");
+        policySaveBtn.textContent = "Saving...";
+        if (policySaveStatus) {
+            policySaveStatus.textContent = "";
+            policySaveStatus.className = "text-sm text-muted-foreground";
+        }
+
+        const payload = {
+            isEnabled: Boolean(enabled?.checked),
+            enforcementMode: mode?.value || "warn",
+            secretMinSeverity: minSeverity?.value || "HIGH",
+            secretBlockedTypes: parseCsvOrLines(secretTypes?.value || ""),
+            licenseAllowedTypes: parseCsvOrLines(allowedLicenseTypes?.value || ""),
+            licenseBlockedLicenses: parseCsvOrLines(blockedLicenses?.value || ""),
+        };
+
+        try {
+            const response = await fetch(`/api/repos/${repoOwner}/${repoName}/security/policies`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to save policy");
+            }
+
+            if (policySaveStatus) {
+                policySaveStatus.textContent = "Policy saved";
+                policySaveStatus.className = "text-sm text-green-600";
+            }
+        } catch (error) {
+            console.error(error);
+            if (policySaveStatus) {
+                policySaveStatus.textContent = "Failed to save policy";
+                policySaveStatus.className = "text-sm text-red-600";
+            }
+        } finally {
+            policySaveBtn.removeAttribute("disabled");
+            policySaveBtn.textContent = "Save Policy";
+            loadPolicyEvaluation();
+        }
+    });
+
+    policyActionForm?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!policyActionBtn) return;
+
+        const actionInput = document.getElementById("policy-action-type");
+        const valueInput = document.getElementById("policy-action-value");
+        const action = actionInput?.value;
+        const value = (valueInput?.value || "").trim();
+
+        if (!action || !value) {
+            if (policyActionStatus) {
+                policyActionStatus.textContent = "Action and value are required";
+                policyActionStatus.className = "text-sm text-red-600";
+            }
+            return;
+        }
+
+        policyActionBtn.setAttribute("disabled", "true");
+        policyActionBtn.textContent = "Applying...";
+        if (policyActionStatus) {
+            policyActionStatus.textContent = "";
+            policyActionStatus.className = "text-sm text-muted-foreground";
+        }
+
+        try {
+            const response = await fetch(`/api/repos/${repoOwner}/${repoName}/security/policy-actions`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action, value }),
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to apply policy action");
+            }
+
+            if (policyActionStatus) {
+                policyActionStatus.textContent = "Policy action applied";
+                policyActionStatus.className = "text-sm text-green-600";
+            }
+            if (valueInput) {
+                valueInput.value = "";
+            }
+            await loadPolicyEvaluation();
+        } catch (error) {
+            console.error(error);
+            if (policyActionStatus) {
+                policyActionStatus.textContent = "Failed to apply policy action";
+                policyActionStatus.className = "text-sm text-red-600";
+            }
+        } finally {
+            policyActionBtn.removeAttribute("disabled");
+            policyActionBtn.textContent = "Apply";
+        }
+    });
+
+    loadPolicyEvaluation();
 </script>
