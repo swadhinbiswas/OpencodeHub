@@ -9,7 +9,8 @@ import { eq, and, gte, inArray, desc } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { logger } from "./logger";
 import { repositories } from "@/db/schema/repositories";
-import { sendEmail as sendPlatformEmail } from "./email";
+import { sendEmail as sendPlatformEmail, isSmtpConfigured } from "./email";
+import { generateId } from "./utils";
 
 // ============================================================================
 // SCHEMA
@@ -810,6 +811,50 @@ export interface DigestDeliveryAttemptResult {
     lastError?: string;
 }
 
+async function logDigestDeliveryEvent(options: {
+    userId: string;
+    action:
+        | "notification_digest_sent"
+        | "notification_digest_retry"
+        | "notification_digest_dead_letter"
+        | "notification_digest_skipped";
+    digestSettingId?: string;
+    period: "daily" | "weekly";
+    itemCount: number;
+    attempts: number;
+    recovered?: boolean;
+    dryRun: boolean;
+    provider: "smtp" | "log";
+    reason?: string;
+    error?: string;
+}) {
+    try {
+        const db = getDatabase() as NodePgDatabase<typeof schema>;
+        await db.insert(schema.auditLogs).values({
+            id: generateId(),
+            userId: options.userId,
+            action: options.action,
+            actorType: "system",
+            actorId: options.userId,
+            targetType: "notification_digest",
+            targetId: options.digestSettingId || null,
+            data: JSON.stringify({
+                period: options.period,
+                itemCount: options.itemCount,
+                attempts: options.attempts,
+                recovered: options.recovered ?? false,
+                dryRun: options.dryRun,
+                provider: options.provider,
+                reason: options.reason || null,
+                error: options.error || null,
+            }),
+            createdAt: new Date(),
+        });
+    } catch (error) {
+        logger.error({ error }, "Failed to log digest delivery audit event");
+    }
+}
+
 export async function sendDigestWithRetry(
     send: () => Promise<boolean>,
     maxRetries: number
@@ -849,11 +894,22 @@ export async function runUserDigest(options: UserDigestRunOptions): Promise<User
     const now = options.now ?? new Date();
     const dryRun = options.dryRun ?? true;
     const maxRetries = normalizeRetryCount(options.maxRetries);
+    const provider: "smtp" | "log" = isSmtpConfigured() ? "smtp" : "log";
 
     const setting = await db.query.emailDigestSettings.findFirst({
         where: eq(schema.emailDigestSettings.userId, options.userId),
     });
     if (!setting) {
+        await logDigestDeliveryEvent({
+            userId: options.userId,
+            action: "notification_digest_skipped",
+            period: options.period || "daily",
+            itemCount: 0,
+            attempts: 0,
+            dryRun,
+            provider,
+            reason: "missing_digest_settings",
+        });
         return {
             sent: false,
             dryRun,
@@ -870,6 +926,17 @@ export async function runUserDigest(options: UserDigestRunOptions): Promise<User
         columns: { id: true, email: true, isActive: true },
     });
     if (!user || !user.isActive || !user.email) {
+        await logDigestDeliveryEvent({
+            userId: options.userId,
+            action: "notification_digest_skipped",
+            digestSettingId: setting.id,
+            period,
+            itemCount: 0,
+            attempts: 0,
+            dryRun,
+            provider,
+            reason: "missing_user_or_email",
+        });
         return {
             sent: false,
             dryRun,
@@ -896,6 +963,17 @@ export async function runUserDigest(options: UserDigestRunOptions): Promise<User
     });
 
     if (digest.itemCount === 0) {
+        await logDigestDeliveryEvent({
+            userId: options.userId,
+            action: "notification_digest_skipped",
+            digestSettingId: setting.id,
+            period,
+            itemCount: 0,
+            attempts: 0,
+            dryRun,
+            provider,
+            reason: "empty_digest",
+        });
         return {
             sent: false,
             dryRun,
@@ -918,6 +996,18 @@ export async function runUserDigest(options: UserDigestRunOptions): Promise<User
             });
         }, maxRetries);
         if (!delivery.sent) {
+            await logDigestDeliveryEvent({
+                userId: options.userId,
+                action: "notification_digest_dead_letter",
+                digestSettingId: setting.id,
+                period,
+                itemCount: digest.itemCount,
+                attempts: delivery.attempts,
+                dryRun,
+                provider,
+                reason: "send_failed",
+                error: delivery.lastError,
+            });
             return {
                 sent: false,
                 dryRun,
@@ -931,11 +1021,37 @@ export async function runUserDigest(options: UserDigestRunOptions): Promise<User
         attempts = delivery.attempts;
         recovered = delivery.recovered;
 
+        if (delivery.attempts > 1) {
+            await logDigestDeliveryEvent({
+                userId: options.userId,
+                action: "notification_digest_retry",
+                digestSettingId: setting.id,
+                period,
+                itemCount: digest.itemCount,
+                attempts: delivery.attempts,
+                recovered: delivery.recovered,
+                dryRun,
+                provider,
+            });
+        }
+
         await db
             .update(schema.emailDigestSettings)
             .set({ lastSentAt: now, updatedAt: now })
             .where(eq(schema.emailDigestSettings.id, setting.id));
     }
+
+    await logDigestDeliveryEvent({
+        userId: options.userId,
+        action: "notification_digest_sent",
+        digestSettingId: setting.id,
+        period,
+        itemCount: digest.itemCount,
+        attempts: dryRun ? 0 : attempts || 1,
+        recovered,
+        dryRun,
+        provider,
+    });
 
     return {
         sent: true,
@@ -952,6 +1068,7 @@ export async function runDueDigests(options: DigestRunOptions = {}): Promise<Dig
     const now = options.now ?? new Date();
     const dryRun = options.dryRun ?? false;
     const maxRetries = normalizeRetryCount(options.maxRetries);
+    const provider: "smtp" | "log" = isSmtpConfigured() ? "smtp" : "log";
 
     const result: DigestRunResult = {
         checked: 0,
@@ -994,6 +1111,17 @@ export async function runDueDigests(options: DigestRunOptions = {}): Promise<Dig
 
             if (!user || !user.isActive || !user.email) {
                 result.skippedNoEmail++;
+                await logDigestDeliveryEvent({
+                    userId: setting.userId,
+                    action: "notification_digest_skipped",
+                    digestSettingId: setting.id,
+                    period: digestType,
+                    itemCount: 0,
+                    attempts: 0,
+                    dryRun,
+                    provider,
+                    reason: "missing_user_or_email",
+                });
                 if (!dryRun) {
                     await db
                         .update(schema.emailDigestSettings)
@@ -1020,6 +1148,17 @@ export async function runDueDigests(options: DigestRunOptions = {}): Promise<Dig
 
             if (digest.itemCount === 0) {
                 result.skippedEmpty++;
+                await logDigestDeliveryEvent({
+                    userId: setting.userId,
+                    action: "notification_digest_skipped",
+                    digestSettingId: setting.id,
+                    period: digestType,
+                    itemCount: 0,
+                    attempts: 0,
+                    dryRun,
+                    provider,
+                    reason: "empty_digest",
+                });
                 if (!dryRun) {
                     await db
                         .update(schema.emailDigestSettings)
@@ -1043,6 +1182,18 @@ export async function runDueDigests(options: DigestRunOptions = {}): Promise<Dig
                 }
                 if (!delivery.sent) {
                     result.failed++;
+                    await logDigestDeliveryEvent({
+                        userId: setting.userId,
+                        action: "notification_digest_dead_letter",
+                        digestSettingId: setting.id,
+                        period: digestType,
+                        itemCount: digest.itemCount,
+                        attempts: delivery.attempts,
+                        dryRun,
+                        provider,
+                        reason: "send_failed",
+                        error: delivery.lastError,
+                    });
                     logger.error({
                         userId: setting.userId,
                         digestSettingId: setting.id,
@@ -1054,6 +1205,19 @@ export async function runDueDigests(options: DigestRunOptions = {}): Promise<Dig
                 if (delivery.recovered) {
                     result.recovered++;
                 }
+                if (delivery.attempts > 1) {
+                    await logDigestDeliveryEvent({
+                        userId: setting.userId,
+                        action: "notification_digest_retry",
+                        digestSettingId: setting.id,
+                        period: digestType,
+                        itemCount: digest.itemCount,
+                        attempts: delivery.attempts,
+                        recovered: delivery.recovered,
+                        dryRun,
+                        provider,
+                    });
+                }
 
                 await db
                     .update(schema.emailDigestSettings)
@@ -1062,8 +1226,31 @@ export async function runDueDigests(options: DigestRunOptions = {}): Promise<Dig
             }
 
             result.sent++;
+            await logDigestDeliveryEvent({
+                userId: setting.userId,
+                action: "notification_digest_sent",
+                digestSettingId: setting.id,
+                period: digestType,
+                itemCount: digest.itemCount,
+                attempts: dryRun ? 0 : 1,
+                recovered: false,
+                dryRun,
+                provider,
+            });
         } catch (error) {
             result.failed++;
+            await logDigestDeliveryEvent({
+                userId: setting.userId,
+                action: "notification_digest_dead_letter",
+                digestSettingId: setting.id,
+                period: digestType,
+                itemCount: 0,
+                attempts: 1,
+                dryRun,
+                provider,
+                reason: "send_failed",
+                error: error instanceof Error ? error.message : "Unknown error",
+            });
             logger.error({
                 userId: setting.userId,
                 digestSettingId: setting.id,

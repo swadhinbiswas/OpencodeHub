@@ -1,4 +1,5 @@
 
+import { logger } from "@/lib/logger";
 import { getDatabase, schema } from "@/db";
 import { generateId } from "@/lib/utils";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
@@ -38,7 +39,7 @@ export async function logActivity(
             createdAt: new Date(),
         });
     } catch (error) {
-        console.error("Failed to log activity:", error);
+        logger.error("Failed to log activity:", error);
         // We don't throw here to avoid failing the main request
     }
 }

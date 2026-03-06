@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { getDatabase, schema } from "@/db";
 import { validateBasicAuth } from "@/lib/auth-basic";
 import { canReadRepo, canWriteRepo } from "@/lib/permissions";
@@ -34,11 +35,11 @@ export const ALL: APIRoute = async ({ params, request }) => {
 
   // 2. Auth Check
   const authHeader = request.headers.get("Authorization");
-  console.log(`[GitBackend] Auth check for ${ownerName}/${repoName}: authHeader=${authHeader ? 'present' : 'missing'}`);
+  logger.info(`[GitBackend] Auth check for ${ownerName}/${repoName}: authHeader=${authHeader ? 'present' : 'missing'}`);
   let userId: string | null = null;
   if (authHeader) {
     userId = await validateBasicAuth(authHeader);
-    console.log(`[GitBackend] Auth result: userId=${userId || 'null'}`);
+    logger.info(`[GitBackend] Auth result: userId=${userId || 'null'}`);
   }
 
   // 3. Handle Routes
@@ -50,7 +51,7 @@ export const ALL: APIRoute = async ({ params, request }) => {
   try {
     localRepoPath = await resolveRepoPath(repoData.diskPath);
   } catch (err) {
-    console.error("Failed to resolve repo path:", err);
+    logger.error("Failed to resolve repo path:", err);
     return new Response("Internal Server Error", { status: 500 });
   }
 
@@ -99,7 +100,7 @@ export const ALL: APIRoute = async ({ params, request }) => {
 
     // Log errors
     child.stderr.on("data", (data) => {
-      console.error(`Git error (${service}):`, data.toString());
+      logger.error(`Git error (${service}):`, data.toString());
     });
 
     return new Response(stream as any, {
@@ -145,7 +146,7 @@ export const ALL: APIRoute = async ({ params, request }) => {
 
     // Log errors
     child.stderr.on("data", (data) => {
-      console.error(`Git error (${path}):`, data.toString());
+      logger.error(`Git error (${path}):`, data.toString());
     });
 
     // Handle process exit
@@ -155,24 +156,24 @@ export const ALL: APIRoute = async ({ params, request }) => {
         // Trigger Analysis on successful push
         if (!isUpload) { // git-receive-pack
           try {
-            console.log(`[GitBackend] Push successful, triggering analysis for ${ownerName}/${repoName}`);
+            logger.info(`[GitBackend] Push successful, triggering analysis for ${ownerName}/${repoName}`);
 
             // Trigger Analysis FIRST (while files are still locally present)
             const { analyzeRepository } = await import("@/lib/analysis");
             await analyzeRepository(repoData.id, userId).catch((err) => {
-              console.error(`[GitBackend] Analysis failed for ${ownerName}/${repoName}:`, err);
+              logger.error(`[GitBackend] Analysis failed for ${ownerName}/${repoName}:`, err);
             });
-            console.log(`[GitBackend] Analysis completed for ${ownerName}/${repoName}`);
+            logger.info(`[GitBackend] Analysis completed for ${ownerName}/${repoName}`);
           } catch (err) {
-            console.error("Failed to trigger analysis after push:", err);
+            logger.error("Failed to trigger analysis after push:", err);
           } finally {
             // SYNC BACK TO R2 (Upload and Cleanup)
             // Always run this even if analysis fails
             try {
               await releaseRepo(ownerName, repoName, true);
-              console.log(`Synced ${ownerName}/${repoName} back to R2 after push`);
+              logger.info(`Synced ${ownerName}/${repoName} back to R2 after push`);
             } catch (cleanupErr) {
-              console.error(`[GitBackend] Failed to clean up ${ownerName}/${repoName}:`, cleanupErr);
+              logger.error(`[GitBackend] Failed to clean up ${ownerName}/${repoName}:`, cleanupErr);
             }
           }
         }

@@ -4,129 +4,166 @@
  */
 
 import { relations } from "drizzle-orm";
-import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
-import { labels, milestones } from "./issues";
+import {
+  boolean,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
+import { labels } from "./issues";
+import { prStateDefinitions } from "./pr-states";
 import { repositories } from "./repositories";
 import { users } from "./users";
-import { prStateDefinitions } from "./pr-states";
 
-export const pullRequests = pgTable("pull_requests", {
-  id: text("id").primaryKey(),
-  repositoryId: text("repository_id")
-    .notNull()
-    .references(() => repositories.id, { onDelete: "cascade" }),
-  number: integer("number").notNull(),
-  title: text("title").notNull(),
-  body: text("body"),
-  state: text("state").notNull().default("open"), // open, closed, merged
-  authorId: text("author_id")
-    .notNull()
-    .references(() => users.id),
-  assigneeId: text("assignee_id").references(() => users.id),
-  milestoneId: text("milestone_id"), // Reference handled in relations
+export const pullRequests = pgTable(
+  "pull_requests",
+  {
+    id: text("id").primaryKey(),
+    repositoryId: text("repository_id")
+      .notNull()
+      .references(() => repositories.id, { onDelete: "cascade" }),
+    number: integer("number").notNull(),
+    title: text("title").notNull(),
+    body: text("body"),
+    state: text("state").notNull().default("open"), // open, closed, merged
+    authorId: text("author_id")
+      .notNull()
+      .references(() => users.id),
+    assigneeId: text("assignee_id").references(() => users.id),
+    milestoneId: text("milestone_id"), // Reference handled in relations
 
-  // Source and target
-  headBranch: text("head_branch").notNull(),
-  headSha: text("head_sha").notNull(),
-  headRepositoryId: text("head_repository_id").references(
-    () => repositories.id
-  ),
-  baseBranch: text("base_branch").notNull(),
-  baseSha: text("base_sha").notNull(),
+    // Source and target
+    headBranch: text("head_branch").notNull(),
+    headSha: text("head_sha").notNull(),
+    headRepositoryId: text("head_repository_id").references(
+      () => repositories.id,
+    ),
+    baseBranch: text("base_branch").notNull(),
+    baseSha: text("base_sha").notNull(),
 
-  // Merge info
-  isDraft: boolean("is_draft").default(false),
-  isMerged: boolean("is_merged").default(false),
-  mergedAt: timestamp("merged_at"),
-  mergedById: text("merged_by_id").references(() => users.id),
-  mergeCommitSha: text("merge_commit_sha"),
-  mergeSha: text("merge_sha"),
-  mergeMethod: text("merge_method"), // merge, squash, rebase
+    // Merge info
+    isDraft: boolean("is_draft").default(false),
+    isMerged: boolean("is_merged").default(false),
+    mergedAt: timestamp("merged_at"),
+    mergedById: text("merged_by_id").references(() => users.id),
+    mergeCommitSha: text("merge_commit_sha"),
+    mergeSha: text("merge_sha"),
+    mergeMethod: text("merge_method"), // merge, squash, rebase
 
-  // Stats
-  additions: integer("additions").default(0),
-  deletions: integer("deletions").default(0),
-  changedFiles: integer("changed_files").default(0),
-  commentCount: integer("comment_count").default(0),
-  reviewCount: integer("review_count").default(0),
+    // Stats
+    additions: integer("additions").default(0),
+    deletions: integer("deletions").default(0),
+    changedFiles: integer("changed_files").default(0),
+    commentCount: integer("comment_count").default(0),
+    reviewCount: integer("review_count").default(0),
 
-  // Status
-  mergeable: boolean("mergeable"),
-  mergeableState: text("mergeable_state"), // clean, dirty, blocked, unknown
-  rebaseable: boolean("rebaseable"),
+    // Status
+    mergeable: boolean("mergeable"),
+    mergeableState: text("mergeable_state"), // clean, dirty, blocked, unknown
+    rebaseable: boolean("rebaseable"),
 
-  // Settings
-  maintainerCanModify: boolean("maintainer_can_modify").default(true),
-  allowAutoMerge: boolean("allow_auto_merge").default(false),
-  autoMergeMethod: text("auto_merge_method"),
-  autoMergeEnabledById: text("auto_merge_enabled_by_id").references(() => users.id),
-  autoMergeEnabledAt: timestamp("auto_merge_enabled_at"),
+    // Settings
+    maintainerCanModify: boolean("maintainer_can_modify").default(true),
+    allowAutoMerge: boolean("allow_auto_merge").default(false),
+    autoMergeMethod: text("auto_merge_method"),
+    autoMergeEnabledById: text("auto_merge_enabled_by_id").references(
+      () => users.id,
+    ),
+    autoMergeEnabledAt: timestamp("auto_merge_enabled_at"),
 
-  // Custom workflow state
-  stateId: text("state_id").references(() => prStateDefinitions.id),
-  customStateChangedAt: timestamp("custom_state_changed_at"),
+    // Custom workflow state
+    stateId: text("state_id").references(() => prStateDefinitions.id),
+    customStateChangedAt: timestamp("custom_state_changed_at"),
 
-  closedAt: timestamp("closed_at"),
-  closedById: text("closed_by_id").references(() => users.id),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+    closedAt: timestamp("closed_at"),
+    closedById: text("closed_by_id").references(() => users.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    repoNumberIdx: uniqueIndex("prs_repo_number_idx").on(
+      t.repositoryId,
+      t.number,
+    ),
+    repoStateIdx: index("prs_repo_state_idx").on(t.repositoryId, t.state),
+    authorIdx: index("prs_author_idx").on(t.authorId),
+  }),
+);
 
-export const pullRequestReviews = pgTable("pull_request_reviews", {
-  id: text("id").primaryKey(),
-  pullRequestId: text("pull_request_id")
-    .notNull()
-    .references(() => pullRequests.id, { onDelete: "cascade" }),
-  reviewerId: text("reviewer_id")
-    .notNull()
-    .references(() => users.id),
-  state: text("state").notNull(), // pending, approved, changes_requested, commented, dismissed
-  body: text("body"),
-  commitSha: text("commit_sha"),
-  submittedAt: timestamp("submitted_at"),
-  dismissedAt: timestamp("dismissed_at"),
-  dismissedById: text("dismissed_by_id").references(() => users.id),
-  dismissalReason: text("dismissal_reason"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+export const pullRequestReviews = pgTable(
+  "pull_request_reviews",
+  {
+    id: text("id").primaryKey(),
+    pullRequestId: text("pull_request_id")
+      .notNull()
+      .references(() => pullRequests.id, { onDelete: "cascade" }),
+    reviewerId: text("reviewer_id")
+      .notNull()
+      .references(() => users.id),
+    state: text("state").notNull(), // pending, approved, changes_requested, commented, dismissed
+    body: text("body"),
+    commitSha: text("commit_sha"),
+    submittedAt: timestamp("submitted_at"),
+    dismissedAt: timestamp("dismissed_at"),
+    dismissedById: text("dismissed_by_id").references(() => users.id),
+    dismissalReason: text("dismissal_reason"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    prIdx: index("pr_reviews_pr_idx").on(t.pullRequestId),
+  }),
+);
 
-export const pullRequestComments = pgTable("pull_request_comments", {
-  id: text("id").primaryKey(),
-  pullRequestId: text("pull_request_id")
-    .notNull()
-    .references(() => pullRequests.id, { onDelete: "cascade" }),
-  reviewId: text("review_id").references(() => pullRequestReviews.id),
-  authorId: text("author_id")
-    .notNull()
-    .references(() => users.id),
-  body: text("body").notNull(),
-  path: text("path"), // File path for inline comments
-  line: integer("line"), // Line number
-  side: text("side"), // LEFT, RIGHT
-  startLine: integer("start_line"),
-  startSide: text("start_side"),
-  commitSha: text("commit_sha"),
-  originalCommitSha: text("original_commit_sha"),
-  originalLine: integer("original_line"),
-  inReplyToId: text("in_reply_to_id").references((): any => pullRequestComments.id),
-  reactions: text("reactions"), // JSON
-  isResolved: boolean("is_resolved").default(false),
-  resolvedById: text("resolved_by_id").references(() => users.id),
-  resolvedAt: timestamp("resolved_at"),
-  isEdited: boolean("is_edited").default(false),
-  editedAt: timestamp("edited_at"),
+export const pullRequestComments = pgTable(
+  "pull_request_comments",
+  {
+    id: text("id").primaryKey(),
+    pullRequestId: text("pull_request_id")
+      .notNull()
+      .references(() => pullRequests.id, { onDelete: "cascade" }),
+    reviewId: text("review_id").references(() => pullRequestReviews.id),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => users.id),
+    body: text("body").notNull(),
+    path: text("path"), // File path for inline comments
+    line: integer("line"), // Line number
+    side: text("side"), // LEFT, RIGHT
+    startLine: integer("start_line"),
+    startSide: text("start_side"),
+    commitSha: text("commit_sha"),
+    originalCommitSha: text("original_commit_sha"),
+    originalLine: integer("original_line"),
+    inReplyToId: text("in_reply_to_id").references(
+      (): any => pullRequestComments.id,
+    ),
+    reactions: text("reactions"), // JSON
+    isResolved: boolean("is_resolved").default(false),
+    resolvedById: text("resolved_by_id").references(() => users.id),
+    resolvedAt: timestamp("resolved_at"),
+    isEdited: boolean("is_edited").default(false),
+    editedAt: timestamp("edited_at"),
 
-  // Suggested changes
-  suggestionContent: text("suggestion_content"), // The suggested code replacement
-  suggestionApplied: boolean("suggestion_applied").default(false),
-  suggestionAppliedById: text("suggestion_applied_by_id").references(() => users.id),
-  suggestionAppliedAt: timestamp("suggestion_applied_at"),
-  suggestionCommitSha: text("suggestion_commit_sha"), // Commit where suggestion was applied
+    // Suggested changes
+    suggestionContent: text("suggestion_content"), // The suggested code replacement
+    suggestionApplied: boolean("suggestion_applied").default(false),
+    suggestionAppliedById: text("suggestion_applied_by_id").references(
+      () => users.id,
+    ),
+    suggestionAppliedAt: timestamp("suggestion_applied_at"),
+    suggestionCommitSha: text("suggestion_commit_sha"), // Commit where suggestion was applied
 
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    prIdx: index("pr_comments_pr_idx").on(t.pullRequestId),
+  }),
+);
 
 export const pullRequestLabels = pgTable("pull_request_labels", {
   id: text("id").primaryKey(),
@@ -161,22 +198,29 @@ export const pullRequestReviewers = pgTable("pull_request_reviewers", {
   requestedAt: timestamp("requested_at").notNull().defaultNow(),
 });
 
-export const pullRequestChecks = pgTable("pull_request_checks", {
-  id: text("id").primaryKey(),
-  pullRequestId: text("pull_request_id")
-    .notNull()
-    .references(() => pullRequests.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  status: text("status").notNull(), // queued, in_progress, completed
-  conclusion: text("conclusion"), // success, failure, neutral, cancelled, timed_out, action_required
-  headSha: text("head_sha").notNull(),
-  externalId: text("external_id"),
-  detailsUrl: text("details_url"),
-  output: text("output"), // JSON { title, summary, text }
-  startedAt: timestamp("started_at"),
-  completedAt: timestamp("completed_at"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const pullRequestChecks = pgTable(
+  "pull_request_checks",
+  {
+    id: text("id").primaryKey(),
+    pullRequestId: text("pull_request_id")
+      .notNull()
+      .references(() => pullRequests.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    status: text("status").notNull(), // queued, in_progress, completed
+    conclusion: text("conclusion"), // success, failure, neutral, cancelled, timed_out, action_required
+    headSha: text("head_sha").notNull(),
+    externalId: text("external_id"),
+    detailsUrl: text("details_url"),
+    output: text("output"), // JSON { title, summary, text }
+    startedAt: timestamp("started_at"),
+    completedAt: timestamp("completed_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    prIdx: index("pr_checks_pr_idx").on(t.pullRequestId),
+    headShaIdx: index("pr_checks_head_sha_idx").on(t.headSha),
+  }),
+);
 
 // Relations
 export const pullRequestsRelations = relations(
@@ -216,7 +260,7 @@ export const pullRequestsRelations = relations(
       fields: [pullRequests.stateId],
       references: [prStateDefinitions.id],
     }),
-  })
+  }),
 );
 
 export const pullRequestReviewsRelations = relations(
@@ -231,7 +275,7 @@ export const pullRequestReviewsRelations = relations(
       references: [users.id],
     }),
     comments: many(pullRequestComments),
-  })
+  }),
 );
 
 export const pullRequestCommentsRelations = relations(
@@ -249,7 +293,7 @@ export const pullRequestCommentsRelations = relations(
       fields: [pullRequestComments.authorId],
       references: [users.id],
     }),
-  })
+  }),
 );
 
 export const pullRequestLabelsRelations = relations(
@@ -263,7 +307,7 @@ export const pullRequestLabelsRelations = relations(
       fields: [pullRequestLabels.labelId],
       references: [labels.id],
     }),
-  })
+  }),
 );
 
 export const pullRequestAssigneesRelations = relations(
@@ -277,7 +321,7 @@ export const pullRequestAssigneesRelations = relations(
       fields: [pullRequestAssignees.userId],
       references: [users.id],
     }),
-  })
+  }),
 );
 
 export const pullRequestReviewersRelations = relations(
@@ -291,7 +335,7 @@ export const pullRequestReviewersRelations = relations(
       fields: [pullRequestReviewers.userId],
       references: [users.id],
     }),
-  })
+  }),
 );
 
 export const pullRequestChecksRelations = relations(
@@ -301,7 +345,7 @@ export const pullRequestChecksRelations = relations(
       fields: [pullRequestChecks.pullRequestId],
       references: [pullRequests.id],
     }),
-  })
+  }),
 );
 
 // Types

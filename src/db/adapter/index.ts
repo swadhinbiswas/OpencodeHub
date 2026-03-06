@@ -11,7 +11,7 @@ import { DatabaseAdapter, DatabaseConfig, DatabaseDriver } from "./types";
 
 // Lazy-loaded adapters for optional dependencies
 const adapterLoaders: Record<
-  DatabaseDriver,
+  string,
   () => Promise<new (config: DatabaseConfig) => DatabaseAdapter>
 > = {
   sqlite: async () => SQLiteAdapter,
@@ -19,61 +19,14 @@ const adapterLoaders: Record<
     const { PostgresAdapter } = await import("./postgres");
     return PostgresAdapter;
   },
-  mysql: async () => {
-    const { MySQLAdapter } = await import("./mysql");
-    return MySQLAdapter;
-  },
-  mongodb: async () => {
-    const { MongoDBAdapter } = await import("./mongodb");
-    return MongoDBAdapter;
-  },
   turso: async () => {
     const { TursoAdapter } = await import("./turso");
     return TursoAdapter;
   },
-  planetscale: async () => {
-    const { MySQLAdapter } = await import("./mysql");
-    return MySQLAdapter;
-  },
-  redis: async () => {
-    const { RedisAdapter } = await import("./redis");
-    return RedisAdapter;
-  },
-  firestore: async () => {
-    const { FirestoreAdapter } = await import("./firestore");
-    return FirestoreAdapter;
-  },
-  dynamodb: async () => {
-    const { DynamoDBAdapter } = await import("./dynamodb");
-    return DynamoDBAdapter;
-  },
-  neo4j: async () => {
-    const { Neo4jAdapter } = await import("./neo4j");
-    return Neo4jAdapter;
-  },
   cockroachdb: async () => {
+    // CockroachDB uses the Postgres wire protocol
     const { PostgresAdapter } = await import("./postgres");
     return PostgresAdapter;
-  },
-  cassandra: async () => {
-    const { CassandraAdapter } = await import("./cassandra");
-    return CassandraAdapter;
-  },
-  scylladb: async () => {
-    const { ScyllaDBAdapter } = await import("./scylladb");
-    return ScyllaDBAdapter;
-  },
-  surrealdb: async () => {
-    const { SurrealDBAdapter } = await import("./surrealdb");
-    return SurrealDBAdapter;
-  },
-  tidb: async () => {
-    const { MySQLAdapter } = await import("./mysql");
-    return MySQLAdapter;
-  },
-  mariadb: async () => {
-    const { MySQLAdapter } = await import("./mysql");
-    return MySQLAdapter;
   },
   custom: async () => {
     throw new Error("Custom adapter must be provided explicitly");
@@ -81,7 +34,7 @@ const adapterLoaders: Record<
 };
 
 export async function createAdapter(
-  config: DatabaseConfig
+  config: DatabaseConfig,
 ): Promise<DatabaseAdapter> {
   const loader = adapterLoaders[config.driver];
 
@@ -164,7 +117,7 @@ export class DatabaseManager {
   private adapter: DatabaseAdapter | null = null;
   private config: DatabaseConfig | null = null;
 
-  private constructor() { }
+  private constructor() {}
 
   static getInstance(): DatabaseManager {
     if (!DatabaseManager.instance) {

@@ -2,22 +2,15 @@
  * Auth API - Get current user
  */
 import { getDatabase, schema } from "@/db";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { users } from "@/db/schema";
-import {
-  notFound,
-  parseBody,
-  serverError,
-  success,
-  unauthorized,
-} from "@/lib/api";
+import { notFound, parseBody, success, unauthorized } from "@/lib/api";
 import { getUserFromRequest } from "@/lib/auth";
-import { now } from "@/lib/utils";
+import { withErrorHandler } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 import type { APIRoute } from "astro";
 import { eq } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { z } from "zod";
-import { logger } from "@/lib/logger";
-import { withErrorHandler } from "@/lib/errors";
 
 const updateProfileSchema = z.object({
   displayName: z.string().max(100).optional(),
@@ -74,7 +67,8 @@ export const PATCH: APIRoute = withErrorHandler(async ({ request }) => {
   const parsed = await parseBody(request, updateProfileSchema);
   if ("error" in parsed) return parsed.error;
 
-  const { displayName, bio, location, website, company, avatarUrl } = parsed.data;
+  const { displayName, bio, location, website, company, avatarUrl } =
+    parsed.data;
   const db = getDatabase() as NodePgDatabase<typeof schema>;
 
   // Update user
@@ -96,22 +90,36 @@ export const PATCH: APIRoute = withErrorHandler(async ({ request }) => {
   return success({ message: "Profile updated successfully" });
 });
 
-export const DELETE: APIRoute = withErrorHandler(async ({ request, cookies }) => {
-  // Get user from token
-  const tokenPayload = await getUserFromRequest(request);
-  if (!tokenPayload) {
-    return unauthorized();
-  }
+export const DELETE: APIRoute = withErrorHandler(
+  async ({ request, cookies }) => {
+    // Get user from token
+    const tokenPayload = await getUserFromRequest(request);
+    if (!tokenPayload) {
+      return unauthorized();
+    }
 
-  const db = getDatabase() as NodePgDatabase<typeof schema>;
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
 
-  // Delete user
-  await db.delete(users).where(eq(users.id, tokenPayload.userId));
+    // Delete user
+    await db.delete(users).where(eq(users.id, tokenPayload.userId));
 
-  // Clear cookie
-  cookies.delete("token", { path: "/" }); // check token name, login sets "och_session"
+    // Clear cookie
+    cookies.delete("token", { path: "/" }); // check token name, login sets "och_session"
 
-  logger.info({ userId: tokenPayload.userId }, "User account deleted");
+    // Audit log
+    const { logAudit, getRequestMeta } = await import("@/lib/audit");
+    const { ip, userAgent } = getRequestMeta(request);
+    await logAudit({
+      userId: tokenPayload.userId,
+      action: "user.delete",
+      actorIp: ip,
+      actorUserAgent: userAgent,
+      targetType: "user",
+      targetId: tokenPayload.userId,
+    });
 
-  return success({ message: "Account deleted successfully" });
-});
+    logger.info({ userId: tokenPayload.userId }, "User account deleted");
+
+    return success({ message: "Account deleted successfully" });
+  },
+);

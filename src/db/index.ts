@@ -1,30 +1,44 @@
+import { logger } from "@/lib/logger";
+import { createClient } from "@libsql/client";
 import Database from "better-sqlite3";
 import { BetterSQLite3Database, drizzle } from "drizzle-orm/better-sqlite3";
 import { drizzle as drizzleLibSQL, LibSQLDatabase } from "drizzle-orm/libsql";
-import { drizzle as drizzlePg, NodePgDatabase } from "drizzle-orm/node-postgres";
-import { createClient } from "@libsql/client";
-import pg from "pg";
+import {
+  drizzle as drizzlePg,
+  NodePgDatabase,
+} from "drizzle-orm/node-postgres";
 import { existsSync, mkdirSync } from "fs";
 import { dirname } from "path";
-import { logger } from "@/lib/logger";
+import pg from "pg";
 import * as schema from "./schema";
 
 // Database driver types
-export type DatabaseDriver = "sqlite" | "postgres" | "mysql" | "libsql" | "turso";
+export type DatabaseDriver =
+  | "sqlite"
+  | "postgres"
+  | "mysql"
+  | "libsql"
+  | "turso";
 
-let db: BetterSQLite3Database<typeof schema> | LibSQLDatabase<typeof schema> | NodePgDatabase<typeof schema> | null =
-  null;
+let db:
+  | BetterSQLite3Database<typeof schema>
+  | LibSQLDatabase<typeof schema>
+  | NodePgDatabase<typeof schema>
+  | null = null;
 
 /**
  * Get database configuration from environment
  */
 function getDbConfig(): { driver: DatabaseDriver; url: string } {
-  // Use import.meta.env for Astro/Vite, fallback to process.env for scripts
-  const envDriver = import.meta.env?.DATABASE_DRIVER || process.env.DATABASE_DRIVER;
+  // Prefer Astro/Vite env (loaded from .env), then fallback to process.env for scripts.
+  const envDriver =
+    import.meta.env?.DATABASE_DRIVER || process.env.DATABASE_DRIVER;
   const envUrl = import.meta.env?.DATABASE_URL || process.env.DATABASE_URL;
 
-  const driver = (envDriver || "sqlite") as DatabaseDriver;
-  const url = envUrl || "./data/opencodehub.db";
+  // Default to PostgreSQL since all schemas use pgTable
+  const driver = (envDriver || "postgres") as DatabaseDriver;
+  const url =
+    envUrl || "postgresql://opencodehub:opencodehub@localhost:5432/opencodehub";
 
   return { driver, url };
 }
@@ -51,7 +65,8 @@ export function getDatabase():
 
   // Support for Turso/LibSQL
   if (driver === "libsql" || driver === "turso") {
-    const authToken = import.meta.env?.DATABASE_AUTH_TOKEN || process.env.DATABASE_AUTH_TOKEN;
+    const authToken =
+      import.meta.env?.DATABASE_AUTH_TOKEN || process.env.DATABASE_AUTH_TOKEN;
     const client = createClient({
       url,
       authToken,
@@ -64,26 +79,28 @@ export function getDatabase():
   // Support for PostgreSQL
   if (driver === "postgres") {
     const sslEnabled =
-      isTruthy(process.env.DATABASE_SSL) ||
-      /[?&]sslmode=require/i.test(url);
+      isTruthy(process.env.DATABASE_SSL) || /[?&]sslmode=require/i.test(url);
     const rejectUnauthorized = shouldRejectUnauthorized(
-      process.env.DATABASE_SSL_REJECT_UNAUTHORIZED
+      process.env.DATABASE_SSL_REJECT_UNAUTHORIZED,
     );
 
-    const cleanUrl = url.replace(/([?&])sslmode=require(&|$)/i, (_, prefix, suffix) =>
-      suffix === "&" ? prefix : ""
+    const cleanUrl = url.replace(
+      /([?&])sslmode=require(&|$)/i,
+      (_, prefix, suffix) => (suffix === "&" ? prefix : ""),
     );
     const pool = new pg.Pool({
       connectionString: cleanUrl,
-      ssl: sslEnabled
-        ? { rejectUnauthorized }
-        : undefined,
+      ssl: sslEnabled ? { rejectUnauthorized } : undefined,
       max: parseInt(process.env.DATABASE_POOL_SIZE || "10", 10),
     });
     db = drizzlePg(pool, { schema });
     logger.info(
-      { driver: "postgres", sslEnabled, rejectUnauthorized: sslEnabled ? rejectUnauthorized : undefined },
-      "Database connected (PostgreSQL)"
+      {
+        driver: "postgres",
+        sslEnabled,
+        rejectUnauthorized: sslEnabled ? rejectUnauthorized : undefined,
+      },
+      "Database connected (PostgreSQL)",
     );
     return db;
   }
@@ -92,11 +109,12 @@ export function getDatabase():
   if (driver === "mysql") {
     logger.warn(
       { driver, url },
-      "MySQL driver validation pending. Falling back to SQLite."
+      "MySQL driver validation pending. Falling back to SQLite.",
     );
   }
 
-  const dbPath = (driver === "sqlite" || driver === "mysql") ? url : "./data/opencodehub.db";
+  const dbPath =
+    driver === "sqlite" || driver === "mysql" ? url : "./data/opencodehub.db";
 
   // Ensure directory exists for local SQLite
   if (!url.includes("://")) {
@@ -136,12 +154,12 @@ export function isDatabaseConnected(): boolean {
  */
 export async function closeDatabase(): Promise<void> {
   if (db) {
-    if ('close' in db) {
+    if ("close" in db) {
       // Handle SQLite close
       // @ts-ignore
       db.close();
     }
-    // For PG pool, we might need to close the pool if we had access to it, 
+    // For PG pool, we might need to close the pool if we had access to it,
     // but Drizzle doesn't expose it directly on the db instance easily without type casting.
     // In serverless/long-running app, closing might not be strictly necessary unless ensuring graceful shutdown.
 

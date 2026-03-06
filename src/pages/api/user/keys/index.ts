@@ -1,18 +1,12 @@
 import { getDatabase, schema } from "@/db";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { sshKeys } from "@/db/schema";
-import {
-  badRequest,
-  parseBody,
-  serverError,
-  success,
-  unauthorized,
-} from "@/lib/api";
+import { badRequest, parseBody, success, unauthorized } from "@/lib/api";
 import { getUserFromRequest } from "@/lib/auth";
-import { generateId, now } from "@/lib/utils";
+import { generateId } from "@/lib/utils";
 import type { APIRoute } from "astro";
 import crypto from "crypto";
 import { eq } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { z } from "zod";
 
 import { withErrorHandler } from "@/lib/errors";
@@ -55,7 +49,7 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
     !key.startsWith("ecdsa-sha2-nistp256")
   ) {
     return badRequest(
-      "Invalid SSH key format. Must start with ssh-rsa, ssh-ed25519, or ecdsa-sha2-nistp256"
+      "Invalid SSH key format. Must start with ssh-rsa, ssh-ed25519, or ecdsa-sha2-nistp256",
     );
   }
 
@@ -88,6 +82,20 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
   };
 
   await db.insert(sshKeys).values(newKey);
+
+  // Audit log
+  const { logAudit, getRequestMeta } = await import("@/lib/audit");
+  const { ip, userAgent } = getRequestMeta(request);
+  await logAudit({
+    userId: tokenPayload.userId,
+    action: "ssh_key.create",
+    actorIp: ip,
+    actorUserAgent: userAgent,
+    targetType: "ssh_key",
+    targetId: newKey.id,
+    targetName: title,
+    data: { keyType, fingerprint },
+  });
 
   logger.info({ userId: tokenPayload.userId, fingerprint }, "SSH key added");
 

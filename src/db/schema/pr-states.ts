@@ -31,6 +31,7 @@ export const prStateDefinitions = pgTable("pr_state_definitions", {
     isDefault: boolean("is_default").default(false), // Default state for new PRs
     isFinal: boolean("is_final").default(false), // States like "merged" or "closed"
     allowMerge: boolean("allow_merge").default(false), // Can merge from this state
+    requireCodeOwner: boolean("require_code_owner").default(false), // Must satisfy CODEOWNERS before entering this state
 
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),

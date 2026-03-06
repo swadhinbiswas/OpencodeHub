@@ -1550,6 +1550,93 @@ export const openApiSpec = {
                 },
             },
         },
+        "/admin/plugins": {
+            get: {
+                tags: ["Admin"],
+                summary: "List loaded plugins",
+                description: "Returns plugin runtime state, health, and effective config for administrators.",
+                security: [{ bearerAuth: [] }],
+                responses: {
+                    200: { description: "Plugin list returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+            post: {
+                tags: ["Admin"],
+                summary: "Load plugin from path",
+                description: "Loads a plugin module from a server-local path and registers it in the plugin manager.",
+                security: [{ bearerAuth: [] }],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                required: ["pluginPath"],
+                                properties: {
+                                    pluginPath: { type: "string" },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    200: { description: "Plugin loaded" },
+                    400: { description: "Invalid payload or plugin load failed", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/admin/plugins/{name}": {
+            get: {
+                tags: ["Admin"],
+                summary: "Get plugin runtime details",
+                description: "Returns plugin metadata, runtime state, and effective runtime config for a loaded plugin.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "name", in: "path", required: true, schema: { type: "string" } },
+                ],
+                responses: {
+                    200: { description: "Plugin details returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Plugin not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+            patch: {
+                tags: ["Admin"],
+                summary: "Manage plugin runtime state",
+                description: "Enables, disables, reloads, unloads, or updates runtime config for a loaded plugin.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "name", in: "path", required: true, schema: { type: "string" } },
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                required: ["action"],
+                                properties: {
+                                    action: { type: "string", enum: ["enable", "disable", "reload", "unload"] },
+                                    config: { type: "object", additionalProperties: true },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    200: { description: "Plugin operation applied" },
+                    400: { description: "Invalid request or operation failed", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    403: { description: "Forbidden", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Plugin not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
         "/user/email/test": {
             post: {
                 tags: ["Notifications"],
@@ -1601,7 +1688,7 @@ export const openApiSpec = {
             get: {
                 tags: ["Notifications"],
                 summary: "List notifications",
-                description: "Returns notifications for the authenticated user. Supports `filter=unread|read|archived|all|blocking` and `prioritize=true` for smart priority ordering.",
+                description: "Returns notifications for the authenticated user. Supports smart prioritization/personalization and channel-level routing filters.",
                 security: [{ bearerAuth: [] }],
                 parameters: [
                     {
@@ -1619,6 +1706,18 @@ export const openApiSpec = {
                         required: false,
                         schema: { type: "boolean" },
                     },
+                    {
+                        name: "personalize",
+                        in: "query",
+                        required: false,
+                        schema: { type: "boolean" },
+                    },
+                    {
+                        name: "channel",
+                        in: "query",
+                        required: false,
+                        schema: { type: "string", enum: ["in_app", "email", "slack", "browser_push"] },
+                    },
                 ],
                 responses: {
                     200: { description: "Notifications returned" },
@@ -1631,12 +1730,129 @@ export const openApiSpec = {
             get: {
                 tags: ["Notifications"],
                 summary: "Get blocking notification summary",
-                description: "Returns aggregate blocking-alert counts and top prioritized recent blocking notifications for the authenticated user.",
+                description: "Returns aggregate blocking-alert counts, stale blocking volume, and channel routing breakdown for prioritized blocking notifications.",
                 security: [{ bearerAuth: [] }],
                 responses: {
                     200: { description: "Blocking summary returned" },
                     401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     500: { description: "Summary load failed", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/notifications/blocking/escalations": {
+            get: {
+                tags: ["Notifications"],
+                summary: "Preview blocking escalation candidates",
+                description: "Returns unread blocking notifications older than `thresholdHours` with proposed routing channels.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    {
+                        name: "thresholdHours",
+                        in: "query",
+                        required: false,
+                        schema: { type: "integer", minimum: 1, maximum: 168, default: 4 },
+                    },
+                ],
+                responses: {
+                    200: { description: "Blocking escalation preview returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+            post: {
+                tags: ["Notifications"],
+                summary: "Execute blocking notification escalations",
+                description: "Escalates stale blocking notifications and records routing actions in audit logs.",
+                security: [{ bearerAuth: [] }],
+                requestBody: {
+                    required: false,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    thresholdHours: { type: "integer", minimum: 1, maximum: 168, default: 4 },
+                                    channels: {
+                                        type: "array",
+                                        items: { type: "string", enum: ["in_app", "email", "slack", "browser_push"] },
+                                    },
+                                    dryRun: { type: "boolean", default: true },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    200: { description: "Blocking escalations processed" },
+                    400: { description: "Invalid payload", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/user/notification-digests/analytics": {
+            get: {
+                tags: ["Notifications"],
+                summary: "Get digest delivery analytics",
+                description: "Returns provider-level digest delivery analytics and dead-letter summaries for the authenticated user.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    {
+                        name: "days",
+                        in: "query",
+                        required: false,
+                        schema: { type: "integer", minimum: 1, maximum: 365, default: 30 },
+                    },
+                ],
+                responses: {
+                    200: { description: "Digest analytics returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/user/notification-digests/dead-letter": {
+            get: {
+                tags: ["Notifications"],
+                summary: "List digest dead-letter entries",
+                description: "Returns recent dead-letter digest delivery failures for the authenticated user.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    {
+                        name: "days",
+                        in: "query",
+                        required: false,
+                        schema: { type: "integer", minimum: 1, maximum: 365, default: 30 },
+                    },
+                ],
+                responses: {
+                    200: { description: "Dead-letter entries returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/user/notification-digests/dead-letter/retry": {
+            post: {
+                tags: ["Notifications"],
+                summary: "Retry digest dead-letter delivery",
+                description: "Triggers an immediate digest retry for the authenticated user and records the retry request in audit logs.",
+                security: [{ bearerAuth: [] }],
+                requestBody: {
+                    required: false,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    period: { type: "string", enum: ["daily", "weekly"] },
+                                    maxRetries: { type: "integer", minimum: 0, maximum: 5 },
+                                    dryRun: { type: "boolean", default: false },
+                                },
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    200: { description: "Dead-letter retry executed" },
+                    400: { description: "Invalid payload", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                 },
             },
         },
@@ -1671,6 +1887,7 @@ export const openApiSpec = {
                     { name: "repo", in: "path", required: true, schema: { type: "string" } },
                     { name: "days", in: "query", required: false, schema: { type: "integer", minimum: 7, maximum: 365, default: 30 } },
                     { name: "bucket", in: "query", required: false, schema: { type: "string", enum: ["day", "week"], default: "day" } },
+                    { name: "forecastPoints", in: "query", required: false, schema: { type: "integer", minimum: 0, maximum: 26, default: 0 } },
                 ],
                 responses: {
                     200: { description: "Merge frequency metrics returned" },
@@ -1684,7 +1901,7 @@ export const openApiSpec = {
             get: {
                 tags: ["Analytics"],
                 summary: "Get developer workload insights",
-                description: "Returns repository-scoped workload scores and summary counters for contributors.",
+                description: "Returns repository-scoped workload scores with trend intelligence (distribution, concentration, percentiles) and actionable recommendations.",
                 security: [{ bearerAuth: [] }],
                 parameters: [
                     { name: "owner", in: "path", required: true, schema: { type: "string" } },
@@ -1874,6 +2091,42 @@ export const openApiSpec = {
                 ],
                 responses: {
                     200: { description: "Required reviewer status returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository or pull request not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/repos/{owner}/{repo}/pulls/{number}/api-changes": {
+            get: {
+                tags: ["Pull Requests"],
+                summary: "Get pull request API change detections",
+                description: "Returns stored API change detections for a pull request, including breaking change flags and confidence metadata.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "number", in: "path", required: true, schema: { type: "integer" } },
+                ],
+                responses: {
+                    200: { description: "API changes returned" },
+                    401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                    404: { description: "Repository or pull request not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+                },
+            },
+        },
+        "/repos/{owner}/{repo}/pulls/{number}/codeowner-enforcement": {
+            get: {
+                tags: ["Pull Requests"],
+                summary: "Get CODEOWNERS enforcement status",
+                description: "Returns CODEOWNERS enforcement readiness for a pull request including blocking files and approval coverage details.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "owner", in: "path", required: true, schema: { type: "string" } },
+                    { name: "repo", in: "path", required: true, schema: { type: "string" } },
+                    { name: "number", in: "path", required: true, schema: { type: "integer" } },
+                ],
+                responses: {
+                    200: { description: "CODEOWNERS enforcement status returned" },
                     401: { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                     404: { description: "Repository or pull request not found", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
                 },

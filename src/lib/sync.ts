@@ -3,6 +3,7 @@
  * Sync local Git state with remote stacks and vice versa
  */
 
+import { logger } from "@/lib/logger";
 import { eq, and, desc } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { getDatabase, schema } from "@/db";
@@ -95,7 +96,7 @@ export async function getBranchSyncStatus(
             lastSyncedAt: new Date(),
         };
     } catch (error) {
-        console.error("Error getting sync status:", error);
+        logger.error("Error getting sync status:", error);
         return {
             localBranch: branchName,
             remoteBranch: null,
@@ -173,7 +174,7 @@ export async function pushStackToRemote(
             syncedBranches,
         };
     } catch (error) {
-        console.error("Error pushing stack:", error);
+        logger.error("Error pushing stack:", error);
         return {
             success: false,
             message: error instanceof Error ? error.message : "Unknown error",
@@ -251,7 +252,7 @@ export async function pullStackFromRemote(
             syncedBranches,
         };
     } catch (error) {
-        console.error("Error pulling stack:", error);
+        logger.error("Error pulling stack:", error);
         return {
             success: false,
             message: error instanceof Error ? error.message : "Unknown error",
@@ -392,7 +393,7 @@ export async function detectLocalStack(
             suggestedOrder: branchDates.map(b => b.branch),
         };
     } catch (error) {
-        console.error("Error detecting stack:", error);
+        logger.error("Error detecting stack:", error);
         return { branches: [], suggestedOrder: [] };
     }
 }

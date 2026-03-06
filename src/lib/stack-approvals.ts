@@ -4,231 +4,265 @@
  */
 
 import { getDatabase, schema } from "@/db";
-import { eq, and, inArray } from "drizzle-orm";
-import { getStack } from "./stacks";
-import { logger } from "./logger";
 import crypto from "crypto";
+import { and, eq, inArray } from "drizzle-orm";
+import { logger } from "./logger";
+import { getStack } from "./stacks";
 
 export interface StackApprovalStatus {
-    stackId: string;
-    allApproved: boolean;
-    summary: {
-        totalPrs: number;
-        approvedPrs: number;
-        pendingPrs: number;
-        totalMissingApprovals: number;
-        totalMissingRequiredReviewerApprovals: number;
-    };
-    prs: {
-        prId: string;
-        prNumber: number;
-        title: string;
-        isApproved: boolean;
-        approvalCount: number;
-        requiredApprovals: number;
-        missingApprovals: number;
-        changesRequested: boolean;
-        requestedReviewers: {
-            userId: string;
-            username?: string;
-            isRequired: boolean;
-        }[];
-        missingRequiredReviewers: {
-            userId: string;
-            username?: string;
-        }[];
+  stackId: string;
+  allApproved: boolean;
+  summary: {
+    totalPrs: number;
+    approvedPrs: number;
+    pendingPrs: number;
+    totalMissingApprovals: number;
+    totalMissingRequiredReviewerApprovals: number;
+  };
+  prs: {
+    prId: string;
+    prNumber: number;
+    title: string;
+    isApproved: boolean;
+    approvalCount: number;
+    requiredApprovals: number;
+    missingApprovals: number;
+    changesRequested: boolean;
+    requestedReviewers: {
+      userId: string;
+      username?: string;
+      isRequired: boolean;
     }[];
+    missingRequiredReviewers: {
+      userId: string;
+      username?: string;
+    }[];
+  }[];
 }
 
 /**
  * Get approval status for an entire stack
  */
-export async function getStackApprovalStatus(stackId: string): Promise<StackApprovalStatus | null> {
-    const stack = await getStack(stackId);
-    if (!stack) return null;
+export async function getStackApprovalStatus(
+  stackId: string,
+): Promise<StackApprovalStatus | null> {
+  const stack = await getStack(stackId);
+  if (!stack) return null;
 
-    const db = getDatabase();
-    const reviewRequirements = await db.query.reviewRequirements.findFirst({
-        where: eq(schema.reviewRequirements.repositoryId, stack.stack.repositoryId),
-    });
+  const db = getDatabase();
+  const reviewRequirements = await db.query.reviewRequirements.findFirst({
+    where: eq(schema.reviewRequirements.repositoryId, stack.stack.repositoryId),
+  });
 
-    const rules = await db.query.branchProtection.findMany({
-        where: and(
-            eq(schema.branchProtection.repositoryId, stack.stack.repositoryId),
-            eq(schema.branchProtection.active, true)
-        )
-    });
+  const rules = await db.query.branchProtection.findMany({
+    where: and(
+      eq(schema.branchProtection.repositoryId, stack.stack.repositoryId),
+      eq(schema.branchProtection.active, true),
+    ),
+  });
 
-    const prs: StackApprovalStatus["prs"] = [];
+  const prs: StackApprovalStatus["prs"] = [];
 
-    for (const entry of stack.entries) {
-        const reviews = await db.query.pullRequestReviews.findMany({
-            where: eq(schema.pullRequestReviews.pullRequestId, entry.pr.id),
-        });
-        const requestedReviewers = await db.query.pullRequestReviewers.findMany({
-            where: eq(schema.pullRequestReviewers.pullRequestId, entry.pr.id),
-            with: {
-                user: {
-                    columns: {
-                        username: true,
-                    },
-                },
-            },
-        });
+  // Batch fetch all reviews and reviewers for all PRs in the stack
+  const allPrIds = stack.entries.map((e) => e.pr.id);
+  const allReviews =
+    allPrIds.length > 0
+      ? await db.query.pullRequestReviews.findMany({
+          where: inArray(schema.pullRequestReviews.pullRequestId, allPrIds),
+        })
+      : [];
+  const allReviewers =
+    allPrIds.length > 0
+      ? await db.query.pullRequestReviewers.findMany({
+          where: inArray(schema.pullRequestReviewers.pullRequestId, allPrIds),
+          with: { user: { columns: { username: true } } },
+        })
+      : [];
 
-        const latestByReviewer = new Map<string, typeof reviews[number]>();
-        for (const review of reviews) {
-            const previous = latestByReviewer.get(review.reviewerId);
-            const reviewTime = review.submittedAt || review.createdAt || new Date(0);
-            const previousTime = previous
-                ? (previous.submittedAt || previous.createdAt || new Date(0))
-                : new Date(0);
-            if (!previous || reviewTime >= previousTime) {
-                latestByReviewer.set(review.reviewerId, review);
-            }
-        }
+  // Group by PR ID in memory
+  const reviewsByPr = new Map<string, typeof allReviews>();
+  for (const review of allReviews) {
+    const list = reviewsByPr.get(review.pullRequestId) || [];
+    list.push(review);
+    reviewsByPr.set(review.pullRequestId, list);
+  }
+  const reviewersByPr = new Map<string, typeof allReviewers>();
+  for (const reviewer of allReviewers) {
+    const list = reviewersByPr.get(reviewer.pullRequestId) || [];
+    list.push(reviewer);
+    reviewersByPr.set(reviewer.pullRequestId, list);
+  }
 
-        const latestReviews = [...latestByReviewer.values()];
-        const approvals = latestReviews.filter(r => r.state === "approved");
-        const changesRequested = latestReviews.some(r => r.state === "changes_requested");
+  for (const entry of stack.entries) {
+    const reviews = reviewsByPr.get(entry.pr.id) || [];
+    const requestedReviewers = reviewersByPr.get(entry.pr.id) || [];
 
-        const matchingRule = rules.find(rule => {
-            if (rule.pattern === entry.pr.baseBranch) return true;
-            if (rule.pattern.endsWith("*")) {
-                return entry.pr.baseBranch.startsWith(rule.pattern.slice(0, -1));
-            }
-            return false;
-        });
-
-        const requiredApprovals = Math.max(
-            reviewRequirements?.minApprovals ?? 0,
-            matchingRule ? (matchingRule.requiredApprovals ?? 1) : 0
-        );
-        const missingApprovals = Math.max(requiredApprovals - approvals.length, 0);
-        const missingRequiredReviewers = requestedReviewers
-            .filter((reviewer) => reviewer.isRequired)
-            .filter((reviewer) => latestByReviewer.get(reviewer.userId)?.state !== "approved")
-            .map((reviewer) => ({
-                userId: reviewer.userId,
-                username: reviewer.user?.username,
-            }));
-
-        prs.push({
-            prId: entry.pr.id,
-            prNumber: entry.pr.number,
-            title: entry.pr.title,
-            isApproved: approvals.length >= requiredApprovals && !changesRequested,
-            approvalCount: approvals.length,
-            requiredApprovals,
-            missingApprovals: changesRequested ? requiredApprovals : missingApprovals,
-            changesRequested,
-            requestedReviewers: requestedReviewers.map((reviewer) => ({
-                userId: reviewer.userId,
-                username: reviewer.user?.username,
-                isRequired: Boolean(reviewer.isRequired),
-            })),
-            missingRequiredReviewers,
-        });
+    const latestByReviewer = new Map<string, (typeof reviews)[number]>();
+    for (const review of reviews) {
+      const previous = latestByReviewer.get(review.reviewerId);
+      const reviewTime = review.submittedAt || review.createdAt || new Date(0);
+      const previousTime = previous
+        ? previous.submittedAt || previous.createdAt || new Date(0)
+        : new Date(0);
+      if (!previous || reviewTime >= previousTime) {
+        latestByReviewer.set(review.reviewerId, review);
+      }
     }
 
-    const approvedPrs = prs.filter((pr) => pr.isApproved).length;
-    const pendingPrs = prs.length - approvedPrs;
-    const totalMissingApprovals = prs.reduce((total, pr) => total + pr.missingApprovals, 0);
-    const totalMissingRequiredReviewerApprovals = prs.reduce(
-        (total, pr) => total + pr.missingRequiredReviewers.length,
-        0
+    const latestReviews = [...latestByReviewer.values()];
+    const approvals = latestReviews.filter((r) => r.state === "approved");
+    const changesRequested = latestReviews.some(
+      (r) => r.state === "changes_requested",
     );
 
-    return {
-        stackId,
-        allApproved: prs.every(pr => pr.isApproved),
-        summary: {
-            totalPrs: prs.length,
-            approvedPrs,
-            pendingPrs,
-            totalMissingApprovals,
-            totalMissingRequiredReviewerApprovals,
-        },
-        prs,
-    };
+    const matchingRule = rules.find((rule) => {
+      if (rule.pattern === entry.pr.baseBranch) return true;
+      if (rule.pattern.endsWith("*")) {
+        return entry.pr.baseBranch.startsWith(rule.pattern.slice(0, -1));
+      }
+      return false;
+    });
+
+    const requiredApprovals = Math.max(
+      reviewRequirements?.minApprovals ?? 0,
+      matchingRule ? (matchingRule.requiredApprovals ?? 1) : 0,
+    );
+    const missingApprovals = Math.max(requiredApprovals - approvals.length, 0);
+    const missingRequiredReviewers = requestedReviewers
+      .filter((reviewer) => reviewer.isRequired)
+      .filter(
+        (reviewer) =>
+          latestByReviewer.get(reviewer.userId)?.state !== "approved",
+      )
+      .map((reviewer) => ({
+        userId: reviewer.userId,
+        username: reviewer.user?.username,
+      }));
+
+    prs.push({
+      prId: entry.pr.id,
+      prNumber: entry.pr.number,
+      title: entry.pr.title,
+      isApproved: approvals.length >= requiredApprovals && !changesRequested,
+      approvalCount: approvals.length,
+      requiredApprovals,
+      missingApprovals: changesRequested ? requiredApprovals : missingApprovals,
+      changesRequested,
+      requestedReviewers: requestedReviewers.map((reviewer) => ({
+        userId: reviewer.userId,
+        username: reviewer.user?.username,
+        isRequired: Boolean(reviewer.isRequired),
+      })),
+      missingRequiredReviewers,
+    });
+  }
+
+  const approvedPrs = prs.filter((pr) => pr.isApproved).length;
+  const pendingPrs = prs.length - approvedPrs;
+  const totalMissingApprovals = prs.reduce(
+    (total, pr) => total + pr.missingApprovals,
+    0,
+  );
+  const totalMissingRequiredReviewerApprovals = prs.reduce(
+    (total, pr) => total + pr.missingRequiredReviewers.length,
+    0,
+  );
+
+  return {
+    stackId,
+    allApproved: prs.every((pr) => pr.isApproved),
+    summary: {
+      totalPrs: prs.length,
+      approvedPrs,
+      pendingPrs,
+      totalMissingApprovals,
+      totalMissingRequiredReviewerApprovals,
+    },
+    prs,
+  };
 }
 
 /**
  * Check if a stack can be merged (all PRs approved)
  */
 export async function canMergeStack(stackId: string): Promise<{
-    canMerge: boolean;
-    blockers: string[];
+  canMerge: boolean;
+  blockers: string[];
 }> {
-    const status = await getStackApprovalStatus(stackId);
-    if (!status) {
-        return { canMerge: false, blockers: ["Stack not found"] };
+  const status = await getStackApprovalStatus(stackId);
+  if (!status) {
+    return { canMerge: false, blockers: ["Stack not found"] };
+  }
+
+  const blockers: string[] = [];
+
+  for (const pr of status.prs) {
+    if (!pr.isApproved) {
+      if (pr.changesRequested) {
+        blockers.push(`PR #${pr.prNumber}: Changes requested`);
+      } else if (pr.missingRequiredReviewers.length > 0) {
+        blockers.push(
+          `PR #${pr.prNumber}: Missing required reviewer approval(s) from ${pr.missingRequiredReviewers
+            .map((reviewer) => reviewer.username || reviewer.userId)
+            .join(", ")}`,
+        );
+      } else {
+        blockers.push(
+          `PR #${pr.prNumber}: Needs ${pr.requiredApprovals - pr.approvalCount} more approval(s)`,
+        );
+      }
     }
+  }
 
-    const blockers: string[] = [];
-
-    for (const pr of status.prs) {
-        if (!pr.isApproved) {
-            if (pr.changesRequested) {
-                blockers.push(`PR #${pr.prNumber}: Changes requested`);
-            } else if (pr.missingRequiredReviewers.length > 0) {
-                blockers.push(
-                    `PR #${pr.prNumber}: Missing required reviewer approval(s) from ${pr.missingRequiredReviewers
-                        .map((reviewer) => reviewer.username || reviewer.userId)
-                        .join(", ")}`
-                );
-            } else {
-                blockers.push(`PR #${pr.prNumber}: Needs ${pr.requiredApprovals - pr.approvalCount} more approval(s)`);
-            }
-        }
-    }
-
-    return {
-        canMerge: blockers.length === 0,
-        blockers,
-    };
+  return {
+    canMerge: blockers.length === 0,
+    blockers,
+  };
 }
 
 /**
  * Request approval for all PRs in a stack
  */
 export async function requestStackApproval(
-    stackId: string,
-    reviewerIds: string[]
+  stackId: string,
+  reviewerIds: string[],
 ): Promise<boolean> {
-    const stack = await getStack(stackId);
-    if (!stack) return false;
+  const stack = await getStack(stackId);
+  if (!stack) return false;
 
-    const db = getDatabase();
+  const db = getDatabase();
 
-    try {
-        for (const entry of stack.entries) {
-            for (const reviewerId of reviewerIds) {
-                // Check if already requested
-                const existing = await db.query.pullRequestReviewers.findFirst({
-                    where: and(
-                        eq(schema.pullRequestReviewers.pullRequestId, entry.pr.id),
-                        eq(schema.pullRequestReviewers.userId, reviewerId)
-                    ),
-                });
+  try {
+    for (const entry of stack.entries) {
+      for (const reviewerId of reviewerIds) {
+        // Check if already requested
+        const existing = await db.query.pullRequestReviewers.findFirst({
+          where: and(
+            eq(schema.pullRequestReviewers.pullRequestId, entry.pr.id),
+            eq(schema.pullRequestReviewers.userId, reviewerId),
+          ),
+        });
 
-                if (!existing) {
-                    // @ts-expect-error - Drizzle multi-db union type issue
-                    await db.insert(schema.pullRequestReviewers).values({
-                        id: crypto.randomUUID(),
-                        pullRequestId: entry.pr.id,
-                        userId: reviewerId,
-                        isRequired: true,
-                        requestedAt: new Date(),
-                    });
-                }
-            }
+        if (!existing) {
+          // @ts-expect-error - Drizzle multi-db union type issue
+          await db.insert(schema.pullRequestReviewers).values({
+            id: crypto.randomUUID(),
+            pullRequestId: entry.pr.id,
+            userId: reviewerId,
+            isRequired: true,
+            requestedAt: new Date(),
+          });
         }
-
-        logger.info({ stackId, reviewerCount: reviewerIds.length }, "Stack approval requested");
-        return true;
-    } catch (error) {
-        logger.error({ stackId, error }, "Failed to request stack approval");
-        return false;
+      }
     }
+
+    logger.info(
+      { stackId, reviewerCount: reviewerIds.length },
+      "Stack approval requested",
+    );
+    return true;
+  } catch (error) {
+    logger.error({ stackId, error }, "Failed to request stack approval");
+    return false;
+  }
 }

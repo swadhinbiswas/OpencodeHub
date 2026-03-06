@@ -4,15 +4,24 @@
  */
 
 import { relations } from "drizzle-orm";
-import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 import { repositories } from "./repositories";
 import { users } from "./users";
 
-export const webhooks = pgTable("webhooks", {
+export const webhooks = pgTable(
+  "webhooks",
+  {
     id: text("id").primaryKey(),
     repositoryId: text("repository_id")
-        .notNull()
-        .references(() => repositories.id, { onDelete: "cascade" }),
+      .notNull()
+      .references(() => repositories.id, { onDelete: "cascade" }),
 
     // Provider and configuration
     provider: text("provider").default("generic"), // teams, discord, slack, generic
@@ -32,13 +41,19 @@ export const webhooks = pgTable("webhooks", {
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
     createdById: text("created_by_id").references(() => users.id),
-});
+  },
+  (t) => ({
+    repoIdx: index("webhooks_repo_idx").on(t.repositoryId),
+  }),
+);
 
-export const webhookDeliveries = pgTable("webhook_deliveries", {
+export const webhookDeliveries = pgTable(
+  "webhook_deliveries",
+  {
     id: text("id").primaryKey(),
     webhookId: text("webhook_id")
-        .notNull()
-        .references(() => webhooks.id, { onDelete: "cascade" }),
+      .notNull()
+      .references(() => webhooks.id, { onDelete: "cascade" }),
     event: text("event").notNull(),
     payload: text("payload").notNull(), // JSON
 
@@ -52,26 +67,31 @@ export const webhookDeliveries = pgTable("webhook_deliveries", {
     responseHeaders: text("response_headers"), // JSON
 
     createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+  },
+  (t) => ({
+    webhookIdx: index("webhook_deliveries_webhook_idx").on(t.webhookId),
+    createdAtIdx: index("webhook_deliveries_created_idx").on(t.createdAt),
+  }),
+);
 
 export const webhooksRelations = relations(webhooks, ({ one, many }) => ({
-    repository: one(repositories, {
-        fields: [webhooks.repositoryId],
-        references: [repositories.id],
-    }),
-    createdBy: one(users, {
-        fields: [webhooks.createdById],
-        references: [users.id],
-    }),
-    deliveries: many(webhookDeliveries),
+  repository: one(repositories, {
+    fields: [webhooks.repositoryId],
+    references: [repositories.id],
+  }),
+  createdBy: one(users, {
+    fields: [webhooks.createdById],
+    references: [users.id],
+  }),
+  deliveries: many(webhookDeliveries),
 }));
 
 export const webhookDeliveriesRelations = relations(
-    webhookDeliveries,
-    ({ one }) => ({
-        webhook: one(webhooks, {
-            fields: [webhookDeliveries.webhookId],
-            references: [webhooks.id],
-        }),
-    })
+  webhookDeliveries,
+  ({ one }) => ({
+    webhook: one(webhooks, {
+      fields: [webhookDeliveries.webhookId],
+      references: [webhooks.id],
+    }),
+  }),
 );

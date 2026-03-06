@@ -4,174 +4,185 @@
  */
 
 import { getDatabase, schema } from "@/db";
-import { eq } from "drizzle-orm";
-import { getStack } from "./stacks";
-import { canMergeStack } from "./stack-approvals";
-import { addToMergeQueue } from "./merge-queue";
+import { inArray } from "drizzle-orm";
 import { logger } from "./logger";
+import { addToMergeQueue } from "./merge-queue";
+import { canMergeStack } from "./stack-approvals";
+import { getStack } from "./stacks";
 
 export interface BulkMergeResult {
-    success: boolean;
-    merged: { prId: string; prNumber: number }[];
-    failed: { prId: string; prNumber: number; reason: string }[];
-    skipped: { prId: string; prNumber: number; reason: string }[];
+  success: boolean;
+  merged: { prId: string; prNumber: number }[];
+  failed: { prId: string; prNumber: number; reason: string }[];
+  skipped: { prId: string; prNumber: number; reason: string }[];
 }
 
 /**
  * Merge an entire stack in order
  */
 export async function bulkMergeStack(
-    stackId: string,
-    userId: string,
-    options?: {
-        mergeMethod?: "merge" | "squash" | "rebase";
-        skipApprovalCheck?: boolean;
-    }
+  stackId: string,
+  userId: string,
+  options?: {
+    mergeMethod?: "merge" | "squash" | "rebase";
+    skipApprovalCheck?: boolean;
+  },
 ): Promise<BulkMergeResult> {
-    const stack = await getStack(stackId);
+  const stack = await getStack(stackId);
 
-    if (!stack) {
-        return {
-            success: false,
-            merged: [],
-            failed: [],
-            skipped: [{ prId: "", prNumber: 0, reason: "Stack not found" }],
-        };
-    }
+  if (!stack) {
+    return {
+      success: false,
+      merged: [],
+      failed: [],
+      skipped: [{ prId: "", prNumber: 0, reason: "Stack not found" }],
+    };
+  }
 
-    // Check if stack can be merged
-    if (!options?.skipApprovalCheck) {
-        const { canMerge, blockers } = await canMergeStack(stackId);
-        if (!canMerge) {
-            return {
-                success: false,
-                merged: [],
-                failed: [],
-                skipped: stack.entries.map(e => ({
-                    prId: e.pr.id,
-                    prNumber: e.pr.number,
-                    reason: blockers.join(", "),
-                })),
-            };
-        }
-    }
-
-    const result: BulkMergeResult = {
-        success: true,
+  // Check if stack can be merged
+  if (!options?.skipApprovalCheck) {
+    const { canMerge, blockers } = await canMergeStack(stackId);
+    if (!canMerge) {
+      return {
+        success: false,
         merged: [],
         failed: [],
-        skipped: [],
-    };
+        skipped: stack.entries.map((e) => ({
+          prId: e.pr.id,
+          prNumber: e.pr.number,
+          reason: blockers.join(", "),
+        })),
+      };
+    }
+  }
 
-    // Process PRs in stack order (bottom to top)
-    for (const { entry, pr } of stack.entries) {
-        // Skip already merged PRs
-        if (pr.isMerged) {
-            result.skipped.push({
-                prId: pr.id,
-                prNumber: pr.number,
-                reason: "Already merged",
-            });
-            continue;
-        }
+  const result: BulkMergeResult = {
+    success: true,
+    merged: [],
+    failed: [],
+    skipped: [],
+  };
 
-        // Skip closed PRs
-        if (pr.state === "closed") {
-            result.skipped.push({
-                prId: pr.id,
-                prNumber: pr.number,
-                reason: "PR is closed",
-            });
-            continue;
-        }
-
-        // Add to merge queue
-        try {
-            await addToMergeQueue({
-                repositoryId: stack.stack.repositoryId,
-                pullRequestId: pr.id,
-                addedById: userId,
-                mergeMethod: options?.mergeMethod || "merge",
-            });
-
-            result.merged.push({
-                prId: pr.id,
-                prNumber: pr.number,
-            });
-        } catch (error) {
-            const message = error instanceof Error ? error.message : "Unknown error";
-            result.failed.push({
-                prId: pr.id,
-                prNumber: pr.number,
-                reason: message,
-            });
-            result.success = false;
-        }
+  // Process PRs in stack order (bottom to top)
+  for (const { entry, pr } of stack.entries) {
+    // Skip already merged PRs
+    if (pr.isMerged) {
+      result.skipped.push({
+        prId: pr.id,
+        prNumber: pr.number,
+        reason: "Already merged",
+      });
+      continue;
     }
 
-    logger.info({
-        stackId,
-        merged: result.merged.length,
-        failed: result.failed.length,
-        skipped: result.skipped.length,
-    }, "Bulk merge completed");
+    // Skip closed PRs
+    if (pr.state === "closed") {
+      result.skipped.push({
+        prId: pr.id,
+        prNumber: pr.number,
+        reason: "PR is closed",
+      });
+      continue;
+    }
 
-    return result;
+    // Add to merge queue
+    try {
+      await addToMergeQueue({
+        repositoryId: stack.stack.repositoryId,
+        pullRequestId: pr.id,
+        addedById: userId,
+        mergeMethod: options?.mergeMethod || "merge",
+      });
+
+      result.merged.push({
+        prId: pr.id,
+        prNumber: pr.number,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      result.failed.push({
+        prId: pr.id,
+        prNumber: pr.number,
+        reason: message,
+      });
+      result.success = false;
+    }
+  }
+
+  logger.info(
+    {
+      stackId,
+      merged: result.merged.length,
+      failed: result.failed.length,
+      skipped: result.skipped.length,
+    },
+    "Bulk merge completed",
+  );
+
+  return result;
 }
 
 /**
  * Merge multiple PRs (not necessarily in a stack)
  */
 export async function bulkMergePRs(
-    prIds: string[],
-    userId: string,
-    options?: {
-        mergeMethod?: "merge" | "squash" | "rebase";
-    }
+  prIds: string[],
+  userId: string,
+  options?: {
+    mergeMethod?: "merge" | "squash" | "rebase";
+  },
 ): Promise<BulkMergeResult> {
-    const db = getDatabase();
-    const result: BulkMergeResult = {
-        success: true,
-        merged: [],
-        failed: [],
-        skipped: [],
-    };
+  const db = getDatabase();
+  const result: BulkMergeResult = {
+    success: true,
+    merged: [],
+    failed: [],
+    skipped: [],
+  };
 
-    for (const prId of prIds) {
-        const pr = await db.query.pullRequests.findFirst({
-            where: eq(schema.pullRequests.id, prId),
-        });
+  // Batch fetch all PRs in one query instead of N individual lookups
+  const allPrs = await db.query.pullRequests.findMany({
+    where: inArray(schema.pullRequests.id, prIds),
+  });
+  const prMap = new Map(allPrs.map((pr) => [pr.id, pr]));
 
-        if (!pr) {
-            result.skipped.push({ prId, prNumber: 0, reason: "PR not found" });
-            continue;
-        }
+  for (const prId of prIds) {
+    const pr = prMap.get(prId);
 
-        if (pr.isMerged) {
-            result.skipped.push({ prId, prNumber: pr.number, reason: "Already merged" });
-            continue;
-        }
-
-        if (pr.state !== "open") {
-            result.skipped.push({ prId, prNumber: pr.number, reason: "PR not open" });
-            continue;
-        }
-
-        try {
-            await addToMergeQueue({
-                repositoryId: pr.repositoryId,
-                pullRequestId: prId,
-                addedById: userId,
-                mergeMethod: options?.mergeMethod || "merge",
-            });
-
-            result.merged.push({ prId, prNumber: pr.number });
-        } catch (error) {
-            const message = error instanceof Error ? error.message : "Unknown error";
-            result.failed.push({ prId, prNumber: pr.number, reason: message });
-            result.success = false;
-        }
+    if (!pr) {
+      result.skipped.push({ prId, prNumber: 0, reason: "PR not found" });
+      continue;
     }
 
-    return result;
+    if (pr.isMerged) {
+      result.skipped.push({
+        prId,
+        prNumber: pr.number,
+        reason: "Already merged",
+      });
+      continue;
+    }
+
+    if (pr.state !== "open") {
+      result.skipped.push({ prId, prNumber: pr.number, reason: "PR not open" });
+      continue;
+    }
+
+    try {
+      await addToMergeQueue({
+        repositoryId: pr.repositoryId,
+        pullRequestId: prId,
+        addedById: userId,
+        mergeMethod: options?.mergeMethod || "merge",
+      });
+
+      result.merged.push({ prId, prNumber: pr.number });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      result.failed.push({ prId, prNumber: pr.number, reason: message });
+      result.success = false;
+    }
+  }
+
+  return result;
 }

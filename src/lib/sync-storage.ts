@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { spawn } from "child_process";
 import path from "path";
 import fs from "fs/promises";
@@ -40,7 +41,7 @@ export async function ensureRcloneConfig(): Promise<void> {
             await fs.writeFile(configPath, "# Rclone configuration file\n");
         }
     } catch (err) {
-        console.error("Failed to ensure rclone config:", err);
+        logger.error("Failed to ensure rclone config:", err);
     }
 }
 
@@ -127,7 +128,7 @@ export async function listRemotes(): Promise<string[]> {
  * Internal helper to run rclone command
  */
 async function runRclone(args: string[]): Promise<SyncResult> {
-    console.log(`[Rclone] Running: rclone ${args.join(" ")}`);
+    logger.info(`[Rclone] Running: rclone ${args.join(" ")}`);
 
     return new Promise((resolve) => {
         const proc = spawn(RCLONE_BIN, args);
@@ -141,7 +142,7 @@ async function runRclone(args: string[]): Promise<SyncResult> {
             if (code === 0) {
                 resolve({ success: true, output });
             } else {
-                console.error(`[Rclone] Failed with code ${code}: ${error}`);
+                logger.error(`[Rclone] Failed with code ${code}: ${error}`);
                 resolve({ success: false, output, error: error || "Process failed" });
             }
         });

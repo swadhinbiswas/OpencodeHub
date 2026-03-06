@@ -4,66 +4,98 @@
  */
 
 import { relations } from "drizzle-orm";
-import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
+import { issueCustomFieldValues } from "./custom-fields";
+import { issueStatuses } from "./issue-statuses";
 import { repositories } from "./repositories";
 import { users } from "./users";
-import { issueStatuses } from "./issue-statuses";
-import { issueCustomFieldValues } from "./custom-fields";
 
-export const issues = pgTable("issues", {
-  id: text("id").primaryKey(),
-  repositoryId: text("repository_id")
-    .notNull()
-    .references(() => repositories.id, { onDelete: "cascade" }),
-  number: integer("number").notNull(),
-  title: text("title").notNull(),
-  body: text("body"),
-  state: text("state").notNull().default("open"), // open, closed
-  statusId: text("status_id").references(() => issueStatuses.id), // Custom status
-  type: text("type").notNull().default("issue"), // issue, epic, task
-  parentId: text("parent_id"), // For sub-tasks or issues belonging to an epic
-  authorId: text("author_id")
-    .notNull()
-    .references(() => users.id),
-  assigneeId: text("assignee_id").references(() => users.id),
-  milestoneId: text("milestone_id"), // Reference added later in relations
-  isPinned: boolean("is_pinned").default(false),
-  isLocked: boolean("is_locked").default(false),
-  lockReason: text("lock_reason"),
-  commentCount: integer("comment_count").default(0),
-  reactions: text("reactions"), // JSON { +1, -1, laugh, heart, etc. }
-  closedAt: timestamp("closed_at"),
-  closedById: text("closed_by_id").references(() => users.id),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+export const issues = pgTable(
+  "issues",
+  {
+    id: text("id").primaryKey(),
+    repositoryId: text("repository_id")
+      .notNull()
+      .references(() => repositories.id, { onDelete: "cascade" }),
+    number: integer("number").notNull(),
+    title: text("title").notNull(),
+    body: text("body"),
+    state: text("state").notNull().default("open"), // open, closed
+    statusId: text("status_id").references(() => issueStatuses.id), // Custom status
+    type: text("type").notNull().default("issue"), // issue, epic, task
+    parentId: text("parent_id"), // For sub-tasks or issues belonging to an epic
+    authorId: text("author_id")
+      .notNull()
+      .references(() => users.id),
+    assigneeId: text("assignee_id").references(() => users.id),
+    milestoneId: text("milestone_id"), // Reference added later in relations
+    isPinned: boolean("is_pinned").default(false),
+    isLocked: boolean("is_locked").default(false),
+    lockReason: text("lock_reason"),
+    commentCount: integer("comment_count").default(0),
+    reactions: text("reactions"), // JSON { +1, -1, laugh, heart, etc. }
+    closedAt: timestamp("closed_at"),
+    closedById: text("closed_by_id").references(() => users.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    repoNumberIdx: uniqueIndex("issues_repo_number_idx").on(
+      t.repositoryId,
+      t.number,
+    ),
+    repoStateIdx: index("issues_repo_state_idx").on(t.repositoryId, t.state),
+    authorIdx: index("issues_author_idx").on(t.authorId),
+    assigneeIdx: index("issues_assignee_idx").on(t.assigneeId),
+  }),
+);
 
-export const issueComments = pgTable("issue_comments", {
-  id: text("id").primaryKey(),
-  issueId: text("issue_id")
-    .notNull()
-    .references(() => issues.id, { onDelete: "cascade" }),
-  authorId: text("author_id")
-    .notNull()
-    .references(() => users.id),
-  body: text("body").notNull(),
-  reactions: text("reactions"), // JSON
-  isEdited: boolean("is_edited").default(false),
-  editedAt: timestamp("edited_at"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+export const issueComments = pgTable(
+  "issue_comments",
+  {
+    id: text("id").primaryKey(),
+    issueId: text("issue_id")
+      .notNull()
+      .references(() => issues.id, { onDelete: "cascade" }),
+    authorId: text("author_id")
+      .notNull()
+      .references(() => users.id),
+    body: text("body").notNull(),
+    reactions: text("reactions"), // JSON
+    isEdited: boolean("is_edited").default(false),
+    editedAt: timestamp("edited_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    issueIdx: index("issue_comments_issue_idx").on(t.issueId),
+  }),
+);
 
-export const labels = pgTable("labels", {
-  id: text("id").primaryKey(),
-  repositoryId: text("repository_id")
-    .notNull()
-    .references(() => repositories.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  color: text("color").notNull().default("#6b7280"),
-  description: text("description"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const labels = pgTable(
+  "labels",
+  {
+    id: text("id").primaryKey(),
+    repositoryId: text("repository_id")
+      .notNull()
+      .references(() => repositories.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    color: text("color").notNull().default("#6b7280"),
+    description: text("description"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    repoNameIdx: uniqueIndex("labels_repo_name_idx").on(t.repositoryId, t.name),
+  }),
+);
 
 export const issueLabels = pgTable("issue_labels", {
   id: text("id").primaryKey(),

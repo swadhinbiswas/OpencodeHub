@@ -4,10 +4,11 @@ import { z } from 'zod';
 import { getDatabase, schema } from "@/db";
 import { success, unauthorized, serverError, parseBody, notFound } from '@/lib/api';
 import { getUserFromRequest } from '@/lib/auth';
-import { eq } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import crypto from 'node:crypto';
 import { withErrorHandler } from "@/lib/errors";
 import { logger } from "@/lib/logger";
+import { canWriteRepo } from "@/lib/permissions";
 
 const triggerSchema = z.object({
     repositoryId: z.string()
@@ -23,35 +24,51 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
     const { repositoryId } = parsed.data;
     const db = getDatabase() as NodePgDatabase<typeof schema>;
 
-    // Verify access
-    // ... (omitted for brevity, trusting UI check for MVP)
-
     // Fetch Repo for Default Branch
     const repo = await db.query.repositories.findFirst({
         where: eq(schema.repositories.id, repositoryId)
     });
 
     if (!repo) return notFound("Repository not found");
+    if (!(await canWriteRepo(tokenPayload.userId, repo, { isAdmin: tokenPayload.isAdmin }))) {
+        return unauthorized("Insufficient permissions");
+    }
 
-    // Create Workflow Record (if not exists)
-    // Usually scanned from file, but we mock it.
-    let workflowId = crypto.randomUUID();
-
-    await db.insert(schema.workflows).values({
-        id: workflowId,
-        repositoryId,
-        name: "Test Workflow",
-        path: ".github/workflows/test.yml",
-        state: "active"
+    // Reuse existing workflow definition if present.
+    let workflow = await db.query.workflows.findFirst({
+        where: and(
+            eq(schema.workflows.repositoryId, repositoryId),
+            eq(schema.workflows.path, ".github/workflows/test.yml")
+        )
     });
+    if (!workflow) {
+        const workflowId = crypto.randomUUID();
+        await db.insert(schema.workflows).values({
+            id: workflowId,
+            repositoryId,
+            name: "Test Workflow",
+            path: ".github/workflows/test.yml",
+            state: "active"
+        });
+        workflow = await db.query.workflows.findFirst({
+            where: eq(schema.workflows.id, workflowId)
+        });
+    }
+    if (!workflow) return serverError("Failed to initialize workflow");
+
+    const latestRun = await db.query.workflowRuns.findFirst({
+        where: eq(schema.workflowRuns.workflowId, workflow.id),
+        orderBy: [desc(schema.workflowRuns.runNumber)]
+    });
+    const nextRunNumber = (latestRun?.runNumber ?? 0) + 1;
 
     // Create Run
     const runId = crypto.randomUUID();
     await db.insert(schema.workflowRuns).values({
         id: runId,
-        workflowId,
+        workflowId: workflow.id,
         repositoryId,
-        runNumber: 1,
+        runNumber: nextRunNumber,
         name: "Manual Test Run",
         status: "queued",
         event: "workflow_dispatch",

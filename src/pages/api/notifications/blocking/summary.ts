@@ -1,10 +1,11 @@
 import { type APIRoute } from "astro";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { and, desc, eq, or } from "drizzle-orm";
+import { and, desc, eq, or, isNull } from "drizzle-orm";
 import { getDatabase, schema } from "@/db";
 import { notifications } from "@/db/schema";
 import { getUserFromRequest } from "@/lib/auth";
 import { scoreNotificationPriority } from "@/lib/notification-priority";
+import { getRoutingDecision } from "@/lib/notification-routing";
 import { success, unauthorized, serverError } from "@/lib/api";
 
 const BLOCKING_NOTIFICATION_TYPES = [
@@ -64,19 +65,41 @@ export const GET: APIRoute = async ({ request }) => {
 
     const countsByType: Record<string, number> = {};
     const countsByReason: Record<string, number> = {};
+    const countsByPrimaryChannel: Record<string, number> = {};
+    const nowMs = Date.now();
+    const staleThresholdHours = 4;
+    let staleBlockingCount = 0;
+
+    const prefs = db.query.notificationPreferences
+      ? await db.query.notificationPreferences.findMany({
+        where: and(
+          eq(schema.notificationPreferences.userId, tokenPayload.userId),
+          isNull(schema.notificationPreferences.repositoryId)
+        ),
+      })
+      : [];
 
     for (const item of scored) {
       const type = item.type || "unknown";
       const reason = item.reason || "unknown";
       countsByType[type] = (countsByType[type] || 0) + 1;
       countsByReason[reason] = (countsByReason[reason] || 0) + 1;
+      const routing = getRoutingDecision(item.type, prefs as any);
+      countsByPrimaryChannel[routing.primaryChannel] = (countsByPrimaryChannel[routing.primaryChannel] || 0) + 1;
+
+      const ageHours = (nowMs - new Date(item.createdAt).getTime()) / (1000 * 60 * 60);
+      if (!item.isRead && ageHours >= staleThresholdHours) {
+        staleBlockingCount++;
+      }
     }
 
     return success({
       totalBlocking: scored.length,
       unreadBlockingCount: scored.filter((item) => !item.isRead).length,
+      staleBlockingCount,
       countsByType,
       countsByReason,
+      countsByPrimaryChannel,
       topPriority: scored[0]?.priority || null,
       items: scored.slice(0, 20),
     });

@@ -1,19 +1,23 @@
 import { defineConfig } from "drizzle-kit";
 
 // Get driver type from environment
-const driver = process.env.DATABASE_DRIVER || "sqlite";
-const url = process.env.DATABASE_URL || "./data/opencodehub.db";
+// Default to PostgreSQL since all schemas use pgTable
+const driver = process.env.DATABASE_DRIVER || "postgres";
+const url =
+  process.env.DATABASE_URL ||
+  "postgresql://opencodehub:opencodehub@localhost:5432/opencodehub";
 
 // Map driver to Drizzle dialect
-const dialectMap: Record<string, "sqlite" | "postgresql" | "mysql" | "turso"> = {
-  sqlite: "sqlite",
-  postgres: "postgresql",
-  mysql: "mysql",
-  libsql: "turso",
-  turso: "turso",
-};
+const dialectMap: Record<string, "sqlite" | "postgresql" | "mysql" | "turso"> =
+  {
+    sqlite: "sqlite",
+    postgres: "postgresql",
+    mysql: "mysql",
+    libsql: "turso",
+    turso: "turso",
+  };
 
-const dialect = dialectMap[driver] || "sqlite";
+const dialect = dialectMap[driver] || "postgresql";
 
 // Build credentials based on driver
 function getCredentials() {

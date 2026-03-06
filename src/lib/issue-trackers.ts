@@ -9,6 +9,7 @@ import { eq, and } from "drizzle-orm";
 import { logger } from "./logger";
 import { repositories } from "@/db/schema/repositories";
 import { issues } from "@/db/schema/issues";
+import { assertOnlineFeature } from "./air-gapped";
 
 // ============================================================================
 // SCHEMA
@@ -80,6 +81,12 @@ export const ISSUE_PROVIDERS = {
     },
 } as const;
 
+function withBearer(token: string | null | undefined): string {
+    const value = (token || "").trim();
+    if (!value) return "";
+    return value.toLowerCase().startsWith("bearer ") ? value : `Bearer ${value}`;
+}
+
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
@@ -141,6 +148,7 @@ export async function jiraCreateIssue(options: {
     priority?: string;
     labels?: string[];
 }): Promise<{ id: string; key: string; url: string } | null> {
+    assertOnlineFeature("Jira integration");
     const apiUrl = options.config.apiUrl || `https://your-domain.atlassian.net/rest/api/3`;
 
     try {
@@ -190,6 +198,7 @@ export async function jiraGetIssue(config: IssueTrackerConfig, issueKey: string)
     status: string;
     assignee?: string;
 } | null> {
+    assertOnlineFeature("Jira integration");
     const apiUrl = config.apiUrl || `https://your-domain.atlassian.net/rest/api/3`;
 
     try {
@@ -215,6 +224,7 @@ export async function jiraGetIssue(config: IssueTrackerConfig, issueKey: string)
 }
 
 export async function jiraTransition(config: IssueTrackerConfig, issueKey: string, transitionName: string): Promise<boolean> {
+    assertOnlineFeature("Jira integration");
     const apiUrl = config.apiUrl || `https://your-domain.atlassian.net/rest/api/3`;
 
     try {
@@ -259,11 +269,12 @@ export async function linearCreateIssue(options: {
     priority?: number; // 0-4
     labels?: string[];
 }): Promise<{ id: string; identifier: string; url: string } | null> {
+    assertOnlineFeature("Linear integration");
     try {
         const response = await fetch("https://api.linear.app/graphql", {
             method: "POST",
             headers: {
-                Authorization: options.config.apiToken || "",
+                Authorization: withBearer(options.config.apiToken),
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
@@ -314,11 +325,12 @@ export async function linearGetIssue(config: IssueTrackerConfig, issueId: string
     state: string;
     assignee?: string;
 } | null> {
+    assertOnlineFeature("Linear integration");
     try {
         const response = await fetch("https://api.linear.app/graphql", {
             method: "POST",
             headers: {
-                Authorization: config.apiToken || "",
+                Authorization: withBearer(config.apiToken),
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
@@ -365,6 +377,7 @@ export async function trelloCreateCard(options: {
     listId: string;
     labels?: string[];
 }): Promise<{ id: string; shortLink: string; url: string } | null> {
+    assertOnlineFeature("Trello integration");
     try {
         // Token format: "key:token"
         const [key, token] = (options.config.apiToken || "").split(":");
@@ -405,6 +418,7 @@ export async function trelloGetCard(config: IssueTrackerConfig, cardId: string):
     list: string;
     members: string[];
 } | null> {
+    assertOnlineFeature("Trello integration");
     try {
         const [key, token] = (config.apiToken || "").split(":");
 
@@ -427,6 +441,7 @@ export async function trelloGetCard(config: IssueTrackerConfig, cardId: string):
 }
 
 export async function trelloMoveCard(config: IssueTrackerConfig, cardId: string, listId: string): Promise<boolean> {
+    assertOnlineFeature("Trello integration");
     try {
         const [key, token] = (config.apiToken || "").split(":");
 
@@ -453,6 +468,7 @@ export async function clickupCreateTask(options: {
     tags?: string[];
     dueDate?: Date;
 }): Promise<{ id: string; url: string } | null> {
+    assertOnlineFeature("ClickUp integration");
     try {
         const response = await fetch(
             `https://api.clickup.com/api/v2/list/${options.config.projectKey}/task`,
@@ -491,6 +507,7 @@ export async function clickupGetTask(config: IssueTrackerConfig, taskId: string)
     status: string;
     assignees: string[];
 } | null> {
+    assertOnlineFeature("ClickUp integration");
     try {
         const response = await fetch(
             `https://api.clickup.com/api/v2/task/${taskId}`,
@@ -514,6 +531,7 @@ export async function clickupGetTask(config: IssueTrackerConfig, taskId: string)
 }
 
 export async function clickupUpdateStatus(config: IssueTrackerConfig, taskId: string, status: string): Promise<boolean> {
+    assertOnlineFeature("ClickUp integration");
     try {
         const response = await fetch(
             `https://api.clickup.com/api/v2/task/${taskId}`,
@@ -538,6 +556,7 @@ export async function clickupUpdateStatus(config: IssueTrackerConfig, taskId: st
 // ============================================================================
 
 export async function syncIssueToExternal(localIssueId: string): Promise<IssueTrackerLink[]> {
+    assertOnlineFeature("Issue tracker synchronization");
     const db = getDatabase();
     const links: IssueTrackerLink[] = [];
 
@@ -583,7 +602,32 @@ export async function syncIssueToExternal(localIssueId: string): Promise<IssueTr
                 }
                 break;
             }
-            // Add Trello/ClickUp as needed
+            case "trello": {
+                const result = await trelloCreateCard({
+                    config,
+                    listId: config.projectKey || "",
+                    name: issue.title,
+                    desc: issue.body || undefined,
+                });
+                if (result) {
+                    externalId = result.id;
+                    externalKey = result.shortLink;
+                    externalUrl = result.url;
+                }
+                break;
+            }
+            case "clickup": {
+                const result = await clickupCreateTask({
+                    config,
+                    name: issue.title,
+                    description: issue.body || undefined,
+                });
+                if (result) {
+                    externalId = result.id;
+                    externalUrl = result.url;
+                }
+                break;
+            }
         }
 
         if (externalId) {
@@ -645,6 +689,7 @@ export async function handleIssueTrackerWebhook(
     webhookSecret: string,
     payload: Record<string, unknown>
 ): Promise<boolean> {
+    assertOnlineFeature("Issue tracker webhooks");
     const db = getDatabase();
 
     const config = await db.query.issueTrackerConfigs?.findFirst({
@@ -706,17 +751,90 @@ async function handleJiraWebhook(config: IssueTrackerConfig, payload: Record<str
 }
 
 async function handleLinearWebhook(config: IssueTrackerConfig, payload: Record<string, unknown>): Promise<boolean> {
-    // Similar implementation
-    logger.info({ config: config.id }, "Linear webhook received");
+    const db = getDatabase();
+    const action = String(payload.action || "");
+    const issue = payload.data as Record<string, unknown> | undefined;
+    const issueId = issue?.id ? String(issue.id) : null;
+    if (!issueId) return false;
+
+    const link = await db.query.issueTrackerLinks?.findFirst({
+        where: and(
+            eq(schema.issueTrackerLinks.configId, config.id),
+            eq(schema.issueTrackerLinks.externalId, issueId)
+        ),
+    });
+    if (!link?.localIssueId) return false;
+
+    if (action === "update") {
+        const issueState = issue?.state;
+        const stateName =
+            typeof issueState === "object" && issueState !== null
+                ? String((issueState as Record<string, unknown>).name || "")
+                : String(issueState || "");
+        const state = stateName.toLowerCase();
+        const newState = state.includes("done") || state.includes("closed") ? "closed" : "open";
+        // @ts-expect-error - Drizzle multi-db union type issue
+        await db.update(schema.issues)
+            .set({ state: newState, updatedAt: new Date() })
+            .where(eq(schema.issues.id, link.localIssueId));
+    }
+
+    logger.info({ config: config.id, action }, "Linear webhook processed");
     return true;
 }
 
 async function handleTrelloWebhook(config: IssueTrackerConfig, payload: Record<string, unknown>): Promise<boolean> {
-    logger.info({ config: config.id }, "Trello webhook received");
+    const db = getDatabase();
+    const action = payload.action as Record<string, unknown> | undefined;
+    const cardId = action?.data && typeof action.data === "object"
+        ? String((action.data as any)?.card?.id || "")
+        : "";
+    if (!cardId) return false;
+
+    const link = await db.query.issueTrackerLinks?.findFirst({
+        where: and(
+            eq(schema.issueTrackerLinks.configId, config.id),
+            eq(schema.issueTrackerLinks.externalId, cardId)
+        ),
+    });
+    if (!link?.localIssueId) return false;
+
+    const listAfterId = (action?.data as any)?.listAfter?.id as string | undefined;
+    const listBeforeId = (action?.data as any)?.listBefore?.id as string | undefined;
+    if (listAfterId && listBeforeId && listAfterId !== listBeforeId) {
+        const isDone = listAfterId.toLowerCase().includes("done") || listAfterId.toLowerCase().includes("complete");
+        // @ts-expect-error - Drizzle multi-db union type issue
+        await db.update(schema.issues)
+            .set({ state: isDone ? "closed" : "open", updatedAt: new Date() })
+            .where(eq(schema.issues.id, link.localIssueId));
+    }
+
+    logger.info({ config: config.id, cardId }, "Trello webhook processed");
     return true;
 }
 
 async function handleClickUpWebhook(config: IssueTrackerConfig, payload: Record<string, unknown>): Promise<boolean> {
-    logger.info({ config: config.id }, "ClickUp webhook received");
+    const db = getDatabase();
+    const taskId = payload.task_id ? String(payload.task_id) : "";
+    if (!taskId) return false;
+
+    const link = await db.query.issueTrackerLinks?.findFirst({
+        where: and(
+            eq(schema.issueTrackerLinks.configId, config.id),
+            eq(schema.issueTrackerLinks.externalId, taskId)
+        ),
+    });
+    if (!link?.localIssueId) return false;
+
+    const status = String((payload.history_items as any[])?.[0]?.after || payload.status || "").toLowerCase();
+    if (status) {
+        const isDone = status.includes("done") || status.includes("closed") || status.includes("complete");
+        // @ts-expect-error - Drizzle multi-db union type issue
+        await db.update(schema.issues)
+            .set({ state: isDone ? "closed" : "open", updatedAt: new Date() })
+            .where(eq(schema.issues.id, link.localIssueId));
+    }
+
+    logger.info({ config: config.id, taskId }, "ClickUp webhook processed");
     return true;
 }

@@ -12,7 +12,7 @@ export class RealtimeClient {
         this.eventSource = new EventSource(this.url);
 
         this.eventSource.onopen = () => {
-            console.log("Realtime connection established");
+            logger.info("Realtime connection established");
             this.reconnectAttempts = 0;
             this.emit("connected", {});
         };
@@ -23,12 +23,12 @@ export class RealtimeClient {
                 this.emit(data.type, data.data);
                 this.emit("message", data);
             } catch (e) {
-                console.error("Failed to parse realtime message", e);
+                logger.error("Failed to parse realtime message", e);
             }
         };
 
         this.eventSource.onerror = (err) => {
-            console.error("Realtime connection error", err);
+            logger.error("Realtime connection error", err);
             this.eventSource?.close();
             this.eventSource = null;
             this.reconnect();
@@ -37,7 +37,7 @@ export class RealtimeClient {
 
     private reconnect() {
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            console.error("Max reconnect attempts reached");
+            logger.error("Max reconnect attempts reached");
             return;
         }
 

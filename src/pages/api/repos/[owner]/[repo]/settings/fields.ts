@@ -1,79 +1,87 @@
-
 import type { APIRoute } from "astro";
-import { getDatabase, schema } from "@/db";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { eq, and, desc } from "drizzle-orm";
-import { canAdminRepo } from "@/lib/permissions";
-import { generateId } from "@/lib/utils";
+import { and, eq } from "drizzle-orm";
+import { z } from "zod";
+import { getDatabase, schema } from "@/db";
+import { badRequest, forbidden, notFound, parseBody, success, unauthorized } from "@/lib/api";
+import { withErrorHandler } from "@/lib/errors";
+import { getUserFromRequest } from "@/lib/auth";
+import { canWriteRepo, canReadRepo } from "@/lib/permissions";
+import { createCustomField, getCustomFields } from "@/lib/custom-fields";
 
-export const GET: APIRoute = async ({ params, locals }) => {
-    const { owner, repo } = params;
-    const db = getDatabase();
+const createFieldSchema = z.object({
+  name: z.string().min(1).max(120),
+  type: z.enum(["text", "number", "date", "boolean", "checkbox", "select", "multiselect", "user"]),
+  description: z.string().max(500).optional(),
+  options: z.array(z.string().min(1).max(120)).optional(),
+  required: z.boolean().optional(),
+});
 
-    const repository = await db.query.repositories.findFirst({
-        where: and(
-            eq(schema.repositories.name, repo!),
-            eq(schema.repositories.ownerId, (
-                await db.query.users.findFirst({
-                    where: eq(schema.users.username, owner!)
-                })
-            )?.id || "")
-        )
-    });
+async function resolveRepository(owner: string, repoName: string) {
+  const db = getDatabase() as NodePgDatabase<typeof schema>;
+  const repoOwner = await db.query.users.findFirst({
+    where: eq(schema.users.username, owner),
+  });
+  if (!repoOwner) return null;
 
-    if (!repository) return new Response("Repo not found", { status: 404 });
+  return db.query.repositories.findFirst({
+    where: and(
+      eq(schema.repositories.ownerId, repoOwner.id),
+      eq(schema.repositories.name, repoName)
+    ),
+  });
+}
 
-    const hasAccess = await canAdminRepo(locals.user?.id, repository);
-    if (!hasAccess) return new Response("Unauthorized", { status: 403 });
+export const GET: APIRoute = withErrorHandler(async ({ params, request }) => {
+  const owner = params.owner;
+  const repoName = params.repo;
+  if (!owner || !repoName) return badRequest("Missing route parameters");
 
-    const fields = await db.query.customFieldDefinitions.findMany({
-        where: eq(schema.customFieldDefinitions.repositoryId, repository.id),
-        orderBy: [desc(schema.customFieldDefinitions.createdAt)]
-    });
+  const user = await getUserFromRequest(request);
+  const repository = await resolveRepository(owner, repoName);
+  if (!repository) return notFound("Repository not found");
 
-    return new Response(JSON.stringify(fields), {
-        headers: { "Content-Type": "application/json" }
-    });
-};
+  if (!(await canReadRepo(user?.userId, repository, { isAdmin: user?.isAdmin }))) {
+    return notFound("Repository not found");
+  }
 
-export const POST: APIRoute = async ({ params, request, locals }) => {
-    const { owner, repo } = params;
-    const db = getDatabase() as NodePgDatabase<typeof schema>;
+  const fields = await getCustomFields(repository.id);
+  return success(fields);
+});
 
-    const repository = await db.query.repositories.findFirst({
-        where: and(
-            eq(schema.repositories.name, repo!),
-            eq(schema.repositories.ownerId, (
-                await db.query.users.findFirst({
-                    where: eq(schema.users.username, owner!)
-                })
-            )?.id || "")
-        )
-    });
+export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
+  const owner = params.owner;
+  const repoName = params.repo;
+  if (!owner || !repoName) return badRequest("Missing route parameters");
 
-    if (!repository) return new Response("Repo not found", { status: 404 });
+  const user = await getUserFromRequest(request);
+  if (!user) return unauthorized();
 
-    const hasAccess = await canAdminRepo(locals.user?.id, repository);
-    if (!hasAccess) return new Response("Unauthorized", { status: 403 });
+  const repository = await resolveRepository(owner, repoName);
+  if (!repository) return notFound("Repository not found");
 
-    const body = await request.json();
-    const { name, type, description, options, required } = body;
+  if (!(await canWriteRepo(user.userId, repository, { isAdmin: user.isAdmin }))) {
+    return forbidden();
+  }
 
-    if (!name || !type) {
-        return new Response("Missing required fields", { status: 400 });
-    }
+  const parsed = await parseBody(request, createFieldSchema);
+  if ("error" in parsed) return parsed.error;
 
-    const newField = await db.insert(schema.customFieldDefinitions).values({
-        id: generateId(),
-        repositoryId: repository.id,
-        name,
-        type,
-        description,
-        options, // JSON
-        required: required || false,
-    }).returning();
+  const type =
+    parsed.data.type === "boolean" || parsed.data.type === "checkbox"
+      ? "checkbox"
+      : parsed.data.type === "user"
+        ? "text"
+        : parsed.data.type;
 
-    return new Response(JSON.stringify(newField[0]), {
-        headers: { "Content-Type": "application/json" }
-    });
-};
+  const field = await createCustomField({
+    repositoryId: repository.id,
+    name: parsed.data.name,
+    fieldType: type as "text" | "number" | "date" | "select" | "multiselect" | "checkbox",
+    description: parsed.data.description,
+    isRequired: parsed.data.required,
+    options: parsed.data.options,
+  });
+
+  return success(field);
+});

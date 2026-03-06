@@ -64,6 +64,8 @@ export const automationRules = pgTable("automation_rules", {
  * - notify_slack: Send Slack notification
  * - close_pr: Close the pull request
  * - request_changes: Request changes programmatically
+ * - trigger_iac_hook: Trigger IaC hook (Terraform plan/apply)
+ * - trigger_cloud_deploy: Trigger cloud deploy hook (AWS/GCP/Azure/K8s)
  */
 
 /**
@@ -138,7 +140,9 @@ export type AutomationActionType =
     | "notify_discord"
     | "notify_teams"
     | "close_pr"
-    | "request_changes";
+    | "request_changes"
+    | "trigger_iac_hook"
+    | "trigger_cloud_deploy";
 
 export interface AutomationCondition {
     field: string; // e.g., "pr.author", "pr.labels", "pr.changedFiles"

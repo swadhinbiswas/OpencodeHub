@@ -21,6 +21,26 @@ function unique(values: string[]): string[] {
   return Array.from(new Set(values));
 }
 
+export interface AutoMergeRuleEvaluation {
+  ruleId: string;
+  name: string;
+  matched: boolean;
+  passed: boolean;
+  reasons: string[];
+  matchLabels: string[];
+  requiredLabels: string[];
+  requiredChecks: string[];
+  minApprovals: number;
+  requireCodeOwner: boolean;
+  allowDraft: boolean;
+  minTimeInQueueMinutes: number;
+}
+
+export interface AutoMergeRuleEvaluationResult {
+  blockers: string[];
+  evaluations: AutoMergeRuleEvaluation[];
+}
+
 async function getCodeOwnerBlockers(
   db: NodePgDatabase<typeof schema>,
   repository: typeof schema.repositories.$inferSelect,
@@ -94,7 +114,7 @@ async function getCodeOwnerBlockers(
   return blockers;
 }
 
-export async function evaluateAutoMergeRules(prId: string): Promise<string[]> {
+export async function evaluateAutoMergeRulesDetailed(prId: string): Promise<AutoMergeRuleEvaluationResult> {
   const db = getDatabase() as NodePgDatabase<typeof schema>;
 
   const pr = await db.query.pullRequests.findFirst({
@@ -106,7 +126,12 @@ export async function evaluateAutoMergeRules(prId: string): Promise<string[]> {
     },
   });
 
-  if (!pr) return ["Pull request not found"];
+  if (!pr) {
+    return {
+      blockers: ["Pull request not found"],
+      evaluations: [],
+    };
+  }
 
   const rules = await db.query.autoMergeRules.findMany({
     where: and(
@@ -115,7 +140,12 @@ export async function evaluateAutoMergeRules(prId: string): Promise<string[]> {
     ),
   });
 
-  if (rules.length === 0) return [];
+  if (rules.length === 0) {
+    return {
+      blockers: [],
+      evaluations: [],
+    };
+  }
 
   const labelNames = unique((pr.labels || []).map((item) => item.label?.name).filter(Boolean) as string[]);
   const approvals = (pr.reviews || []).filter((review) => review.state === "approved");
@@ -126,13 +156,31 @@ export async function evaluateAutoMergeRules(prId: string): Promise<string[]> {
   const pendingChecks = (pr.checks || []).filter((check) => check.status !== "completed");
 
   const blockers: string[] = [];
+  const evaluations: AutoMergeRuleEvaluation[] = [];
 
   for (const rule of rules) {
     const matchLabels = parseList(rule.matchLabels);
     const requiredLabels = parseList(rule.requiredLabels);
     const requiredChecks = parseList(rule.requiredChecks);
+    const evaluation: AutoMergeRuleEvaluation = {
+      ruleId: rule.id,
+      name: rule.name,
+      matched: true,
+      passed: false,
+      reasons: [],
+      matchLabels,
+      requiredLabels,
+      requiredChecks,
+      minApprovals: rule.minApprovals || 0,
+      requireCodeOwner: !!rule.requireCodeOwner,
+      allowDraft: !!rule.allowDraft,
+      minTimeInQueueMinutes: rule.minTimeInQueueMinutes || 0,
+    };
 
     if (matchLabels.length > 0 && !matchLabels.every((label) => labelNames.includes(label))) {
+      evaluation.matched = false;
+      evaluation.reasons.push(`Rule filter mismatch: requires labels ${matchLabels.join(", ")}`);
+      evaluations.push(evaluation);
       continue;
     }
 
@@ -148,7 +196,9 @@ export async function evaluateAutoMergeRules(prId: string): Promise<string[]> {
     if (!rule.allowDraft && pr.isDraft) {
       const reason = `Auto-merge rule "${rule.name}" blocks drafts`;
       blockers.push(reason);
+      evaluation.reasons.push(reason);
       await recordMismatch(reason);
+      evaluations.push(evaluation);
       continue;
     }
 
@@ -157,7 +207,9 @@ export async function evaluateAutoMergeRules(prId: string): Promise<string[]> {
       if (missingLabels.length > 0) {
         const reason = `Rule "${rule.name}" missing labels: ${missingLabels.join(", ")}`;
         blockers.push(reason);
+        evaluation.reasons.push(reason);
         await recordMismatch(reason);
+        evaluations.push(evaluation);
         continue;
       }
     }
@@ -168,21 +220,27 @@ export async function evaluateAutoMergeRules(prId: string): Promise<string[]> {
       if (missingChecks.length > 0) {
         const reason = `Rule "${rule.name}" missing checks: ${missingChecks.join(", ")}`;
         blockers.push(reason);
+        evaluation.reasons.push(reason);
         await recordMismatch(reason);
+        evaluations.push(evaluation);
         continue;
       }
 
       if (failingChecks.length > 0) {
         const reason = `Rule "${rule.name}" has failing checks`;
         blockers.push(reason);
+        evaluation.reasons.push(reason);
         await recordMismatch(reason);
+        evaluations.push(evaluation);
         continue;
       }
 
       if (pendingChecks.length > 0) {
         const reason = `Rule "${rule.name}" has pending checks`;
         blockers.push(reason);
+        evaluation.reasons.push(reason);
         await recordMismatch(reason);
+        evaluations.push(evaluation);
         continue;
       }
     }
@@ -190,7 +248,9 @@ export async function evaluateAutoMergeRules(prId: string): Promise<string[]> {
     if ((rule.minApprovals || 0) > approvalCount) {
       const reason = `Rule "${rule.name}" needs ${rule.minApprovals} approvals (has ${approvalCount})`;
       blockers.push(reason);
+      evaluation.reasons.push(reason);
       await recordMismatch(reason);
+      evaluations.push(evaluation);
       continue;
     }
 
@@ -198,7 +258,9 @@ export async function evaluateAutoMergeRules(prId: string): Promise<string[]> {
       if (!pr.autoMergeEnabledAt) {
         const reason = `Rule "${rule.name}" requires auto-merge delay before merge`;
         blockers.push(reason);
+        evaluation.reasons.push(reason);
         await recordMismatch(reason);
+        evaluations.push(evaluation);
         continue;
       }
 
@@ -208,7 +270,9 @@ export async function evaluateAutoMergeRules(prId: string): Promise<string[]> {
       if (elapsedMinutes < (rule.minTimeInQueueMinutes || 0)) {
         const reason = `Rule "${rule.name}" requires ${rule.minTimeInQueueMinutes} minute delay (elapsed ${elapsedMinutes})`;
         blockers.push(reason);
+        evaluation.reasons.push(reason);
         await recordMismatch(reason);
+        evaluations.push(evaluation);
         continue;
       }
     }
@@ -229,7 +293,9 @@ export async function evaluateAutoMergeRules(prId: string): Promise<string[]> {
         if (codeOwnerBlockers.length > 0) {
           const reasons = codeOwnerBlockers.map((message) => `Rule "${rule.name}": ${message}`);
           blockers.push(...reasons);
+          evaluation.reasons.push(...reasons);
           await recordMismatch(reasons[0]);
+          evaluations.push(evaluation);
           continue;
         }
       }
@@ -243,7 +309,15 @@ export async function evaluateAutoMergeRules(prId: string): Promise<string[]> {
         updatedAt: new Date(),
       })
       .where(eq(schema.autoMergeRules.id, rule.id));
+
+    evaluation.passed = true;
+    evaluations.push(evaluation);
   }
 
-  return blockers;
+  return { blockers, evaluations };
+}
+
+export async function evaluateAutoMergeRules(prId: string): Promise<string[]> {
+  const result = await evaluateAutoMergeRulesDetailed(prId);
+  return result.blockers;
 }
