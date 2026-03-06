@@ -1,0 +1,145 @@
+# OpenCodeHub Alerting Rules for Prometheus/Alertmanager
+#
+# Deploy to Prometheus rules directory or configure via Grafana alerting.
+
+groups:
+  - name: opencodehub.request
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{app="opencodehub", code=~"5.."}[5m]))
+          / sum(rate(http_requests_total{app="opencodehub"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High HTTP error rate (>5%)"
+          description: "{{ $value | humanizePercentage }} of requests returning 5xx"
+
+      - alert: HighLatencyP99
+        expr: |
+          histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{app="opencodehub"}[5m])) by (le)) > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P99 latency exceeds 3 seconds"
+          description: "P99 latency is {{ $value | humanizeDuration }}"
+
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{app="opencodehub"}[5m])) by (le)) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P95 latency exceeds 1 second"
+
+  - name: opencodehub.infrastructure
+    rules:
+      - alert: HighCPUUsage
+        expr: |
+          rate(process_cpu_seconds_total{app="opencodehub"}[5m]) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+
+      - alert: HighMemoryUsage
+        expr: |
+          process_resident_memory_bytes{app="opencodehub"} / 1024 / 1024 > 1500
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Memory usage exceeds 1.5GB"
+
+      - alert: DatabaseSlowQueries
+        expr: |
+          histogram_quantile(0.95, sum(rate(db_query_duration_seconds_bucket{app="opencodehub"}[5m])) by (le)) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P95 DB query duration exceeds 1 second"
+
+      - alert: DatabaseErrors
+        expr: |
+          sum(rate(db_query_errors_total{app="opencodehub"}[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database query errors detected"
+
+  - name: opencodehub.cicd
+    rules:
+      - alert: CIQueueBacklog
+        expr: ci_queue_depth{app="opencodehub"} > 20
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CI queue depth exceeds 20 jobs"
+
+      - alert: NoActiveRunners
+        expr: active_runners{app="opencodehub"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No active CI/CD runners"
+
+      - alert: HighJobFailureRate
+        expr: |
+          sum(rate(ci_jobs_total{app="opencodehub", status="failed"}[30m]))
+          / sum(rate(ci_jobs_total{app="opencodehub"}[30m])) > 0.3
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CI job failure rate exceeds 30%"
+
+  - name: opencodehub.auth
+    rules:
+      - alert: HighAuthFailureRate
+        expr: |
+          sum(rate(auth_attempts_total{app="opencodehub", result="failure"}[5m]))
+          / sum(rate(auth_attempts_total{app="opencodehub"}[5m])) > 0.3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High authentication failure rate (>30%)"
+
+      - alert: ExcessiveRateLimiting
+        expr: |
+          sum(rate(rate_limit_hits_total{app="opencodehub"}[5m])) > 10
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "Excessive rate limiting activity"
+
+  - name: opencodehub.storage
+    rules:
+      - alert: SlowStorageOperations
+        expr: |
+          histogram_quantile(0.95, sum(rate(storage_operation_duration_seconds_bucket{app="opencodehub"}[5m])) by (le, adapter)) > 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P95 storage operation duration exceeds 5 seconds"
+
+  - name: opencodehub.git
+    rules:
+      - alert: SlowGitOperations
+        expr: |
+          histogram_quantile(0.95, sum(rate(git_operation_duration_seconds_bucket{app="opencodehub"}[5m])) by (le, operation)) > 30
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P95 git operation duration exceeds 30 seconds"

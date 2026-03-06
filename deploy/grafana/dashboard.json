@@ -1,0 +1,237 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "Request Rate (req/s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{app=\"opencodehub\"}[5m])) by (code)",
+          "legendFormat": "{{code}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "reqps" }
+      }
+    },
+    {
+      "title": "Request Duration P95/P99",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{app=\"opencodehub\"}[5m])) by (le))",
+          "legendFormat": "P95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{app=\"opencodehub\"}[5m])) by (le))",
+          "legendFormat": "P99"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "s" }
+      }
+    },
+    {
+      "title": "Error Rate",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{app=\"opencodehub\",code=~\"5..\"}[5m])) / sum(rate(http_requests_total{app=\"opencodehub\"}[5m])) * 100",
+          "legendFormat": "Error %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Requests In-Flight",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 },
+      "targets": [
+        {
+          "expr": "http_requests_in_flight{app=\"opencodehub\"}",
+          "legendFormat": "In-Flight"
+        }
+      ]
+    },
+    {
+      "title": "Active Runners",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "active_runners{app=\"opencodehub\"}",
+          "legendFormat": "Runners"
+        }
+      ]
+    },
+    {
+      "title": "CI Queue Depth",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 8 },
+      "targets": [
+        {
+          "expr": "ci_queue_depth{app=\"opencodehub\"}",
+          "legendFormat": "Queued"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 10 },
+              { "color": "red", "value": 50 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "DB Query Duration",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(db_query_duration_seconds_bucket{app=\"opencodehub\"}[5m])) by (le, operation))",
+          "legendFormat": "P95 {{operation}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "s" }
+      }
+    },
+    {
+      "title": "Git Operation Duration",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(git_operation_duration_seconds_bucket{app=\"opencodehub\"}[5m])) by (le, operation))",
+          "legendFormat": "P95 {{operation}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "s" }
+      }
+    },
+    {
+      "title": "Storage I/O (bytes/s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "targets": [
+        {
+          "expr": "sum(rate(storage_bytes_transferred_total{app=\"opencodehub\"}[5m])) by (direction)",
+          "legendFormat": "{{direction}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "Bps" }
+      }
+    },
+    {
+      "title": "Cache Hit Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "targets": [
+        {
+          "expr": "sum(rate(cache_hits_total{app=\"opencodehub\"}[5m])) / (sum(rate(cache_hits_total{app=\"opencodehub\"}[5m])) + sum(rate(cache_misses_total{app=\"opencodehub\"}[5m]))) * 100",
+          "legendFormat": "Hit Rate %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "percent" }
+      }
+    },
+    {
+      "title": "CI Job Duration",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ci_job_duration_seconds_bucket{app=\"opencodehub\"}[5m])) by (le, status))",
+          "legendFormat": "P95 {{status}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "s" }
+      }
+    },
+    {
+      "title": "Auth Attempts",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "targets": [
+        {
+          "expr": "sum(rate(auth_attempts_total{app=\"opencodehub\"}[5m])) by (result)",
+          "legendFormat": "{{result}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "cps" }
+      }
+    },
+    {
+      "title": "Rate Limit Hits",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
+      "targets": [
+        {
+          "expr": "sum(rate(rate_limit_hits_total{app=\"opencodehub\"}[5m])) by (tier)",
+          "legendFormat": "{{tier}}"
+        }
+      ]
+    },
+    {
+      "title": "SSE Connections",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 36 },
+      "targets": [
+        {
+          "expr": "sse_active_connections{app=\"opencodehub\"}",
+          "legendFormat": "SSE"
+        }
+      ]
+    },
+    {
+      "title": "Merge Queue Depth",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 36 },
+      "targets": [
+        {
+          "expr": "merge_queue_depth{app=\"opencodehub\"}",
+          "legendFormat": "Queued"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["opencodehub", "production"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "OpenCodeHub — Production Dashboard",
+  "uid": "opencodehub-prod",
+  "version": 1
+}

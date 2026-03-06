@@ -14,7 +14,8 @@ services:
       - DATABASE_URL=postgresql://opencodehub:opencodehub@postgres:5432/opencodehub
       - DATABASE_TYPE=postgres
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=${JWT_SECRET:-change-this-in-production}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required - generate with: openssl rand -base64 32}
+      - WORKFLOW_SECRET_ENCRYPTION_KEY=${WORKFLOW_SECRET_ENCRYPTION_KEY:?WORKFLOW_SECRET_ENCRYPTION_KEY is required - generate with: openssl rand -hex 32}
       - SSH_HOST_KEY_PATH=/data/ssh/host_key
       - SERVER_URL=http://localhost:4321
       - STORAGE_TYPE=local

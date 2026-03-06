@@ -1,0 +1,110 @@
+# OpenCodeHub Production Docker Compose
+# Pull pre-built images from DockerHub
+# Usage:
+#   1. Copy .env.example to .env and configure
+#   2. docker compose -f docker-compose.production.yml up -d
+#
+# Required environment variables in .env:
+#   JWT_SECRET=<generate with: openssl rand -base64 32>
+#   POSTGRES_PASSWORD=<strong password>
+#   WORKFLOW_SECRET_ENCRYPTION_KEY=<generate with: openssl rand -hex 32>
+
+services:
+  app:
+    image: swadhinbiswas/opencodehub:latest
+    container_name: opencodehub
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-4321}:4321"
+      - "${SSH_PORT:-2222}:2222"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://opencodehub:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/opencodehub
+      - DATABASE_TYPE=postgres
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET with: openssl rand -base64 32}
+      - SESSION_SECRET=${SESSION_SECRET:-${JWT_SECRET}}
+      - WORKFLOW_SECRET_ENCRYPTION_KEY=${WORKFLOW_SECRET_ENCRYPTION_KEY:?Set WORKFLOW_SECRET_ENCRYPTION_KEY with: openssl rand -hex 32}
+      - SSH_HOST_KEY_PATH=/data/ssh/host_key
+      - SERVER_URL=${SERVER_URL:-http://localhost:4321}
+      - STORAGE_TYPE=local
+      - STORAGE_PATH=/data/storage
+      - REPOS_PATH=/data/repos
+      - INTERNAL_HOOK_SECRET=${INTERNAL_HOOK_SECRET:-$(openssl rand -hex 32)}
+    volumes:
+      - repos-data:/data/repos
+      - storage-data:/data/storage
+      - ssh-data:/data/ssh
+      - cache-data:/data/cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - opencodehub-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:4321/api/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: opencodehub-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: opencodehub
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: opencodehub
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - opencodehub-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opencodehub -d opencodehub"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: opencodehub-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - opencodehub-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  repos-data:
+    driver: local
+  storage-data:
+    driver: local
+  ssh-data:
+    driver: local
+  cache-data:
+    driver: local
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  opencodehub-network:
+    driver: bridge

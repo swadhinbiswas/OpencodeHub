@@ -1,0 +1,37 @@
+{
+  "missingInSite": [
+    "support/troubleshooting"
+  ],
+  "missingInDocs": [
+    "administration/deploy-cloudflare",
+    "administration/deploy-cpanel",
+    "administration/deploy-cyberpanel",
+    "administration/deploy-docker",
+    "administration/deploy-nginx",
+    "administration/deploy-podman",
+    "development/database-migrations",
+    "development/local-dev-setup",
+    "development/observability",
+    "development/security-hardening",
+    "development/testing-pipelines",
+    "features/automations",
+    "features/ci-actions",
+    "features/cli",
+    "features/developer-metrics",
+    "features/inbox",
+    "features/notifications",
+    "guides/example",
+    "reference/cli-auth-config",
+    "reference/cli-automation-insights",
+    "reference/cli-core-commands",
+    "reference/cli-merge-queue",
+    "reference/cli-overview",
+    "reference/cli-stack-workflows",
+    "reference/example",
+    "tutorials/automated-releases",
+    "tutorials/disaster-recovery",
+    "tutorials/self-hosted-docker-nginx",
+    "tutorials/team-onboarding",
+    "tutorials/zero-to-production"
+  ]
+}
