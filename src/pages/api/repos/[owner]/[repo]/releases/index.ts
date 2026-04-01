@@ -2,13 +2,7 @@
  * Releases API - List and create releases
  */
 import { getDatabase, schema } from "@/db";
-import {
-  badRequest,
-  forbidden,
-  notFound,
-  success,
-  unauthorized,
-} from "@/lib/api";
+import { badRequest, forbidden, notFound, unauthorized } from "@/lib/api";
 import { getUserFromRequest } from "@/lib/auth";
 import { withErrorHandler } from "@/lib/errors";
 import { canReadRepo, canWriteRepo } from "@/lib/permissions";
@@ -62,7 +56,10 @@ export const GET: APIRoute = withErrorHandler(async ({ params, request }) => {
     ? releases
     : releases.filter((r: any) => !r.isDraft);
 
-  return success(filtered);
+  return new Response(JSON.stringify(filtered), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
 });
 
 export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
@@ -131,5 +128,8 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
     where: eq(schema.releases.id, releaseId),
   });
 
-  return success(release);
+  return new Response(JSON.stringify(release), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
 });

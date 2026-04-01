@@ -1,0 +1,13 @@
+{
+  "name": "@opencodehub/git-rpc-daemon",
+  "version": "1.0.0",
+  "description": "High-performance background Git RPC service replacing synchronous shell execution.",
+  "main": "src/index.ts",
+  "dependencies": {
+    "express": "^4.19.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

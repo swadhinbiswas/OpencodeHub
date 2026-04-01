@@ -83,7 +83,7 @@ async function parseResponseBody(response: Response): Promise<unknown> {
 export async function apiCall<T = any>(
   serverUrl: string,
   endpoint: string,
-  method: "GET" | "POST" | "PATCH" | "DELETE" = "GET",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" = "GET",
   body?: any,
 ): Promise<T> {
   applyTlsConfig();
@@ -100,7 +100,7 @@ export async function apiCall<T = any>(
   const headers: Record<string, string> = {
     Accept: "application/json, text/plain;q=0.9, */*;q=0.8",
     "Content-Type": "application/json",
-    "User-Agent": "opencodehub-cli/1.1.0",
+    "User-Agent": "opencodehub-cli/1.1.2",
   };
 
   if (config.token) {
@@ -181,6 +181,14 @@ export async function patchWithAuth<T = any>(
 ): Promise<T> {
   const config = getConfig();
   return apiCall<T>(config.serverUrl, endpoint, "PATCH", body);
+}
+
+export async function putWithAuth<T = any>(
+  endpoint: string,
+  body: any,
+): Promise<T> {
+  const config = getConfig();
+  return apiCall<T>(config.serverUrl, endpoint, "PUT", body);
 }
 
 export async function deleteWithAuth<T = any>(endpoint: string): Promise<T> {
