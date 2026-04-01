@@ -231,34 +231,36 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request, locals
         }
     }
 
-    // Trigger automations
-    import("@/lib/automations").then(({ triggerAutomation }) => {
+    // Trigger automations (best effort, but awaited to avoid leaked async operations)
+    try {
+        const { triggerAutomation } = await import("@/lib/automations");
         if (stateChanged) {
             if (updateData.state === "closed") {
-                triggerAutomation(repo.id, "pr_closed", {
+                await triggerAutomation(repo.id, "pr_closed", {
                     pullRequestId: pr.id,
                     userId: user.id
-                }).catch(console.error);
+                });
             } else if (updateData.state === "open") {
-                triggerAutomation(repo.id, "pr_opened", {
+                await triggerAutomation(repo.id, "pr_opened", {
                     pullRequestId: pr.id,
                     userId: user.id,
                     metadata: {
                         isReopen: true
                     }
-                }).catch(console.error);
+                });
             }
         } else {
-            // General update
-            triggerAutomation(repo.id, "pr_updated", {
+            await triggerAutomation(repo.id, "pr_updated", {
                 pullRequestId: pr.id,
                 userId: user.id,
                 metadata: {
                     changes: Object.keys(updateData)
                 }
-            }).catch(console.error);
+            });
         }
-    });
+    } catch (error) {
+        logger.warn({ prId: pr.id, error }, "Failed to trigger PR automations");
+    }
 
     return success({ success: true });
 });

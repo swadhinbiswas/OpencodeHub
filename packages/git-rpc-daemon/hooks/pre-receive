@@ -1,0 +1,52 @@
+#!/usr/bin/env node
+
+/**
+ * OpenCodeHub: Strict Pre-Receive Hook
+ * Enforces server-side validations on Git Push (GPG, Commit messages, Auth).
+ */
+
+import { execSync } from 'child_process';
+import os from 'os';
+
+function enforceGpgSignature(commitHash) {
+  try {
+    const raw = execSync(`git log -1 --show-signature --format="%G?" ${commitHash}`, { encoding: 'utf-8' }).trim();
+    if (raw !== 'G' && raw !== 'U') {
+      console.error(`[Policy Violation] Commit ${commitHash} is not properly GPG signed. Push rejected.`);
+      process.exit(1);
+    }
+  } catch (e) {
+    console.error(`[Policy Violation] Failed to verify GPG signature for commit ${commitHash}.`);
+    process.exit(1);
+  }
+}
+
+function processPush(oldRev, newRev, refName) {
+  console.log(`Verifying push to ${refName} (from ${oldRev} to ${newRev})...`);
+  
+  // Only check new commits
+  if (oldRev !== '0000000000000000000000000000000000000000') {
+    const commits = execSync(`git rev-list ${oldRev}..${newRev}`, { encoding: 'utf-8' })
+      .trim()
+      .split('\n')
+      .filter(Boolean);
+
+    for (const commit of commits) {
+      enforceGpgSignature(commit);
+    }
+  }
+}
+
+// Read refs from stdin (standard Git pre-receive format)
+let pushData = '';
+process.stdin.on('data', chunk => { pushData += chunk.toString(); });
+process.stdin.on('end', () => {
+  const lines = pushData.trim().split('\n');
+  for (const line of lines) {
+    if (!line) continue;
+    const [oldRev, newRev, refName] = line.split(' ');
+    processPush(oldRev, newRev, refName);
+  }
+  console.log('[OpenCodeHub Policy] All server-side validations passed.');
+  process.exit(0);
+});

@@ -1,12 +1,6 @@
 import { getDatabase, schema } from "@/db";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import {
-  badRequest,
-  created,
-  notFound,
-  serverError,
-  unauthorized,
-} from "@/lib/api";
+import { badRequest, notFound, serverError, unauthorized } from "@/lib/api";
 import { getUserFromRequest } from "@/lib/auth";
 import { canReadRepo } from "@/lib/permissions";
 import { generateId } from "@/lib/utils";
@@ -50,8 +44,6 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
 
   const db = getDatabase() as NodePgDatabase<typeof schema>;
 
-
-
   // 3. Get Repository
   const user = await db.query.users.findFirst({
     where: eq(schema.users.username, ownerName!),
@@ -62,7 +54,7 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
   const repo = await db.query.repositories.findFirst({
     where: and(
       eq(schema.repositories.ownerId, user.id),
-      eq(schema.repositories.name, repoName!)
+      eq(schema.repositories.name, repoName!),
     ),
   });
 
@@ -81,8 +73,8 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
     const parentIssue = await db.query.issues.findFirst({
       where: and(
         eq(schema.issues.number, parentNumber),
-        eq(schema.issues.repositoryId, repo.id)
-      )
+        eq(schema.issues.repositoryId, repo.id),
+      ),
     });
     if (parentIssue) {
       parentId = parentIssue.id;
@@ -124,7 +116,10 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
     .set({ openIssueCount: sql`${schema.repositories.openIssueCount} + 1` })
     .where(eq(schema.repositories.id, repo.id));
 
-  logger.info({ userId, repoId: repo.id, issueNumber: nextNumber }, "Issue created");
+  logger.info(
+    { userId, repoId: repo.id, issueNumber: nextNumber },
+    "Issue created",
+  );
 
   // Send email to repo owner
   if (user.email && user.id !== userId) {
@@ -140,23 +135,18 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
         url: issueUrl,
         repository: {
           name: repoName!,
-          owner: { username: ownerName! }
+          owner: { username: ownerName! },
         },
-        author: { username: author.username }
-      }).catch(err => logger.error({ err }, "Failed to send Issue email"));
+        author: { username: author.username },
+      }).catch((err) => logger.error({ err }, "Failed to send Issue email"));
     });
   }
 
   // Log activity
-  await logActivity(
-    userId,
-    "issue",
-    "opened",
-    "issue",
-    issueId,
-    repo.id,
-    { number: nextNumber, title }
-  );
+  await logActivity(userId, "issue", "opened", "issue", issueId, repo.id, {
+    number: nextNumber,
+    title,
+  });
 
   // Auto-link cross-repo issues referenced in title/body
   try {
@@ -170,22 +160,31 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
   const { customFields } = body; // Expecting Record<string, any> where key is fieldId
   if (customFields && typeof customFields === "object") {
     // Dynamic import to avoid circular dependencies if any (though here it's fine)
-    const { issueCustomFieldValues } = await import("@/db/schema/custom-fields"); // Ensure this path is correct based on exports
+    const { issueCustomFieldValues } =
+      await import("@/db/schema/custom-fields"); // Ensure this path is correct based on exports
 
-    const fieldValues = Object.entries(customFields).map(([fieldId, value]) => ({
-      id: generateId(),
-      issueId: issueId,
-      fieldId: fieldId,
-      value: String(value), // Store as string
-    }));
+    const fieldValues = Object.entries(customFields).map(
+      ([fieldId, value]) => ({
+        id: generateId(),
+        issueId: issueId,
+        fieldId: fieldId,
+        value: String(value), // Store as string
+      }),
+    );
 
     if (fieldValues.length > 0) {
       await db.insert(issueCustomFieldValues).values(fieldValues);
     }
   }
 
-  return created({
-    ...newIssue,
-    url: `/${ownerName}/${repoName}/issues/${nextNumber}`,
-  });
+  return new Response(
+    JSON.stringify({
+      ...newIssue,
+      url: `/${ownerName}/${repoName}/issues/${nextNumber}`,
+    }),
+    {
+      status: 201,
+      headers: { "Content-Type": "application/json" },
+    },
+  );
 });
