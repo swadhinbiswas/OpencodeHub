@@ -9,17 +9,9 @@ import {
   type CommitInfo,
   type DiffInfo,
 } from "@/lib/git";
-
-// ... (imports remain)
-
-// Fetch comparison data if branches are different
-let diffData: { commits: CommitInfo[]; diffs: DiffInfo[] } = {
-  commits: [],
-  diffs: [],
-};
 import { canReadRepo } from "@/lib/permissions";
 import { getRepoPath } from "@/lib/utils";
-import { and, eq, sql, count } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import {
   ArrowLeft,
   ArrowRight,
@@ -29,9 +21,15 @@ import {
   FileText,
   GitCommit,
 } from "lucide-react";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 const { owner: ownerName, repo: repoName } = Astro.params;
-const db = getDatabase();
+const db = getDatabase() as NodePgDatabase<typeof schema>;
+
+let diffData: { commits: CommitInfo[]; diffs: DiffInfo[] } = {
+  commits: [],
+  diffs: [],
+};
 
 // 1. Fetch Repo & Owner
 const user = await db.query.users.findFirst({
@@ -80,7 +78,7 @@ const headBranch =
 // Fetch comparison data if branches are different
 // diffData is typed above
 
-let error = "";
+let _error = "";
 let canMerge = false;
 
 if (baseBranch !== headBranch) {
@@ -89,14 +87,14 @@ if (baseBranch !== headBranch) {
     diffData = await compareBranches(repoPath, baseBranch, headBranch);
     canMerge = true; // Simplified: assume mergeable if git commands succeeded
   } catch (e) {
-    error = "Failed to compare branches.";
+    _error = "Failed to compare branches.";
     console.error(e);
   }
 }
 
 // Fetch open issue count (for header)
 const issueCountResult = await db
-  .select({ count: count() })
+  .select({ count: sql`count` })
   .from(schema.issues)
   .where(
     and(
@@ -129,7 +127,7 @@ const repo = {
 
 <BaseLayout title={`New Pull Request · ${repo.owner}/${repo.name}`}>
   <div class="container py-6">
-    <RepoHeader repo={repo} activeTab="pulls" />
+    <RepoHeader repo={repo as any} activeTab="pulls" />
 
     <div class="mb-6">
       <h1 class="text-2xl font-semibold mb-4">Compare changes</h1>

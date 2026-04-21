@@ -240,7 +240,7 @@ const totalPages = Math.ceil(total / limit);
         row.dataset.archived = archived ? "false" : "true";
         btn.setAttribute("title", archived ? "Archive" : "Unarchive");
       } catch (error) {
-        alert(error.message || "Failed to update repository");
+        alert(error instanceof Error ? error.message : "Failed to update repository");
       } finally {
         btn.removeAttribute("disabled");
       }
@@ -269,7 +269,7 @@ const totalPages = Math.ceil(total / limit);
 
         row.remove();
       } catch (error) {
-        alert(error.message || "Failed to delete repository");
+        alert(error instanceof Error ? error.message : "Failed to delete repository");
         btn.removeAttribute("disabled");
       }
     });

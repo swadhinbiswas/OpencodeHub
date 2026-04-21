@@ -12,7 +12,8 @@ import {
   Clock,
 } from "lucide-react";
 import { getDatabase, schema } from "@/db";
-import { eq, and, sql, count } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import {
   listFiles,
   getLastCommit,
@@ -27,7 +28,7 @@ import RepoHeader from "@/components/repo/RepoHeader.astro";
 import FileExplorer from "@/components/repo/FileExplorer.astro";
 
 const { owner: ownerName, repo: repoName } = Astro.params;
-const db = getDatabase();
+const db = getDatabase() as NodePgDatabase<typeof schema>;
 
 // 1. Fetch Repo & Owner
 const user = await db.query.users.findFirst({
@@ -58,7 +59,7 @@ if (!hasAccess) {
 
 // Fetch issue count
 const issueCountResult = await db
-  .select({ count: count() })
+  .select({ count: sql`count` })
   .from(schema.issues)
   .where(
     and(
@@ -313,7 +314,7 @@ const repo = {
 
 <BaseLayout title={`${repo.owner}/${repo.name} - OpenCodeHub`}>
   <div class="container py-6">
-    <RepoHeader repo={repo} activeTab="code" />
+    <RepoHeader repo={repo as any} activeTab="code" />
 
     <div class="grid gap-6 lg:grid-cols-4">
       <!-- Main Content -->
