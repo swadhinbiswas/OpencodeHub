@@ -2,6 +2,86 @@
 
 OpenCodeHub supports OpenTelemetry (OTLP) for logs and metrics, allowing you to stream data to any compatible backend (Grafana Cloud, Prometheus/Loki, Datadog).
 
+## Production Baseline
+
+The minimum production observability stack should include:
+
+- `GET /api/health` for liveness/readiness
+- `GET /api/metrics` for Prometheus scraping
+- Grafana dashboards for request latency, queue health, and storage/DB timing
+- Alerting for p95 regressions and service degradation
+
+## Service Level Objectives (SLOs)
+
+These are the committed targets for production deployments.
+
+### Availability SLO
+
+| Indicator | Target | Burn Rate Alert |
+|---|---|---|
+| API + Web availability | 99.9% monthly (43.8 min downtime/month) | Page at 15% burn rate |
+| Health endpoint 5xx rate | < 0.1% in any 5m window | Page at >5% error rate for 5m |
+| Git operation success | 99.5% monthly | Page at >1% failures for 5m |
+
+### Latency SLO
+
+| Endpoint Type | Target (p95) | Target (p99) | Burn Rate Alert |
+|---|---|---|---|
+| API read requests | < 500ms | < 1s | Page at p95 > 1s for 5m |
+| API write requests | < 1s | < 3s | Page at p95 > 2s for 5m |
+| DB queries | < 200ms | < 1s | Page at p95 > 1s for 5m |
+| Storage operations | < 3s | < 10s | Page at p95 > 5s for 10m |
+| Git clone/push | < 10s | < 30s | Page at p95 > 30s for 10m |
+| CI job dispatch | < 2s | < 5s | Page at p95 > 5s for 5m |
+| Page renders (SSR) | < 1s | < 3s | Page at p95 > 3s for 5m |
+
+### Throughput & Queue SLO
+
+| Indicator | Target | Alert |
+|---|---|---|
+| CI queue depth | < 20 jobs | Page at > 20 jobs for 10m |
+| Active runners | > 0 | Page if 0 for 5m |
+| CI job success rate | > 90% | Warn at > 30% failure rate for 30m |
+| Rate limit hit rate | < 10/sec | Info warn at > 10/sec for 5m |
+
+### Security SLO
+
+| Indicator | Target | Alert |
+|---|---|---|
+| Auth failure rate | < 5% | Warn at > 30% failure rate for 5m |
+| Secret scan findings | 0 new leaks | Block pipeline on new leaks |
+| Dependency CVEs | 0 critical/high unpatched | Block pipeline on critical |
+
+### Error Budget
+
+- **Monthly error budget**: 43.8 minutes of downtime (for 99.9% target)
+- **Latency budget**: Based on p95 thresholds above
+- **Policy**: New features ship only when error budget > 50% remaining
+
+### SLO Implementation
+
+SLOs are tracked via Prometheus metrics in `deploy/prometheus/alert-rules.yml` and visualized in `deploy/grafana/dashboard.json`.
+
+Query examples for Grafana:
+
+```
+# API availability SLO
+sum(rate(http_requests_total{code=~"5.."}[5m])) / sum(rate(http_requests_total[5m]))
+
+# p95 latency SLO
+histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))
+```
+
+## Grafana Dashboard
+
+The production dashboard is available at `deploy/grafana/dashboard.json`. Import it into your Grafana instance for:
+- Real-time request latency (p50/p95/p99)
+- Error rates by endpoint
+- DB query performance
+- CI queue depth and runner activity
+- Storage operation timing
+- Auth success/failure rates
+
 ## Grafana Cloud Setup (Recommended)
 
 This guide explains how to stream logs from OpenCodeHub to [Grafana Cloud](https://grafana.com/products/cloud/).
