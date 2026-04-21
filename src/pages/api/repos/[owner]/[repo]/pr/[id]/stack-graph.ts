@@ -1,24 +1,28 @@
 import type { APIRoute } from "astro";
-import { db } from "../../../../../../../db/index";
-import { stackedPrs } from "../../../../../../../db/schema/stacked-prs";
+import { getDatabase, schema } from "@/db";
 import { eq } from "drizzle-orm";
 
 export const GET: APIRoute = async ({ params }) => {
-  const prId = Number(params.id);
+  const prId = params.id;
   
-  if (isNaN(prId)) {
+  if (!prId) {
     return new Response("Invalid PR ID", { status: 400 });
   }
 
+  const db = getDatabase();
   try {
-    const selfPr = await db.select().from(stackedPrs).where(eq(stackedPrs.prId, prId)).limit(1);
+    const selfPr = await db.query.prStackEntries.findFirst({
+      where: eq(schema.prStackEntries.pullRequestId, prId),
+    });
     
-    if (selfPr.length === 0) {
+    if (!selfPr) {
       return new Response(JSON.stringify({ isStacked: false }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
 
-    const stackId = selfPr[0].stackId;
-    const fullStack = await db.select().from(stackedPrs).where(eq(stackedPrs.stackId, stackId));
+    const stackId = selfPr.stackId;
+    const fullStack = await db.query.prStackEntries.findMany({
+      where: eq(schema.prStackEntries.stackId, stackId),
+    });
     
     return new Response(JSON.stringify({ isStacked: true, stackId, items: fullStack }), {
       status: 200,

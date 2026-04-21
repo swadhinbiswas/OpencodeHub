@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger";
+
 export class RealtimeClient {
     private eventSource: EventSource | null = null;
     private listeners: Map<string, Function[]> = new Map();

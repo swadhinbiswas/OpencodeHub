@@ -6,6 +6,7 @@
 import { getDatabase, schema } from "@/db";
 import { externalBuilds, externalCIConfigs } from "@/db/schema/integrations";
 import { and, eq } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { assertOnlineFeature } from "./air-gapped";
 import { logger } from "./logger";
 
@@ -283,8 +284,7 @@ export async function syncBuildStatus(
     const completedAt =
       status !== "pending" && status !== "running" ? new Date() : null;
 
-    // @ts-expect-error - Drizzle multi-db union type issue
-    await db
+    await (db as NodePgDatabase<typeof schema>)
       .update(schema.externalBuilds)
       .set({
         status,
@@ -405,19 +405,16 @@ async function syncStatusToPR(
   });
 
   if (existing) {
-    // @ts-expect-error - Drizzle multi-db union type issue
-    await db
+    await (db as NodePgDatabase<typeof schema>)
       .update(schema.pullRequestChecks)
       .set({
         headSha: pr.headSha,
         status: status === "running" ? "in_progress" : "completed",
         conclusion,
-        updatedAt: new Date(),
       })
       .where(eq(schema.pullRequestChecks.id, existing.id));
   } else {
-    // @ts-expect-error - Drizzle multi-db union type issue
-    await db.insert(schema.pullRequestChecks).values({
+    await (db as NodePgDatabase<typeof schema>).insert(schema.pullRequestChecks).values({
       id: crypto.randomUUID(),
       pullRequestId: prId,
       name: checkName,
@@ -425,7 +422,6 @@ async function syncStatusToPR(
       status: status === "running" ? "in_progress" : "completed",
       conclusion,
       createdAt: new Date(),
-      updatedAt: new Date(),
     });
   }
 }
@@ -469,8 +465,7 @@ export async function handleExternalCIWebhook(
     if (build) {
       const normalizedStatus = normalizeStatus(config.provider, String(status));
 
-      // @ts-expect-error - Drizzle multi-db union type issue
-      await db
+      await (db as NodePgDatabase<typeof schema>)
         .update(schema.externalBuilds)
         .set({
           status: normalizedStatus,

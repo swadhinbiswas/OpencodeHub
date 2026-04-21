@@ -1,5 +1,5 @@
 ---
-import Layout from "../../layouts/Layout.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
 import { KeyboardReviewInbox } from "../../components/inbox/KeyboardReviewInbox";
 
 // Typically we'd fetch the first PR needing review from the DB here
@@ -13,9 +13,9 @@ const mockInitialPr = {
 };
 ---
 
-<Layout title="Inbox - OpenCodeHub">
+<BaseLayout title="Inbox - OpenCodeHub">
   <main class="h-screen w-full bg-slate-950 overflow-hidden pt-16">
     <!-- React Island loaded instantly for client interaction -->
     <KeyboardReviewInbox client:only="react" initialPr={mockInitialPr} />
   </main>
-</Layout>
+</BaseLayout>

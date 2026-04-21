@@ -211,7 +211,7 @@ export const withErrorHandler = (handler: APIRoute): APIRoute => {
     try {
       return await handler(context);
     } catch (err) {
-      logger.error(err);
+      logger.error(err instanceof Error ? err.message : String(err));
       return serverError(err instanceof Error ? err.message : "Unknown error");
     }
   };

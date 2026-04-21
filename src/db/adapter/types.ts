@@ -8,6 +8,16 @@ export type DatabaseDriver =
   | "postgres"
   | "turso"
   | "cockroachdb"
+  | "mysql"
+  | "mariadb"
+  | "mongodb"
+  | "redis"
+  | "firestore"
+  | "dynamodb"
+  | "neo4j"
+  | "cassandra"
+  | "scylladb"
+  | "surrealdb"
   | "custom";
 
 export interface DatabaseConfig {

@@ -3,6 +3,8 @@
  * Graphite-style keyboard navigation for PR inbox
  */
 
+import { logger } from "@/lib/logger";
+
 // Keyboard shortcut handler
 export function initInboxKeyboardShortcuts() {
     let selectedIndex = 0;

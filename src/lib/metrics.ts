@@ -180,7 +180,7 @@ const allMetrics = [
 ];
 
 for (const metric of allMetrics) {
-  register.registerMetric(metric);
+  register.registerMetric(metric as typeof httpRequestsTotal);
 }
 
 export { register };

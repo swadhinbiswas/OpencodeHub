@@ -93,7 +93,7 @@ const formattedPRs = prsList.map((pr) => ({
   number: pr.number,
   title: pr.title,
   state: pr.state as "open" | "closed" | "merged",
-  createdAt: pr.createdAt,
+  createdAt: pr.createdAt.toISOString(),
   commentCount: pr.commentCount || 0,
   sourceBranch: pr.headBranch || "",
   targetBranch: pr.baseBranch || "",

@@ -60,7 +60,7 @@ try {
   const myPrs = await db.query.pullRequests.findMany({
     where: and(
       eq(schema.pullRequests.authorId, user.id),
-      gte(schema.pullRequests.createdAt, startDate.toISOString())
+      gte(schema.pullRequests.createdAt, startDate)
     ),
   });
   
@@ -82,7 +82,7 @@ try {
   const myReviews = await db.query.pullRequestReviews.findMany({
     where: and(
       eq(schema.pullRequestReviews.reviewerId, user.id),
-      gte(schema.pullRequestReviews.createdAt, startDate.toISOString())
+      gte(schema.pullRequestReviews.createdAt, startDate)
     ),
   });
   
@@ -124,7 +124,7 @@ try {
   // Top contributors (if viewing team)
   if (view === "team") {
     const allPrs = await db.query.pullRequests.findMany({
-      where: gte(schema.pullRequests.createdAt, startDate.toISOString()),
+      where: gte(schema.pullRequests.createdAt, startDate),
       with: { author: true },
       limit: 100,
     });

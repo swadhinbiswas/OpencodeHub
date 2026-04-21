@@ -3,6 +3,8 @@
  * Run this at application startup to ensure all required configuration is present
  */
 
+import { logger } from "@/lib/logger";
+
 interface EnvConfig {
     name: string;
     required: boolean;

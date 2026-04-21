@@ -5,6 +5,7 @@
 
 import { getDatabase, schema } from "@/db";
 import { and, eq, inArray } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { logger } from "./logger";
 
 export interface EpicInfo {
@@ -202,8 +203,7 @@ export async function addToEpic(
 
   if (!epic) return false;
 
-  // @ts-expect-error - Drizzle multi-db union type issue
-  await db
+  await (db as NodePgDatabase<typeof schema>)
     .update(schema.issues)
     .set({ parentId: epicId, updatedAt: new Date() })
     .where(eq(schema.issues.id, issueId));
@@ -217,8 +217,7 @@ export async function addToEpic(
 export async function removeFromEpic(issueId: string): Promise<boolean> {
   const db = getDatabase();
 
-  // @ts-expect-error - Drizzle multi-db union type issue
-  await db
+  await (db as NodePgDatabase<typeof schema>)
     .update(schema.issues)
     .set({ parentId: null, updatedAt: new Date() })
     .where(eq(schema.issues.id, issueId));
@@ -257,8 +256,7 @@ export async function getIssueHierarchy(
 export async function convertToEpic(issueId: string): Promise<boolean> {
   const db = getDatabase();
 
-  // @ts-expect-error - Drizzle multi-db union type issue
-  await db
+  await (db as NodePgDatabase<typeof schema>)
     .update(schema.issues)
     .set({ type: "epic", parentId: null, updatedAt: new Date() })
     .where(eq(schema.issues.id, issueId));
@@ -275,8 +273,7 @@ export async function convertToTask(
 ): Promise<boolean> {
   const db = getDatabase();
 
-  // @ts-expect-error - Drizzle multi-db union type issue
-  await db
+  await (db as NodePgDatabase<typeof schema>)
     .update(schema.issues)
     .set({
       type: "task",

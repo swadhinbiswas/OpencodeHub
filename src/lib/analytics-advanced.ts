@@ -9,6 +9,7 @@ import { users } from "@/db/schema/users";
 import { compareBranches } from "@/lib/git";
 import { resolveRepoPath } from "@/lib/git-storage";
 import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import {
   boolean,
   integer,
@@ -127,8 +128,7 @@ export async function calculateFileHotspots(
   > = new Map();
 
   // Replace previous snapshot for this repository
-  // @ts-expect-error - Drizzle multi-db union type issue
-  await db
+  await (db as NodePgDatabase<typeof schema>)
     .delete(schema.fileHotspots)
     .where(eq(schema.fileHotspots.repositoryId, repositoryId));
 
@@ -191,8 +191,7 @@ export async function calculateFileHotspots(
       calculatedAt: new Date(),
     };
 
-    // @ts-expect-error - Drizzle multi-db union type issue
-    await db.insert(schema.fileHotspots).values(hotspot);
+    await (db as NodePgDatabase<typeof schema>).insert(schema.fileHotspots).values(hotspot);
     hotspots.push(hotspot as FileHotspot);
   }
 
