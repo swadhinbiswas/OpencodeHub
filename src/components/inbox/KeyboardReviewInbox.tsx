@@ -52,7 +52,7 @@ export const KeyboardReviewInbox: React.FC<{ initialPr: PRProps }> = ({ initialP
           initialPr.diffs.map((diff, idx) => (
             <div 
               key={idx} 
-              className={\`p-4 rounded-md border transition-colors duration-150 \${idx === activeChunk ? 'border-blue-500 bg-slate-900' : 'border-slate-800'}\`}
+              className={`p-4 rounded-md border transition-colors duration-150 ${idx === activeChunk ? 'border-blue-500 bg-slate-900' : 'border-slate-800'}`}
             >
               <pre className="text-sm">{JSON.stringify(diff, null, 2)}</pre>
             </div>
