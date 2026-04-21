@@ -1,4 +1,5 @@
 import { getDatabase, schema } from "@/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { cleanupAllRepos } from "@/lib/cron/cleanup-branches";
 import { logger } from "@/lib/logger";
 import { syncAllMirrors } from "@/lib/mirror-sync";
@@ -38,19 +39,22 @@ async function runQueueProcessor() {
 
   try {
     // 1. Reclaim stale jobs (stuck in "processing" too long)
-    const staleThreshold = new Date(Date.now() - STALE_JOB_TIMEOUT_MS);
     try {
-      await db
-        .update(schema.mergeQueueItems)
-        .set({ status: "queued" })
-        .where(
-          and(
-            eq(schema.mergeQueueItems.status, "processing"),
-            lt(schema.mergeQueueItems.updatedAt, staleThreshold),
-          ),
-        );
+      const staleThreshold = new Date(Date.now() - STALE_JOB_TIMEOUT_MS);
+      const staleItems = await db.query.mergeQueueItems.findMany({
+        where: eq(schema.mergeQueueItems.status, "processing"),
+        columns: { id: true, startedAt: true },
+      });
+      for (const item of staleItems) {
+        if (item.startedAt && new Date(item.startedAt) < staleThreshold) {
+          await (db as NodePgDatabase<typeof schema>)
+            .update(schema.mergeQueueItems)
+            .set({ status: "queued" })
+            .where(eq(schema.mergeQueueItems.id, item.id));
+        }
+      }
     } catch {
-      // retryCount/updatedAt columns may not exist yet — skip stale reclaim
+      // startedAt column may not exist yet — skip stale reclaim
     }
 
     // 2. Process pending items
@@ -208,7 +212,7 @@ async function startWorker() {
     ),
     runLoop(
       "mirror-sync",
-      () => syncAllMirrors(),
+      async () => { await syncAllMirrors(); },
       MIRROR_SYNC_INTERVAL,
       () => lastMirrorRun,
       (t) => {
