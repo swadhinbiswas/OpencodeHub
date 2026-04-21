@@ -13,22 +13,28 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { RepoActions } from "@/components/repo/RepoActions";
 
+type RepoProps = {
+  owner: string;
+  name: string;
+  description?: string | null;
+  visibility?: string;
+  topics?: unknown[];
+  watchers?: number;
+  forks?: number;
+  stars?: number;
+  openIssueCount?: number;
+  openPrCount?: number;
+  website?: string | null;
+  license?: string | null;
+  updatedAt?: Date | string | number | null;
+  defaultBranch?: string;
+  language?: string;
+  id?: string;
+  [key: string]: any;
+};
+
 interface Props {
-  repo: {
-    owner: string;
-    name: string;
-    description?: string | null;
-    visibility: string;
-    topics?: string[];
-    watchers?: number;
-    forks?: number;
-    stars?: number;
-    openIssueCount?: number;
-    openPrCount?: number;
-    website?: string | null;
-    license?: string | null;
-    updatedAt?: Date | string | number | null;
-  };
+  repo: RepoProps;
   activeTab:
     | "code"
     | "issues"
@@ -214,11 +220,11 @@ const tabs = [
         {repo.updatedAt && <div>Updated {timeAgo(repo.updatedAt)}</div>}
       </div>
 
-      <!-- Topics -->
+      {/* Topics */}
       {
-        repo.topics && repo.topics.length > 0 && (
+        repo.topics && (repo.topics as unknown[]).length > 0 && (
           <div class="flex flex-wrap gap-2">
-            {repo.topics.map((topic: string) => (
+            {(repo.topics as any[]).map((topic: any) => (
               <Badge
                 variant="secondary"
                 className="rounded-full hover:bg-primary/20 hover:text-primary cursor-pointer transition-colors"

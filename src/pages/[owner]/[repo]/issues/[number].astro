@@ -6,9 +6,10 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 import { renderMarkdown } from "@/lib/markdown";
 import { canReadRepo, canWriteRepo } from "@/lib/permissions";
 import { and, eq } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 const { owner: ownerName, repo: repoName, number } = Astro.params;
-const db = getDatabase();
+const db = getDatabase() as NodePgDatabase<typeof schema>;
 
 // 1. Fetch Repo & Owner
 const user = await db.query.users.findFirst({
@@ -137,7 +138,7 @@ const formattedIssue = {
 <BaseLayout
   title={`${issue.title} · Issue #${issue.number} · ${ownerName}/${repoName}`}
 >
-  <RepoHeader repo={repoForHeader} activeTab="issues" />
+  <RepoHeader repo={repoForHeader as any} activeTab="issues" />
 
   <div class="container py-8">
     <IssueDetail

@@ -57,7 +57,7 @@ const customFields = await db.query.customFieldDefinitions.findMany({
 ---
 
 <BaseLayout title={`New Issue · ${ownerName}/${repoName}`}>
-  <RepoHeader repo={repoForHeader} activeTab="issues" />
+  <RepoHeader repo={repoForHeader as any} activeTab="issues" />
 
   <div class="container max-w-4xl py-8">
     <div class="mb-6">

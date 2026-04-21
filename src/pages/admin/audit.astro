@@ -1,7 +1,8 @@
 ---
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { getDatabase, schema } from "@/db";
-import { desc, like, eq, or, count } from "drizzle-orm";
+import { desc, like, eq, or, sql } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +26,7 @@ if (!user?.isAdmin) {
   return Astro.redirect("/");
 }
 
-const db = getDatabase();
+const db = getDatabase() as NodePgDatabase<typeof schema>;
 const searchQuery = Astro.url.searchParams.get("q") || "";
 const actionFilter = Astro.url.searchParams.get("action") || "";
 const page = parseInt(Astro.url.searchParams.get("page") || "1");
@@ -69,7 +70,7 @@ const [logs, totalResult] = await Promise.all([
     },
   }),
   db
-    .select({ count: count() })
+    .select({ count: sql`count` })
     .from(schema.auditLogs)
     .where(whereClause)
     .limit(1),
@@ -139,7 +140,7 @@ function timeAgo(date: string) {
             <p class="text-2xl font-bold">
               {
                 logs.filter(
-                  (l) =>
+                  (l: typeof logs[number]) =>
                     new Date(l.createdAt).toDateString() ===
                     new Date().toDateString(),
                 ).length
@@ -237,7 +238,7 @@ function timeAgo(date: string) {
                             </div>
                           )}
                           {log.actorIp && <span>IP: {log.actorIp}</span>}
-                          <span>{timeAgo(log.createdAt)}</span>
+                          <span>{timeAgo(log.createdAt.toISOString())}</span>
                         </div>
                         {data && (
                           <details class="mt-2">

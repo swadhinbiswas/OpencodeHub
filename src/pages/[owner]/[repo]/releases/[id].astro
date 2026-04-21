@@ -3,12 +3,13 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 import RepoHeader from "@/components/repo/RepoHeader.astro";
 import { getDatabase, schema } from "@/db";
 import { eq, and } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { canReadRepo, canWriteRepo } from "@/lib/permissions";
 import { renderMarkdown } from "@/lib/markdown";
 import { Tag, Clock, Download, Edit, Trash2, ArrowLeft } from "lucide-react";
 
 const { owner: ownerName, repo: repoName, id: releaseId } = Astro.params;
-const db = getDatabase();
+const db = getDatabase() as NodePgDatabase<typeof schema>;
 
 const user = await db.query.users.findFirst({
   where: eq(schema.users.username, ownerName!),
@@ -126,7 +127,7 @@ const repo = {
               <Clock className="h-4 w-4" />
               {formatDate(release.publishedAt || release.createdAt)}
             </div>
-            {release.downloadCount > 0 && (
+            {release.downloadCount != null && release.downloadCount > 0 && (
               <div class="flex items-center gap-2 text-muted-foreground">
                 <Download className="h-4 w-4" />
                 {release.downloadCount} downloads

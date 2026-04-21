@@ -1,10 +1,11 @@
 ---
 import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import { and, desc, eq, count } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 const { owner: username } = Astro.params;
-const db = getDatabase();
+const db = getDatabase() as NodePgDatabase<typeof schema>;
 
 // 1. Fetch User
 const user = await db.query.users.findFirst({
@@ -21,13 +22,13 @@ const isOwner = currentUser?.id === user.id;
 
 // 3. Fetch Follow Stats
 const [followersResult] = await db
-  .select({ count: count() })
+  .select({ count: sql`count` })
   .from(schema.userFollowers)
   .where(eq(schema.userFollowers.followeeId, user.id));
 const followersCount = followersResult?.count || 0;
 
 const [followingResult] = await db
-  .select({ count: count() })
+  .select({ count: sql`count` })
   .from(schema.userFollowers)
   .where(eq(schema.userFollowers.followerId, user.id));
 const followingCount = followingResult?.count || 0;

@@ -1,10 +1,11 @@
 ---
 import RepoLayout from "@/layouts/RepoLayout.astro";
 import { getRepoAndUser } from "@/lib/auth";
-import { getDatabase } from "@/db";
+import { getDatabase, schema } from "@/db";
 import { projects } from "@/db/schema/projects";
 import { eq, desc } from "drizzle-orm";
 import { Plus } from "lucide-react";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 const { owner, repo } = Astro.params;
 const repoInfo = await getRepoAndUser(Astro.request, owner!, repo!);
@@ -14,7 +15,7 @@ if (!repoInfo) {
 }
 
 const { repository, permission, user } = repoInfo;
-const db = getDatabase();
+const db = getDatabase() as NodePgDatabase<typeof schema>;
 
 const projectList = await db
     .select()
@@ -41,7 +42,7 @@ const projectList = await db
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {
-            projectList.map((project) => (
+            projectList.map((project: any) => (
                 <a
                     href={`/${owner}/${repo}/projects/${project.id}`}
                     class="block p-6 bg-[#161b22] border border-gray-800 rounded-xl hover:border-gray-600 transition-colors group"

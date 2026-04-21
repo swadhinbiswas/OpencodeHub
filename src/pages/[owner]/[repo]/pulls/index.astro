@@ -4,10 +4,11 @@ import PullRequestsList from "@/components/pulls/PullRequestsList";
 import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { canReadRepo } from "@/lib/permissions";
-import { and, desc, eq, sql, count } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 const { owner: ownerName, repo: repoName } = Astro.params;
-const db = getDatabase();
+const db = getDatabase() as NodePgDatabase<typeof schema>;
 
 // 1. Fetch Repo & Owner
 const user = await db.query.users.findFirst({
@@ -38,7 +39,7 @@ if (!hasAccess) {
 
 // Fetch issue count
 const issueCountResult = await db
-  .select({ count: count() })
+  .select({ count: sql`count` })
   .from(schema.issues)
   .where(
     and(
@@ -113,7 +114,7 @@ const formattedPRs = prsList.map((pr) => ({
 
 <BaseLayout title={`Pull Requests · ${repo.owner}/${repo.name}`}>
   <div class="container py-6">
-    <RepoHeader repo={repo} activeTab="pulls" />
+    <RepoHeader repo={repo as any} activeTab="pulls" />
 
     <div class="mt-6">
       <PullRequestsList
