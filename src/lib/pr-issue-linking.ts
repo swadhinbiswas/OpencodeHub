@@ -7,6 +7,7 @@ import { getDatabase, schema } from "@/db";
 import { issues } from "@/db/schema/issues";
 import { pullRequests } from "@/db/schema/pull-requests";
 import { and, eq, inArray, or } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { logger } from "./logger";
 
@@ -119,8 +120,7 @@ export async function linkPRToIssue(options: {
 
   if (existing) {
     // Update link type
-    // @ts-expect-error - Drizzle multi-db union type issue
-    await db
+    await (db as NodePgDatabase<typeof schema>)
       .update(schema.prIssueLinks)
       .set({ linkType: options.linkType })
       .where(eq(schema.prIssueLinks.id, existing.id));
@@ -286,8 +286,7 @@ export async function closeLinkedIssuesOnMerge(
       })) || [];
 
     for (const link of links) {
-      // @ts-expect-error - Drizzle multi-db union type issue
-      await db
+      await (db as NodePgDatabase<typeof schema>)
         .update(schema.issues)
         .set({
           state: "closed",
@@ -320,8 +319,7 @@ export async function unlinkPRFromIssue(linkId: string): Promise<boolean> {
   const db = getDatabase();
 
   try {
-    // @ts-expect-error - Drizzle multi-db union type issue
-    await db
+    await (db as NodePgDatabase<typeof schema>)
       .delete(schema.prIssueLinks)
       .where(eq(schema.prIssueLinks.id, linkId));
     return true;

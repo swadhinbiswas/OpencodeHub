@@ -6,6 +6,7 @@
 import { getDatabase, schema } from "@/db";
 import type { Package, PackageVersion } from "@/db/schema/packages";
 import { and, desc, eq, ilike, sql } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { logger } from "./logger";
 
 // ============================================================================
@@ -109,7 +110,7 @@ export async function listPackages(options: {
     })) || [];
 
   // Count total
-  const countResult = await db
+  const countResult = await (db as NodePgDatabase<typeof schema>)
     .select({ count: sql<number>`count(*)` })
     .from(schema.packages)
     .where(and(...conditions));
@@ -158,12 +159,10 @@ export async function publishVersion(options: {
     createdAt: new Date(),
   };
 
-  // @ts-expect-error - Drizzle multi-db union type issue
-  await db.insert(schema.packageVersions).values(ver);
+  await (db as NodePgDatabase<typeof schema>).insert(schema.packageVersions).values(ver);
 
   // Update package timestamp & handle "latest" tag demotion
-  // @ts-expect-error - Drizzle multi-db union type issue
-  await db
+  await (db as NodePgDatabase<typeof schema>)
     .update(schema.packages)
     .set({ updatedAt: new Date() })
     .where(eq(schema.packages.id, options.packageId));
@@ -206,8 +205,7 @@ export async function yankVersion(
   version: string,
 ): Promise<void> {
   const db = getDatabase();
-  // @ts-expect-error - Drizzle multi-db union type issue
-  await db
+  await (db as NodePgDatabase<typeof schema>)
     .update(schema.packageVersions)
     .set({ yanked: true })
     .where(
@@ -224,13 +222,11 @@ export async function recordDownload(
   versionId: string,
 ): Promise<void> {
   const db = getDatabase();
-  // @ts-expect-error - Drizzle multi-db union type issue
-  await db
+  await (db as NodePgDatabase<typeof schema>)
     .update(schema.packageVersions)
     .set({ downloadCount: sql`${schema.packageVersions.downloadCount} + 1` })
     .where(eq(schema.packageVersions.id, versionId));
-  // @ts-expect-error - Drizzle multi-db union type issue
-  await db
+  await (db as NodePgDatabase<typeof schema>)
     .update(schema.packages)
     .set({ downloadCount: sql`${schema.packages.downloadCount} + 1` })
     .where(eq(schema.packages.id, packageId));

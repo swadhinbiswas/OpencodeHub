@@ -7,7 +7,7 @@ import {
   unauthorized,
 } from "@/lib/api";
 import { withErrorHandler } from "@/lib/errors";
-import { removeFromMergeQueue, reprioritizeQueue } from "@/lib/merge-queue";
+import { removeFromMergeQueue, updateQueuePriority } from "@/lib/merge-queue";
 import { canWriteRepo } from "@/lib/permissions";
 import type { APIRoute } from "astro";
 import { and, eq, inArray } from "drizzle-orm";
@@ -112,7 +112,7 @@ export const POST: APIRoute = withErrorHandler(
         if (parsed.data.action === "remove") {
           await removeFromMergeQueue(pr.id);
         } else {
-          await reprioritizeQueue(entry.id, parsed.data.priority!);
+          await updateQueuePriority(entry.id, parsed.data.priority!);
         }
 
         updated.push({

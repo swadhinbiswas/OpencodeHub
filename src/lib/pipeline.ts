@@ -11,6 +11,7 @@ import fs from "fs/promises";
 import path from "path";
 import { parse as parseYaml } from "yaml";
 import { generateId } from "./utils";
+import { logger } from "@/lib/logger";
 
 // Types
 export interface WorkflowConfig {

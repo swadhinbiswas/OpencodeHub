@@ -5,6 +5,7 @@
 
 import { getDatabase, schema } from "@/db";
 import { eq } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import fs from "fs/promises";
 import path from "path";
 import { logger } from "./logger";
@@ -92,8 +93,7 @@ export class LogPersister {
   async persistStep(step: StepRecord): Promise<void> {
     try {
       const db = getDatabase();
-      // @ts-expect-error - Drizzle multi-db union type issue
-      await db
+      await (db as NodePgDatabase<typeof schema>)
         .insert(schema.workflowSteps)
         .values({
           id: step.id,

@@ -12,6 +12,7 @@ import {
   secretScanResults,
 } from "@/db/schema/integrations";
 import { and, eq, gt, gte, lte } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { logger } from "./logger";
 
 // Re-export types from schema for consumers
@@ -168,8 +169,7 @@ export async function resolveSecretAlert(
   const db = getDatabase();
 
   try {
-    // @ts-expect-error - Drizzle multi-db union type issue
-    await db
+    await (db as NodePgDatabase<typeof schema>)
       .update(schema.secretScanResults)
       .set({
         status: resolution,
@@ -366,8 +366,7 @@ export async function checkRateLimit(options: {
     );
 
     // Increment counter
-    // @ts-expect-error - Drizzle multi-db union type issue
-    await db
+    await (db as NodePgDatabase<typeof schema>)
       .update(schema.rateLimitLogs)
       .set({
         requestCount: existing.requestCount + 1,
@@ -378,8 +377,7 @@ export async function checkRateLimit(options: {
     return { allowed, remaining: remaining - 1, resetAt };
   } else {
     // Create new window
-    // @ts-expect-error - Drizzle multi-db union type issue
-    await db.insert(schema.rateLimitLogs).values({
+    await (db as NodePgDatabase<typeof schema>).insert(schema.rateLimitLogs).values({
       id: crypto.randomUUID(),
       ruleId: matchingRule.id,
       key: options.key,
@@ -672,8 +670,7 @@ export async function syncSAMLGroupsToTeams(
       syncedTeams.push(team.name);
     } else if (!isGroupMember && existingMembership) {
       // Remove from team (SAML is authoritative source)
-      // @ts-expect-error - Drizzle multi-db union type issue
-      await db
+      await (db as NodePgDatabase<typeof schema>)
         .delete(schema.teamMembers)
         .where(
           and(

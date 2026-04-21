@@ -5,6 +5,7 @@
 
 import { getDatabase, schema } from "@/db";
 import { and, eq } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { createReadStream, createWriteStream } from "fs";
 import fs from "fs/promises";
 import path from "path";
@@ -207,8 +208,7 @@ export async function downloadArtifact(
   }
 
   // Increment download count
-  // @ts-expect-error - Drizzle multi-db union type issue
-  await db
+  await (db as NodePgDatabase<typeof schema>)
     .update(schema.workflowArtifacts)
     .set({ downloadCount: (record.downloadCount ?? 0) + 1 })
     .where(eq(schema.workflowArtifacts.id, record.id));
@@ -289,8 +289,7 @@ export async function deleteArtifact(artifactId: string): Promise<void> {
   }
 
   // Remove DB record
-  // @ts-expect-error - Drizzle multi-db union type issue
-  await db
+  await (db as NodePgDatabase<typeof schema>)
     .delete(schema.workflowArtifacts)
     .where(eq(schema.workflowArtifacts.id, artifactId));
 

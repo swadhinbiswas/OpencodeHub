@@ -91,7 +91,7 @@ const queueItem = await db.query.mergeQueueItems.findFirst({
 });
 
 // Fetch Stack Info
-let stackInfo = null;
+let stackInfo: { baseBranch: string; stackId: string; entries: { order: number; pr: any }[] } | null = null;
 try {
   const stackEntry = await db.query.prStackEntries.findFirst({
     where: eq(schema.prStackEntries.pullRequestId, pr.id),
@@ -111,6 +111,7 @@ try {
 
     stackInfo = {
       baseBranch: stackEntry.stack.baseBranch,
+      stackId: stackEntry.stackId,
       entries: entries.map((e) => ({
         order: e.stackOrder,
         pr: e.pullRequest,
@@ -792,7 +793,7 @@ try {
       isMerged: entry.pr.isMerged,
       order: entry.order,
     })) : [],
-    stackId: stackInfo ? stackInfo.stack.id : null,
+    stackId: stackInfo ? stackInfo.stackId : null,
     currentBuiltinState: pr.state,
     currentCustomStateId: pr.stateId || null,
   }}

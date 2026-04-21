@@ -29,7 +29,7 @@ import { logger } from "@/lib/logger";
 import {
     processNextInQueue,
     removeFromMergeQueue,
-    reprioritizeQueue,
+    updateQueuePriority,
 } from "@/lib/merge-queue";
 import { canWriteRepo } from "@/lib/permissions";
 
@@ -281,7 +281,7 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request }) => {
       return badRequest("Priority is required");
     }
 
-    await reprioritizeQueue(entry.id, priority);
+    await updateQueuePriority(entry.id, priority);
     logger.info(
       { userId: actor.id, repoId: repository.id, entryId, priority },
       "Reprioritized merge queue entry",
