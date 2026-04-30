@@ -3,7 +3,7 @@
  * Parse and match CODEOWNERS file for automatic reviewer assignment
  */
 
-import minimatch from "minimatch";
+import { minimatch } from "minimatch";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { and, eq, or } from "drizzle-orm";
 import { schema } from "@/db";

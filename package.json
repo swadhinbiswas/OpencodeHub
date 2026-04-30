@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "A fully self-hosted, open-source GitHub/GitLab alternative with SSH git hosting, pipelines/actions, and advanced UI",
   "type": "module",
+  "workspaces": [
+    "cli"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/swadhinbiswas/OpencodeHub.git"
@@ -106,6 +109,7 @@
     "lucide-react": "^0.400.0",
     "marked": "^17.0.1",
     "micromatch": "^4.0.8",
+    "minimatch": "^9.0.5",
     "monaco-editor": "^0.50.0",
     "mysql2": "^3.15.3",
     "nanoid": "^5.0.7",
