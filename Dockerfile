@@ -11,6 +11,7 @@ RUN bun install --frozen-lockfile
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ENV SKIP_REDIS_CHECK=1
 RUN bun run build
 
 # Production image

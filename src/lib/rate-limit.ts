@@ -4,7 +4,7 @@ import { logger } from "@/lib/logger";
 // Try to import Redis - may not be configured
 let redis: any = null;
 let redisAvailable = false;
-const isProd = process.env.NODE_ENV === "production";
+const isProd = process.env.NODE_ENV === "production" && !process.env.SKIP_REDIS_CHECK;
 
 try {
     const redisModule = await import("@/lib/redis");
