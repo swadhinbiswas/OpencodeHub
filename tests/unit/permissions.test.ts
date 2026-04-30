@@ -32,6 +32,7 @@ const {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Reset mock implementations to defaults
   mockDb.query.repositoryCollaborators.findFirst.mockResolvedValue(null);
   mockDb.query.organizationMembers.findFirst.mockResolvedValue(null);
   mockDb.query.organizationMembers.findMany.mockResolvedValue([]);
@@ -76,7 +77,7 @@ describe("getRepoPermission", () => {
 
   it("returns collaborator permission when found", async () => {
     mockDb.query.repositoryCollaborators.findFirst.mockResolvedValue({
-      permission: "write",
+      role: "developer",
     });
     const result = await getRepoPermission("u2", privateRepo);
     expect(result).toBe("write");
@@ -119,14 +120,14 @@ describe("canWriteRepo", () => {
 
   it("denies write for reader-only collaborator", async () => {
     mockDb.query.repositoryCollaborators.findFirst.mockResolvedValue({
-      permission: "read",
+      role: "guest",
     });
     expect(await canWriteRepo("u2", repo)).toBe(false);
   });
 
   it("allows write for write collaborator", async () => {
     mockDb.query.repositoryCollaborators.findFirst.mockResolvedValue({
-      permission: "write",
+      role: "developer",
     });
     expect(await canWriteRepo("u2", repo)).toBe(true);
   });
@@ -145,7 +146,7 @@ describe("canAdminRepo", () => {
 
   it("denies admin for write collaborator", async () => {
     mockDb.query.repositoryCollaborators.findFirst.mockResolvedValue({
-      permission: "write",
+      role: "developer",
     });
     expect(await canAdminRepo("u2", repo)).toBe(false);
   });

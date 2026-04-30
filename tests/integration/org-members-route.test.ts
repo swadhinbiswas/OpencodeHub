@@ -80,14 +80,15 @@ describe("GET /api/orgs/[org]/members", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDb = makeDb();
+    mocks.canAdminOrgMock.mockResolvedValue(true);
   });
 
   it("returns 200 with members list", async () => {
     const res = await GET(ctx("acme"));
     expect(res.status).toBe(200);
     const json = await readJson(res);
-    expect(json.members).toHaveLength(2);
-    expect(json.members[0].user.username).toBe("alice");
+    expect(json.data.members).toHaveLength(2);
+    expect(json.data.members[0].user.username).toBe("alice");
   });
 
   it("returns 401 when not authenticated", async () => {
@@ -116,6 +117,6 @@ describe("GET /api/orgs/[org]/members", () => {
     mockDb.query.organizationMembers.findMany.mockResolvedValue([]);
     const res = await GET(ctx("acme"));
     const json = await readJson(res);
-    expect(json.members).toEqual([]);
+    expect(json.data.members).toEqual([]);
   });
 });

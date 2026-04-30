@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 72" fill="none" role="img" aria-labelledby="ochLogoLightTitle ochLogoLightDesc">
+  <title id="ochLogoLightTitle">OpenCodeHub logo</title>
+  <desc id="ochLogoLightDesc">OpenCodeHub wordmark with a rounded gradient code mark and connected hub node.</desc>
+  <defs>
+    <linearGradient id="ochWordmarkLightGradient" x1="10" y1="10" x2="62" y2="62" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#38BDF8"/>
+      <stop offset="0.52" stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#EC4899"/>
+    </linearGradient>
+    <linearGradient id="ochWordmarkLightHighlight" x1="20" y1="16" x2="48" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.06"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(4 4)">
+    <rect x="8" y="4" width="56" height="56" rx="18" fill="url(#ochWordmarkLightGradient)"/>
+    <rect x="17" y="13" width="38" height="38" rx="13" fill="url(#ochWordmarkLightHighlight)" stroke="rgba(255,255,255,0.18)"/>
+    <path d="M31.5 23 23.5 32l8 9" stroke="#F8FAFC" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="m39 21-5 22" stroke="#F8FAFC" stroke-width="3.8" stroke-linecap="round"/>
+    <path d="m40.5 23 8 9-8 9" stroke="#F8FAFC" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M40 24.5 49.5 18" stroke="#E0F2FE" stroke-width="2.3" stroke-linecap="round" opacity="0.95"/>
+    <circle cx="52.5" cy="16" r="3.5" fill="#F8FAFC"/>
+    <circle cx="52.5" cy="16" r="1.4" fill="#7C3AED"/>
+  </g>
+
+  <text x="84" y="44" font-size="30" font-weight="700" font-family="Inter, ui-sans-serif, system-ui, sans-serif" letter-spacing="-0.045em">
+    <tspan fill="#CBD5E1">Open</tspan>
+    <tspan dx="8" fill="#F8FAFC">CodeHub</tspan>
+  </text>
+</svg>

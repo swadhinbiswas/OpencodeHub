@@ -6,7 +6,7 @@
 import { getDatabase, schema } from "@/db";
 import { eq, and, or } from "drizzle-orm";
 import { logger } from "./logger";
-import { minimatch } from "minimatch";
+import minimatch from "minimatch";
 
 interface PathPermissionCheck {
     allowed: boolean;

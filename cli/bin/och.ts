@@ -158,7 +158,7 @@ program
     chalk.hex("#f8f8f2")("Complete Git hosting with ") + // Dracula foreground
       chalk.hex("#bd93f9").bold("stack-first PR workflows"), // Dracula purple
   )
-  .version("1.1.0");
+  .version("1.1.2");
 
 // ================================
 // Core Commands

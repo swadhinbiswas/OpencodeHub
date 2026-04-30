@@ -176,7 +176,7 @@ export function getPagination(
   defaultPerPage = 20,
   maxPerPage = 100
 ): PaginationParams {
-  const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
+  const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10) || 1);
   const perPage = Math.min(
     maxPerPage,
     Math.max(

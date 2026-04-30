@@ -53,9 +53,9 @@ PORT=3000
 DATABASE_URL=postgresql://opencodehub:securepassword@postgres:5432/opencodehub
 
 # Object Storage (Highly Recommended for Production)
-STORAGE_TYPE=s3
-STORAGE_BUCKET=my-git-bucket
-STORAGE_REGION=us-east-1
+STORAGE_DRIVER=s3
+S3_BUCKET=my-git-bucket
+S3_REGION=us-east-1
 S3_ACCESS_KEY=...
 S3_SECRET_KEY=...
 ```

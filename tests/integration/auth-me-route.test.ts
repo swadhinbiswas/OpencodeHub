@@ -108,14 +108,19 @@ describe("GET /api/auth/me", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDb = makeDb();
+    mocks.getUserFromRequestMock.mockResolvedValue({
+      userId: "usr_1",
+      username: "alice",
+      email: "alice@example.com",
+    });
   });
 
   it("returns 200 with user profile", async () => {
     const res = await GET(ctx("GET"));
     expect(res.status).toBe(200);
     const json = await readJson(res);
-    expect(json.username).toBe("alice");
-    expect(json.email).toBe("alice@example.com");
+    expect(json.data.username).toBe("alice");
+    expect(json.data.email).toBe("alice@example.com");
   });
 
   it("returns 401 when not authenticated", async () => {
@@ -135,13 +140,18 @@ describe("PATCH /api/auth/me", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDb = makeDb();
+    mocks.getUserFromRequestMock.mockResolvedValue({
+      userId: "usr_1",
+      username: "alice",
+      email: "alice@example.com",
+    });
   });
 
   it("returns 200 when profile updated", async () => {
     const res = await PATCH(ctx("PATCH", { displayName: "Alice W" }));
     expect(res.status).toBe(200);
     const json = await readJson(res);
-    expect(json.message).toContain("updated");
+    expect(json.data.message).toContain("updated");
   });
 
   it("returns 401 when not authenticated", async () => {
@@ -155,13 +165,18 @@ describe("DELETE /api/auth/me", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDb = makeDb();
+    mocks.getUserFromRequestMock.mockResolvedValue({
+      userId: "usr_1",
+      username: "alice",
+      email: "alice@example.com",
+    });
   });
 
   it("returns 200 and deletes account", async () => {
     const res = await DELETE(ctx("DELETE"));
     expect(res.status).toBe(200);
     const json = await readJson(res);
-    expect(json.message).toContain("deleted");
+    expect(json.data.message).toContain("deleted");
   });
 
   it("returns 401 when not authenticated", async () => {

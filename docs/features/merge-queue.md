@@ -1,6 +1,6 @@
 ---
-title: "Legacy: Smart Merge Queue"
-slug: "legacy/features/merge-queue"
+title: "Smart Merge Queue"
+slug: "features/merge-queue"
 ---
 
 # Smart Merge Queue
