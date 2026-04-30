@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+SCAN_SCRIPT="$ROOT_DIR/scripts/security/pre-push-secret-scan.sh"
+
+if [[ ! -f "$SCAN_SCRIPT" ]]; then
+  echo "[pre-push] secret scan script not found: $SCAN_SCRIPT"
+  echo "[pre-push] blocking push until security hook is restored."
+  exit 1
+fi
+
+RANGES=()
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [[ -z "${local_sha:-}" ]] && continue
+
+  if [[ "$local_sha" =~ ^0+$ ]]; then
+    continue
+  fi
+
+  if [[ "$remote_sha" =~ ^0+$ ]]; then
+    # New branch push: scan a recent commit window ending at local SHA.
+    local_base="${local_sha}~20"
+    if git rev-parse --verify "$local_base" >/dev/null 2>&1; then
+      RANGES+=("${local_base}..${local_sha}")
+    else
+      RANGES+=("${local_sha}")
+    fi
+  else
+    RANGES+=("${remote_sha}..${local_sha}")
+  fi
+done
+
+if [[ ${#RANGES[@]} -eq 0 ]]; then
+  RANGES=("HEAD~20..HEAD")
+fi
+
+bash "$SCAN_SCRIPT" "${RANGES[@]}"
