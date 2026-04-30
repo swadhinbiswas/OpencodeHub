@@ -1,5 +1,5 @@
 declare module "minimatch" {
-  export interface MinimatchOptions {
+  interface MinimatchOptions {
     matchBase?: boolean;
     dot?: boolean;
     nocase?: boolean;
@@ -8,15 +8,17 @@ declare module "minimatch" {
     flipNegate?: boolean;
   }
 
-  export function minimatch(
+  function minimatch(
     input: string,
     pattern: string,
     options?: MinimatchOptions
   ): boolean;
 
-  export namespace minimatch {
+  namespace minimatch {
     function makeRe(pattern: string, options?: MinimatchOptions): RegExp | false;
   }
+
+  export = minimatch;
 }
 
 declare module "uuid" {

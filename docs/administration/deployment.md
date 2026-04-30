@@ -89,18 +89,16 @@ DATABASE_URL=postgresql://user:password@host:5432/opencodehub
 
 **Storage (Use cloud storage, not local):**
 ```bash
-STORAGE_TYPE=s3
-STORAGE_BUCKET=opencodehub-production
-STORAGE_REGION=us-east-1
-S3_ACCESS_KEY=<your-access-key>
+STORAGE_DRIVER=s3
+S3_BUCKET=opencodehub-production
+S3_REGION=us-east-1
 S3_ACCESS_KEY=<your-access-key>
 S3_SECRET_KEY=<your-secret-key>
 ```
 
-**Google Drive + Turso Stack:**
-See [docs/GDRIVE_STACK.md](docs/GDRIVE_STACK.md) for detailed setup.
+**Google Drive Stack:**
 ```bash
-STORAGE_TYPE=gdrive
+STORAGE_DRIVER=gdrive
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 GOOGLE_REFRESH_TOKEN=...

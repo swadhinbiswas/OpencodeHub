@@ -120,8 +120,8 @@ describe("POST /api/auth/register", () => {
     );
     expect(res.status).toBe(201);
     const json = await readJson(res);
-    expect(json.user.username).toBe("newuser");
-    expect(json.token).toBe("jwt_register_token");
+    expect(json.data.user.username).toBe("newuser");
+    expect(json.data.token).toBe("jwt_register_token");
   });
 
   it("returns 400 when registration is disabled", async () => {

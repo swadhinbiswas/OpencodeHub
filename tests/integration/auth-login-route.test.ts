@@ -109,6 +109,10 @@ describe("POST /api/auth/login", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDb = makeDb();
+    // Reset mock implementations that may have been changed by other tests
+    mocks.verifyPasswordMock.mockResolvedValue(true);
+    mocks.verify2FATokenMock.mockReturnValue(true);
+    mocks.applyRateLimitMock.mockResolvedValue(null);
   });
 
   it("returns 200 with token for valid credentials", async () => {
@@ -117,8 +121,8 @@ describe("POST /api/auth/login", () => {
     );
     expect(res.status).toBe(200);
     const json = await readJson(res);
-    expect(json.user.username).toBe("alice");
-    expect(json.token).toBe("jwt_token_xyz");
+    expect(json.data.user.username).toBe("alice");
+    expect(json.data.token).toBe("jwt_token_xyz");
   });
 
   it("returns 401 when user not found", async () => {
@@ -156,7 +160,7 @@ describe("POST /api/auth/login", () => {
     const res = await POST(makeRequest({ login: "alice", password: "pass" }));
     expect(res.status).toBe(200);
     const json = await readJson(res);
-    expect(json.requiresTwoFactor).toBe(true);
+    expect(json.data.requiresTwoFactor).toBe(true);
   });
 
   it("returns 401 when 2FA code is invalid", async () => {

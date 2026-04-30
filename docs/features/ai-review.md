@@ -1,6 +1,6 @@
 ---
-title: "Legacy: AI Code Review"
-slug: "legacy/features/ai-review"
+title: "AI Code Review"
+slug: "features/ai-review"
 ---
 
 # AI Code Review

@@ -105,15 +105,19 @@ describe("GET /api/notifications", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDb = makeDb();
+    mocks.getUserFromRequestMock.mockResolvedValue({
+      userId: "usr_1",
+      username: "alice",
+    });
   });
 
   it("returns 200 with notifications for authenticated user", async () => {
     const res = await GET(ctx());
     expect(res.status).toBe(200);
     const json = await readJson(res);
-    expect(json.notifications).toBeDefined();
-    expect(json.notifications.length).toBe(1);
-    expect(json.unreadCount).toBeDefined();
+    expect(json.data.notifications).toBeDefined();
+    expect(json.data.notifications.length).toBe(1);
+    expect(json.data.unreadCount).toBeDefined();
   });
 
   it("returns 401 when not authenticated", async () => {
@@ -125,22 +129,22 @@ describe("GET /api/notifications", () => {
   it("enriches notifications with priority", async () => {
     const res = await GET(ctx());
     const json = await readJson(res);
-    expect(json.notifications[0].priority).toBe("medium");
-    expect(json.notifications[0].priorityScore).toBeGreaterThanOrEqual(0);
+    expect(json.data.notifications[0].priority).toBe("medium");
+    expect(json.data.notifications[0].priorityScore).toBeGreaterThanOrEqual(0);
   });
 
   it("enriches with routing info", async () => {
     const res = await GET(ctx());
     const json = await readJson(res);
-    expect(json.notifications[0].routeChannels).toEqual(["in_app"]);
-    expect(json.notifications[0].primaryRouteChannel).toBe("in_app");
+    expect(json.data.notifications[0].routeChannels).toEqual(["in_app"]);
+    expect(json.data.notifications[0].primaryRouteChannel).toBe("in_app");
   });
 
   it("filters by channel when param provided", async () => {
     mocks.channelEnabledMock.mockReturnValue(false);
     const res = await GET(ctx("?channel=email"));
     const json = await readJson(res);
-    expect(json.notifications.length).toBe(0);
+    expect(json.data.notifications.length).toBe(0);
   });
 
   it("supports prioritize param", async () => {
@@ -163,15 +167,15 @@ describe("GET /api/notifications", () => {
   it("returns routing metadata", async () => {
     const res = await GET(ctx("?personalize=true"));
     const json = await readJson(res);
-    expect(json.routing.personalized).toBe(true);
-    expect(json.routing.channelFilter).toBeNull();
+    expect(json.data.routing.personalized).toBe(true);
+    expect(json.data.routing.channelFilter).toBeNull();
   });
 
   it("handles empty notifications", async () => {
     mockDb.query.notifications.findMany.mockResolvedValue([]);
     const res = await GET(ctx());
     const json = await readJson(res);
-    expect(json.notifications).toEqual([]);
-    expect(json.unreadCount).toBe(0);
+    expect(json.data.notifications).toEqual([]);
+    expect(json.data.unreadCount).toBe(0);
   });
 });

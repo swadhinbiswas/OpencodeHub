@@ -1,0 +1,12 @@
+title = "OpenCodeHub Gitleaks Policy"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Intentional test/placeholders only; keep narrow and review regularly."
+regexes = [
+  '''ci-test-secret-key-for-e2e-tests''',
+  '''<generate-with-openssl-rand-(base64|hex)-32>''',
+  '''<set-in-runtime>'''
+]

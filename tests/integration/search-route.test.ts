@@ -108,19 +108,19 @@ describe("GET /api/search", () => {
     const res = await GET(ctx("project"));
     expect(res.status).toBe(200);
     const json = await readJson(res);
-    expect(json.results.length).toBeGreaterThan(0);
-    expect(json.results.some((r: any) => r.type === "repository")).toBe(true);
-    expect(json.results.some((r: any) => r.type === "user")).toBe(true);
-    expect(json.results.some((r: any) => r.type === "issue")).toBe(true);
-    expect(json.results.some((r: any) => r.type === "pr")).toBe(true);
-    expect(json.results.some((r: any) => r.type === "workflow")).toBe(true);
+    expect(json.data.results.length).toBeGreaterThan(0);
+    expect(json.data.results.some((r: any) => r.type === "repository")).toBe(true);
+    expect(json.data.results.some((r: any) => r.type === "user")).toBe(true);
+    expect(json.data.results.some((r: any) => r.type === "issue")).toBe(true);
+    expect(json.data.results.some((r: any) => r.type === "pr")).toBe(true);
+    expect(json.data.results.some((r: any) => r.type === "workflow")).toBe(true);
   });
 
   it("returns empty results for short query", async () => {
     const res = await GET(ctx("a"));
     expect(res.status).toBe(200);
     const json = await readJson(res);
-    expect(json.results).toEqual([]);
+    expect(json.data.results).toEqual([]);
   });
 
   it("returns empty results when no query", async () => {
@@ -129,7 +129,7 @@ describe("GET /api/search", () => {
     } as any);
     expect(res.status).toBe(200);
     const json = await readJson(res);
-    expect(json.results).toEqual([]);
+    expect(json.data.results).toEqual([]);
   });
 
   it("formats repository results correctly", async () => {
@@ -141,7 +141,7 @@ describe("GET /api/search", () => {
     const res = await GET(ctx("project"));
     expect(res.status).toBe(200);
     const json = await readJson(res);
-    const repoResult = json.results.find((r: any) => r.type === "repository");
+    const repoResult = json.data.results.find((r: any) => r.type === "repository");
     expect(repoResult).toBeDefined();
     expect(repoResult.title).toBe("alice/my-project");
     expect(repoResult.url).toBe("/alice/my-project");
@@ -157,7 +157,7 @@ describe("GET /api/search", () => {
     const res = await GET(ctx("alice"));
     expect(res.status).toBe(200);
     const json = await readJson(res);
-    const userResult = json.results.find((r: any) => r.type === "user");
+    const userResult = json.data.results.find((r: any) => r.type === "user");
     expect(userResult).toBeDefined();
     expect(userResult.subtitle).toBe("@alice");
     expect(userResult.url).toBe("/alice");
@@ -173,6 +173,6 @@ describe("GET /api/search", () => {
     const res = await GET(ctx("nonexistent"));
     expect(res.status).toBe(200);
     const json = await readJson(res);
-    expect(json.results).toEqual([]);
+    expect(json.data.results).toEqual([]);
   });
 });

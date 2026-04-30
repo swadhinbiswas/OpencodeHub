@@ -39,6 +39,7 @@ function makeDb() {
     from: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
     limit: vi.fn().mockResolvedValue([{ count: 5 }]),
+    then: vi.fn().mockImplementation((resolve: any) => resolve([])),
   };
   return {
     select: vi.fn().mockReturnValue(chainable),
@@ -99,11 +100,11 @@ describe("GET /api/admin/stats", () => {
     const res = await GET(ctx(true));
     expect(res.status).toBe(200);
     const json = await readJson(res);
-    expect(json.totalRepos).toBeDefined();
-    expect(json.totalUsers).toBeDefined();
-    expect(json.systemStatus).toBeDefined();
-    expect(json.systemStatus.cpuLoad).toBeGreaterThanOrEqual(0);
-    expect(json.systemStatus.memoryUsage).toBeGreaterThanOrEqual(0);
+    expect(json.data.totalRepos).toBeDefined();
+    expect(json.data.totalUsers).toBeDefined();
+    expect(json.data.systemStatus).toBeDefined();
+    expect(json.data.systemStatus.cpuLoad).toBeGreaterThanOrEqual(0);
+    expect(json.data.systemStatus.memoryUsage).toBeGreaterThanOrEqual(0);
   });
 
   it("returns 403 for non-admin user", async () => {
@@ -119,22 +120,22 @@ describe("GET /api/admin/stats", () => {
   it("returns quickStats", async () => {
     const res = await GET(ctx(true));
     const json = await readJson(res);
-    expect(json.quickStats).toBeDefined();
-    expect(typeof json.quickStats.commitsToday).toBe("number");
-    expect(typeof json.quickStats.activeUsers).toBe("number");
+    expect(json.data.quickStats).toBeDefined();
+    expect(typeof json.data.quickStats.commitsToday).toBe("number");
+    expect(typeof json.data.quickStats.activeUsers).toBe("number");
   });
 
   it("returns languages stats", async () => {
     const res = await GET(ctx(true));
     const json = await readJson(res);
-    expect(json.languages).toBeDefined();
-    expect(Array.isArray(json.languages)).toBe(true);
+    expect(json.data.languages).toBeDefined();
+    expect(Array.isArray(json.data.languages)).toBe(true);
   });
 
   it("returns recentActivity", async () => {
     const res = await GET(ctx(true));
     const json = await readJson(res);
-    expect(json.recentActivity).toBeDefined();
-    expect(Array.isArray(json.recentActivity)).toBe(true);
+    expect(json.data.recentActivity).toBeDefined();
+    expect(Array.isArray(json.data.recentActivity)).toBe(true);
   });
 });

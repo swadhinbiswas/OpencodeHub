@@ -34,6 +34,15 @@ vi.mock("@/lib/path-scoping", () => ({
   checkPathPermissions: checkPathPermissionsMock,
 }));
 
+vi.mock("@/lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
 import { POST as batchReviewPost } from "@/pages/api/repos/[owner]/[repo]/pulls/[number]/reviews/batch";
 
 function makeDb(options?: { failCommentInsert?: boolean }) {

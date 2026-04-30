@@ -157,6 +157,13 @@ describe("POST /api/repos/[owner]/[repo]/issues", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDb = makeDb();
+    mocks.getUserFromRequestMock.mockResolvedValue({
+      userId: "usr_1",
+      username: "alice",
+      email: "alice@example.com",
+    });
+    mocks.canReadRepoMock.mockResolvedValue(true);
+    mocks.canWriteRepoMock.mockResolvedValue(true);
   });
 
   it("returns 201 when issue created", async () => {
@@ -235,6 +242,13 @@ describe("GET /api/repos/[owner]/[repo]/releases", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDb = makeDb();
+    mocks.getUserFromRequestMock.mockResolvedValue({
+      userId: "usr_1",
+      username: "alice",
+      email: "alice@example.com",
+    });
+    mocks.canReadRepoMock.mockResolvedValue(true);
+    mocks.canWriteRepoMock.mockResolvedValue(true);
   });
 
   it("returns 200 with releases list", async () => {
@@ -271,6 +285,13 @@ describe("POST /api/repos/[owner]/[repo]/releases", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDb = makeDb();
+    mocks.getUserFromRequestMock.mockResolvedValue({
+      userId: "usr_1",
+      username: "alice",
+      email: "alice@example.com",
+    });
+    mocks.canReadRepoMock.mockResolvedValue(true);
+    mocks.canWriteRepoMock.mockResolvedValue(true);
   });
 
   it("returns 200 when release created", async () => {

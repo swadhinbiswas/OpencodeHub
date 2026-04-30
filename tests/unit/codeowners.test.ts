@@ -76,17 +76,17 @@ src/lib/* @core-team
 
   it("matches .js files", () => {
     const owners = findOwnersForFile(codeOwners, "app.js");
-    expect(owners).toContain("@js-team");
+    expect(owners).toContain("js-team");
   });
 
   it("matches .ts files", () => {
     const owners = findOwnersForFile(codeOwners, "index.ts");
-    expect(owners).toContain("@ts-team");
+    expect(owners).toContain("ts-team");
   });
 
   it("matches docs directory", () => {
     const owners = findOwnersForFile(codeOwners, "docs/readme.md");
-    expect(owners).toContain("@docs-team");
+    expect(owners).toContain("docs-team");
   });
 
   it("matches src/lib directory", () => {
@@ -113,13 +113,13 @@ describe("findOwnersForFiles", () => {
 
   it("returns combined owners for multiple files", () => {
     const owners = findOwnersForFiles(codeOwners, ["app.js", "script.py"]);
-    expect(owners).toContain("@js-team");
-    expect(owners).toContain("@python-team");
+    expect(owners).toContain("js-team");
+    expect(owners).toContain("python-team");
   });
 
   it("deduplicates owners", () => {
     const owners = findOwnersForFiles(codeOwners, ["a.js", "b.js"]);
-    const jsTeamCount = owners.filter((o) => o === "@js-team").length;
+    const jsTeamCount = owners.filter((o) => o === "js-team").length;
     expect(jsTeamCount).toBe(1);
   });
 

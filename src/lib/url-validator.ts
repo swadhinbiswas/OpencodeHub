@@ -53,7 +53,8 @@ function isIPv4Private(ip: string): boolean {
 }
 
 function isIPv6Private(ip: string): boolean {
-  const lower = ip.toLowerCase();
+  // Strip brackets if present (URL.hostname may return [::1] instead of ::1)
+  const lower = ip.toLowerCase().replace(/^\[|\]$/g, "");
   // ::1 (loopback)
   if (lower === "::1" || lower === "0:0:0:0:0:0:0:1") return true;
   // fe80::/10 (link-local)

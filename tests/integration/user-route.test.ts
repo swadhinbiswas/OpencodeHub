@@ -76,16 +76,21 @@ describe("GET /api/user", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDb = makeDb();
+    mocks.getUserFromRequestMock.mockResolvedValue({
+      userId: "usr_1",
+      username: "alice",
+      email: "alice@example.com",
+    });
   });
 
   it("returns 200 with user profile", async () => {
     const res = await GET(ctx());
     expect(res.status).toBe(200);
     const json = await readJson(res);
-    expect(json.username).toBe("alice");
-    expect(json.email).toBe("alice@example.com");
-    expect(json.id).toBe("usr_1");
-    expect(json.isAdmin).toBe(false);
+    expect(json.data.username).toBe("alice");
+    expect(json.data.email).toBe("alice@example.com");
+    expect(json.data.id).toBe("usr_1");
+    expect(json.data.isAdmin).toBe(false);
   });
 
   it("returns 401 when not authenticated", async () => {
@@ -107,7 +112,7 @@ describe("GET /api/user", () => {
     });
     const res = await GET(ctx());
     const json = await readJson(res);
-    expect(json.passwordHash).toBeUndefined();
+    expect(json.data.passwordHash).toBeUndefined();
   });
 
   it("includes all expected fields", async () => {
@@ -127,7 +132,7 @@ describe("GET /api/user", () => {
       "createdAt",
     ];
     for (const field of expectedFields) {
-      expect(json).toHaveProperty(field);
+      expect(json.data).toHaveProperty(field);
     }
   });
 });
