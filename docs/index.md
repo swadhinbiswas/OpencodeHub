@@ -91,6 +91,10 @@ Integrate OpenCodeHub into your tools:
 For system administrators:
 
 - **[Deployment Guide](administration/deployment.md)** — Production deployment
+- **[Deploy on Coolify](administration/deploy-coolify.md)** — Self-hosted PaaS deployment
+- **[Deploy on CyberPanel](administration/deploy-cyberpanel.md)** — OpenLiteSpeed hosting panel
+- **[Deploy on cPanel](administration/deploy-cpanel.md)** — Shared hosting deployment
+- **[Deploy on NAS](administration/deploy-nas.md)** — Synology, TrueNAS, QNAP
 - **[Configuration Reference](administration/configuration.md)** — All config options
 - **[Security Best Practices](administration/security.md)** — Secure your instance
 - **[Monitoring](administration/monitoring.md)** — Monitor health and performance

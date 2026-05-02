@@ -59,6 +59,17 @@ OpenCodeHub is now **production-ready** with enterprise-grade security features.
 
 ---
 
+## Platform-Specific Deployment Guides
+
+For step-by-step guides on specific platforms, see:
+
+- **[Coolify](deploy-coolify.md)** — Self-hosted PaaS (easiest, recommended)
+- **[CyberPanel](deploy-cyberpanel.md)** — OpenLiteSpeed hosting panel
+- **[cPanel](deploy-cpanel.md)** — Shared/VPS hosting
+- **[NAS (Synology/TrueNAS/QNAP)](deploy-nas.md)** — Network Attached Storage
+
+---
+
 ## 📋 Production Deployment Checklist
 
 ### Prerequisites
