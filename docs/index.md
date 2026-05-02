@@ -77,6 +77,7 @@ Best practices and workflows:
 - **[Branch Protection](guides/branch-protection.md)** — Secure your branches
 - **[Webhooks](guides/webhooks.md)** — Integrate with external services
 - **[Storage Adapters](guides/storage-adapters.md)** — Configure S3, GCS, or local storage
+- **[CircleCI Integration](guides/circleci-integration.md)** — Use CircleCI as your CI/CD provider
 
 ### API Reference
 
