@@ -78,6 +78,7 @@ Best practices and workflows:
 - **[Webhooks](guides/webhooks.md)** — Integrate with external services
 - **[Storage Adapters](guides/storage-adapters.md)** — Configure S3, GCS, or local storage
 - **[CircleCI Integration](guides/circleci-integration.md)** — Use CircleCI as your CI/CD provider
+- **[Run Workers on CircleCI](administration/circleci-worker.md)** — Background workers via CircleCI
 
 ### API Reference
 
