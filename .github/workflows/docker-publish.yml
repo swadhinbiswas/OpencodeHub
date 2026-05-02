@@ -27,8 +27,8 @@ jobs:
       - name: Log in to DockerHub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Extract metadata
         id: meta
@@ -41,6 +41,12 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix=
             type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=OpenCodeHub
+            org.opencontainers.image.description=A modern, self-hosted Git platform for teams that want speed, control, and clean workflows.
+            org.opencontainers.image.url=https://github.com/swadhinbiswas/OpencodeHub
+            org.opencontainers.image.source=https://github.com/swadhinbiswas/OpencodeHub
+            org.opencontainers.image.licenses=MIT
 
       - name: Build and push app image
         uses: docker/build-push-action@v5
@@ -63,5 +69,20 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-runner:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-runner:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.title=OpenCodeHub Runner
+            org.opencontainers.image.description=CI/CD runner for OpenCodeHub
+            org.opencontainers.image.url=https://github.com/swadhinbiswas/OpencodeHub
+            org.opencontainers.image.source=https://github.com/swadhinbiswas/OpencodeHub
+            org.opencontainers.image.licenses=MIT
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Update Docker Hub Repository Description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+          repository: ${{ env.IMAGE_NAME }}
+          readme-filepath: ./README.md
+          short-description: "A modern, self-hosted Git platform with stacked PRs, merge queue, CI/CD, and AI review."

@@ -1,11 +1,20 @@
 FROM oven/bun:1 AS base
 WORKDIR /app
+LABEL org.opencontainers.image.title="OpenCodeHub" \
+      org.opencontainers.image.description="A modern, self-hosted Git platform with stacked PRs, merge queue, CI/CD, and AI review." \
+      org.opencontainers.image.url="https://github.com/swadhinbiswas/OpencodeHub" \
+      org.opencontainers.image.source="https://github.com/swadhinbiswas/OpencodeHub" \
+      org.opencontainers.image.licenses="MIT"
 
 # Install dependencies
 FROM base AS deps
 RUN apt-get update && apt-get install -y python3 make g++ gcc libc6-dev && rm -rf /var/lib/apt/lists/*
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+COPY cli/package.json ./cli/package.json
+RUN for i in 1 2 3; do \
+      bun install --frozen-lockfile && break || \
+      (echo "bun install attempt $i failed, retrying in 10s..." && sleep 10); \
+    done
 
 # Build the application
 FROM base AS builder
