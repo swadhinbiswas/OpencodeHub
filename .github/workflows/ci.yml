@@ -28,10 +28,12 @@ jobs:
       - name: Install dependencies
         run: |
           for i in 1 2 3; do
-            bun install --frozen-lockfile && break
+            bun install --frozen-lockfile && exit 0
             echo "bun install attempt $i failed, retrying in 10s..."
             sleep 10
           done
+          echo "::error::bun install failed after 3 attempts"
+          exit 1
 
       - name: Run ESLint
         run: bun run lint
@@ -53,10 +55,12 @@ jobs:
       - name: Install dependencies
         run: |
           for i in 1 2 3; do
-            bun install --frozen-lockfile && break
+            bun install --frozen-lockfile && exit 0
             echo "bun install attempt $i failed, retrying in 10s..."
             sleep 10
           done
+          echo "::error::bun install failed after 3 attempts"
+          exit 1
 
       - name: Check docs parity
         run: bun run docs:parity
@@ -78,10 +82,12 @@ jobs:
       - name: Install dependencies
         run: |
           for i in 1 2 3; do
-            bun install --frozen-lockfile && break
+            bun install --frozen-lockfile && exit 0
             echo "bun install attempt $i failed, retrying in 10s..."
             sleep 10
           done
+          echo "::error::bun install failed after 3 attempts"
+          exit 1
 
       - name: Dependency audit (high+)
         run: bun pm audit --level=high || true
@@ -119,10 +125,12 @@ jobs:
       - name: Install dependencies
         run: |
           for i in 1 2 3; do
-            bun install --frozen-lockfile && break
+            bun install --frozen-lockfile && exit 0
             echo "bun install attempt $i failed, retrying in 10s..."
             sleep 10
           done
+          echo "::error::bun install failed after 3 attempts"
+          exit 1
 
       - name: Run tests with coverage
         run: bun run test:coverage
@@ -178,10 +186,12 @@ jobs:
       - name: Install dependencies
         run: |
           for i in 1 2 3; do
-            bun install --frozen-lockfile && break
+            bun install --frozen-lockfile && exit 0
             echo "bun install attempt $i failed, retrying in 10s..."
             sleep 10
           done
+          echo "::error::bun install failed after 3 attempts"
+          exit 1
 
       - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
@@ -284,10 +294,12 @@ jobs:
       - name: Install dependencies
         run: |
           for i in 1 2 3; do
-            bun install --frozen-lockfile && break
+            bun install --frozen-lockfile && exit 0
             echo "bun install attempt $i failed, retrying in 10s..."
             sleep 10
           done
+          echo "::error::bun install failed after 3 attempts"
+          exit 1
       - name: Build application
         run: bun run build
         env:
@@ -333,10 +345,12 @@ jobs:
       - name: Install dependencies
         run: |
           for i in 1 2 3; do
-            bun install --frozen-lockfile && break
+            bun install --frozen-lockfile && exit 0
             echo "bun install attempt $i failed, retrying in 10s..."
             sleep 10
           done
+          echo "::error::bun install failed after 3 attempts"
+          exit 1
 
       - name: Build application
         run: bun run build
@@ -414,10 +428,12 @@ jobs:
       - name: Install dependencies
         run: |
           for i in 1 2 3; do
-            bun install --frozen-lockfile && break
+            bun install --frozen-lockfile && exit 0
             echo "bun install attempt $i failed, retrying in 10s..."
             sleep 10
           done
+          echo "::error::bun install failed after 3 attempts"
+          exit 1
         working-directory: cli
 
       - name: Build CLI

@@ -28,7 +28,7 @@
     "git:start": "bun scripts/ssh-server.ts",
     "worker:start": "bun scripts/worker.ts",
     "runner:start": "bun src/runner/index.ts",
-    "lint": "astro check",
+    "lint": "bunx astro check",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
