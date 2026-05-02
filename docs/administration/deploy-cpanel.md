@@ -1,7 +1,4 @@
----
-title: "Deploy on cPanel"
-description: "Deploy OpenCodeHub on cPanel-based shared hosting or VPS using Node.js"
----
+# Deploy OpenCodeHub on cPanel Hosting
 
 > **Difficulty:** Intermediate | **Time:** 45-60 minutes | **Method:** Manual Node.js + PostgreSQL
 
@@ -518,6 +515,6 @@ For full functionality, consider upgrading to a VPS or using Coolify/Docker depl
 
 ## Next Steps
 
-- [Configure Email (SMTP)](/administration/configuration/#email)
-- [Enable Branch Protection](/guides/branch-protection/)
-- [Troubleshooting Common Issues](/support/troubleshooting/)
+- [Configure Email (SMTP)](../administration/configuration.md#email)
+- [Enable Branch Protection](../guides/branch-protection.md)
+- [Troubleshooting Common Issues](../support/troubleshooting.md)

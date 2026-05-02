@@ -1,7 +1,4 @@
----
-title: "Deploy on CyberPanel"
-description: "Deploy OpenCodeHub using CyberPanel with OpenLiteSpeed web server or Docker"
----
+# Deploy OpenCodeHub on CyberPanel
 
 > **Difficulty:** Easy-Intermediate | **Time:** 25-35 minutes | **Method:** Docker Compose (recommended) or LiteSpeed Node.js
 
@@ -575,6 +572,10 @@ CyberPanel + OpenLiteSpeed is already optimized, but you can tune further:
 2. **LiteSpeed Cache** → **Enable**
 3. This caches static assets and improves load times
 
+### PHP Tuning (Not applicable, but good for other sites)
+
+Keep CyberPanel's default PHP settings for any WordPress/other sites running alongside.
+
 ### Database Optimization
 
 ```bash
@@ -594,7 +595,7 @@ Set up a weekly cron:
 
 ## Next Steps
 
-- [Configure Email (SMTP)](/administration/configuration/#email)
-- [Set up Storage Adapter (S3/R2)](/guides/storage-adapters/)
-- [Enable Branch Protection](/guides/branch-protection/)
-- [Set up your First Stack](/tutorials/your-first-stack/)
+- [Configure Email (SMTP)](../administration/configuration.md#email)
+- [Set up Storage Adapter (S3/R2)](../guides/storage-adapters.md)
+- [Enable Branch Protection](../guides/branch-protection.md)
+- [Set up your First Stack](../tutorials/your-first-stack.md)
