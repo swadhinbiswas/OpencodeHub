@@ -1,0 +1,222 @@
+version: 2.1
+
+# ──────────────────────────────────────────────────────────────
+# OpenCodeHub Worker - CircleCI Configuration
+# Run background workers (merge queue, mirror sync, cleanup)
+# using CircleCI infrastructure
+# ──────────────────────────────────────────────────────────────
+
+executors:
+  bun-executor:
+    docker:
+      - image: oven/bun:1
+    resource_class: medium
+
+  # Self-hosted runner executor (recommended for production)
+  # Replace 'your-namespace' with your actual CircleCI namespace
+  och-runner:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: your-namespace/opencodehub-runner
+
+# ── Jobs ─────────────────────────────────────────────────────
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Continuous Background Worker (Self-Hosted Runner)
+  # ──────────────────────────────────────────────
+  worker-continuous:
+    executor: och-runner
+    environment:
+      NODE_ENV: production
+      WORKER_INTERVAL: 5000
+      WORKER_HEALTH_PORT: 9090
+      WORKER_STALE_TIMEOUT: 300000
+    steps:
+      - checkout
+
+      - run:
+          name: Install Bun
+          command: |
+            if ! command -v bun &> /dev/null; then
+              curl -fsSL https://bun.sh/install | bash
+              echo 'export PATH="$HOME/.bun/bin:$PATH"' >> $BASH_ENV
+            fi
+            source $BASH_ENV
+            bun --version
+
+      - run:
+          name: Install dependencies
+          command: |
+            for i in 1 2 3; do
+              bun install --frozen-lockfile && exit 0
+              echo "bun install attempt $i failed, retrying in 10s..."
+              sleep 10
+            done
+            echo "::error::bun install failed after 3 attempts"
+            exit 1
+
+      - run:
+          name: Start OpenCodeHub Worker
+          command: |
+            echo "Starting OpenCodeHub background worker..."
+            bun run scripts/worker.ts &
+            WORKER_PID=$!
+            echo "Worker PID: $WORKER_PID"
+            
+            # Wait for health check
+            for i in $(seq 1 30); do
+              if curl -sf http://localhost:9090/health; then
+                echo "✅ Worker is healthy"
+                break
+              fi
+              echo "Waiting for worker to start... ($i/30)"
+              sleep 2
+            done
+            
+            # Keep alive
+            wait $WORKER_PID
+          no_output_timeout: 24h
+
+  # ──────────────────────────────────────────────
+  # Merge Queue Worker (Scheduled / Docker)
+  # ──────────────────────────────────────────────
+  merge-queue:
+    executor: bun-executor
+    environment:
+      NODE_ENV: production
+      WORKER_INTERVAL: 5000
+      WORKER_STALE_TIMEOUT: 300000
+    steps:
+      - checkout
+
+      - run:
+          name: Install dependencies
+          command: |
+            for i in 1 2 3; do
+              bun install --frozen-lockfile && exit 0
+              echo "bun install attempt $i failed, retrying in 10s..."
+              sleep 10
+            done
+            echo "::error::bun install failed after 3 attempts"
+            exit 1
+
+      - run:
+          name: Process Merge Queue
+          command: |
+            echo "Running merge queue processor for 4 hours..."
+            timeout 14400 bun run scripts/worker.ts || true
+            echo "Merge queue cycle complete."
+          no_output_timeout: 4h
+
+  # ──────────────────────────────────────────────
+  # Mirror Sync (Scheduled)
+  # ──────────────────────────────────────────────
+  mirror-sync:
+    executor: bun-executor
+    environment:
+      NODE_ENV: production
+    steps:
+      - checkout
+
+      - run:
+          name: Install dependencies
+          command: bun install --frozen-lockfile
+
+      - run:
+          name: Sync Mirrors
+          command: bun run scripts/worker.ts --task=mirror-sync || true
+
+  # ──────────────────────────────────────────────
+  # Cleanup (Scheduled)
+  # ──────────────────────────────────────────────
+  cleanup:
+    executor: bun-executor
+    environment:
+      NODE_ENV: production
+    steps:
+      - checkout
+
+      - run:
+          name: Install dependencies
+          command: bun install --frozen-lockfile
+
+      - run:
+          name: Run Cleanup Tasks
+          command: bun run scripts/worker.ts --task=cleanup || true
+
+  # ──────────────────────────────────────────────
+  # Worker Health Check
+  # ──────────────────────────────────────────────
+  health-check:
+    executor: bun-executor
+    steps:
+      - run:
+          name: Check Worker Health
+          command: |
+            curl -sf http://your-worker-host:9090/health || exit 1
+            echo "✅ Worker is healthy"
+
+# ── Workflows ────────────────────────────────────────────────
+
+workflows:
+  version: 2
+
+  # OPTION A: Continuous worker (requires self-hosted runner)
+  # Uncomment this if you have a self-hosted runner
+  # worker-continuous:
+  #   jobs:
+  #     - worker-continuous:
+  #         filters:
+  #           branches:
+  #             only:
+  #               - main
+
+  # OPTION B: Scheduled worker tasks (no self-hosted runner needed)
+  # Runs merge queue every 4 hours
+  scheduled-merge-queue:
+    triggers:
+      - schedule:
+          cron: "0 */4 * * *"
+          filters:
+            branches:
+              only:
+                - main
+    jobs:
+      - merge-queue
+
+  # Runs mirror sync every hour
+  scheduled-mirror-sync:
+    triggers:
+      - schedule:
+          cron: "0 * * * *"
+          filters:
+            branches:
+              only:
+                - main
+    jobs:
+      - mirror-sync
+
+  # Runs cleanup daily at 3 AM UTC
+  scheduled-cleanup:
+    triggers:
+      - schedule:
+          cron: "0 3 * * *"
+          filters:
+            branches:
+              only:
+                - main
+    jobs:
+      - cleanup
+
+  # Health check every hour
+  scheduled-health:
+    triggers:
+      - schedule:
+          cron: "0 * * * *"
+          filters:
+            branches:
+              only:
+                - main
+    jobs:
+      - health-check
