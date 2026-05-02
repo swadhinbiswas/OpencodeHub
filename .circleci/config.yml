@@ -1,50 +1,58 @@
 version: 2.1
 
 # ──────────────────────────────────────────────────────────────
-# OpenCodeHub Worker - CircleCI Configuration
-# Run background workers (merge queue, mirror sync, cleanup)
-# using CircleCI infrastructure
+# OpenCodeHub Worker — CircleCI Cloud Configuration
+# For managed CircleCI Cloud (NOT self-hosted runners)
+# Uses external PostgreSQL + Redis (required for Cloud)
 # ──────────────────────────────────────────────────────────────
 
+orbs:
+  # Optional: for better Docker layer caching
+  docker: circleci/docker@2.6.0
+
 executors:
-  bun-executor:
+  # Docker executor with Bun + Node.js
+  bun-medium:
     docker:
       - image: oven/bun:1
     resource_class: medium
 
-  # Self-hosted runner executor (recommended for production)
-  # Replace 'your-namespace' with your actual CircleCI namespace
-  och-runner:
-    machine:
-      image: ubuntu-2204:current
-    resource_class: your-namespace/opencodehub-runner
+  bun-large:
+    docker:
+      - image: oven/bun:1
+    resource_class: large
 
-# ── Jobs ─────────────────────────────────────────────────────
+  # With PostgreSQL service container (for testing, NOT production data)
+  bun-with-postgres:
+    docker:
+      - image: oven/bun:1
+      - image: cimg/postgres:16.2
+        environment:
+          POSTGRES_USER: opencodehub
+          POSTGRES_PASSWORD: opencodehub
+          POSTGRES_DB: opencodehub
+    resource_class: medium
 
-jobs:
-  # ──────────────────────────────────────────────
-  # Continuous Background Worker (Self-Hosted Runner)
-  # ──────────────────────────────────────────────
-  worker-continuous:
-    executor: och-runner
-    environment:
-      NODE_ENV: production
-      WORKER_INTERVAL: 5000
-      WORKER_HEALTH_PORT: 9090
-      WORKER_STALE_TIMEOUT: 300000
+# ── Reusable Commands ─────────────────────────────────────────
+
+commands:
+  setup-bun:
+    description: "Ensure Bun is installed and available"
     steps:
-      - checkout
-
       - run:
-          name: Install Bun
+          name: Verify Bun
           command: |
             if ! command -v bun &> /dev/null; then
+              echo "Installing Bun..."
               curl -fsSL https://bun.sh/install | bash
               echo 'export PATH="$HOME/.bun/bin:$PATH"' >> $BASH_ENV
             fi
             source $BASH_ENV
             bun --version
 
+  install-deps:
+    description: "Install dependencies with retry"
+    steps:
       - run:
           name: Install dependencies
           command: |
@@ -56,167 +64,268 @@ jobs:
             echo "::error::bun install failed after 3 attempts"
             exit 1
 
+  check-env:
+    description: "Verify required environment variables"
+    steps:
+      - run:
+          name: Check environment
+          command: |
+            : "${DATABASE_URL:?DATABASE_URL is required}"
+            : "${REDIS_URL:?REDIS_URL is required}"
+            : "${JWT_SECRET:?JWT_SECRET is required}"
+            : "${SESSION_SECRET:?SESSION_SECRET is required}"
+            echo "✅ All required environment variables are set"
+
+# ── Jobs ─────────────────────────────────────────────────────
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Continuous Worker (up to 5 hours)
+  # ──────────────────────────────────────────────
+  # NOTE: CircleCI Cloud free plan has 5h job limit.
+  # Performance/Scale plans have longer limits.
+  # For truly continuous operation, use scheduled pipelines
+  # to restart every 4.5 hours, OR use self-hosted runner.
+  # ──────────────────────────────────────────────
+  worker:
+    executor: bun-medium
+    environment:
+      NODE_ENV: production
+      # Worker loop interval (ms)
+      WORKER_INTERVAL: 5000
+      # Health check port (not exposed externally on Cloud)
+      WORKER_HEALTH_PORT: 9090
+      # Stale job timeout (ms)
+      WORKER_STALE_TIMEOUT: 300000
+    steps:
+      - checkout
+      - setup-bun
+      - install-deps
+      - check-env
+
       - run:
           name: Start OpenCodeHub Worker
           command: |
-            echo "Starting OpenCodeHub background worker..."
+            echo "Starting OpenCodeHub worker..."
+            echo "Database: ${DATABASE_URL%%@*}@..."
+            echo "Redis: ${REDIS_URL%%@*}@..."
+            
+            # Run worker
             bun run scripts/worker.ts &
             WORKER_PID=$!
-            echo "Worker PID: $WORKER_PID"
             
-            # Wait for health check
-            for i in $(seq 1 30); do
-              if curl -sf http://localhost:9090/health; then
-                echo "✅ Worker is healthy"
-                break
-              fi
-              echo "Waiting for worker to start... ($i/30)"
-              sleep 2
-            done
+            # Wait for it to start
+            sleep 5
             
-            # Keep alive
+            # Verify it's running
+            if kill -0 $WORKER_PID 2>/dev/null; then
+              echo "✅ Worker started (PID: $WORKER_PID)"
+            else
+              echo "❌ Worker failed to start"
+              exit 1
+            fi
+            
+            # Keep job alive until timeout
+            # CircleCI Cloud will kill the job after the timeout
             wait $WORKER_PID
-          no_output_timeout: 24h
+          # CircleCI Cloud timeouts:
+          # Free plan: 1 hour (default), max 5 hours
+          # Performance: up to 5 hours
+          # Scale: up to 5 hours  
+          # Server: configurable
+          no_output_timeout: 5h
 
   # ──────────────────────────────────────────────
-  # Merge Queue Worker (Scheduled / Docker)
+  # Merge Queue Processor (short burst)
   # ──────────────────────────────────────────────
   merge-queue:
-    executor: bun-executor
+    executor: bun-medium
     environment:
       NODE_ENV: production
       WORKER_INTERVAL: 5000
       WORKER_STALE_TIMEOUT: 300000
     steps:
       - checkout
-
-      - run:
-          name: Install dependencies
-          command: |
-            for i in 1 2 3; do
-              bun install --frozen-lockfile && exit 0
-              echo "bun install attempt $i failed, retrying in 10s..."
-              sleep 10
-            done
-            echo "::error::bun install failed after 3 attempts"
-            exit 1
+      - setup-bun
+      - install-deps
+      - check-env
 
       - run:
           name: Process Merge Queue
           command: |
-            echo "Running merge queue processor for 4 hours..."
-            timeout 14400 bun run scripts/worker.ts || true
-            echo "Merge queue cycle complete."
-          no_output_timeout: 4h
+            echo "Processing merge queue..."
+            # Run worker for 30 minutes to clear the queue
+            timeout 1800 bun run scripts/worker.ts || true
+            echo "Merge queue processing complete."
+          no_output_timeout: 30m
 
   # ──────────────────────────────────────────────
-  # Mirror Sync (Scheduled)
+  # Mirror Sync
   # ──────────────────────────────────────────────
   mirror-sync:
-    executor: bun-executor
+    executor: bun-medium
     environment:
       NODE_ENV: production
     steps:
       - checkout
-
-      - run:
-          name: Install dependencies
-          command: bun install --frozen-lockfile
+      - setup-bun
+      - install-deps
+      - check-env
 
       - run:
           name: Sync Mirrors
-          command: bun run scripts/worker.ts --task=mirror-sync || true
+          command: |
+            echo "Starting mirror sync..."
+            # Run for up to 1 hour
+            timeout 3600 bun run scripts/worker.ts --task=mirror-sync || true
+            echo "Mirror sync complete."
+          no_output_timeout: 1h
 
   # ──────────────────────────────────────────────
-  # Cleanup (Scheduled)
+  # Cleanup Tasks
   # ──────────────────────────────────────────────
   cleanup:
-    executor: bun-executor
+    executor: bun-medium
     environment:
       NODE_ENV: production
     steps:
       - checkout
+      - setup-bun
+      - install-deps
+      - check-env
 
       - run:
-          name: Install dependencies
-          command: bun install --frozen-lockfile
-
-      - run:
-          name: Run Cleanup Tasks
-          command: bun run scripts/worker.ts --task=cleanup || true
+          name: Run Cleanup
+          command: |
+            echo "Running cleanup tasks..."
+            timeout 1800 bun run scripts/worker.ts --task=cleanup || true
+            echo "Cleanup complete."
+          no_output_timeout: 30m
 
   # ──────────────────────────────────────────────
-  # Worker Health Check
+  # Health Check (tests DB connectivity)
   # ──────────────────────────────────────────────
   health-check:
-    executor: bun-executor
+    executor: bun-medium
+    environment:
+      NODE_ENV: production
     steps:
+      - checkout
+      - setup-bun
+      - install-deps
+      - check-env
+
       - run:
-          name: Check Worker Health
+          name: Test Database Connection
           command: |
-            curl -sf http://your-worker-host:9090/health || exit 1
-            echo "✅ Worker is healthy"
+            echo "Testing database connection..."
+            bun -e "
+              const { getDatabase } = require('./src/db');
+              try {
+                const db = getDatabase();
+                console.log('✅ Database connected successfully');
+                process.exit(0);
+              } catch (err) {
+                console.error('❌ Database connection failed:', err.message);
+                process.exit(1);
+              }
+            "
+
+      - run:
+          name: Test Redis Connection
+          command: |
+            echo "Testing Redis connection..."
+            # Quick Redis ping using bun
+            bun -e "
+              const url = new URL(process.env.REDIS_URL || '');
+              const client = require('redis').createClient({ url: process.env.REDIS_URL });
+              client.connect()
+                .then(() => client.ping())
+                .then(() => { console.log('✅ Redis connected'); client.quit(); process.exit(0); })
+                .catch((err) => { console.error('❌ Redis failed:', err.message); process.exit(1); });
+            "
 
 # ── Workflows ────────────────────────────────────────────────
 
 workflows:
   version: 2
 
-  # OPTION A: Continuous worker (requires self-hosted runner)
-  # Uncomment this if you have a self-hosted runner
+  # ──────────────────────────────────────────────
+  # OPTION A: Continuous Worker with Auto-Restart
+  # 
+  # Runs the worker continuously, restarting every 
+  # 4.5 hours (before the 5h Cloud timeout).
+  # Best for: Production with CircleCI Cloud
+  # Requires: Performance plan or higher for 5h jobs
+  # ──────────────────────────────────────────────
+  # Uncomment below to enable continuous worker
+  # 
   # worker-continuous:
   #   jobs:
-  #     - worker-continuous:
+  #     - worker:
   #         filters:
   #           branches:
   #             only:
   #               - main
+  #         # Context with all environment variables
+  #         context: opencodehub-production
 
-  # OPTION B: Scheduled worker tasks (no self-hosted runner needed)
-  # Runs merge queue every 4 hours
+  # ──────────────────────────────────────────────
+  # OPTION B: Scheduled Tasks (Recommended for Free Plan)
+  # 
+  # Runs individual tasks on a schedule.
+  # Each job completes quickly (< 30 min).
+  # Best for: Free plan users, light workloads
+  # ──────────────────────────────────────────────
+
+  # Merge queue: every 15 minutes
   scheduled-merge-queue:
     triggers:
       - schedule:
-          cron: "0 */4 * * *"
+          cron: "*/15 * * * *"
           filters:
             branches:
               only:
                 - main
     jobs:
-      - merge-queue
+      - merge-queue:
+          context: opencodehub-production
 
-  # Runs mirror sync every hour
+  # Mirror sync: every 2 hours
   scheduled-mirror-sync:
     triggers:
       - schedule:
-          cron: "0 * * * *"
+          cron: "0 */2 * * *"
           filters:
             branches:
               only:
                 - main
     jobs:
-      - mirror-sync
+      - mirror-sync:
+          context: opencodehub-production
 
-  # Runs cleanup daily at 3 AM UTC
+  # Cleanup: daily at 4 AM UTC
   scheduled-cleanup:
     triggers:
       - schedule:
-          cron: "0 3 * * *"
+          cron: "0 4 * * *"
           filters:
             branches:
               only:
                 - main
     jobs:
-      - cleanup
+      - cleanup:
+          context: opencodehub-production
 
-  # Health check every hour
+  # Health check: every 30 minutes
   scheduled-health:
     triggers:
       - schedule:
-          cron: "0 * * * *"
+          cron: "*/30 * * * *"
           filters:
             branches:
               only:
                 - main
     jobs:
-      - health-check
+      - health-check:
+          context: opencodehub-production
