@@ -26,7 +26,12 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: |
+          for i in 1 2 3; do
+            bun install --frozen-lockfile && break
+            echo "bun install attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
 
       - name: Run ESLint
         run: bun run lint
@@ -46,7 +51,12 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: |
+          for i in 1 2 3; do
+            bun install --frozen-lockfile && break
+            echo "bun install attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
 
       - name: Check docs parity
         run: bun run docs:parity
@@ -66,7 +76,12 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: |
+          for i in 1 2 3; do
+            bun install --frozen-lockfile && break
+            echo "bun install attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
 
       - name: Dependency audit (high+)
         run: bun pm audit --level=high || true
@@ -102,7 +117,12 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: |
+          for i in 1 2 3; do
+            bun install --frozen-lockfile && break
+            echo "bun install attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
 
       - name: Run tests with coverage
         run: bun run test:coverage
@@ -156,7 +176,12 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: |
+          for i in 1 2 3; do
+            bun install --frozen-lockfile && break
+            echo "bun install attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
 
       - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
@@ -257,7 +282,12 @@ jobs:
         with:
           bun-version: latest
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: |
+          for i in 1 2 3; do
+            bun install --frozen-lockfile && break
+            echo "bun install attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
       - name: Build application
         run: bun run build
         env:
@@ -301,7 +331,12 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: |
+          for i in 1 2 3; do
+            bun install --frozen-lockfile && break
+            echo "bun install attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
 
       - name: Build application
         run: bun run build
@@ -377,7 +412,12 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: |
+          for i in 1 2 3; do
+            bun install --frozen-lockfile && break
+            echo "bun install attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
         working-directory: cli
 
       - name: Build CLI
