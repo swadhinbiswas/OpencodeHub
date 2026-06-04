@@ -22,46 +22,33 @@ if (!user?.isAdmin) {
 }
 
 // Current storage config from env
+// NOTE: only `local` and `s3` storage backends are supported.  The
+// rclone-as-adapter option was removed in favour of S3-compatible
+// object storage and a separate rclone backup utility
+// (see docs/administration/storage-adapters.md).
 const currentConfig = {
   type: process.env.STORAGE_TYPE || 'local',
   basePath: process.env.STORAGE_PATH || './data/storage',
   bucket: process.env.STORAGE_BUCKET || '',
   region: process.env.STORAGE_REGION || '',
   endpoint: process.env.STORAGE_ENDPOINT || '',
-  rcloneRemote: process.env.STORAGE_RCLONE_REMOTE || '',
 };
 
 const storageTypes = [
-  { 
-    value: 'local', 
-    label: 'Local Filesystem', 
+  {
+    value: 'local',
+    label: 'Local Filesystem',
     icon: HardDrive,
     description: 'Store files on the local server disk',
     fields: ['basePath']
   },
-  { 
-    value: 's3', 
-    label: 'S3 / MinIO / R2', 
+  {
+    value: 's3',
+    label: 'S3 / MinIO / R2 / Garage / SeaweedFS / Ceph RGW',
     icon: Cloud,
-    description: 'Amazon S3, MinIO, Cloudflare R2, or compatible',
+    description: 'Any S3-compatible object store (AWS S3, MinIO, Cloudflare R2, Garage, SeaweedFS, Ceph RGW, Wasabi, Backblaze B2)',
     fields: ['bucket', 'region', 'endpoint', 'accessKeyId', 'secretAccessKey']
   },
-  { 
-    value: 'rclone', 
-    label: 'Rclone Remote', 
-    icon: FolderSync,
-    description: 'Google Drive, Dropbox, OneDrive, etc. via rclone',
-    fields: ['rcloneRemote', 'basePath']
-  },
-];
-
-const rcloneRemotes = [
-  { name: 'gdrive', label: 'Google Drive', command: 'rclone config create gdrive drive' },
-  { name: 'dropbox', label: 'Dropbox', command: 'rclone config create dropbox dropbox' },
-  { name: 'onedrive', label: 'OneDrive', command: 'rclone config create onedrive onedrive' },
-  { name: 's3', label: 'S3 Compatible', command: 'rclone config create mys3 s3' },
-  { name: 'b2', label: 'Backblaze B2', command: 'rclone config create b2 b2' },
-  { name: 'sftp', label: 'SFTP', command: 'rclone config create mysftp sftp' },
 ];
 ---
 

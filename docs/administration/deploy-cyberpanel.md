@@ -140,7 +140,7 @@ SITE_URL=https://git.yourdomain.com
 NODE_ENV=production
 
 # Storage
-STORAGE_DRIVER=local
+STORAGE_TYPE=local
 STORAGE_PATH=/data/storage
 REPOS_PATH=/data/repos
 SSH_HOST_KEY_PATH=/data/ssh/host_key

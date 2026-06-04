@@ -150,7 +150,7 @@ SITE_URL=https://git.yourdomain.com
 NODE_ENV=production
 
 # Storage (local is fine for single-server cPanel)
-STORAGE_DRIVER=local
+STORAGE_TYPE=local
 STORAGE_PATH=./data/storage
 REPOS_PATH=./data/repos
 
