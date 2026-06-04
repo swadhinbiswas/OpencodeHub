@@ -33,13 +33,18 @@ OpenCodeHub is configured exclusively via environment variables.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `STORAGE_TYPE` | `local`, `s3`, `gdrive`, `azure` | `local` |
-| `STORAGE_PATH` | Path for local storage | `./data` |
-| `STORAGE_BUCKET` | Bucket name (S3/GCP) | |
-| `STORAGE_REGION` | AWS Region | `us-east-1` |
-| `STORAGE_ENDPOINT` | Custom S3 endpoint | |
-| `S3_ACCESS_KEY` | AWS Access Key | |
-| `S3_SECRET_KEY` | AWS Secret Key | |
+| `STORAGE_TYPE` | `local` (filesystem) or `s3` (any S3-compatible object store) | `local` |
+| `STORAGE_PATH` | Path for local storage | `./data/storage` |
+| `STORAGE_BUCKET` | Bucket name (required for `s3`) | |
+| `STORAGE_REGION` | S3 region | `us-east-1` |
+| `STORAGE_ENDPOINT` | Custom S3 endpoint (MinIO, R2, Garage, SeaweedFS, Ceph RGW, etc.) | |
+| `STORAGE_ACCESS_KEY_ID` | S3 access key | |
+| `STORAGE_SECRET_ACCESS_KEY` | S3 secret key | |
+
+> Only `local` and `s3` storage backends are supported.  Previous releases
+> also supported `gdrive`, `azure`, `gcs`, `dropbox`, `onedrive`, `ftp`, and
+> an rclone-as-adapter option; these have been removed in favour of
+> S3-compatible object storage.  See `docs/guides/storage-adapters.md`.
 
 ## AI Review
 

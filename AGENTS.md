@@ -12,7 +12,7 @@
 - Stack-first PR workflows (Graphite-style stacked PRs)
 - Merge queue with speculative builds and priority lanes
 - GitHub Actions-compatible CI/CD pipeline engine + Docker-based runner
-- Pluggable storage (local, S3, GCS, Azure, Google Drive, OneDrive, Dropbox, FTP, rclone)
+- Pluggable storage (`local` filesystem or `s3` — any S3-compatible object store: AWS S3, MinIO, Cloudflare R2, Garage, SeaweedFS, Ceph RGW, Wasabi, Backblaze B2, etc.)
 - Multi-database support (PostgreSQL, SQLite, Turso/LibSQL)
 - Built-in AI code review, automations, webhooks
 
@@ -66,7 +66,7 @@
 | Git | Native `git` CLI + `simple-git` + `isomorphic-git` + `nodegit` |
 | SSH | `ssh2` library |
 | CI/CD | Dockerode (Docker API) |
-| Storage | Abstract adapter pattern with 8+ backends |
+| Storage | Abstract adapter pattern; 2 backends (`local`, `s3`-compatible) |
 | Realtime | Custom (see `src/lib/realtime.ts`) |
 | Queue | BullMQ + Redis |
 | CLI | Commander.js + Inquirer + Chalk + `simple-git` |
@@ -250,16 +250,12 @@ Browser/Git CLI → Astro middleware (auth, rate limit, CSRF)
 
 ### 6.4 Storage Abstraction
 All blob storage goes through `StorageAdapter` abstract class:
-- `LocalStorageAdapter` — filesystem
-- `S3StorageAdapter` — S3/MinIO/R2
-- `GCSStorageAdapter` — Google Cloud Storage
-- `AzureStorageAdapter` — Azure Blob
-- `GoogleDriveStorageAdapter` — Google Drive
-- `OneDriveStorageAdapter` — Microsoft OneDrive
-- `DropboxStorageAdapter` — Dropbox
-- `RcloneStorageAdapter` — Any rclone remote
+- `LocalStorageAdapter` — filesystem rooted at `STORAGE_PATH`
+- `S3StorageAdapter` — any S3-compatible object store (AWS S3, MinIO, Cloudflare R2, Garage, SeaweedFS, Ceph RGW, Wasabi, Backblaze B2, ...).  Path-style addressing is enabled automatically when `STORAGE_ENDPOINT` is set.
 
-Configured via `STORAGE_DRIVER` env var.
+> Previous releases also shipped GCS, Azure, Google Drive, OneDrive, Dropbox, FTP, and rclone-as-adapter backends.  These were removed in favour of S3-compatible object storage (one code path, multipart semantics, vendor-neutral).  rclone remains available as a separate optional backup utility (`scripts/sync-storage.ts` + `/api/admin/sync`).
+
+Configured via `STORAGE_TYPE` env var (`local` or `s3`).
 
 ### 6.5 Database Flexibility
 `src/db/index.ts` provides a factory pattern:
@@ -328,7 +324,7 @@ och focus                          # Terminal UI for PRs/queue/reviews
 | `RUNNER_SECRET` | Runner-server shared secret |
 | `AI_CONFIG_ENCRYPTION_KEY` | AI provider key encryption |
 | `WORKFLOW_SECRET_ENCRYPTION_KEY` | CI secret encryption |
-| `STORAGE_DRIVER` | Blob storage backend |
+| `STORAGE_TYPE` | Blob storage backend (`local` or `s3`) |
 | `REDIS_URL` | Redis for sessions/queues |
 | `GIT_REPOS_PATH` | Local git repo storage |
 | `GIT_SSH_PORT` | SSH git server port |

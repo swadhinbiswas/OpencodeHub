@@ -32,15 +32,16 @@ function getTempBase(): string {
 }
 
 /**
- * Check if we're using cloud storage that requires sync
+ * Check if we're using S3-compatible (or other) object storage that requires
+ * sync between the local repo cache and the remote bucket.  Local filesystem
+ * storage is treated as the canonical store and does not need syncing.
  */
 export async function isCloudStorage(): Promise<boolean> {
-    // Use import.meta.env for Astro compatibility, fallback to process.env for CLI/scripts
     const importMetaEnvType = import.meta.env?.STORAGE_TYPE;
     const processEnvType = process.env.STORAGE_TYPE;
     const type = importMetaEnvType || processEnvType || "local";
     logger.info(`[isCloudStorage] import.meta.env.STORAGE_TYPE=${importMetaEnvType}, process.env.STORAGE_TYPE=${processEnvType}, using=${type}`);
-    return ["gdrive", "s3", "gcs", "azure", "rclone", "onedrive"].includes(type);
+    return type === "s3";
 }
 
 /**

@@ -90,18 +90,21 @@ DATABASE_DRIVER=postgres
 DATABASE_URL=postgresql://user:password@host:5432/opencodehub
 ```
 
-**Storage (Use cloud storage, not local):**
+**Storage (S3-compatible; works with AWS S3, MinIO, Cloudflare R2, Garage, SeaweedFS, Ceph RGW, etc.):**
 ```bash
 STORAGE_TYPE=s3
 STORAGE_BUCKET=opencodehub-production
 STORAGE_REGION=us-east-1
-S3_ACCESS_KEY=<your-access-key>
-S3_ACCESS_KEY=<your-access-key>
-S3_SECRET_KEY=<your-secret-key>
+STORAGE_ACCESS_KEY_ID=<your-access-key>
+STORAGE_SECRET_ACCESS_KEY=<your-secret-key>
+# STORAGE_ENDPOINT=https://<account>.r2.cloudflarestorage.com   # set for non-AWS vendors
 ```
 
-**Google Drive + Turso Stack:**
-See [docs/GDRIVE_STACK.md](docs/GDRIVE_STACK.md) for detailed setup.
+> Only `local` and `s3` storage backends are supported.  Google Drive,
+> OneDrive, Dropbox, FTP, GCS, Azure, and rclone-as-adapter have been
+> removed; use the `s3` driver with a vendor-specific `STORAGE_ENDPOINT`
+> for object storage.  See `docs/guides/storage-adapters.md` for the
+> full list of compatible object stores.
 ```bash
 STORAGE_TYPE=gdrive
 GOOGLE_CLIENT_ID=...

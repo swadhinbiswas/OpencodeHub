@@ -65,14 +65,13 @@ export const CreatePullRequestSchema = z.object({
 
 // Storage Configuration
 export const StorageConfigSchema = z.object({
-  type: z.enum(["local", "s3", "gcs", "azure", "rclone", "gdrive", "onedrive"]),
+  type: z.enum(["local", "s3"]),
   basePath: z.string().min(1).max(1000).optional(),
   bucket: z.string().max(255).optional(),
   region: z.string().max(100).optional(),
   endpoint: z.string().url().optional().or(z.literal("")),
   accessKeyId: z.string().max(255).optional(),
   secretAccessKey: z.string().max(255).optional(),
-  rcloneRemote: z.string().max(255).optional(),
 });
 
 // General Config

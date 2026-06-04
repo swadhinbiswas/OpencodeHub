@@ -80,16 +80,26 @@ export const POST: APIRoute = withErrorHandler(async ({ request, locals }) => {
         if (!cfg.type) {
             throw new Error("Storage type required");
         }
+        if (cfg.type !== "local" && cfg.type !== "s3") {
+            throw new Error(
+                `Unsupported storage type '${cfg.type}'. Supported types are: local, s3.`,
+            );
+        }
 
-        return {
-            ...cfg,
+        const sanitized: StorageConfig = {
             type: cfg.type,
             basePath: typeof cfg.basePath === "string"
                 ? cfg.basePath
                 : cfg.type === "local"
                     ? "./data/storage"
                     : "",
-        } as StorageConfig;
+            bucket: typeof cfg.bucket === "string" ? cfg.bucket : undefined,
+            region: typeof cfg.region === "string" ? cfg.region : undefined,
+            endpoint: typeof cfg.endpoint === "string" ? cfg.endpoint : undefined,
+            accessKeyId: typeof cfg.accessKeyId === "string" ? cfg.accessKeyId : undefined,
+            secretAccessKey: typeof cfg.secretAccessKey === "string" ? cfg.secretAccessKey : undefined,
+        };
+        return sanitized;
     };
 
     if (action === "test") {

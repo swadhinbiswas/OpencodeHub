@@ -224,32 +224,32 @@ export function getDatabase() {
 
 ## Storage Layer
 
-All blob storage goes through an abstract `StorageAdapter` class:
+All blob storage goes through an abstract `StorageAdapter` class.  Two
+implementations are supported:
 
 ```
 StorageAdapter (abstract)
 ├── LocalStorageAdapter      # Filesystem
-├── S3StorageAdapter         # S3, MinIO, R2
-├── GCSStorageAdapter        # Google Cloud Storage
-├── AzureStorageAdapter      # Azure Blob
-├── GoogleDriveStorageAdapter # Google Drive
-├── OneDriveStorageAdapter   # Microsoft OneDrive
-├── DropboxStorageAdapter    # Dropbox
-└── RcloneStorageAdapter     # Any rclone remote
+└── S3StorageAdapter         # S3 + any S3-compatible object store
+                             # (AWS S3, MinIO, Cloudflare R2, Garage,
+                             #  SeaweedFS, Ceph RGW, Wasabi, B2, ...)
 ```
+
+Previous releases also shipped GCS, Azure, Google Drive, OneDrive,
+Dropbox, FTP, and rclone-as-adapter backends.  These were removed in
+favour of S3-compatible object storage, which all modern vendors
+implement and which gives OpenCodeHub the multipart semantics it needs
+for large-blob operations.  rclone remains available as a separate
+optional backup utility (`scripts/sync-storage.ts` + `/api/admin/sync`).
 
 ### Configuration
 
-Set `STORAGE_DRIVER` environment variable:
+Set `STORAGE_TYPE` environment variable:
 
-| Driver | Required Env Vars |
-|--------|-------------------|
-| `local` | `STORAGE_PATH` |
-| `s3` | `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` |
-| `gcs` | `GCS_BUCKET`, `GCS_PROJECT_ID`, `GCS_KEY_FILE` |
-| `azure` | `AZURE_ACCOUNT_NAME`, `AZURE_ACCOUNT_KEY`, `AZURE_CONTAINER_NAME` |
-| `gdrive` | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` |
-| `rclone` | `STORAGE_RCLONE_REMOTE` |
+| Driver  | Required Env Vars |
+|---------|-------------------|
+| `local` | `STORAGE_PATH` (default `./data/storage`) |
+| `s3`    | `STORAGE_BUCKET`, `STORAGE_REGION`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, optionally `STORAGE_ENDPOINT` (required for non-AWS) |
 
 ---
 

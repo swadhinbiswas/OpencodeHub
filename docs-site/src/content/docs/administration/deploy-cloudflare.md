@@ -130,8 +130,8 @@ STORAGE_TYPE=s3
 STORAGE_BUCKET=opencodehub-repos
 STORAGE_REGION=auto
 STORAGE_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
-S3_ACCESS_KEY=<your-r2-access-key-id>
-S3_SECRET_KEY=<your-r2-secret-access-key>
+STORAGE_ACCESS_KEY_ID=<your-r2-access-key-id>
+STORAGE_SECRET_ACCESS_KEY=<your-r2-secret-access-key>
 ```
 
 Find your account ID in Cloudflare Dashboard → R2 → Overview.
@@ -298,8 +298,8 @@ STORAGE_TYPE=s3
 STORAGE_BUCKET=opencodehub-repos
 STORAGE_REGION=auto
 STORAGE_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
-S3_ACCESS_KEY=<r2-access-key>
-S3_SECRET_KEY=<r2-secret-key>
+STORAGE_ACCESS_KEY_ID=<r2-access-key>
+STORAGE_SECRET_ACCESS_KEY=<r2-secret-key>
 ```
 
 ---
