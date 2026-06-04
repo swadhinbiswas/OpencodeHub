@@ -89,8 +89,8 @@ jobs:
           echo "::error::bun install failed after 3 attempts"
           exit 1
 
-      - name: Dependency audit (high+)
-        run: bun pm audit --level=high || true
+      - name: Dependency audit
+        run: bun run security:audit
 
   # ──────────────────────────────────────────────────
   # Stage 3: Unit & Integration Tests + Coverage

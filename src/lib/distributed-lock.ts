@@ -4,29 +4,8 @@
  * Implements a simple lock with TTL and retry mechanism
  */
 
+import type Redis from "ioredis";
 import { logger } from "./logger";
-
-// Try to import Redis - may not be configured
-let redis: any = null;
-let redisAvailable = false;
-const isProd = process.env.NODE_ENV === "production" && !process.env.SKIP_REDIS_CHECK;
-
-try {
-    const redisModule = await import("./redis");
-    redis = redisModule.redis;
-    const isReady = await redisModule.waitForRedisReady(6000);
-    if (!isReady) {
-        throw new Error("Redis did not become ready within timeout");
-    }
-    // Test connection
-    await redis.ping();
-    redisAvailable = true;
-} catch (e) {
-    if (isProd) {
-        throw new Error("CRITICAL: Redis is required in production for distributed locking. Please configure REDIS_URL.");
-    }
-    logger.warn({ error: e }, "Redis not available - distributed locks disabled. Using in-memory fallback. NOT SAFE for multi-instance deployments.");
-}
 
 export interface LockOptions {
     /** Lock timeout in seconds (default: 30) */
@@ -43,19 +22,20 @@ export interface Lock {
     release: () => Promise<boolean>;
 }
 
-/**
- * In-memory lock for single-instance deployments (fallback)
- */
-class InMemoryLockManager {
+export interface LockManager {
+    acquire(key: string, options?: LockOptions): Promise<Lock | null>;
+    destroy(): void;
+}
+
+class InMemoryLockManager implements LockManager {
     private locks: Map<string, { token: string; expiresAt: number }> = new Map();
     private cleanupInterval: NodeJS.Timeout;
 
     constructor() {
-        // Cleanup expired locks every 5 seconds
         this.cleanupInterval = setInterval(() => this.cleanup(), 5000);
     }
 
-    private cleanup() {
+    private cleanup(): void {
         const now = Date.now();
         for (const [key, lock] of this.locks.entries()) {
             if (now > lock.expiresAt) {
@@ -65,21 +45,14 @@ class InMemoryLockManager {
     }
 
     async acquire(key: string, options: LockOptions = {}): Promise<Lock | null> {
-        const {
-            ttlSeconds = 30,
-            retryCount = 10,
-            retryDelayMs = 100,
-        } = options;
-
+        const { ttlSeconds = 30, retryCount = 10, retryDelayMs = 100 } = options;
         const token = crypto.randomUUID();
         const expiresAt = Date.now() + ttlSeconds * 1000;
 
         for (let attempt = 0; attempt <= retryCount; attempt++) {
             const existing = this.locks.get(key);
-
             if (!existing || Date.now() > existing.expiresAt) {
                 this.locks.set(key, { token, expiresAt });
-
                 return {
                     key,
                     token,
@@ -90,71 +63,53 @@ class InMemoryLockManager {
                             return true;
                         }
                         return false;
-                    }
+                    },
                 };
             }
-
             if (attempt < retryCount) {
-                await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+                await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
             }
         }
-
-        return null; // Failed to acquire lock
+        return null;
     }
 
-    destroy() {
+    destroy(): void {
         clearInterval(this.cleanupInterval);
     }
 }
 
-/**
- * Redis-based distributed lock manager using SET NX with expiry
- */
-class RedisLockManager {
-    /**
-     * Acquire a distributed lock
-     * Uses SET NX (only set if not exists) with expiry for safety
-     */
-    async acquire(key: string, options: LockOptions = {}): Promise<Lock | null> {
-        const {
-            ttlSeconds = 30,
-            retryCount = 10,
-            retryDelayMs = 100,
-        } = options;
+const RELEASE_SCRIPT = `
+if redis.call("get", KEYS[1]) == ARGV[1] then
+    return redis.call("del", KEYS[1])
+else
+    return 0
+end
+`;
 
+class RedisLockManager implements LockManager {
+    constructor(private readonly redis: Redis) {}
+
+    async acquire(key: string, options: LockOptions = {}): Promise<Lock | null> {
+        const { ttlSeconds = 30, retryCount = 10, retryDelayMs = 100 } = options;
         const lockKey = `lock:${key}`;
         const token = crypto.randomUUID();
 
         for (let attempt = 0; attempt <= retryCount; attempt++) {
             try {
-                // SET key value NX EX seconds
-                // NX = only set if not exists
-                // EX = expire in seconds
-                const result = await redis.set(lockKey, token, {
-                    nx: true,
-                    ex: ttlSeconds,
-                });
-
+                const result = await this.redis.set(lockKey, token, "EX", ttlSeconds, "NX");
                 if (result === "OK") {
                     logger.debug({ key, token, ttl: ttlSeconds }, "Lock acquired");
-
                     return {
                         key,
                         token,
-                        release: async () => {
-                            return this.release(lockKey, token);
-                        }
+                        release: async () => this.release(lockKey, token),
                     };
                 }
-
-                // Lock is held by someone else
                 if (attempt < retryCount) {
-                    await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+                    await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
                 }
             } catch (error) {
                 logger.error({ error, key }, "Error acquiring lock");
-                // On Redis error, we fail open (allow operation)
-                // This is a trade-off between availability and consistency
                 return {
                     key,
                     token: "fallback",
@@ -162,30 +117,14 @@ class RedisLockManager {
                 };
             }
         }
-
         logger.warn({ key, attempts: retryCount + 1 }, "Failed to acquire lock after retries");
         return null;
     }
 
-    /**
-     * Release a lock only if we still own it
-     * Uses Lua script for atomic check-and-delete
-     */
     private async release(lockKey: string, token: string): Promise<boolean> {
         try {
-            // Lua script for atomic check-and-delete
-            // Only deletes if the value matches our token
-            const script = `
-                if redis.call("get", KEYS[1]) == ARGV[1] then
-                    return redis.call("del", KEYS[1])
-                else
-                    return 0
-                end
-            `;
-
-            const result = await redis.eval(script, [lockKey], [token]);
+            const result = await this.redis.eval(RELEASE_SCRIPT, 1, lockKey, token);
             const released = result === 1;
-
             logger.debug({ key: lockKey, released }, "Lock release attempt");
             return released;
         } catch (error) {
@@ -194,45 +133,55 @@ class RedisLockManager {
         }
     }
 
-    destroy() {
-        // Redis handles connections automatically with Upstash
+    destroy(): void {
+        // Redis handles connections automatically
     }
 }
 
-// Export the appropriate lock manager
-const lockManager = redisAvailable ? new RedisLockManager() : new InMemoryLockManager();
+let cached: LockManager | null = null;
 
-export const isDistributedLocking = redisAvailable;
+function getManager(): LockManager {
+    if (cached) return cached;
+    const skipRedis = process.env.SKIP_REDIS_CHECK === "1" || process.env.NODE_ENV === "test";
+    if (skipRedis) {
+        logger.warn("Using in-memory lock manager (Redis skipped). NOT SAFE for multi-instance deployments.");
+        cached = new InMemoryLockManager();
+        return cached;
+    }
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const RedisCtor = require("ioredis");
+        const url = process.env.REDIS_URL || "redis://localhost:6379";
+        const client: Redis = new RedisCtor(url, {
+            enableReadyCheck: false,
+            maxRetriesPerRequest: 1,
+            lazyConnect: true,
+        });
+        cached = new RedisLockManager(client);
+    } catch (e) {
+        logger.warn({ error: e }, "Redis init failed — using in-memory lock manager");
+        cached = new InMemoryLockManager();
+    }
+    return cached;
+}
 
-/**
- * Acquire a distributed lock
- * @param key - Unique key for the lock
- * @param options - Lock options (TTL, retries)
- * @returns Lock object with release function, or null if failed
- */
+const lockManager = getManager();
+
+export const isDistributedLocking = !(lockManager instanceof InMemoryLockManager);
+
 export async function acquireLock(key: string, options?: LockOptions): Promise<Lock | null> {
     return lockManager.acquire(key, options);
 }
 
-/**
- * Execute a function with a distributed lock
- * Automatically acquires and releases the lock
- * @param key - Unique key for the lock
- * @param fn - Function to execute while holding the lock
- * @param options - Lock options
- * @returns Result of the function, or throws if lock cannot be acquired
- */
 export async function withLock<T>(
     key: string,
     fn: () => Promise<T>,
-    options?: LockOptions
+    options?: LockOptions,
 ): Promise<T> {
     const lock = await acquireLock(key, options);
-
     if (!lock) {
         throw new Error(`Failed to acquire lock for key: ${key}`);
     }
-
     try {
         return await fn();
     } finally {

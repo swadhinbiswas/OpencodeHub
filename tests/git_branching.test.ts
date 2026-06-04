@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { initRepository, getBranches, compareBranches, createBranch, deleteBranch } from '@/lib/git';
 import { rmSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { simpleGit } from 'simple-git';
+import { createSimpleGit } from '@/lib/git';
 import { randomUUID } from 'crypto';
 
 const TEST_DIR = join(process.cwd(), 'test-results', 'git-branching', randomUUID());
@@ -23,8 +23,8 @@ describe('Git Branching and Pull Requests', () => {
         });
 
         // 2. Clone to client
-        await simpleGit().clone(REPO_PATH, CLIENT_PATH);
-        const client = simpleGit(CLIENT_PATH);
+        await createSimpleGit().clone(REPO_PATH, CLIENT_PATH);
+        const client = createSimpleGit({ baseDir: CLIENT_PATH });
 
         // Configure client
         await client.addConfig('user.name', 'Tester');
@@ -55,10 +55,10 @@ describe('Git Branching and Pull Requests', () => {
     });
 
     it('should compare branches correctly', async () => {
-        // 1. Client: checkout feature-1 (fetch first to get it from server)
-        const client = simpleGit(CLIENT_PATH);
-        await client.fetch();
-        await client.checkout('feature-1');
+        // 1. Client: fetch the new branch from the server, then create + check it out
+        const client = createSimpleGit({ baseDir: CLIENT_PATH });
+        await client.fetch('origin');
+        await client.checkoutBranch('feature-1', 'origin/feature-1');
 
         // 2. Make changes
         writeFileSync(join(CLIENT_PATH, 'new-feature.txt'), 'Awesome feature content');

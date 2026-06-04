@@ -1,47 +1,32 @@
 
+import type Redis from "ioredis";
 import { logger } from "@/lib/logger";
-
-// Try to import Redis - may not be configured
-let redis: any = null;
-let redisAvailable = false;
-const isProd = process.env.NODE_ENV === "production" && !process.env.SKIP_REDIS_CHECK;
-
-try {
-    const redisModule = await import("@/lib/redis");
-    redis = redisModule.redis;
-    const isReady = await redisModule.waitForRedisReady(6000);
-    if (!isReady) {
-        throw new Error("Redis did not become ready within timeout");
-    }
-    // Verify connection works after ready
-    await redis.ping();
-    redisAvailable = true;
-    logger.info("Distributed rate limiting enabled (Redis)");
-} catch (e) {
-    if (isProd) {
-        throw new Error("CRITICAL: Redis is required in production for distributed rate limiting. Please configure REDIS_URL.");
-    }
-    logger.warn({ error: e }, "Redis not available - using in-memory rate limiting (not distributed-safe)");
-}
 
 interface RateLimitEntry {
     count: number;
     resetTime: number;
 }
 
-/**
- * In-memory rate limiter (fallback when Redis unavailable)
- */
-class InMemoryRateLimiter {
+export interface RateLimitDecision {
+    allowed: boolean;
+    remaining: number;
+    resetTime: number;
+}
+
+export interface RateLimiter {
+    check(identifier: string, limit: number, windowMs: number): Promise<RateLimitDecision>;
+    destroy(): void;
+}
+
+class InMemoryRateLimiter implements RateLimiter {
     private store: Map<string, RateLimitEntry> = new Map();
     private cleanupInterval: NodeJS.Timeout;
 
     constructor() {
-        // Cleanup expired entries every 60 seconds
         this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
     }
 
-    private cleanup() {
+    private cleanup(): void {
         const now = Date.now();
         for (const [key, entry] of this.store.entries()) {
             if (now > entry.resetTime) {
@@ -53,24 +38,21 @@ class InMemoryRateLimiter {
     async check(
         identifier: string,
         limit: number,
-        windowMs: number
-    ): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
+        windowMs: number,
+    ): Promise<RateLimitDecision> {
         const now = Date.now();
         const entry = this.store.get(identifier);
 
         if (!entry || now > entry.resetTime) {
-            // New window
             const resetTime = now + windowMs;
             this.store.set(identifier, { count: 1, resetTime });
             return { allowed: true, remaining: limit - 1, resetTime };
         }
 
         if (entry.count >= limit) {
-            // Limit exceeded
             return { allowed: false, remaining: 0, resetTime: entry.resetTime };
         }
 
-        // Increment count
         entry.count++;
         this.store.set(identifier, entry);
         return {
@@ -80,82 +62,82 @@ class InMemoryRateLimiter {
         };
     }
 
-    destroy() {
+    destroy(): void {
         clearInterval(this.cleanupInterval);
     }
 }
 
-/**
- * Redis-based distributed rate limiter using sliding window
- */
-class RedisRateLimiter {
-    /**
-     * Check rate limit using Redis with sliding window algorithm
-     */
+class RedisRateLimiter implements RateLimiter {
+    constructor(private readonly redis: Redis) {}
+
     async check(
         identifier: string,
         limit: number,
-        windowMs: number
-    ): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
+        windowMs: number,
+    ): Promise<RateLimitDecision> {
         const now = Date.now();
         const windowSeconds = Math.ceil(windowMs / 1000);
         const key = `ratelimit:${identifier}`;
 
         try {
-            // Use Redis INCR with EXPIRE for atomic counting
-            // This implements a fixed window algorithm (simpler and efficient)
-            const multi = redis.multi();
-            multi.incr(key);
-            multi.pttl(key); // Get TTL in milliseconds
-
-            const results = await multi.exec();
-
-            // ioredis exec returns [[err, result], [err, result]]
-            // We need to handle potential nulls if exec failed entirely (unlikely if we got here)
-            if (!results) {
-                throw new Error("Redis transaction failed");
-            }
+            const results = await this.redis.multi().incr(key).pttl(key).exec();
+            if (!results) throw new Error("Redis transaction failed");
 
             const countResult = results[0];
             const ttlResult = results[1];
-
-            // Check for errors in individual commands
             if (countResult[0]) throw countResult[0];
             if (ttlResult[0]) throw ttlResult[0];
 
             const count = countResult[1] as number;
             let ttl = ttlResult[1] as number;
 
-            // If this is a new key (first request in window), set expiry
             if (count === 1 || ttl === -1) {
-                await redis.pexpire(key, windowMs);
+                await this.redis.pexpire(key, windowMs);
                 ttl = windowMs;
             }
 
             const resetTime = now + Math.max(ttl, 0);
             const remaining = Math.max(0, limit - count);
 
-            return {
-                allowed: count <= limit,
-                remaining,
-                resetTime,
-            };
+            return { allowed: count <= limit, remaining, resetTime };
         } catch (error) {
             logger.error({ error, identifier }, "Redis rate limit check failed, allowing request");
-            // Fail open - allow request if Redis fails
-            return {
-                allowed: true,
-                remaining: limit,
-                resetTime: now + windowMs,
-            };
+            return { allowed: true, remaining: limit, resetTime: now + windowMs };
         }
     }
 
-    destroy() {
-        // Redis handles connections automatically with Upstash
+    destroy(): void {
+        // Redis handles connections automatically
     }
 }
 
-// Create the appropriate rate limiter based on availability
-export const rateLimiter = redisAvailable ? new RedisRateLimiter() : new InMemoryRateLimiter();
-export const isDistributed = redisAvailable;
+let cached: RateLimiter | null = null;
+
+export function getRateLimiter(): RateLimiter {
+    if (cached) return cached;
+    const skipRedis = process.env.SKIP_REDIS_CHECK === "1" || process.env.NODE_ENV === "test";
+    if (skipRedis) {
+        logger.warn("Using in-memory rate limiting (Redis skipped)");
+        cached = new InMemoryRateLimiter();
+        return cached;
+    }
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const RedisCtor = require("ioredis");
+        const url = process.env.REDIS_URL || "redis://localhost:6379";
+        const client: Redis = new RedisCtor(url, {
+            enableReadyCheck: false,
+            maxRetriesPerRequest: 1,
+            lazyConnect: true,
+        });
+        cached = new RedisRateLimiter(client);
+        logger.info("Distributed rate limiting enabled (Redis)");
+    } catch (e) {
+        logger.warn({ error: e }, "Redis init failed — using in-memory rate limiting");
+        cached = new InMemoryRateLimiter();
+    }
+    return cached;
+}
+
+export const rateLimiter: RateLimiter = getRateLimiter();
+export const isDistributed = !(rateLimiter instanceof InMemoryRateLimiter);

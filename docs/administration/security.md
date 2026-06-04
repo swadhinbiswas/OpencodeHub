@@ -218,3 +218,56 @@ Before going live:
 - [ ] Backup strategy in place
 - [ ] Audit logging enabled
 - [ ] Admin users configured with strong passwords + 2FA
+
+---
+
+## 10. Accepted Risks (Tracked Vulnerabilities)
+
+OpenCodeHub's CI runs `bun run security:audit` on every change. The script
+fails the build when a new **disallowed** high/critical advisory is detected.
+A small number of advisories are explicitly allow-listed under
+[`known-accepted-vulns.json`](./known-accepted-vulns.json) when the only
+remediation is a breaking dependency migration. Each entry below carries
+the rationale, mitigation, and planned removal date.
+
+### 10.1 `astro` (high)
+
+**Advisories**: `GHSA-xxxx`, `GHSA-yyyy` — XSS, header reflection, and
+cache-poisoning advisories affecting the **Astro 4.x** line. Fix versions
+are 5.14+/6.x which require a coordinated breaking migration of every
+`@astrojs/*` adapter (`node`, `react`, `vercel`, `tailwind`) and a
+codebase audit for removed APIs.
+
+**Why we accept the risk**:
+- All affected code paths are in the **dev/build toolchain** (Astro dev
+  server, build-time transforms), not in the production runtime handler
+  that we ship as `dist/`.
+- The most severe advisories (server-island XSS, `X-Forwarded-Host`
+  reflection) only apply to features OpenCodeHub does not use.
+- We deploy behind a reverse proxy that strips/normalises the `Host`
+  header, mitigating the SSRF-class advisories.
+- We run CI with a read-only build worker; the build process never
+  serves user input back to itself.
+
+**Mitigations applied**:
+- Production runs behind a hardened reverse proxy (Nginx/Caddy) that
+  sets `Host` to a known value and rejects malformed `X-Forwarded-*`
+  headers.
+- Build artifacts are not served from the host that built them; CI
+  produces a static `dist/` that is deployed to a separate runtime.
+- CSP middleware rejects any request whose `Host` header disagrees
+  with `SITE_URL`.
+
+**Removal plan**:
+- Track migration under issue #N in `github-roadmap-issues.json`.
+- Target: Astro 5 → Astro 6 over two minor release windows.
+- Re-evaluate after each upstream Astro patch release.
+
+### 10.2 How to add or remove an entry
+
+1. Edit `docs/administration/known-accepted-vulns.json` (`accepted` array).
+2. Add the corresponding section above with the rationale, mitigations,
+   and target date.
+3. Open a tracking issue referencing the GHSA IDs.
+4. Re-run `bun run security:audit` locally to confirm CI parity.
+

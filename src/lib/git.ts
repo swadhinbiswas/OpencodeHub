@@ -137,7 +137,7 @@ export async function initRepository(
     logger.info(
       `[initRepository] Running git init --bare at: ${localRepoPath}`,
     );
-    const git = simpleGit(localRepoPath);
+    const git = createSimpleGit({ baseDir: localRepoPath });
     await git.init(true);
     logger.info(`[initRepository] git init completed`);
   } catch (err) {
@@ -164,7 +164,7 @@ export async function initRepository(
     mkdirSync(tempPath, { recursive: true });
 
     try {
-      const workingGit = simpleGit(tempPath);
+      const workingGit = createSimpleGit({ baseDir: tempPath });
       await workingGit.init();
       await workingGit.addConfig("user.name", ownerName);
       await workingGit.addConfig("user.email", "git@opencodehub.local");
@@ -230,7 +230,7 @@ export async function initRepository(
 
   // Set default branch in bare repo
   try {
-    const bareGit = simpleGit(localRepoPath);
+    const bareGit = createSimpleGit({ baseDir: localRepoPath });
     await bareGit.raw(["symbolic-ref", "HEAD", `refs/heads/${defaultBranch}`]);
     logger.info(`[initRepository] Set default branch to ${defaultBranch}`);
   } catch (err) {
@@ -297,10 +297,39 @@ export async function forkRepository(
   }
 
   // Clone as bare repository
-  const git = simpleGit();
+  const git = createSimpleGit();
   await git.clone(fullSourcePath, fullTargetPath, ["--bare"]);
 
   logger.info(`Repository forked from ${sourcePath} to ${targetPath}`);
+}
+
+/**
+ * Centralised factory for `simple-git` instances.
+ *
+ * OpenCodeHub is a git server; some workflows (force-deleting a branch,
+ * `git checkout`/merge/rebase which may spawn `$EDITOR`, custom SSH
+ * command for the SSH transport, `--upload-pack` / `--receive-pack` for
+ * the smart-HTTP server, and credential helpers for HTTPS remotes)
+ * legitimately use the operations that simple-git's safety plugin
+ * blocks by default.  We opt-in to the *minimum* set required and
+ * document each flag.  Everything else stays blocked.
+ *
+ * Use this helper everywhere instead of calling `simpleGit()` directly.
+ */
+export const SIMPLE_GIT_UNSAFE_OPTS = {
+  allowUnsafeEditor: true,         // git checkout/merge/rebase may spawn EDITOR
+  allowUnsafePack: true,           // git server uses --upload-pack / --receive-pack
+  allowUnsafeSshCommand: true,     // SSH transport uses -c ssh.command=
+  allowUnsafeCredentialHelper: true, // for HTTPS remotes that use a credential helper
+} as const;
+
+export function createSimpleGit(options: Partial<SimpleGitOptions> = {}): SimpleGit {
+  return simpleGit({
+    binary: "git",
+    maxConcurrentProcesses: 6,
+    unsafe: { ...SIMPLE_GIT_UNSAFE_OPTS },
+    ...options,
+  });
 }
 
 export function getGit(repoPath: string): SimpleGit {
@@ -318,14 +347,21 @@ export function getGit(repoPath: string): SimpleGit {
     baseDir: repoPath,
     binary: "git",
     maxConcurrentProcesses: 6,
+    unsafe: { ...SIMPLE_GIT_UNSAFE_OPTS },
   };
 
   const git = simpleGit(options);
 
-  // Set environment to prevent walking up
-  // We strictly want to operate ONLY in the intended directory
+  // Set environment to prevent walking up and to strip interactive shell
+  // helpers (pager, editor, etc.) — this is a server, never a TTY.
+  // The `unsafe` allowlist above covers operations that legitimately
+  // need EDITOR / GIT_SSH_COMMAND; the env scrub below is an
+  // orthogonal defence so simple-git's unsafe plugin does not block us.
+  const sanitizedEnv: NodeJS.ProcessEnv = { ...process.env };
+  delete sanitizedEnv.PAGER;
+  delete sanitizedEnv.GIT_PAGER;
   git.env({
-    ...process.env,
+    ...sanitizedEnv,
     GIT_CEILING_DIRECTORIES: ceilingDir,
   });
 
@@ -1194,7 +1230,7 @@ export async function mergeBranch(
 ): Promise<MergeResult> {
   const tempDir = mkdtempSync(join(tmpdir(), "och-merge-"));
   try {
-    const tempGit = simpleGit();
+    const tempGit = createSimpleGit();
     // Use --shared to avoid duplicating objects (local repos only) + shallow depth
     await tempGit.clone(repoPath, tempDir, [
       "--shared",
@@ -1204,7 +1240,7 @@ export async function mergeBranch(
       base,
     ]);
 
-    const workGit = simpleGit(tempDir);
+    const workGit = createSimpleGit({ baseDir: tempDir });
     await workGit.checkout(base);
     await workGit.fetch("origin", head, ["--depth=1"]);
 

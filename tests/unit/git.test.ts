@@ -62,9 +62,9 @@ describe('Git Library', () => {
 
             expect(fs.mkdirSync).toHaveBeenCalledWith('/tmp', { recursive: true });
             expect(fs.mkdirSync).toHaveBeenCalledWith(repoPath, { recursive: true });
-            expect(simpleGit).toHaveBeenCalledWith(repoPath);
+            expect(simpleGit).toHaveBeenCalledWith(expect.objectContaining({ baseDir: repoPath }));
 
-            const git = simpleGit(repoPath);
+            const git = simpleGit({ baseDir: repoPath });
             expect(git.init).toHaveBeenCalledWith(true);
         });
     });
