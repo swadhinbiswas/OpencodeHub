@@ -1562,13 +1562,15 @@ export async function installHooks(repoPath: string) {
   }
 
   // Use environment variable for site URL, fallback to localhost for development
+  // process.env wins when explicitly set (CI runners, scripts, systemd);
+  // otherwise fall back to import.meta.env (loaded from .env).
+  const metaEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
   const siteUrl =
-    (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.SITE_URL ||
     process.env.SITE_URL ||
+    metaEnv?.SITE_URL ||
     process.env.PUBLIC_URL ||
     "http://localhost:3000";
-  const metaEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
-  const hookSecret = metaEnv?.INTERNAL_HOOK_SECRET || process.env.INTERNAL_HOOK_SECRET;
+  const hookSecret = process.env.INTERNAL_HOOK_SECRET || metaEnv?.INTERNAL_HOOK_SECRET;
   if (!hookSecret) {
     throw new Error(
       "INTERNAL_HOOK_SECRET environment variable is required to install git hooks",

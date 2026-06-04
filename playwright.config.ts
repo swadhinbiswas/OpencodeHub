@@ -23,8 +23,12 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {
-      // E2E tests need these to bypass security middleware and ensure the
-      // pre-receive git hook can reach the dev server on localhost.
+      // Inherit the parent process env so CI can inject DATABASE_URL, JWT_SECRET,
+      // SITE_URL, etc. without us having to mirror them here.
+      ...process.env,
+      // E2E-specific overrides: bypass security middleware so tests don't get
+      // rate-limited, and pin the site URL to the dev server so the
+      // pre-receive git hook can reach it.
       RATE_LIMIT_SKIP_DEV: 'true',
       CSRF_SKIP_DEV: 'true',
       SITE_URL: 'http://localhost:4321',

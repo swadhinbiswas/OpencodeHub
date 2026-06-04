@@ -27,18 +27,33 @@ let db:
   | null = null;
 
 /**
+ * Infer database driver from connection URL when no explicit driver is set.
+ * Keeps `DATABASE_DRIVER` authoritative when present (production safety) but
+ * makes `file:./test.db` work in CI without extra config.
+ */
+function inferDriverFromUrl(url: string): DatabaseDriver {
+  if (url.startsWith("file:")) return "sqlite";
+  if (url.startsWith("libsql:") || url.startsWith("https:")) return "libsql";
+  if (url.startsWith("postgres://") || url.startsWith("postgresql://")) return "postgres";
+  return "postgres";
+}
+
+/**
  * Get database configuration from environment
  */
 function getDbConfig(): { driver: DatabaseDriver; url: string } {
-  // Prefer Astro/Vite env (loaded from .env), then fallback to process.env for scripts.
+  // process.env wins when explicitly set (CI runners, scripts, systemd),
+  // then Astro/Vite import.meta.env (loaded from .env), then a sensible default.
+  // This way CI can set `DATABASE_URL=file:./test.db` without a .env override.
   const envDriver =
-    import.meta.env?.DATABASE_DRIVER || process.env.DATABASE_DRIVER;
-  const envUrl = import.meta.env?.DATABASE_URL || process.env.DATABASE_URL;
+    process.env.DATABASE_DRIVER || import.meta.env?.DATABASE_DRIVER;
+  const envUrl =
+    process.env.DATABASE_URL || import.meta.env?.DATABASE_URL;
 
   // Default to PostgreSQL since all schemas use pgTable
-  const driver = (envDriver || "postgres") as DatabaseDriver;
   const url =
     envUrl || "postgresql://opencodehub:opencodehub@localhost:5432/opencodehub";
+  const driver = (envDriver || inferDriverFromUrl(url)) as DatabaseDriver;
 
   return { driver, url };
 }
