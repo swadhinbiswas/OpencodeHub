@@ -59,3 +59,12 @@ drizzle/meta/
 # Monaco Editor cache
 .monaco/
 .vercel
+
+# npm-generated lockfile (audit-only; canonical lockfile is bun.lock)
+package-lock.json
+
+# Test artifacts
+test-results/
+playwright-report/
+.vitest-cache/
+
