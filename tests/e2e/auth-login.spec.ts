@@ -38,7 +38,7 @@ test.describe("Authentication - Login", () => {
 
   test("has link to register page", async ({ page }) => {
     await page.goto("/login");
-    const registerLink = page.locator('a[href*="register"]');
+    const registerLink = page.locator('a[href*="register"]').first();
     await expect(registerLink).toBeVisible();
   });
 

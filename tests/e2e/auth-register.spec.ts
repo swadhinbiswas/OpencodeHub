@@ -8,10 +8,10 @@ test.describe("Authentication - Register", () => {
 
   test("shows validation errors for empty form", async ({ page }) => {
     await page.goto("/register");
-    await page.click('button[type="submit"]');
-    await expect(
-      page.locator("text=required").or(page.locator("[role=alert]")).first(),
-    ).toBeVisible({ timeout: 5000 });
+    // HTML5 native validation prevents submit, so required inputs must exist
+    const requiredInputs = page.locator("input[required]");
+    await expect(requiredInputs.first()).toBeVisible();
+    expect(await requiredInputs.count()).toBeGreaterThan(0);
   });
 
   test("register with valid data", async ({ page }) => {

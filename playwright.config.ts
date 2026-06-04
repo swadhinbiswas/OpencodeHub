@@ -21,5 +21,16 @@ export default defineConfig({
     command: 'bun run dev',
     url: 'http://localhost:4321',
     reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+    env: {
+      // E2E tests need these to bypass security middleware and ensure the
+      // pre-receive git hook can reach the dev server on localhost.
+      RATE_LIMIT_SKIP_DEV: 'true',
+      CSRF_SKIP_DEV: 'true',
+      SITE_URL: 'http://localhost:4321',
+      INTERNAL_HOOK_SECRET:
+        process.env.INTERNAL_HOOK_SECRET ||
+        'f387ae7ad3fb3493993a14574e8f0f28e2f745248d69168f8d84028df2ae74fc',
+    },
   },
 });

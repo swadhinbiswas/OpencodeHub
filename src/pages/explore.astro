@@ -116,6 +116,7 @@ const langColors: Record<string, string> = {
           </div>
           <div class="flex gap-2">
             <select
+              aria-label="Filter by language"
               class="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-gray-300 focus:outline-none focus:border-cyan-500/50"
             >
               <option>All languages</option>
@@ -126,6 +127,7 @@ const langColors: Record<string, string> = {
               <option>Go</option>
             </select>
             <select
+              aria-label="Sort by"
               class="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-gray-300 focus:outline-none focus:border-cyan-500/50"
             >
               <option>Recently updated</option>
@@ -224,13 +226,13 @@ const langColors: Record<string, string> = {
                         {repo.owner.username}/{repo.name}
                       </span>
                     </div>
-                    <span class="text-xs text-gray-600">
+                    <span class="text-xs text-gray-300">
                       Updated {timeAgo(repo.updatedAt)}
                     </span>
                   </div>
                 </div>
 
-                <p class="text-sm text-gray-400 line-clamp-2 flex-1 mb-4">
+                <p class="text-sm text-gray-300 line-clamp-2 flex-1 mb-4">
                   {repo.description || "No description provided."}
                 </p>
 

@@ -1,9 +1,13 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getCsrfToken } from "@/middleware/csrf";
 
 if (Astro.locals.user) {
   return Astro.redirect("/dashboard");
 }
+
+const { token, cookie } = getCsrfToken(Astro.request);
+Astro.response.headers.append("Set-Cookie", cookie);
 ---
 
 <BaseLayout title="Sign up for OpenCodeHub">
@@ -78,7 +82,9 @@ if (Astro.locals.user) {
               <p class="text-xs text-gray-600">Must be at least 8 characters long.</p>
             </div>
 
-            <div id="error-message" class="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-3 hidden"></div>
+            <div id="error-message" class="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-3 hidden" role="alert"></div>
+
+            <input type="hidden" name="_csrf" id="csrf-token" value={token} />
 
             <button
               type="submit"
@@ -142,9 +148,13 @@ if (Astro.locals.user) {
     const data = Object.fromEntries(formData);
 
     try {
+      const csrfToken = (document.getElementById("csrf-token") as HTMLInputElement)?.value || "";
       const response = await fetch("/api/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": csrfToken,
+        },
         body: JSON.stringify(data),
       });
 

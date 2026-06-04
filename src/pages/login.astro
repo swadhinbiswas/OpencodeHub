@@ -1,9 +1,13 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getCsrfToken } from "@/middleware/csrf";
 
 if (Astro.locals.user) {
   return Astro.redirect("/dashboard");
 }
+
+const { token, cookie } = getCsrfToken(Astro.request);
+Astro.response.headers.append("Set-Cookie", cookie);
 ---
 
 <BaseLayout title="Sign in to OpenCodeHub">
@@ -111,8 +115,11 @@ if (Astro.locals.user) {
             <div
               id="error-message"
               class="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-3 hidden"
+              role="alert"
             >
             </div>
+
+            <input type="hidden" name="_csrf" id="csrf-token" value={token} />
 
             <button
               type="submit"
@@ -189,9 +196,13 @@ if (Astro.locals.user) {
     submitBtn!.setAttribute("disabled", "true");
 
     try {
+      const csrfToken = (document.getElementById("csrf-token") as HTMLInputElement)?.value || "";
       const response = await fetch("/api/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": csrfToken,
+        },
         body: JSON.stringify(data),
       });
 

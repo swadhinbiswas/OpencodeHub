@@ -40,7 +40,13 @@ export interface SessionData {
 let _jwtSecret: Uint8Array | null = null;
 function getJwtSecret(): Uint8Array {
   if (!_jwtSecret) {
-    const raw = process.env.JWT_SECRET;
+    // Vite/Astro exposes .env values on import.meta.env at build time and
+    // only injects vars prefixed with PUBLIC_ into the client bundle. Server
+    // code can read the full set via import.meta.env, but process.env is
+    // not populated for unprefixed keys. Fall back to process.env for
+    // production-style deployments.
+    const fromMeta = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.JWT_SECRET;
+    const raw = fromMeta || process.env.JWT_SECRET;
     if (!raw) {
       throw new Error("JWT_SECRET environment variable is required");
     }
