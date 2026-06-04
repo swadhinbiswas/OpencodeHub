@@ -68,3 +68,6 @@ test-results/
 playwright-report/
 .vitest-cache/
 
+
+# Astro build cache
+.astro/

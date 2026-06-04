@@ -22,10 +22,8 @@ test.describe("Mobile Navigation", () => {
     if (await menuBtn.isVisible()) {
       await menuBtn.click();
       await page.waitForTimeout(500);
-      // Navigation links should become visible
-      const navLinks = page.locator(
-        "nav a, [role=navigation] a, [data-mobile-nav] a",
-      );
+      // Scope to the mobile navigation dialog specifically
+      const navLinks = page.locator('[aria-label="Mobile navigation menu"] a');
       await expect(navLinks.first()).toBeVisible({ timeout: 3000 });
     }
   });
