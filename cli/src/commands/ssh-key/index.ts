@@ -35,7 +35,7 @@ sshKeyCommands
   .action(async (options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -47,7 +47,7 @@ sshKeyCommands
         // Read from file
         const keyPath = options.file.replace("~", os.homedir());
         if (!fs.existsSync(keyPath)) {
-          console.error(chalk.red(`File not found: ${keyPath}`));
+          console.error(chalk.hex("#ff5555")(`File not found: ${keyPath}`));
           process.exit(1);
         }
         publicKey = fs.readFileSync(keyPath, "utf-8").trim();
@@ -65,8 +65,8 @@ sshKeyCommands
         }
 
         if (availableKeys.length === 0) {
-          console.log(chalk.yellow("No SSH keys found in ~/.ssh/"));
-          console.log(chalk.dim("Generate one with: ssh-keygen -t ed25519"));
+          console.log(chalk.hex("#f1fa8c")("No SSH keys found in ~/.ssh/"));
+          console.log(chalk.hex("#6272a4")("Generate one with: ssh-keygen -t ed25519"));
           process.exit(1);
         }
 
@@ -87,7 +87,7 @@ sshKeyCommands
 
       // Parse key type and validate
       if (!publicKey.startsWith("ssh-") && !publicKey.startsWith("ecdsa-")) {
-        console.error(chalk.red("Invalid SSH public key format"));
+        console.error(chalk.hex("#ff5555")("Invalid SSH public key format"));
         process.exit(1);
       }
 
@@ -112,12 +112,12 @@ sshKeyCommands
         key: publicKey,
       });
 
-      spinner.succeed(`Added SSH key: ${chalk.cyan(title)}`);
-      console.log(chalk.dim(`  Fingerprint: ${result.data.fingerprint}`));
+      spinner.succeed(`Added SSH key: ${chalk.hex("#8be9fd")(title)}`);
+      console.log(chalk.hex("#6272a4")(`  Fingerprint: ${result.data.fingerprint}`));
     } catch (error) {
-      console.error(chalk.red("Failed to add SSH key"));
+      console.error(chalk.hex("#ff5555")("Failed to add SSH key"));
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -131,7 +131,7 @@ sshKeyCommands
   .action(async () => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -145,8 +145,8 @@ sshKeyCommands
       spinner.stop();
 
       if (result.data.length === 0) {
-        console.log(chalk.dim("No SSH keys found."));
-        console.log(chalk.dim("Add one with: och ssh-key add"));
+        console.log(chalk.hex("#6272a4")("No SSH keys found."));
+        console.log(chalk.hex("#6272a4")("Add one with: och ssh-key add"));
         return;
       }
 
@@ -154,17 +154,17 @@ sshKeyCommands
 
       for (const key of result.data) {
         const keyType = key.key.split(" ")[0].replace("ssh-", "").toUpperCase();
-        console.log(`  ${chalk.cyan(key.title)} ${chalk.dim(`(${keyType})`)}`);
-        console.log(chalk.dim(`    ID: ${key.id}`));
-        console.log(chalk.dim(`    Fingerprint: ${key.fingerprint}`));
+        console.log(`  ${chalk.hex("#8be9fd")(key.title)} ${chalk.hex("#6272a4")(`(${keyType})`)}`);
+        console.log(chalk.hex("#6272a4")(`    ID: ${key.id}`));
+        console.log(chalk.hex("#6272a4")(`    Fingerprint: ${key.fingerprint}`));
         console.log(
-          chalk.dim(
+          chalk.hex("#6272a4")(
             `    Added: ${new Date(key.createdAt).toLocaleDateString()}`,
           ),
         );
         if (key.lastUsedAt) {
           console.log(
-            chalk.dim(
+            chalk.hex("#6272a4")(
               `    Last used: ${new Date(key.lastUsedAt).toLocaleDateString()}`,
             ),
           );
@@ -174,7 +174,7 @@ sshKeyCommands
     } catch (error) {
       spinner.fail("Failed to list SSH keys");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -189,7 +189,7 @@ sshKeyCommands
   .action(async (id: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -203,7 +203,7 @@ sshKeyCommands
       spinner.stop();
 
       if (!key) {
-        console.error(chalk.red(`SSH key not found: ${id}`));
+        console.error(chalk.hex("#ff5555")(`SSH key not found: ${id}`));
         process.exit(1);
       }
 
@@ -217,7 +217,7 @@ sshKeyCommands
           },
         ]);
         if (!confirm) {
-          console.log(chalk.dim("Cancelled."));
+          console.log(chalk.hex("#6272a4")("Cancelled."));
           return;
         }
       }
@@ -226,11 +226,11 @@ sshKeyCommands
 
       await deleteWithAuth(`/api/user/keys/${id}`);
 
-      deleteSpinner.succeed(`Deleted SSH key: ${chalk.cyan(key.title)}`);
+      deleteSpinner.succeed(`Deleted SSH key: ${chalk.hex("#8be9fd")(key.title)}`);
     } catch (error) {
-      console.error(chalk.red("Failed to delete SSH key"));
+      console.error(chalk.hex("#ff5555")("Failed to delete SSH key"));
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }

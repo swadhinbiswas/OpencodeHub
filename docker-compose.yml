@@ -14,18 +14,13 @@ services:
       - DATABASE_URL=postgresql://opencodehub:opencodehub@postgres:5432/opencodehub
       - DATABASE_TYPE=postgres
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required - generate with: openssl rand -base64 32}
-      - WORKFLOW_SECRET_ENCRYPTION_KEY=${WORKFLOW_SECRET_ENCRYPTION_KEY:?WORKFLOW_SECRET_ENCRYPTION_KEY is required - generate with: openssl rand -hex 32}
-      - SSH_HOST_KEY_PATH=/data/ssh/host_key
+      - JWT_SECRET=${JWT_SECRET:-supersecretjwtkey}
+      - WORKFLOW_SECRET_ENCRYPTION_KEY=${WORKFLOW_SECRET_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef}
       - SERVER_URL=http://localhost:4321
+      - DATA_DIR=/data
       - STORAGE_TYPE=local
-      - STORAGE_PATH=/data/storage
-      - REPOS_PATH=/data/repos
     volumes:
-      - repos-data:/data/repos
-      - storage-data:/data/storage
-      - ssh-data:/data/ssh
-      - cache-data:/data/cache
+      - ./data/opencodehub:/data
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,7 +53,7 @@ services:
       POSTGRES_PASSWORD: opencodehub
       POSTGRES_DB: opencodehub
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     networks:
@@ -76,7 +71,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes
     volumes:
-      - redis-data:/data
+      - ./data/redis:/data
     ports:
       - "6379:6379"
     networks:
@@ -101,56 +96,12 @@ services:
       - DOCKER_HOST=unix:///var/run/docker.sock
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - runner-work:/work
-      - runner-cache:/cache
+      - ./data/runner/work:/work
+      - ./data/runner/cache:/cache
     depends_on:
       - app
     networks:
       - opencodehub-network
-
-  # MinIO for S3-compatible object storage (optional)
-  minio:
-    image: minio/minio:latest
-    container_name: opencodehub-minio
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    volumes:
-      - minio-data:/data
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    networks:
-      - opencodehub-network
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    profiles:
-      - with-minio
-
-volumes:
-  repos-data:
-    driver: local
-  storage-data:
-    driver: local
-  ssh-data:
-    driver: local
-  cache-data:
-    driver: local
-  postgres-data:
-    driver: local
-  redis-data:
-    driver: local
-  runner-work:
-    driver: local
-  runner-cache:
-    driver: local
-  minio-data:
-    driver: local
 
 networks:
   opencodehub-network:

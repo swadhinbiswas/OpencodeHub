@@ -485,13 +485,20 @@ Install Nginx Proxy Manager from the TrueNAS Apps catalog:
 
 ## Part 4: Generic NAS / Any Docker Host
 
-If your NAS supports Docker (via Portainer, Podman, or CLI):
-
-### Using Docker Compose:
+If your NAS supports Docker (via Portainer, Podman, or CLI) and you have SSH access, the absolute easiest way to deploy is using the 1-click install script:
 
 ```bash
-# Create directories
-mkdir -p ~/opencodehub/{repos,storage,ssh,cache,postgres,redis}
+# Connect to your NAS via SSH, then run:
+curl -sSL https://raw.githubusercontent.com/swadhinbiswas/OpencodeHub/main/install.sh | bash
+```
+
+### Using Docker Compose (Manual Setup)
+
+If you prefer to deploy manually via Portainer or `docker-compose.yml`:
+
+```bash
+# Create unified data directory
+mkdir -p ~/opencodehub-data
 
 # Create docker-compose.yml
 cat > ~/opencodehub/docker-compose.yml << 'EOF'
@@ -516,15 +523,9 @@ services:
       - RUNNER_SECRET=YOUR_SECRET
       - WORKFLOW_SECRET_ENCRYPTION_KEY=YOUR_SECRET
       - SITE_URL=https://git.yourdomain.com
-      - STORAGE_TYPE=local
-      - STORAGE_PATH=/data/storage
-      - REPOS_PATH=/data/repos
-      - SSH_HOST_KEY_PATH=/data/ssh/host_key
+      - DATA_DIR=/data
     volumes:
-      - ./repos:/data/repos
-      - ./storage:/data/storage
-      - ./ssh:/data/ssh
-      - ./cache:/data/cache
+      - ~/opencodehub-data:/data
     depends_on:
       - postgres
       - redis
@@ -540,7 +541,7 @@ services:
       - POSTGRES_PASSWORD=YOUR_PASS
       - POSTGRES_DB=opencodehub
     volumes:
-      - ./postgres:/var/lib/postgresql/data
+      - ~/opencodehub-data/postgres:/var/lib/postgresql/data
     networks:
       - och-net
 
@@ -550,7 +551,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes --requirepass YOUR_PASS
     volumes:
-      - ./redis:/data
+      - ~/opencodehub-data/redis:/data
     networks:
       - och-net
 

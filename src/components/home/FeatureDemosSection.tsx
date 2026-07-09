@@ -116,9 +116,9 @@ function StackVisualization({ items }: any) {
                         <div className="w-2 h-2 rounded-full bg-primary" />
                         {idx < items.length - 1 && <div className="h-12 border-l-2 border-dashed border-muted" />}
                     </div>
-                    <div className="flex-1 p-3 rounded-lg border border-white/5 bg-card/50">
+                    <div className="flex-1 p-3 rounded-lg border border-border bg-card/50">
                         <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm font-medium">{item.pr}: {item.title}</span>
+                            <span className="text-sm font-medium text-foreground">{item.pr}: {item.title}</span>
                             <span
                                 className={`text-xs px-2 py-0.5 rounded-full ${item.status === "merged"
                                     ? "bg-green-500/20 text-green-800 dark:text-green-300"
@@ -159,7 +159,7 @@ function AIFeedback({ issues }: any) {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: idx * 0.15 }}
-                        className="p-3 rounded-lg border border-white/5 bg-card/50 space-y-2">
+                        className="p-3 rounded-lg border border-border bg-card/50 space-y-2">
                         <div className="flex items-start gap-3">
                             <div className={`p-1.5 rounded ${config.bg}`}>
                                 <Icon className={`h-4 w-4 ${config.text}`} />
@@ -191,10 +191,10 @@ function QueueStatus({ queue }: any) {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.1 }}
-                    className="p-3 rounded-lg border border-white/5 bg-card/50">
+                    className="p-3 rounded-lg border border-border bg-card/50">
                     <div className="flex items-center justify-between mb-2">
                         <div>
-                            <span className="text-sm font-medium">
+                            <span className="text-sm font-medium text-foreground">
                                 {item.pr}: {item.title}
                             </span>
                         </div>
@@ -242,9 +242,9 @@ function MetricsDashboard({ data }: any) {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: idx * 0.1 }}
-                    className="p-4 rounded-lg border border-white/5 bg-card/50">
+                    className="p-4 rounded-lg border border-border bg-card/50">
                     <div className="text-xs text-muted-foreground mb-2">{metric.label}</div>
-                    <div className="text-2xl font-bold">{data[metric.key].value}</div>
+                    <div className="text-2xl font-bold text-foreground">{data[metric.key].value}</div>
                     <div className="text-xs text-green-400 mt-1">{data[metric.key].change}</div>
                 </motion.div>
             ))}
@@ -257,13 +257,13 @@ function SlackMessage({ message }: any) {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-4 rounded-lg border border-white/5 bg-card/50 space-y-3">
+            className="p-4 rounded-lg border border-border bg-card/50 space-y-3">
             <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium">
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium text-primary">
                     {message.author[0].toUpperCase()}
                 </div>
                 <div className="flex-1">
-                    <div className="text-sm">
+                    <div className="text-sm text-foreground">
                         <span className="font-medium">{message.author}</span> <span className="text-muted-foreground">{message.action}</span>{" "}
                         <span className="font-medium">
                             {message.pr}: {message.title}
@@ -279,7 +279,7 @@ function SlackMessage({ message }: any) {
                 {["Approve", "Request Changes", "View PR", "Add to Queue"].map((action) => (
                     <button
                         key={action}
-                        className="px-3 py-1.5 text-xs rounded border border-white/10 bg-white/5 hover:bg-white/10 transition-colors">
+                        className="px-3 py-1.5 text-xs rounded border border-border bg-secondary/50 hover:bg-secondary transition-colors text-foreground">
                         {action}
                     </button>
                 ))}
@@ -296,7 +296,7 @@ function Terminal({ commands }: any) {
     }
 
     return (
-        <div className="p-4 rounded-lg bg-black/80 border border-white/10 font-mono text-sm">
+        <div className="p-4 rounded-lg bg-slate-950 border border-border font-mono text-sm shadow-xl">
             <div className="flex items-center gap-2 mb-3">
                 <div className="flex gap-1.5">
                     <div className="w-3 h-3 rounded-full bg-red-500" />
@@ -361,7 +361,7 @@ export default function FeatureDemosSection() {
                             onClick={() => setActiveDemo(demo.id)}
                             className={`group relative px-4 py-3 rounded-lg border transition-all ${isActive
                                 ? "border-primary/50 bg-primary/10"
-                                : "border-white/5 bg-card/30 hover:border-white/20"
+                                : "border-border bg-card/30 hover:border-muted-foreground/30"
                                 }`}>
                             <div className="flex items-center gap-2">
                                 <Icon className={`h-4 w-4 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
@@ -407,7 +407,7 @@ export default function FeatureDemosSection() {
                         </div>
 
                         {/* Demo Component */}
-                        <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm p-6">
+                        <div className="rounded-xl border border-border bg-card/50 backdrop-blur-sm p-6 shadow-sm">
                             {currentDemo.demo.type === "stack-visualization" && (
                                 <StackVisualization items={currentDemo.demo.items} />
                             )}

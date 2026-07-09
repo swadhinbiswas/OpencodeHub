@@ -17,7 +17,7 @@ export function showLogo(): void {
     });
 
     console.log(gradient.pastel.multiline(logo));
-    console.log(chalk.gray("  Stack-first PR workflows from your terminal\n"));
+    console.log(chalk.hex("#6272a4")("  Stack-first PR workflows from your terminal\n"));
 }
 
 /**
@@ -36,9 +36,9 @@ export function showCompactLogo(): void {
  */
 export function showSuccess(message: string): void {
     const art = `
-    ✨ ${chalk.green.bold("SUCCESS!")} ✨
+    ✨ ${chalk.hex("#50fa7b").bold("SUCCESS!")} ✨
     
-    ${chalk.green(message)}
+    ${chalk.hex("#50fa7b")(message)}
     `;
     console.log(art);
 }
@@ -47,12 +47,12 @@ export function showSuccess(message: string): void {
  * Color scheme
  */
 export const colors = {
-    success: chalk.green,
-    error: chalk.red,
-    warning: chalk.yellow,
-    info: chalk.cyan,
-    highlight: chalk.magenta,
-    dim: chalk.gray,
+    success: chalk.hex("#50fa7b"),
+    error: chalk.hex("#ff5555"),
+    warning: chalk.hex("#f1fa8c"),
+    info: chalk.hex("#8be9fd"),
+    highlight: chalk.hex("#ff79c6"),
+    dim: chalk.hex("#6272a4"),
     bold: chalk.bold,
 };
 

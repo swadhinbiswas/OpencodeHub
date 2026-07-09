@@ -107,8 +107,13 @@ export async function sendNotification(
                 } else if (webhook.provider === "discord") {
                     success = await sendToDiscord(webhook.url, event);
                 } else if (webhook.provider === "slack") {
-                    // Slack uses similar format to Discord for simple messages
                     success = await sendToSlack(webhook.url, event);
+                } else if (webhook.provider === "linear") {
+                    success = await sendToLinear(webhook.url, event);
+                } else if (webhook.provider === "trello") {
+                    success = await sendToTrello(webhook.url, event);
+                } else if (webhook.provider === "clickup") {
+                    success = await sendToClickUp(webhook.url, event);
                 }
 
                 if (success) {
@@ -278,5 +283,108 @@ export async function testWebhook(
             success: false,
             error: error instanceof Error ? error.message : "Connection failed"
         };
+    }
+}
+
+/**
+ * Send to Linear (Project Management)
+ */
+async function sendToLinear(webhookUrl: string, event: NotificationEvent): Promise<boolean> {
+    try {
+        let title = "";
+        let description = "";
+
+        if (event.type === "issue") {
+            title = `[${event.data.repository}] ${event.action} Issue: ${event.data.issueTitle}`;
+            description = `Issue #${event.data.issueNumber} was ${event.action} by ${event.data.author}.\n\n[View Issue](${event.data.issueUrl})`;
+        } else if (event.type === "pr") {
+            title = `[${event.data.repository}] ${event.action} PR: ${event.data.prTitle}`;
+            description = `Pull Request #${event.data.prNumber} was ${event.action} by ${event.data.author}.\n\n[View PR](${event.data.prUrl})`;
+        } else {
+            return true;
+        }
+
+        const payload = {
+            title,
+            description,
+            state: event.action === "closed" || event.action === "merged" ? "Done" : "Todo",
+        };
+
+        const response = await fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+        return response.ok;
+    } catch (error) {
+        logger.error({ error }, "Failed to send to Linear");
+        return false;
+    }
+}
+
+/**
+ * Send to Trello (Project Management)
+ */
+async function sendToTrello(webhookUrl: string, event: NotificationEvent): Promise<boolean> {
+    try {
+        let name = "";
+        let desc = "";
+
+        if (event.type === "issue") {
+            name = `Issue: ${event.data.issueTitle}`;
+            desc = `Repo: ${event.data.repository}\nAction: ${event.action}\nActor: ${event.data.author}\nURL: ${event.data.issueUrl}`;
+        } else if (event.type === "pr") {
+            name = `PR: ${event.data.prTitle}`;
+            desc = `Repo: ${event.data.repository}\nAction: ${event.action}\nActor: ${event.data.author}\nURL: ${event.data.prUrl}`;
+        } else {
+            return true;
+        }
+
+        const payload = { name, desc };
+
+        const response = await fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+        return response.ok;
+    } catch (error) {
+        logger.error({ error }, "Failed to send to Trello");
+        return false;
+    }
+}
+
+/**
+ * Send to ClickUp (Project Management)
+ */
+async function sendToClickUp(webhookUrl: string, event: NotificationEvent): Promise<boolean> {
+    try {
+        let name = "";
+        let description = "";
+        let status = "Open";
+
+        if (event.type === "issue") {
+            name = `Issue: ${event.data.issueTitle}`;
+            description = `Action: ${event.action}\nActor: ${event.data.author}\nURL: ${event.data.issueUrl}`;
+            status = event.action === "closed" ? "Closed" : "Open";
+        } else if (event.type === "pr") {
+            name = `PR: ${event.data.prTitle}`;
+            description = `Action: ${event.action}\nActor: ${event.data.author}\nURL: ${event.data.prUrl}`;
+            status = event.action === "merged" || event.action === "closed" ? "Closed" : "Open";
+        } else {
+            return true;
+        }
+
+        const payload = { name, description, status };
+
+        const response = await fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+        return response.ok;
+    } catch (error) {
+        logger.error({ error }, "Failed to send to ClickUp");
+        return false;
     }
 }

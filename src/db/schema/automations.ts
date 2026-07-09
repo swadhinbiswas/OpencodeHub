@@ -140,6 +140,7 @@ export type AutomationActionType =
     | "notify_discord"
     | "notify_teams"
     | "close_pr"
+    | "update_issue_status"
     | "request_changes"
     | "trigger_iac_hook"
     | "trigger_cloud_deploy";

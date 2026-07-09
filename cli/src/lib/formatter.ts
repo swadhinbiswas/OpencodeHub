@@ -1,5 +1,6 @@
 /**
  * Message Formatter - Boxed messages and tables
+ * Uses Dracula Theme for cohesive CLI branding
  */
 
 import boxen from "boxen";
@@ -28,31 +29,46 @@ interface MetricItem {
   tone?: Exclude<PanelTone, "neutral"> | "neutral" | "muted";
 }
 
+// Dracula Color Palette
+const colors = {
+  background: "#282a36",
+  currentLine: "#44475a",
+  foreground: "#f8f8f2",
+  comment: "#6272a4",
+  cyan: "#8be9fd",
+  green: "#50fa7b",
+  orange: "#ffb86c",
+  pink: "#ff79c6",
+  purple: "#bd93f9",
+  red: "#ff5555",
+  yellow: "#f1fa8c",
+};
+
 const panelToneStyles: Record<
   PanelTone,
   { title: (value: string) => string; borderColor: string }
 > = {
-  neutral: { title: chalk.whiteBright.bold, borderColor: "#334155" },
-  success: { title: chalk.hex("#86efac").bold, borderColor: "#166534" },
-  info: { title: chalk.hex("#7dd3fc").bold, borderColor: "#0369a1" },
-  warning: { title: chalk.hex("#fde68a").bold, borderColor: "#b45309" },
-  danger: { title: chalk.hex("#fca5a5").bold, borderColor: "#b91c1c" },
-  accent: { title: chalk.hex("#c4b5fd").bold, borderColor: "#7c3aed" },
+  neutral: { title: chalk.hex(colors.foreground).bold, borderColor: colors.comment },
+  success: { title: chalk.hex(colors.green).bold, borderColor: colors.green },
+  info: { title: chalk.hex(colors.cyan).bold, borderColor: colors.cyan },
+  warning: { title: chalk.hex(colors.yellow).bold, borderColor: colors.yellow },
+  danger: { title: chalk.hex(colors.red).bold, borderColor: colors.red },
+  accent: { title: chalk.hex(colors.purple).bold, borderColor: colors.purple },
 };
 
 const badgeStyles = {
-  neutral: chalk.bgHex("#111827").hex("#e5e7eb"),
-  muted: chalk.bgHex("#1f2937").hex("#9ca3af"),
-  success: chalk.bgHex("#052e16").hex("#86efac"),
-  info: chalk.bgHex("#082f49").hex("#7dd3fc"),
-  warning: chalk.bgHex("#451a03").hex("#fde68a"),
-  danger: chalk.bgHex("#450a0a").hex("#fca5a5"),
-  accent: chalk.bgHex("#2e1065").hex("#c4b5fd"),
+  neutral: chalk.bgHex(colors.currentLine).hex(colors.foreground),
+  muted: chalk.bgHex(colors.background).hex(colors.comment),
+  success: chalk.bgHex("#163A29").hex(colors.green), // dark green bg
+  info: chalk.bgHex("#163A50").hex(colors.cyan), // dark cyan bg
+  warning: chalk.bgHex("#4C4A26").hex(colors.yellow), // dark yellow bg
+  danger: chalk.bgHex("#4C1626").hex(colors.red), // dark red bg
+  accent: chalk.bgHex("#3A2A4C").hex(colors.purple), // dark purple bg
 };
 
 function buildBoxContent(title: string, content: string[], color: string) {
   return boxen(
-    [title, "", ...content.map((line) => chalk.white(line))].join("\n"),
+    [title, "", ...content.map((line) => chalk.hex(colors.foreground)(line))].join("\n"),
     {
       padding: 1,
       margin: 1,
@@ -109,13 +125,13 @@ export function getPanelString({
 }: PanelOptions): string {
   const panelTone = panelToneStyles[tone];
   const body = [
-    eyebrow ? chalk.hex("#94a3b8").bold(eyebrow.toUpperCase()) : null,
+    eyebrow ? chalk.hex(colors.comment).bold(eyebrow.toUpperCase()) : null,
     panelTone.title(title),
-    subtitle ? chalk.hex("#cbd5e1")(subtitle) : null,
+    subtitle ? chalk.hex(colors.comment)(subtitle) : null,
     lines.length > 0 ? "" : null,
-    ...lines.map((line) => chalk.white(line)),
+    ...lines.map((line) => chalk.hex(colors.foreground)(line)),
     footer ? "" : null,
-    footer ? chalk.hex("#94a3b8")(footer) : null,
+    footer ? chalk.hex(colors.comment)(footer) : null,
   ].filter(Boolean) as string[];
 
   return boxen(body.join("\n"), {
@@ -136,9 +152,9 @@ export function printSectionHeader(
   eyebrow?: string,
 ): void {
   const parts = [
-    eyebrow ? chalk.hex("#94a3b8").bold(eyebrow.toUpperCase()) : null,
-    chalk.hex("#f8fafc").bold(title),
-    subtitle ? chalk.hex("#94a3b8")(subtitle) : null,
+    eyebrow ? chalk.hex(colors.comment).bold(eyebrow.toUpperCase()) : null,
+    chalk.hex(colors.pink).bold(title),
+    subtitle ? chalk.hex(colors.comment)(subtitle) : null,
   ].filter(Boolean);
 
   console.log(`\n${parts.join("\n")}`);
@@ -147,36 +163,36 @@ export function printSectionHeader(
 export function printMetricStrip(metrics: MetricItem[]): void {
   const rendered = metrics.map((metric) => {
     const tone = metric.tone || "neutral";
-    return `${formatBadge(String(metric.value), tone === "muted" ? "muted" : tone)} ${chalk.hex("#cbd5e1")(metric.label)}`;
+    return `${formatBadge(String(metric.value), tone === "muted" ? "muted" : tone)} ${chalk.hex(colors.comment)(metric.label)}`;
   });
 
-  console.log(rendered.join(`  ${chalk.hex("#475569")("•")}  `));
+  console.log(rendered.join(`  ${chalk.hex(colors.currentLine)("•")}  `));
 }
 
 /**
  * Create a success box
  */
 export function successBox(title: string, content: string[]): void {
-  console.log(buildBoxContent(chalk.green.bold(title), content, "green"));
+  console.log(buildBoxContent(chalk.hex(colors.green).bold(title), content, colors.green));
 }
 
 /**
  * Create an error box
  */
 export function errorBox(title: string, content: string[]): void {
-  console.log(buildBoxContent(chalk.red.bold(title), content, "red"));
+  console.log(buildBoxContent(chalk.hex(colors.red).bold(title), content, colors.red));
 }
 
 /**
  * Create an info box
  */
 export function infoBox(title: string, content: string[]): void {
-  console.log(buildBoxContent(chalk.cyan.bold(title), content, "cyan"));
+  console.log(buildBoxContent(chalk.hex(colors.cyan).bold(title), content, colors.cyan));
 }
 
 /**
  * Create a warning box
  */
 export function warningBox(title: string, content: string[]): void {
-  console.log(buildBoxContent(chalk.yellow.bold(title), content, "yellow"));
+  console.log(buildBoxContent(chalk.hex(colors.yellow).bold(title), content, colors.yellow));
 }

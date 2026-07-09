@@ -1,36 +1,85 @@
 # OpenCodeHub Production Docker Compose
-# Pull pre-built images from DockerHub
+# ============================================================
 # Usage:
-#   1. Copy .env.example to .env and configure
-#   2. docker compose -f docker-compose.production.yml up -d
+#   1. Copy .env.example to .env and configure ALL secrets
+#   2. Run: docker compose --profile production up -d
 #
-# Required environment variables in .env:
-#   JWT_SECRET=<generate with: openssl rand -base64 32>
-#   POSTGRES_PASSWORD=<strong password>
-#   WORKFLOW_SECRET_ENCRYPTION_KEY=<generate with: openssl rand -hex 32>
+# Architecture:
+#   Caddy (TLS termination) → App → PostgreSQL + Redis
+#                                  → CI Runner (Docker-in-Docker)
+# ============================================================
 
 services:
-  app:
-    image: swadhinbiswas/opencodehub:latest
-    container_name: opencodehub
+  # ── Caddy Reverse Proxy (TLS termination) ──────────────────
+  caddy:
+    image: docker.io/library/caddy:2-alpine
+    container_name: opencodehub-caddy
     restart: unless-stopped
     ports:
-      - "${APP_PORT:-4321}:4321"
-      - "${SSH_PORT:-2222}:2222"
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+    networks:
+      - opencodehub-external
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+    profiles:
+      - production
+
+  # ── Main OpenCodeHub Application ───────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: opencodehub-app
+    restart: unless-stopped
+    expose:
+      - "4321"   # Internal only — Caddy proxies to this
+    ports:
+      - "${SSH_PORT:-2222}:2222"   # SSH Git (exposed directly)
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://opencodehub:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/opencodehub
-      - DATABASE_TYPE=postgres
-      - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET with: openssl rand -base64 32}
+      - DATABASE_DRIVER=postgres
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-opencodehub}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-opencodehub}
+      - DATABASE_SSL=false
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in .env}
       - SESSION_SECRET=${SESSION_SECRET:-${JWT_SECRET}}
-      - WORKFLOW_SECRET_ENCRYPTION_KEY=${WORKFLOW_SECRET_ENCRYPTION_KEY:?Set WORKFLOW_SECRET_ENCRYPTION_KEY with: openssl rand -hex 32}
+      - INTERNAL_HOOK_SECRET=${INTERNAL_HOOK_SECRET:?Set INTERNAL_HOOK_SECRET in .env}
+      - CRON_SECRET=${CRON_SECRET:?Set CRON_SECRET in .env}
+      - AI_CONFIG_ENCRYPTION_KEY=${AI_CONFIG_ENCRYPTION_KEY:?Set AI_CONFIG_ENCRYPTION_KEY in .env}
+      - WORKFLOW_SECRET_ENCRYPTION_KEY=${WORKFLOW_SECRET_ENCRYPTION_KEY:?Set WORKFLOW_SECRET_ENCRYPTION_KEY in .env}
+      - RUNNER_SECRET=${RUNNER_SECRET:?Set RUNNER_SECRET in .env}
       - SSH_HOST_KEY_PATH=/data/ssh/host_key
-      - SERVER_URL=${SERVER_URL:-http://localhost:4321}
-      - STORAGE_TYPE=local
+      - SITE_URL=${SITE_URL:-https://opencodehub.example.com}
+      - SERVER_URL=${SITE_URL:-https://opencodehub.example.com}
+      - STORAGE_TYPE=${STORAGE_TYPE:-local}
       - STORAGE_PATH=/data/storage
       - REPOS_PATH=/data/repos
-      - INTERNAL_HOOK_SECRET=${INTERNAL_HOOK_SECRET:-$(openssl rand -hex 32)}
+      - GIT_REPOS_PATH=/data/repos
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - RATE_LIMIT_ENABLED=true
+      - RATE_LIMIT_SKIP_DEV=false
+      - CSRF_SKIP_DEV=false
+      - ALLOWED_ORIGINS=${SITE_URL:-https://opencodehub.example.com}
+      - MAX_REQUEST_BODY_MB=${MAX_REQUEST_BODY_MB:-10}
+      # SSH server (runs inside app container)
+      - GIT_SSH_PORT=2222
+      - GIT_SSH_HOST_KEY=/data/ssh/host_key
     volumes:
       - repos-data:/data/repos
       - storage-data:/data/storage
@@ -42,7 +91,8 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - opencodehub-network
+      - opencodehub-internal
+      - opencodehub-external
     healthcheck:
       test:
         [
@@ -56,41 +106,221 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 20s
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "10"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
+        reservations:
+          memory: 512M
+          cpus: "0.5"
 
+  # ── Background Worker ──────────────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: opencodehub-worker
+    restart: unless-stopped
+    command: ["bun", "scripts/worker.ts"]
+    expose:
+      - "9090"   # Worker health check (internal only)
+    environment:
+      - NODE_ENV=production
+      - DATABASE_DRIVER=postgres
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-opencodehub}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-opencodehub}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - repos-data:/data/repos
+      - storage-data:/data/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - opencodehub-internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+
+  # ── PostgreSQL Database ────────────────────────────────────
   postgres:
-    image: postgres:16-alpine
+    image: docker.io/library/postgres:16-alpine
     container_name: opencodehub-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: opencodehub
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
-      POSTGRES_DB: opencodehub
+      POSTGRES_USER: ${POSTGRES_USER:-opencodehub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-opencodehub}
+      # Performance tuning
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=768MB
+      - -c
+      - work_mem=8MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - max_connections=100
+      - -c
+      - wal_level=replica
+      - -c
+      - max_wal_senders=3
+      - -c
+      - log_min_duration_statement=1000
+      - -c
+      - log_checkpoints=on
+      - -c
+      - log_connections=on
+      - -c
+      - log_disconnections=on
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    expose:
+      - "5432"   # Internal only
     networks:
-      - opencodehub-network
+      - opencodehub-internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U opencodehub -d opencodehub"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-opencodehub} -d ${POSTGRES_DB:-opencodehub}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+        reservations:
+          memory: 256M
 
+  # ── Redis (sessions, caching, distributed locking) ────────
   redis:
-    image: redis:7-alpine
+    image: docker.io/library/redis:7-alpine
     container_name: opencodehub-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - allkeys-lru
+      - --save
+      - "60"
+      - "1000"
     volumes:
       - redis-data:/data
+    expose:
+      - "6379"   # Internal only
     networks:
-      - opencodehub-network
+      - opencodehub-internal
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
 
+  # ── CI/CD Runner (Docker-in-Docker) ────────────────────────
+  runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.runner
+    container_name: opencodehub-runner
+    restart: unless-stopped
+    privileged: true
+    environment:
+      - RUNNER_TOKEN=${RUNNER_TOKEN:-}
+      - SERVER_URL=http://app:4321
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - RUNNER_WORK_DIR=/work
+      - RUNNER_CACHE_DIR=/cache
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner-work:/work
+      - runner-cache:/cache
+    depends_on:
+      - app
+    networks:
+      - opencodehub-internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "4.0"
+    profiles:
+      - production
+      - with-runner
+
+  # ── MinIO (S3-compatible object storage, optional) ─────────
+  minio:
+    image: minio/minio:latest
+    container_name: opencodehub-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
+    volumes:
+      - minio-data:/data
+    expose:
+      - "9000"
+      - "9001"
+    networks:
+      - opencodehub-internal
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    profiles:
+      - with-minio
+
+# ── Volumes ──────────────────────────────────────────────────
 volumes:
   repos-data:
     driver: local
@@ -104,7 +334,24 @@ volumes:
     driver: local
   redis-data:
     driver: local
+  runner-work:
+    driver: local
+  runner-cache:
+    driver: local
+  minio-data:
+    driver: local
+  caddy-data:
+    driver: local
+  caddy-config:
+    driver: local
 
+# ── Networks ─────────────────────────────────────────────────
 networks:
-  opencodehub-network:
+  # Internal network — app, database, redis, worker communicate here
+  # No external access
+  opencodehub-internal:
+    driver: bridge
+    internal: true
+  # External network — only Caddy and app's SSH port are exposed
+  opencodehub-external:
     driver: bridge

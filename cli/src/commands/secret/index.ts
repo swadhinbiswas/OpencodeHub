@@ -39,7 +39,7 @@ secretCommands
   .action(async (name: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -69,7 +69,7 @@ secretCommands
       }
 
       if (!value) {
-        console.error(chalk.red("Secret value cannot be empty"));
+        console.error(chalk.hex("#ff5555")("Secret value cannot be empty"));
         process.exit(1);
       }
 
@@ -91,11 +91,11 @@ secretCommands
 
       await postWithAuth(endpoint, { value });
 
-      spinner.succeed(`Set secret ${chalk.cyan(name)}`);
+      spinner.succeed(`Set secret ${chalk.hex("#8be9fd")(name)}`);
     } catch (error) {
-      console.error(chalk.red("Failed to set secret"));
+      console.error(chalk.hex("#ff5555")("Failed to set secret"));
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -111,7 +111,7 @@ secretCommands
   .action(async (options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -142,16 +142,16 @@ secretCommands
       spinner.stop();
 
       if (result.data.length === 0) {
-        console.log(chalk.dim(`No secrets found for ${context}`));
+        console.log(chalk.hex("#6272a4")(`No secrets found for ${context}`));
         return;
       }
 
       console.log(chalk.bold(`\n🔐 Secrets for ${context}\n`));
 
       for (const secret of result.data) {
-        console.log(`  ${chalk.cyan(secret.name)}`);
+        console.log(`  ${chalk.hex("#8be9fd")(secret.name)}`);
         console.log(
-          chalk.dim(
+          chalk.hex("#6272a4")(
             `    Updated ${new Date(secret.updatedAt).toLocaleDateString()}`,
           ),
         );
@@ -161,7 +161,7 @@ secretCommands
     } catch (error) {
       spinner.fail("Failed to list secrets");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -178,7 +178,7 @@ secretCommands
   .action(async (name: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -193,7 +193,7 @@ secretCommands
           },
         ]);
         if (!confirm) {
-          console.log(chalk.dim("Cancelled."));
+          console.log(chalk.hex("#6272a4")("Cancelled."));
           return;
         }
       }
@@ -216,11 +216,11 @@ secretCommands
 
       await deleteWithAuth(endpoint);
 
-      spinner.succeed(`Deleted secret ${chalk.cyan(name)}`);
+      spinner.succeed(`Deleted secret ${chalk.hex("#8be9fd")(name)}`);
     } catch (error) {
-      console.error(chalk.red("Failed to delete secret"));
+      console.error(chalk.hex("#ff5555")("Failed to delete secret"));
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }

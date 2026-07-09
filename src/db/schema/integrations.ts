@@ -23,6 +23,7 @@ export const requiredStatusChecks = pgTable("required_status_checks", {
     checkName: text("check_name").notNull(),
     isRequired: boolean("is_required").default(true),
     strictMode: boolean("strict_mode").default(true),
+    pathFilter: text("path_filter"), // Optional glob pattern, e.g., 'packages/frontend/**'
     createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

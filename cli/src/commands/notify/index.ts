@@ -46,7 +46,7 @@ notifyCommand
       }
 
       if (notifications.length === 0) {
-        console.log(chalk.gray("\n  🔔 No notifications\n"));
+        console.log(chalk.hex("#6272a4")("\n  🔔 No notifications\n"));
         return;
       }
 
@@ -55,13 +55,13 @@ notifyCommand
       for (const notif of notifications) {
         const icon = getNotificationIcon(notif.type);
         const time = timeAgo(notif.createdAt);
-        const readIndicator = notif.isRead ? "" : chalk.cyan("●");
+        const readIndicator = notif.isRead ? "" : chalk.hex("#8be9fd")("●");
 
         console.log(
-          `  ${icon} ${readIndicator} ${chalk.white(notif.title)} ${chalk.gray(`(${time})`)}`,
+          `  ${icon} ${readIndicator} ${chalk.white(notif.title)} ${chalk.hex("#6272a4")(`(${time})`)}`,
         );
         if (notif.body) {
-          console.log(chalk.gray(`     ${notif.body.substring(0, 60)}...`));
+          console.log(chalk.hex("#6272a4")(`     ${notif.body.substring(0, 60)}...`));
         }
       }
 
@@ -105,7 +105,7 @@ notifyCommand
       const config = getConfig();
       if (!config.token) {
         console.log(
-          chalk.red("Not authenticated. Run 'och auth login' first."),
+          chalk.hex("#ff5555")("Not authenticated. Run 'och auth login' first."),
         );
         process.exit(1);
       }
@@ -137,9 +137,9 @@ notifyCommand
 
         const table = new Table({
           head: [
-            chalk.gray("Event"),
-            chalk.gray("Email"),
-            chalk.gray("In-App"),
+            chalk.hex("#6272a4")("Event"),
+            chalk.hex("#6272a4")("Email"),
+            chalk.hex("#6272a4")("In-App"),
           ],
         });
 
@@ -147,8 +147,8 @@ notifyCommand
           const pref = currentSettings.preferences?.[event] || {};
           table.push([
             event,
-            pref.emailEnabled ? chalk.green("✓") : chalk.red("✗"),
-            pref.inAppEnabled ? chalk.green("✓") : chalk.red("✗"),
+            pref.emailEnabled ? chalk.hex("#50fa7b")("✓") : chalk.hex("#ff5555")("✗"),
+            pref.inAppEnabled ? chalk.hex("#50fa7b")("✓") : chalk.hex("#ff5555")("✗"),
           ]);
         }
 
@@ -156,7 +156,7 @@ notifyCommand
 
         if (currentSettings.quietHours?.isEnabled) {
           console.log(
-            chalk.yellow(
+            chalk.hex("#f1fa8c")(
               `\n  🌙 Quiet hours: ${currentSettings.quietHours.startTime} - ${currentSettings.quietHours.endTime}`,
             ),
           );
@@ -217,7 +217,7 @@ notifyCommand
         saveSpinner.succeed("Quiet hours updated");
       }
     } catch (error: any) {
-      console.error(chalk.red(`Failed: ${error.message}`));
+      console.error(chalk.hex("#ff5555")(`Failed: ${error.message}`));
     }
   });
 

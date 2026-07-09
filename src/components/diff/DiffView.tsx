@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 
 interface DiffLine {
   type: "add" | "del" | "context" | "hunk-header";
@@ -19,13 +19,23 @@ interface FileDiff {
 /**
  * Parse a unified diff string into structured FileDiff objects
  */
-export function parseUnifiedDiff(rawDiff: string): FileDiff[] {
+const MAX_FILES = 300;
+const MAX_LINES = 10000;
+
+export function parseUnifiedDiff(rawDiff: string): { files: FileDiff[], isTruncated: boolean } {
   const files: FileDiff[] = [];
-  if (!rawDiff.trim()) return files;
+  if (!rawDiff.trim()) return { files, isTruncated: false };
 
   const diffSections = rawDiff.split(/^diff --git /m).filter(Boolean);
+  let totalLinesParsed = 0;
+  let isTruncated = false;
 
   for (const section of diffSections) {
+    if (files.length >= MAX_FILES || totalLinesParsed >= MAX_LINES) {
+      isTruncated = true;
+      break;
+    }
+
     const lines = section.split("\n");
     const headerLine = lines[0] || "";
 
@@ -99,6 +109,7 @@ export function parseUnifiedDiff(rawDiff: string): FileDiff[] {
           newLine: newLine++,
         });
       }
+      totalLinesParsed++;
     }
 
     files.push({
@@ -111,7 +122,7 @@ export function parseUnifiedDiff(rawDiff: string): FileDiff[] {
     });
   }
 
-  return files;
+  return { files, isTruncated };
 }
 
 interface DiffViewProps {
@@ -130,6 +141,18 @@ interface DiffViewProps {
     line: number,
     side: "LEFT" | "RIGHT",
   ) => void;
+  /** Map of file paths to approval status */
+  fileApprovals?: Record<string, boolean>;
+  /** Callback when user clicks the approve file checkbox */
+  onApproveFile?: (filePath: string, approved: boolean) => void;
+  /** Code quality issues to show inline */
+  codeQualityIssues?: Array<{
+    filePath: string;
+    line: number;
+    message: string;
+    severity: string;
+    provider: string;
+  }>;
 }
 
 export function DiffView({
@@ -137,8 +160,11 @@ export function DiffView({
   repoUrl,
   enableComments = false,
   onAddComment,
+  fileApprovals = {},
+  onApproveFile,
+  codeQualityIssues,
 }: DiffViewProps) {
-  const files = parseUnifiedDiff(rawDiff);
+  const { files, isTruncated } = parseUnifiedDiff(rawDiff);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<number>>(new Set());
 
   const toggleFile = (idx: number) => {
@@ -172,6 +198,12 @@ export function DiffView({
           <span className="text-green-500">+{totalAdditions}</span>
           <span className="text-red-500">-{totalDeletions}</span>
         </div>
+        {isTruncated && (
+          <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/20 text-amber-500 text-sm rounded flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+            This diff is too large and has been truncated. Displaying first {files.length} files.
+          </div>
+        )}
         <div className="mt-3 space-y-1">
           {files.map((file, idx) => (
             <a
@@ -223,6 +255,17 @@ export function DiffView({
                   View file
                 </a>
               )}
+              {enableComments && (
+                <label className="flex items-center gap-1.5 ml-3 px-2 py-1 bg-muted rounded border border-border cursor-pointer hover:bg-accent transition-colors text-xs" onClick={e => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    className="rounded border-gray-600 bg-background"
+                    checked={!!fileApprovals[file.newPath || file.oldPath]}
+                    onChange={(e) => onApproveFile?.(file.newPath || file.oldPath, e.target.checked)}
+                  />
+                  <span>Viewed</span>
+                </label>
+              )}
             </div>
           </div>
 
@@ -264,9 +307,18 @@ export function DiffView({
                             ? "bg-[#3d0f18] text-red-600"
                             : "text-gray-600";
 
+                      const issueForLine =
+                        line.newLine && codeQualityIssues
+                          ? codeQualityIssues.find(
+                              (i) =>
+                                i.filePath === (file.newPath || file.oldPath) &&
+                                i.line === line.newLine
+                            )
+                          : undefined;
+
                       return (
+                        <React.Fragment key={lineIdx}>
                         <tr
-                          key={lineIdx}
                           className={`${bgClass} hover:brightness-125 transition-all group`}
                         >
                           {/* Old line number */}
@@ -341,6 +393,23 @@ export function DiffView({
                             </div>
                           </td>
                         </tr>
+                        {issueForLine && (
+                          <tr className="bg-muted/40">
+                            <td colSpan={3} className="px-4 py-3 border-y border-border">
+                              <div className="flex items-start gap-2 text-sm font-sans">
+                                <div className={`shrink-0 w-2 h-2 mt-1.5 rounded-full ${issueForLine.severity === "high" || issueForLine.severity === "critical" ? "bg-red-500" : issueForLine.severity === "medium" ? "bg-amber-500" : "bg-blue-500"}`} />
+                                <div>
+                                  <div className="font-medium flex items-center gap-2">
+                                    <span className="capitalize">{issueForLine.provider}</span>
+                                    <span className="text-xs px-1.5 py-0.5 rounded-sm bg-background border uppercase">{issueForLine.severity}</span>
+                                  </div>
+                                  <div className="text-muted-foreground mt-1 whitespace-pre-wrap">{issueForLine.message}</div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        </React.Fragment>
                       );
                     })}
                   </tbody>

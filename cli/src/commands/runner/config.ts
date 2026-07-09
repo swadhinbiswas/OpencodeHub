@@ -52,7 +52,7 @@ RUNNER_NAME=${answers.name}
 
         await fs.writeFile('.env', envContent);
 
-        console.log(chalk.green('\n✓ Configuration saved to .env'));
+        console.log(chalk.hex("#50fa7b")('\n✓ Configuration saved to .env'));
         console.log('\nYou can now start the runner with:');
-        console.log(chalk.cyan('bun run runner:start'));
+        console.log(chalk.hex("#8be9fd")('bun run runner:start'));
     });

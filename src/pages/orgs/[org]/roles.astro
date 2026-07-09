@@ -209,7 +209,7 @@ for (const member of members) {
   </div>
 </BaseLayout>
 
-<script define:vars={{ orgName: organization.name }}>
+<script is:inline define:vars={{ orgName: organization.name }}>
   const createRoleForm = document.getElementById("create-role-form");
   const createRoleBtn = document.getElementById("create-role-btn");
   const createRoleStatus = document.getElementById("create-role-status");

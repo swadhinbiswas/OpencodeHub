@@ -4,6 +4,7 @@ import { cleanupAllRepos } from "@/lib/cron/cleanup-branches";
 import { logger } from "@/lib/logger";
 import { syncAllMirrors } from "@/lib/mirror-sync";
 import { queueWorker } from "@/lib/queue-worker";
+import { runDueDigests } from "@/lib/chat-notifications";
 import { and, eq, lt } from "drizzle-orm";
 import { createServer } from "http";
 
@@ -15,6 +16,10 @@ const MIRROR_SYNC_INTERVAL = parseInt(
 );
 const CLEANUP_INTERVAL = parseInt(
   process.env.CLEANUP_INTERVAL || "3600000",
+  10,
+);
+const DIGEST_INTERVAL = parseInt(
+  process.env.DIGEST_INTERVAL || "300000", // Every 5 minutes
   10,
 );
 const HEALTH_PORT = parseInt(process.env.WORKER_HEALTH_PORT || "9090", 10);
@@ -30,6 +35,7 @@ let isHealthy = true;
 let lastQueueRun = Date.now();
 let lastMirrorRun = 0;
 let lastCleanupRun = 0;
+let lastDigestRun = 0;
 let consecutiveErrors = 0;
 const MAX_CONSECUTIVE_ERRORS = 10;
 
@@ -226,6 +232,18 @@ async function startWorker() {
       () => lastCleanupRun,
       (t) => {
         lastCleanupRun = t;
+      },
+    ),
+    runLoop(
+      "digest",
+      async () => {
+        logger.info("Running scheduled digests processing...");
+        await runDueDigests();
+      },
+      DIGEST_INTERVAL,
+      () => lastDigestRun,
+      (t) => {
+        lastDigestRun = t;
       },
     ),
   ]);

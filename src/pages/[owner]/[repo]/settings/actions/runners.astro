@@ -278,7 +278,7 @@ const repo = {
     </div>
 </BaseLayout>
 
-<script define:vars={{ repoId: repoData.id, serverUrl }}>
+<script is:inline define:vars={{ repoId: repoData.id, serverUrl }}>
     const triggerBtn = document.getElementById("trigger-test-btn");
     const generateTokenBtn = document.getElementById("generate-token-btn");
     const revokeTokenBtn = document.getElementById("revoke-token-btn");

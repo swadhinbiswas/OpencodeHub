@@ -1,0 +1,17 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import SetupWizard from "@/components/setup/SetupWizard";
+---
+
+<BaseLayout title="Setup OpenCodeHub">
+  <div class="min-h-screen bg-[#010409] text-white flex flex-col items-center justify-center p-4">
+    <div class="w-full max-w-2xl">
+      <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold mb-2">Welcome to OpenCodeHub</h1>
+        <p class="text-gray-400">Let's get your self-hosted Git platform set up.</p>
+      </div>
+      
+      <SetupWizard client:load />
+    </div>
+  </div>
+</BaseLayout>

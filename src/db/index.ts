@@ -183,6 +183,13 @@ export async function closeDatabase(): Promise<void> {
   }
 }
 
+/**
+ * Reset database connection cache (used during setup wizard)
+ */
+export function resetDatabase(): void {
+  db = null;
+}
+
 // Export schema and types
 export { schema };
 export type Database =

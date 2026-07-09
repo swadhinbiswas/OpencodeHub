@@ -48,11 +48,11 @@ configCommands
       const displayValue =
         typeof value === "boolean"
           ? String(value)
-          : value || chalk.dim("(not set)");
+          : value || chalk.hex("#6272a4")("(not set)");
 
-      console.log(`${chalk.cyan(key)}: ${displayValue}`);
+      console.log(`${chalk.hex("#8be9fd")(key)}: ${displayValue}`);
       if (desc) {
-        console.log(chalk.dim(`  ${desc}`));
+        console.log(chalk.hex("#6272a4")(`  ${desc}`));
       }
     }
 
@@ -68,14 +68,14 @@ configCommands
             ? "config file fallback"
             : "not set";
     console.log(
-      `${chalk.cyan("token")}: ${hasToken ? chalk.green("●") + " configured" : chalk.dim("(not set)")}`,
+      `${chalk.hex("#8be9fd")("token")}: ${hasToken ? chalk.hex("#50fa7b")("●") + " configured" : chalk.hex("#6272a4")("(not set)")}`,
     );
-    console.log(chalk.dim(`  Personal access token (${storageLabel})`));
+    console.log(chalk.hex("#6272a4")(`  Personal access token (${storageLabel})`));
 
-    console.log(chalk.dim(`\nConfig file: ${getConfigPath()}`));
+    console.log(chalk.hex("#6272a4")(`\nConfig file: ${getConfigPath()}`));
     if (!supportsSecureTokenStorage()) {
       console.log(
-        chalk.yellow(
+        chalk.hex("#f1fa8c")(
           "Secure keychain backend unavailable on this host. Token uses config file fallback unless OCH_TOKEN is set.",
         ),
       );
@@ -94,7 +94,7 @@ configCommands
       if (typeof currentConfig.token === "string" && currentConfig.token) {
         console.log(currentConfig.token.slice(0, 12) + "...");
       } else {
-        console.log(chalk.dim("(not set)"));
+        console.log(chalk.hex("#6272a4")("(not set)"));
       }
       return;
     }
@@ -110,9 +110,9 @@ configCommands
     ];
 
     if (!validKeys.includes(key)) {
-      console.error(chalk.red(`Unknown config key: ${key}`));
+      console.error(chalk.hex("#ff5555")(`Unknown config key: ${key}`));
       console.log(
-        chalk.dim(
+        chalk.hex("#6272a4")(
           "Available keys: serverUrl, token, defaultBranch, editor, pager, caFile, insecure, username",
         ),
       );
@@ -123,7 +123,7 @@ configCommands
     if (value !== undefined) {
       console.log(String(value));
     } else {
-      console.log(chalk.dim("(not set)"));
+      console.log(chalk.hex("#6272a4")("(not set)"));
     }
   });
 
@@ -143,8 +143,8 @@ configCommands
     ];
 
     if (!validKeys.includes(key)) {
-      console.error(chalk.red(`Unknown config key: ${key}`));
-      console.log(chalk.dim(`Available keys: ${validKeys.join(", ")}`));
+      console.error(chalk.hex("#ff5555")(`Unknown config key: ${key}`));
+      console.log(chalk.hex("#6272a4")(`Available keys: ${validKeys.join(", ")}`));
       process.exit(1);
     }
 
@@ -154,7 +154,7 @@ configCommands
       saveConfig({ [key]: normalizedValue } as any);
     } catch (error) {
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Invalid configuration value"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Invalid configuration value"),
       );
       process.exit(1);
     }
@@ -162,7 +162,7 @@ configCommands
       key === "token" && typeof normalizedValue === "string"
         ? `${normalizedValue.slice(0, 12)}...`
         : String(normalizedValue);
-    console.log(chalk.green(`✓ Set ${key} = ${displayValue}`));
+    console.log(chalk.hex("#50fa7b")(`✓ Set ${key} = ${displayValue}`));
   });
 
 // Config Unset
@@ -182,12 +182,12 @@ configCommands
     ];
 
     if (!validKeys.includes(key)) {
-      console.error(chalk.red(`Unknown config key: ${key}`));
+      console.error(chalk.hex("#ff5555")(`Unknown config key: ${key}`));
       process.exit(1);
     }
 
     unsetConfigKey(key as any);
-    console.log(chalk.green(`✓ Unset ${key}`));
+    console.log(chalk.hex("#50fa7b")(`✓ Unset ${key}`));
   });
 
 // Config Path
@@ -215,13 +215,13 @@ configCommands
         },
       ]);
       if (!confirm) {
-        console.log(chalk.dim("Cancelled."));
+        console.log(chalk.hex("#6272a4")("Cancelled."));
         return;
       }
     }
 
     clearConfig();
-    console.log(chalk.green("✓ Configuration reset to defaults"));
+    console.log(chalk.hex("#50fa7b")("✓ Configuration reset to defaults"));
   });
 
 export default configCommands;
@@ -243,34 +243,34 @@ configCommands
 
     if (!serverUrl) {
       hasIssues = true;
-      console.log(chalk.red("✗ serverUrl is not set"));
-      console.log(chalk.dim("  Run: och config set serverUrl <url>"));
+      console.log(chalk.hex("#ff5555")("✗ serverUrl is not set"));
+      console.log(chalk.hex("#6272a4")("  Run: och config set serverUrl <url>"));
     } else {
-      console.log(chalk.green("✓ serverUrl configured"));
-      console.log(chalk.dim(`  ${serverUrl}`));
+      console.log(chalk.hex("#50fa7b")("✓ serverUrl configured"));
+      console.log(chalk.hex("#6272a4")(`  ${serverUrl}`));
     }
 
     if (!token) {
       hasIssues = true;
-      console.log(chalk.red("✗ token is not set"));
-      console.log(chalk.dim("  Run: och auth login --url <url>"));
+      console.log(chalk.hex("#ff5555")("✗ token is not set"));
+      console.log(chalk.hex("#6272a4")("  Run: och auth login --url <url>"));
     } else {
-      console.log(chalk.green("✓ token configured"));
+      console.log(chalk.hex("#50fa7b")("✓ token configured"));
     }
 
     if (caFile) {
       if (!fs.existsSync(caFile)) {
         hasIssues = true;
-        console.log(chalk.red("✗ caFile does not exist"));
-        console.log(chalk.dim(`  ${caFile}`));
+        console.log(chalk.hex("#ff5555")("✗ caFile does not exist"));
+        console.log(chalk.hex("#6272a4")(`  ${caFile}`));
       } else {
-        console.log(chalk.green("✓ caFile found"));
-        console.log(chalk.dim(`  ${caFile}`));
+        console.log(chalk.hex("#50fa7b")("✓ caFile found"));
+        console.log(chalk.hex("#6272a4")(`  ${caFile}`));
       }
     }
 
     if (insecure) {
-      console.log(chalk.yellow("! insecure TLS is enabled"));
+      console.log(chalk.hex("#f1fa8c")("! insecure TLS is enabled"));
     }
 
     if (serverUrl && token) {
@@ -284,27 +284,27 @@ configCommands
 
         if (!response.ok) {
           hasIssues = true;
-          console.log(chalk.red("✗ token validation failed"));
-          console.log(chalk.dim(`  HTTP ${response.status}`));
+          console.log(chalk.hex("#ff5555")("✗ token validation failed"));
+          console.log(chalk.hex("#6272a4")(`  HTTP ${response.status}`));
         } else {
           const data = await response.json();
           const username = data?.data?.username || "unknown";
-          console.log(chalk.green("✓ token is valid"));
-          console.log(chalk.dim(`  Authenticated as ${username}`));
+          console.log(chalk.hex("#50fa7b")("✓ token is valid"));
+          console.log(chalk.hex("#6272a4")(`  Authenticated as ${username}`));
         }
       } catch (error) {
         hasIssues = true;
-        console.log(chalk.red("✗ could not reach server"));
+        console.log(chalk.hex("#ff5555")("✗ could not reach server"));
         console.log(
-          chalk.dim(String(error instanceof Error ? error.message : error)),
+          chalk.hex("#6272a4")(String(error instanceof Error ? error.message : error)),
         );
       }
     }
 
     if (hasIssues) {
-      console.log(chalk.red("\nConfig doctor found issues."));
+      console.log(chalk.hex("#ff5555")("\nConfig doctor found issues."));
       process.exit(1);
     }
 
-    console.log(chalk.green("\nConfig doctor found no issues."));
+    console.log(chalk.hex("#50fa7b")("\nConfig doctor found no issues."));
   });

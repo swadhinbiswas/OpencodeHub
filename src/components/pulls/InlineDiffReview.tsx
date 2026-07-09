@@ -1,5 +1,5 @@
 import { DiffView } from "@/components/diff/DiffView";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { toast } from "sonner";
 
 interface InlineDiffReviewProps {
@@ -34,6 +34,80 @@ export function InlineDiffReview({
   const [commentBody, setCommentBody] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [suggestionMode, setSuggestionMode] = useState(false);
+
+  // Partial File Approvals state
+  const [fileApprovals, setFileApprovals] = useState<Record<string, boolean>>({});
+  
+  // Code Quality state
+  const [codeQualityIssues, setCodeQualityIssues] = useState<Array<{
+    filePath: string;
+    line: number;
+    message: string;
+    severity: string;
+    provider: string;
+  }>>([]);
+
+  const fetchApprovals = useCallback(async () => {
+    if (!currentUser) return;
+    try {
+      const res = await fetch(`/api/repos/${owner}/${repo}/pulls/${pullNumber}/file-approvals`);
+      if (res.ok) {
+        const data = await res.json();
+        const approvalMap: Record<string, boolean> = {};
+        for (const approval of data.approvals || []) {
+          if (approval.approvedById === currentUser.id) {
+            approvalMap[approval.path] = true;
+          }
+        }
+        setFileApprovals(approvalMap);
+      }
+    } catch {}
+  }, [owner, repo, pullNumber, currentUser]);
+
+  const fetchCodeQuality = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/repos/${owner}/${repo}/pulls/${pullNumber}/code-quality`);
+      if (res.ok) {
+        const data = await res.json();
+        setCodeQualityIssues(data);
+      }
+    } catch {}
+  }, [owner, repo, pullNumber]);
+
+  useEffect(() => {
+    fetchApprovals();
+    fetchCodeQuality();
+  }, [fetchApprovals, fetchCodeQuality]);
+
+  const handleApproveFile = useCallback(async (filePath: string, approved: boolean) => {
+    try {
+      if (approved) {
+        // Create approval
+        await fetch(`/api/repos/${owner}/${repo}/pulls/${pullNumber}/file-approvals`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: filePath, commitSha: headSha || "unknown" })
+        });
+        setFileApprovals(prev => ({ ...prev, [filePath]: true }));
+      } else {
+        // Delete approval by path (this would need an endpoint to delete by path, 
+        // or we can fetch the approval ID and delete it. 
+        // The file-approvals.ts POST might handle upsert, but we should hit DELETE if unapproving.
+        // Let's assume there's an API, or we just rely on POST for now to overwrite.
+        const res = await fetch(`/api/repos/${owner}/${repo}/pulls/${pullNumber}/file-approvals`);
+        const data = await res.json();
+        const approval = data.approvals?.find((a: any) => a.path === filePath && a.approvedById === currentUser.id);
+        if (approval) {
+           await fetch(`/api/repos/${owner}/${repo}/pulls/${pullNumber}/file-approvals/${approval.id}`, {
+             method: "DELETE"
+           });
+        }
+        setFileApprovals(prev => ({ ...prev, [filePath]: false }));
+      }
+    } catch {
+       toast.error("Failed to toggle approval");
+    }
+  }, [owner, repo, pullNumber, headSha, currentUser]);
 
   const handleAddComment = useCallback(
     (filePath: string, line: number, side: "LEFT" | "RIGHT") => {
@@ -118,6 +192,9 @@ export function InlineDiffReview({
         repoUrl={repoUrl}
         enableComments={!!currentUser}
         onAddComment={handleAddComment}
+        fileApprovals={fileApprovals}
+        onApproveFile={handleApproveFile}
+        codeQualityIssues={codeQualityIssues}
       />
 
       {/* Floating inline comment form */}

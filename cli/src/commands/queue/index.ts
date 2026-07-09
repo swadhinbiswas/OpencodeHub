@@ -41,17 +41,17 @@ async function getRepoInfo() {
 function getStatusIcon(status: string): string {
   switch (status) {
     case "pending":
-      return chalk.yellow("◷");
+      return chalk.hex("#f1fa8c")("◷");
     case "running_ci":
       return chalk.blue("●");
     case "ready":
-      return chalk.green("✓");
+      return chalk.hex("#50fa7b")("✓");
     case "merging":
-      return chalk.magenta("↻");
+      return chalk.hex("#ff79c6")("↻");
     case "failed":
-      return chalk.red("✗");
+      return chalk.hex("#ff5555")("✗");
     default:
-      return chalk.dim("○");
+      return chalk.hex("#6272a4")("○");
   }
 }
 
@@ -68,7 +68,7 @@ queueCommands
   .action(async (prNumber: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -97,13 +97,13 @@ queueCommands
       if (result.data.estimatedMergeTime) {
         const eta = new Date(result.data.estimatedMergeTime);
         console.log(
-          chalk.dim(`  Estimated merge: ${eta.toLocaleTimeString()}`),
+          chalk.hex("#6272a4")(`  Estimated merge: ${eta.toLocaleTimeString()}`),
         );
       }
     } catch (error) {
       spinner.fail("Failed to add to merge queue");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -117,7 +117,7 @@ queueCommands
   .action(async () => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -137,7 +137,7 @@ queueCommands
       spinner.stop();
 
       if (result.data.length === 0) {
-        console.log(chalk.dim("Merge queue is empty."));
+        console.log(chalk.hex("#6272a4")("Merge queue is empty."));
         return;
       }
 
@@ -145,10 +145,10 @@ queueCommands
         chalk.bold(`\n🔀 Merge Queue (${result.data.length} items)\n`),
       );
       console.log(
-        chalk.dim("  Pos  PR      Title                              Status"),
+        chalk.hex("#6272a4")("  Pos  PR      Title                              Status"),
       );
       console.log(
-        chalk.dim("  ───  ──      ─────                              ──────"),
+        chalk.hex("#6272a4")("  ───  ──      ─────                              ──────"),
       );
 
       for (const item of result.data) {
@@ -168,7 +168,7 @@ queueCommands
     } catch (error) {
       spinner.fail("Failed to fetch merge queue");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -182,7 +182,7 @@ queueCommands
   .action(async (prNumber: string) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -203,7 +203,7 @@ queueCommands
     } catch (error) {
       spinner.fail("Failed to remove from merge queue");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -216,7 +216,7 @@ queueCommands
   .action(async () => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -255,8 +255,8 @@ queueCommands
       const item = result.data.find((i) => i.pullRequest.number === prNumber);
 
       if (!item) {
-        console.log(chalk.dim(`PR #${prNumber} is not in the merge queue.`));
-        console.log(chalk.dim(`Run 'och queue add ${prNumber}' to add it.`));
+        console.log(chalk.hex("#6272a4")(`PR #${prNumber} is not in the merge queue.`));
+        console.log(chalk.hex("#6272a4")(`Run 'och queue add ${prNumber}' to add it.`));
         return;
       }
 
@@ -275,7 +275,7 @@ queueCommands
     } catch (error) {
       spinner.fail("Failed to check queue status");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }

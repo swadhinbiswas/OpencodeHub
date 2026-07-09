@@ -55,7 +55,7 @@ prCommands
   .action(async (options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -126,14 +126,14 @@ prCommands
         `Created PR #${result.data.number}: ${result.data.title}`,
       );
       console.log(
-        chalk.dim(
+        chalk.hex("#6272a4")(
           `  ${config.serverUrl}/${repoInfo.owner}/${repoInfo.repo}/pull/${result.data.number}`,
         ),
       );
     } catch (error) {
       spinner.fail("Failed to create pull request");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -155,7 +155,7 @@ prCommands
   .action(async (options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -180,35 +180,37 @@ prCommands
 
       spinner.stop();
 
+      const { printSectionHeader } = await import("../../lib/formatter.js");
+
       if (result.data.length === 0) {
-        console.log(chalk.dim("No pull requests found."));
+        console.log(chalk.hex("#6272a4")("No pull requests found."));
         return;
       }
 
-      console.log(chalk.bold(`\n📋 Pull Requests (${result.data.length})\n`));
+      printSectionHeader(`Pull Requests (${result.data.length})`, "Recent pull requests for this repository", "PR");
+      console.log("");
 
       for (const pr of result.data) {
         const stateIcon =
           pr.state === "open"
-            ? chalk.green("●")
+            ? chalk.hex("#50fa7b")("▶")
             : pr.state === "merged"
-              ? chalk.magenta("●")
-              : chalk.red("●");
-        const draftLabel = pr.isDraft ? chalk.dim(" [draft]") : "";
+              ? chalk.hex("#bd93f9")("✔")
+              : chalk.hex("#ff5555")("✖");
+        const draftLabel = pr.isDraft ? chalk.hex("#6272a4")(" [draft]") : "";
 
-        console.log(`${stateIcon} #${pr.number} ${pr.title}${draftLabel}`);
+        console.log(`  ${stateIcon} ${chalk.hex("#f8f8f2").bold(`#${pr.number}`)} ${chalk.hex("#f8f8f2")(pr.title)}${draftLabel}`);
         console.log(
-          chalk.dim(
-            `  ${pr.sourceBranch} → ${pr.targetBranch} • @${pr.author.username}`,
+          chalk.hex("#6272a4")(
+            `     ${pr.sourceBranch} → ${pr.targetBranch} • @${pr.author.username}`,
           ),
         );
+        console.log("");
       }
-
-      console.log("");
     } catch (error) {
       spinner.fail("Failed to list pull requests");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -222,7 +224,7 @@ prCommands
   .action(async (number: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -244,14 +246,14 @@ prCommands
       const pr = result.data;
       const stateColor =
         pr.state === "open"
-          ? chalk.green
+          ? chalk.hex("#50fa7b")
           : pr.state === "merged"
-            ? chalk.magenta
-            : chalk.red;
+            ? chalk.hex("#ff79c6")
+            : chalk.hex("#ff5555");
 
       console.log(chalk.bold(`\n#${pr.number} ${pr.title}\n`));
       console.log(
-        `State: ${stateColor(pr.state.toUpperCase())}${pr.isDraft ? chalk.dim(" (draft)") : ""}`,
+        `State: ${stateColor(pr.state.toUpperCase())}${pr.isDraft ? chalk.hex("#6272a4")(" (draft)") : ""}`,
       );
       console.log(`Author: @${pr.author.username}`);
       console.log(`Branch: ${pr.sourceBranch} → ${pr.targetBranch}`);
@@ -259,18 +261,18 @@ prCommands
 
       if (pr.additions !== undefined) {
         console.log(
-          `Changes: ${chalk.green(`+${pr.additions}`)} ${chalk.red(`-${pr.deletions}`)} (${pr.changedFiles} files)`,
+          `Changes: ${chalk.hex("#50fa7b")(`+${pr.additions}`)} ${chalk.hex("#ff5555")(`-${pr.deletions}`)} (${pr.changedFiles} files)`,
         );
       }
 
       if (pr.body) {
-        console.log(chalk.dim("\n─".repeat(40)));
+        console.log(chalk.hex("#6272a4")("\n─".repeat(40)));
         console.log(pr.body);
       }
 
-      console.log(chalk.dim("\n─".repeat(40)));
+      console.log(chalk.hex("#6272a4")("\n─".repeat(40)));
       console.log(
-        chalk.dim(
+        chalk.hex("#6272a4")(
           `${config.serverUrl}/${repoInfo.owner}/${repoInfo.repo}/pull/${number}`,
         ),
       );
@@ -278,7 +280,7 @@ prCommands
     } catch (error) {
       spinner.fail("Failed to fetch pull request");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -295,7 +297,7 @@ prCommands
   .action(async (number: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -325,7 +327,7 @@ prCommands
     } catch (error) {
       spinner.fail("Failed to merge pull request");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -339,7 +341,7 @@ prCommands
   .action(async (number: string) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -370,7 +372,7 @@ prCommands
     } catch (error) {
       spinner.fail("Failed to checkout pull request");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -383,7 +385,7 @@ prCommands
   .action(async (number: string) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -405,7 +407,7 @@ prCommands
     } catch (error) {
       spinner.fail("Failed to close pull request");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -418,7 +420,7 @@ prCommands
   .action(async (number: string) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -440,7 +442,7 @@ prCommands
     } catch (error) {
       spinner.fail("Failed to fetch diff");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -453,7 +455,7 @@ prCommands
   .action(async (number: string) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -475,7 +477,7 @@ prCommands
     } catch (error) {
       spinner.fail("Failed to update pull request");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }

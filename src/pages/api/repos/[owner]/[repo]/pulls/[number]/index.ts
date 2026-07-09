@@ -1,4 +1,4 @@
-
+import crypto from "crypto";
 import { getDatabase, schema } from "@/db";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { canWriteRepo, canReadRepo } from "@/lib/permissions";
@@ -117,75 +117,58 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request, locals
         });
 
         if (customState) {
-            // Enforce required reviewers
-            const requiredReviewers = await db.query.prStateReviewers.findMany({
-                where: eq(schema.prStateReviewers.stateDefinitionId, customState.id)
-            });
-
-            if (requiredReviewers.length > 0) {
-                // Get current reviews
-                const reviews = await db.query.pullRequestReviews.findMany({
-                    where: eq(schema.pullRequestReviews.pullRequestId, pr.id),
-                    orderBy: [desc(schema.pullRequestReviews.submittedAt)]
-                });
-
-                // Keep only each reviewer's latest review state
-                const latestReviewByReviewer = new Map<string, typeof reviews[number]>();
-                for (const review of reviews) {
-                    if (!latestReviewByReviewer.has(review.reviewerId)) {
-                        latestReviewByReviewer.set(review.reviewerId, review);
-                    }
-                }
-
-                // Check each requirement
-                for (const req of requiredReviewers) {
-                    if (req.userId) {
-                        // User requirement
-                        const userReview = latestReviewByReviewer.get(req.userId);
-                        if (!userReview || userReview.state !== "approved") {
-                            // Fetch user details for error message
-                            const requiredUser = await db.query.users.findFirst({
-                                where: eq(schema.users.id, req.userId)
-                            });
-                            return badRequest(`Approval required from @${requiredUser?.username || "user"}`);
-                        }
-                    }
-                    if (req.teamId) {
-                        const [team, members] = await Promise.all([
-                            db.query.teams.findFirst({
-                                where: eq(schema.teams.id, req.teamId),
-                            }),
-                            db.query.teamMembers.findMany({
-                                where: eq(schema.teamMembers.teamId, req.teamId),
-                            }),
-                        ]);
-
-                        const requiredCount = Math.max(1, req.requiredCount ?? 1);
-                        const approvedFromTeam = members.filter((member) => {
-                            const latestReview = latestReviewByReviewer.get(member.userId);
-                            return latestReview?.state === "approved";
-                        }).length;
-
-                        if (approvedFromTeam < requiredCount) {
-                            return badRequest(
-                                `Approval required from team ${team?.name || "team"} (${approvedFromTeam}/${requiredCount})`
-                            );
-                        }
-                    }
-                }
-            }
-
-            if (customState.requireCodeOwner) {
-                const codeOwnerResult = await checkCodeOwnerApprovalsForPR(db, pr.id);
-                if (!codeOwnerResult.ok) {
-                    return badRequest(codeOwnerResult.reason || "Code owner approval required");
-                }
-            }
+            // Note: Enforcing required reviewers and code owners for a custom state
+            // is now handled by `canMerge` in `merge-queue.ts`. Transitioning INTO
+            // the state is allowed so that the reviewers can actually review it while in the state.
 
             if (customState.allowMerge) {
                 const readiness = await canMerge(pr.id);
                 if (!readiness.canMerge) {
                     return badRequest(readiness.reason || "Merge requirements not met");
+                }
+            }
+
+            // ENFORCE PER-STATE REQUIRED REVIEWERS
+            const requiredReviewers = await db.query.prStateReviewers.findMany({
+                where: eq(schema.prStateReviewers.stateDefinitionId, customState.id)
+            });
+
+            if (requiredReviewers.length > 0) {
+                const userIdsToRequest = new Set<string>();
+
+                for (const rr of requiredReviewers) {
+                    if (rr.userId) {
+                        userIdsToRequest.add(rr.userId);
+                    } else if (rr.teamId) {
+                        const teamMembers = await db.query.teamMembers.findMany({
+                            where: eq(schema.teamMembers.teamId, rr.teamId)
+                        });
+                        for (const member of teamMembers) {
+                            userIdsToRequest.add(member.userId);
+                        }
+                    }
+                }
+
+                // Exclude author
+                userIdsToRequest.delete(pr.authorId);
+
+                // Filter out already requested reviewers
+                const existingReviewers = await db.query.pullRequestReviewers.findMany({
+                    where: eq(schema.pullRequestReviewers.pullRequestId, pr.id)
+                });
+                for (const ex of existingReviewers) {
+                    userIdsToRequest.delete(ex.userId);
+                }
+
+                // Insert missing
+                if (userIdsToRequest.size > 0) {
+                    const newReviewers = Array.from(userIdsToRequest).map(uid => ({
+                        id: crypto.randomUUID(),
+                        pullRequestId: pr.id,
+                        userId: uid,
+                        isRequired: true,
+                    }));
+                    await db.insert(schema.pullRequestReviewers).values(newReviewers);
                 }
             }
 

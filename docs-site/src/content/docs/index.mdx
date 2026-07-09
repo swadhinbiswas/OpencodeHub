@@ -77,9 +77,9 @@ OpenCodeHub is built on a modern, scalable architecture designed for performance
 | Layer        | Technology                            |
 | ------------ | ------------------------------------- |
 | **Frontend** | Astro, React, Tailwind CSS, shadcn/ui |
-| **Backend**  | Node.js, Hono (API), simple-git       |
+| **Backend**  | Node.js, Astro API Routes, simple-git |
 | **Database** | PostgreSQL, Turso (LibSQL), SQLite    |
-| **Storage**  | Local disk, S3, R2, Google Drive      |
+| **Storage**  | Local disk, S3, R2                    |
 | **Auth**     | JWT, 2FA, OAuth (GitHub, Google)      |
 | **CI/CD**    | GitHub Actions compatible runners     |
 
@@ -87,7 +87,7 @@ OpenCodeHub is built on a modern, scalable architecture designed for performance
 
 <CardGrid>
   <Card title="Installation" icon="add-document">
-    Get OpenCodeHub running in minutes with Docker or Node.js. [Read the guide
+    Get OpenCodeHub running in minutes using our 1-click install script. [Read the guide
     →](/getting-started/installation/)
   </Card>
   <Card title="CircleCI Integration" icon="seti:check">
@@ -111,11 +111,10 @@ OpenCodeHub is built on a modern, scalable architecture designed for performance
 ## Storage Options
 
 :::tip[Performance Recommendation]
-For best performance, use **local SSD storage** in production. Object storage (S3/R2) introduces latency. See [Storage Adapters](/guides/storage-adapters/#️-performance-considerations) for details.
+For best performance, use **local SSD storage** via `DATA_DIR` in production. Object storage (S3/R2) introduces latency. See [Storage Adapters](/guides/storage-adapters/#️-performance-considerations) for details.
 :::
 
 | Storage Type     | Performance | Cost | Best For                |
 | ---------------- | ----------- | ---- | ----------------------- |
 | **Local SSD**    | ⚡ Fastest  | $$   | Production, self-hosted |
-| **S3/R2**        | 🐢 Slow     | $    | Backup, serverless      |
-| **Google Drive** | 🐢 Slow     | Free | Personal projects       |
+| **S3/R2**        | 🐢 Slow     | $    | Backup, multi-node      |

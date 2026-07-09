@@ -255,7 +255,7 @@ const repo = {
   </div>
 </div>
 
-<script define:vars={{ repoOwner: repo.owner, repoName: repo.name }}>
+<script is:inline define:vars={{ repoOwner: repo.owner, repoName: repo.name }}>
   const requirementsForm = document.getElementById("requirements-form");
   const requirementsMsg = document.getElementById("requirements-msg");
 

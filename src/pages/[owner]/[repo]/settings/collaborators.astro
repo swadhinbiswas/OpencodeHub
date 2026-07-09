@@ -334,7 +334,7 @@ function getRoleDescription(role: string) {
   </div>
 </BaseLayout>
 
-<script define:vars={{ owner: repo.owner, repo: repo.name }}>
+<script is:inline define:vars={{ owner: repo.owner, repo: repo.name }}>
   // Add collaborator
   const form = document.getElementById("add-collaborator-form");
   const errorEl = document.getElementById("add-error");

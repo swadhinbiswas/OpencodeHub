@@ -8,10 +8,14 @@ import {
     Sparkles,
     ChevronDown,
     ChevronUp,
-    FileCode
+    FileCode,
+    Check,
+    Loader2,
+    Wand2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 interface Suggestion {
     id: string;
@@ -23,6 +27,7 @@ interface Suggestion {
     message: string;
     suggestedFix?: string;
     isDismissed: boolean;
+    isApplied?: boolean;
 }
 
 interface Review {
@@ -44,6 +49,44 @@ export function AIReviewSummary({ owner, repo, prNumber }: AIReviewSummaryProps)
     const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
     const [loading, setLoading] = useState(true);
     const [expanded, setExpanded] = useState(true);
+    const [applyingIds, setApplyingIds] = useState<Set<string>>(new Set());
+
+    const handleApply = async (suggestionId: string) => {
+        if (!confirm("Are you sure you want to apply this AI suggestion?")) return;
+
+        setApplyingIds(prev => new Set(prev).add(suggestionId));
+        try {
+            const res = await fetch(`/api/repos/${owner}/${repo}/pulls/${prNumber}/ai-suggestions/${suggestionId}/apply`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    commitMessage: "Apply AI code patch"
+                })
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.message || data.error || "Failed to apply AI suggestion");
+            }
+
+            toast.success("AI code patch applied successfully!");
+            // Mark locally as applied
+            setSuggestions(prev => prev.map(s => 
+                s.id === suggestionId ? { ...s, isDismissed: false, isApplied: true } as any : s
+            ));
+            
+            // Reload to show changes after a brief delay
+            setTimeout(() => window.location.reload(), 1000);
+        } catch (e: any) {
+            toast.error(e.message);
+        } finally {
+            setApplyingIds(prev => {
+                const next = new Set(prev);
+                next.delete(suggestionId);
+                return next;
+            });
+        }
+    };
 
     const fetchReview = async () => {
         try {
@@ -147,9 +190,32 @@ export function AIReviewSummary({ owner, repo, prNumber }: AIReviewSummaryProps)
                                 </div>
 
                                 {suggestion.suggestedFix && (
-                                    <div className="mt-2 bg-slate-950 text-slate-50 p-2 rounded font-mono text-xs overflow-x-auto">
-                                        <div className="text-muted-foreground mb-1 select-none">// Suggested Fix</div>
-                                        <pre>{suggestion.suggestedFix}</pre>
+                                    <div className="mt-2 border border-slate-800 rounded overflow-hidden">
+                                        <div className="bg-slate-900 px-3 py-2 text-xs font-medium flex items-center justify-between text-slate-200">
+                                            <span className="flex items-center gap-1.5"><Wand2 className="h-3.5 w-3.5 text-purple-400" /> Suggested AI Patch</span>
+                                            <div className="flex items-center gap-2">
+                                                {suggestion.isApplied ? (
+                                                    <span className="flex items-center gap-1 text-green-400 bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">
+                                                        <Check className="h-3 w-3" />
+                                                        Applied
+                                                    </span>
+                                                ) : (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="secondary"
+                                                        className="h-6 text-[10px] px-2"
+                                                        onClick={() => handleApply(suggestion.id)}
+                                                        disabled={applyingIds.has(suggestion.id)}
+                                                    >
+                                                        {applyingIds.has(suggestion.id) ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Check className="h-3 w-3 mr-1" />}
+                                                        1-Click Apply
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="bg-slate-950 text-slate-50 p-3 font-mono text-[11px] overflow-x-auto m-0 leading-relaxed">
+                                            <pre>{suggestion.suggestedFix}</pre>
+                                        </div>
                                     </div>
                                 )}
                             </div>

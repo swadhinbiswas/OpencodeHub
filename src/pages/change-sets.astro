@@ -71,7 +71,7 @@ const initialSets = (await db.query.changeSets?.findMany({
   </div>
 </BaseLayout>
 
-<script define:vars={{ initialSets }}>
+<script is:inline define:vars={{ initialSets }}>
   const nameInput = document.getElementById("change-set-name");
   const descInput = document.getElementById("change-set-description");
   const itemsInput = document.getElementById("change-set-items");

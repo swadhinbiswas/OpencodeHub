@@ -9,7 +9,7 @@ export default function HeroSection() {
     const words = ["Teams", "Developers", "Enterprises", "Startups"];
 
     return (
-        <div className="h-[40rem] w-full rounded-md flex md:items-center md:justify-center bg-background/[0.96] antialiased bg-grid-white/[0.02] relative overflow-hidden">
+        <div className="h-[40rem] w-full rounded-md flex md:items-center md:justify-center bg-background/[0.96] antialiased dark:bg-grid-white/[0.02] bg-grid-black/[0.02] relative overflow-hidden">
             {/* Spotlight effect */}
             <Spotlight
                 className="-top-40 left-0 md:left-60 md:-top-20"
@@ -41,15 +41,15 @@ export default function HeroSection() {
                     transition={{ duration: 0.5, delay: 0.1 }}
                     className="text-4xl md:text-7xl font-bold text-center"
                 >
-                    <span className="bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400">
+                    <span className="bg-clip-text text-transparent bg-gradient-to-b dark:from-neutral-50 dark:to-neutral-400 from-neutral-900 to-neutral-500">
                         Self-hosted{" "}
                     </span>
-                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-600 bg-[length:200%_auto] animate-gradient-x">
+                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-600 bg-[length:200%_auto] animate-gradient-x">
                         Git Platform
                     </span>
                     <br />
-                    <span className="text-3xl md:text-6xl bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400">for Modern{" "}</span>
-                    <FlipWords words={words} className="text-3xl md:text-6xl" />
+                    <span className="text-3xl md:text-6xl bg-clip-text text-transparent bg-gradient-to-b dark:from-neutral-50 dark:to-neutral-400 from-neutral-900 to-neutral-500">for Modern{" "}</span>
+                    <FlipWords words={words} className="text-3xl md:text-6xl text-foreground" />
                 </motion.h1>
 
                 {/* Description */}
@@ -57,7 +57,7 @@ export default function HeroSection() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.2 }}
-                    className="mt-6 font-normal text-base text-neutral-300 max-w-xl text-center mx-auto"
+                    className="mt-6 font-normal text-base text-muted-foreground max-w-xl text-center mx-auto"
                 >
                     Host your code, manage pull requests, run CI/CD pipelines, and collaborate securely.
                     GitHub-compatible, fully self-hosted, and open source.
@@ -72,7 +72,7 @@ export default function HeroSection() {
                 >
                     <a
                         href="/register"
-                        className="group relative inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-8 py-3.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:scale-105"
+                        className="group relative inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-8 py-3.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:scale-105 shadow-md shadow-primary/20"
                     >
                         Get Started
                         <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -82,7 +82,7 @@ export default function HeroSection() {
                     </a>
                     <a
                         href="/explore"
-                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-8 py-3.5 text-sm font-medium text-foreground backdrop-blur-sm hover:bg-white/10 hover:border-white/20 transition-all"
+                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-secondary/50 px-8 py-3.5 text-sm font-medium text-foreground backdrop-blur-sm hover:bg-secondary transition-all"
                     >
                         <GitGraph className="h-4 w-4" />
                         Explore Repositories
@@ -101,13 +101,13 @@ export default function HeroSection() {
                         <span className="text-2xl font-bold text-foreground">100%</span>
                         <span className="text-sm">Open Source</span>
                     </div>
-                    <div className="w-px h-8 bg-white/10" />
+                    <div className="w-px h-8 bg-border" />
                     <div className="flex items-center gap-2 text-muted-foreground">
                         <Zap className="h-5 w-5 text-yellow-500" />
                         <span className="text-2xl font-bold text-foreground">Graphite</span>
                         <span className="text-sm">Features</span>
                     </div>
-                    <div className="w-px h-8 bg-white/10" />
+                    <div className="w-px h-8 bg-border" />
                     <div className="flex items-center gap-2 text-muted-foreground">
                         <Star className="h-5 w-5 text-orange-500" />
                         <span className="text-2xl font-bold text-foreground">AI</span>

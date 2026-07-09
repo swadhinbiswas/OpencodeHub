@@ -60,7 +60,7 @@ function formatDuration(hours: number): string {
 function progressBar(value: number, max: number, width: number = 20): string {
   const filled = Math.round((value / max) * width);
   const empty = width - filled;
-  return chalk.green("━".repeat(filled)) + chalk.dim("━".repeat(empty));
+  return chalk.hex("#50fa7b")("━".repeat(filled)) + chalk.hex("#6272a4")("━".repeat(empty));
 }
 
 // Metrics Show
@@ -73,7 +73,7 @@ metricsCommands
   .action(async (options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -108,7 +108,7 @@ metricsCommands
     } catch (error) {
       spinner.fail("Failed to fetch metrics");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -138,7 +138,7 @@ function displayUserMetrics(metrics: UserMetrics, username: string) {
     const maxReviewed = Math.max(...metrics.trends.map((t) => t.reviewed), 1);
 
     for (const week of metrics.trends) {
-      console.log(chalk.dim(`  ${week.week}`));
+      console.log(chalk.hex("#6272a4")(`  ${week.week}`));
       console.log(
         `    Authored: ${progressBar(week.authored, maxAuthored)} ${week.authored}`,
       );
@@ -155,7 +155,7 @@ function displayRepoMetrics(metrics: RepoMetrics[], repoName: string) {
   console.log(chalk.bold(`\n📊 Metrics for ${repoName}\n`));
 
   if (metrics.length === 0) {
-    console.log(chalk.dim("No metrics data available."));
+    console.log(chalk.hex("#6272a4")("No metrics data available."));
     return;
   }
 

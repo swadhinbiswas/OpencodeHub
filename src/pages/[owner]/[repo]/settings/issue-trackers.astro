@@ -219,7 +219,7 @@ const repo = {
   </div>
 </BaseLayout>
 
-<script define:vars={{ repoOwner: repo.owner, repoName: repo.name, initialJiraConfigId: jiraConfig?.id || null, initialLinearConfigId: linearConfig?.id || null, initialTrelloConfigId: trelloConfig?.id || null, initialClickupConfigId: clickupConfig?.id || null }}>
+<script is:inline define:vars={{ repoOwner: repo.owner, repoName: repo.name, initialJiraConfigId: jiraConfig?.id || null, initialLinearConfigId: linearConfig?.id || null, initialTrelloConfigId: trelloConfig?.id || null, initialClickupConfigId: clickupConfig?.id || null }}>
   const saveJiraBtn = document.getElementById("save-jira");
   const saveLinearBtn = document.getElementById("save-linear");
   const saveTrelloBtn = document.getElementById("save-trello");

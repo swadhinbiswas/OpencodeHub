@@ -1847,7 +1847,7 @@ function colorizeDiffLine(line: string) {
   }
 
   if (line.startsWith("@@")) {
-    return chalk.magenta(line);
+    return chalk.hex("#ff79c6")(line);
   }
 
   if (line.startsWith("+++ ") || line.startsWith("--- ")) {
@@ -1855,11 +1855,11 @@ function colorizeDiffLine(line: string) {
   }
 
   if (line.startsWith("+")) {
-    return chalk.green(line);
+    return chalk.hex("#50fa7b")(line);
   }
 
   if (line.startsWith("-")) {
-    return chalk.red(line);
+    return chalk.hex("#ff5555")(line);
   }
 
   return line;

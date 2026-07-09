@@ -173,7 +173,7 @@ const repo = {
     </div>
 </BaseLayout>
 
-<script define:vars={{ repoId: repo.id, owner: repo.owner, repoName: repo.name, webhookId: webhook.id }}>
+<script is:inline define:vars={{ repoId: repo.id, owner: repo.owner, repoName: repo.name, webhookId: webhook.id }}>
     document.getElementById('delete-webhook').addEventListener('click', async () => {
         if (!confirm('Are you sure you want to delete this webhook?')) return;
         

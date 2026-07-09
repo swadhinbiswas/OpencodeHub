@@ -24,7 +24,7 @@ branchCommands
             if (branch) {
                 const spinner = ora(`Checking out ${branch}...`).start();
                 await git.checkout(branch);
-                spinner.succeed(`Checked out ${chalk.cyan(branch)}`);
+                spinner.succeed(`Checked out ${chalk.hex("#8be9fd")(branch)}`);
                 return;
             }
 
@@ -33,7 +33,7 @@ branchCommands
             const currentBranch = branches.current;
 
             const choices = branches.all.map(b => ({
-                name: b === currentBranch ? `${chalk.green("●")} ${b} ${chalk.dim("(current)")}` : `  ${b}`,
+                name: b === currentBranch ? `${chalk.hex("#50fa7b")("●")} ${b} ${chalk.hex("#6272a4")("(current)")}` : `  ${b}`,
                 value: b,
                 short: b,
             }));
@@ -49,16 +49,16 @@ branchCommands
             ]);
 
             if (selectedBranch === currentBranch) {
-                console.log(chalk.dim("Already on that branch."));
+                console.log(chalk.hex("#6272a4")("Already on that branch."));
                 return;
             }
 
             const spinner = ora(`Checking out ${selectedBranch}...`).start();
             await git.checkout(selectedBranch);
-            spinner.succeed(`Checked out ${chalk.cyan(selectedBranch)}`);
+            spinner.succeed(`Checked out ${chalk.hex("#8be9fd")(selectedBranch)}`);
         } catch (error) {
-            console.error(chalk.red("Failed to checkout branch"));
-            console.error(chalk.red(error instanceof Error ? error.message : "Unknown error"));
+            console.error(chalk.hex("#ff5555")("Failed to checkout branch"));
+            console.error(chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"));
             process.exit(1);
         }
     });
@@ -87,10 +87,10 @@ branchCommands
 
             await git.raw(["branch", "-m", oldBranch, targetNewName]);
 
-            spinner.succeed(`Renamed ${chalk.cyan(oldBranch)} to ${chalk.green(targetNewName)}`);
+            spinner.succeed(`Renamed ${chalk.hex("#8be9fd")(oldBranch)} to ${chalk.hex("#50fa7b")(targetNewName)}`);
         } catch (error) {
-            console.error(chalk.red("Failed to rename branch"));
-            console.error(chalk.red(error instanceof Error ? error.message : "Unknown error"));
+            console.error(chalk.hex("#ff5555")("Failed to rename branch"));
+            console.error(chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"));
             process.exit(1);
         }
     });
@@ -107,7 +107,7 @@ branchCommands
             // Check if trying to delete current branch
             const branches = await git.branchLocal();
             if (branch === branches.current) {
-                console.error(chalk.red("Cannot delete the current branch. Switch to another branch first."));
+                console.error(chalk.hex("#ff5555")("Cannot delete the current branch. Switch to another branch first."));
                 process.exit(1);
             }
 
@@ -126,17 +126,17 @@ branchCommands
             if (options.remote) {
                 try {
                     await git.push(["origin", "--delete", branch]);
-                    spinner.succeed(`Deleted ${chalk.cyan(branch)} (local and remote)`);
+                    spinner.succeed(`Deleted ${chalk.hex("#8be9fd")(branch)} (local and remote)`);
                 } catch (remoteError) {
-                    spinner.warn(`Deleted local branch ${chalk.cyan(branch)}, but failed to delete remote`);
-                    console.error(chalk.dim(remoteError instanceof Error ? remoteError.message : ""));
+                    spinner.warn(`Deleted local branch ${chalk.hex("#8be9fd")(branch)}, but failed to delete remote`);
+                    console.error(chalk.hex("#6272a4")(remoteError instanceof Error ? remoteError.message : ""));
                 }
             } else {
-                spinner.succeed(`Deleted ${chalk.cyan(branch)}`);
+                spinner.succeed(`Deleted ${chalk.hex("#8be9fd")(branch)}`);
             }
         } catch (error) {
-            console.error(chalk.red("Failed to delete branch"));
-            console.error(chalk.red(error instanceof Error ? error.message : "Unknown error"));
+            console.error(chalk.hex("#ff5555")("Failed to delete branch"));
+            console.error(chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"));
             process.exit(1);
         }
     });
@@ -164,9 +164,9 @@ branchCommands
 
             for (const branch of branches.all) {
                 if (branch === branches.current) {
-                    console.log(chalk.green(`● ${branch}`) + chalk.dim(" (current)"));
+                    console.log(chalk.hex("#50fa7b")(`● ${branch}`) + chalk.hex("#6272a4")(" (current)"));
                 } else if (branch.startsWith("remotes/")) {
-                    console.log(chalk.dim(`  ${branch.replace("remotes/", "")}`));
+                    console.log(chalk.hex("#6272a4")(`  ${branch.replace("remotes/", "")}`));
                 } else {
                     console.log(`  ${branch}`);
                 }
@@ -174,8 +174,8 @@ branchCommands
 
             console.log("");
         } catch (error) {
-            console.error(chalk.red("Failed to list branches"));
-            console.error(chalk.red(error instanceof Error ? error.message : "Unknown error"));
+            console.error(chalk.hex("#ff5555")("Failed to list branches"));
+            console.error(chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"));
             process.exit(1);
         }
     });
@@ -204,13 +204,13 @@ branchCommands
             }
 
             if (options.checkout) {
-                spinner.succeed(`Created and checked out ${chalk.green(name)}`);
+                spinner.succeed(`Created and checked out ${chalk.hex("#50fa7b")(name)}`);
             } else {
-                spinner.succeed(`Created branch ${chalk.green(name)}`);
+                spinner.succeed(`Created branch ${chalk.hex("#50fa7b")(name)}`);
             }
         } catch (error) {
-            console.error(chalk.red("Failed to create branch"));
-            console.error(chalk.red(error instanceof Error ? error.message : "Unknown error"));
+            console.error(chalk.hex("#ff5555")("Failed to create branch"));
+            console.error(chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"));
             process.exit(1);
         }
     });
@@ -228,10 +228,10 @@ branchCommands
 
             await git.checkout(["-b", branchName, "--track", `origin/${branchName}`]);
 
-            spinner.succeed(`Created ${chalk.green(branchName)} tracking ${chalk.cyan(`origin/${branchName}`)}`);
+            spinner.succeed(`Created ${chalk.hex("#50fa7b")(branchName)} tracking ${chalk.hex("#8be9fd")(`origin/${branchName}`)}`);
         } catch (error) {
-            console.error(chalk.red("Failed to track branch"));
-            console.error(chalk.red(error instanceof Error ? error.message : "Unknown error"));
+            console.error(chalk.hex("#ff5555")("Failed to track branch"));
+            console.error(chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"));
             process.exit(1);
         }
     });

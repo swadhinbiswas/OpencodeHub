@@ -239,9 +239,51 @@ function getActivityText(activity: any) {
     </div>
 
     <!-- Main Content Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-      <!-- User's Repositories & Inbox -->
-      <div class="md:col-span-2 space-y-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <!-- Left Sidebar: User Profile context & Repositories -->
+      <div class="lg:col-span-4 xl:col-span-3 space-y-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+            Repositories
+          </h2>
+          <a href="/new" class="text-sm bg-green-500/20 text-green-400 px-2 py-1 rounded hover:bg-green-500/30 transition-colors">
+            New
+          </a>
+        </div>
+        
+        <div class="bg-[#0d1117]/80 border border-white/10 rounded-xl overflow-hidden">
+          <div class="p-3 border-b border-white/10 bg-white/5">
+            <input type="text" placeholder="Find a repository..." class="w-full bg-[#010409] border border-white/10 rounded-md px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50" />
+          </div>
+          <div class="max-h-[600px] overflow-y-auto">
+            {repos.length > 0 ? (
+              <ul class="divide-y divide-white/5">
+                {repos.map((repo) => (
+                  <li>
+                    <a href={`/${user.username}/${repo.name}`} class="block p-3 hover:bg-white/5 transition-colors group">
+                      <div class="flex items-center gap-2 mb-1">
+                        <div class="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center">
+                          <img src={`https://api.dicebear.com/7.x/identicon/svg?seed=${repo.ownerId}`} class="rounded-full w-4 h-4" />
+                        </div>
+                        <span class="text-sm font-medium text-blue-400 group-hover:underline truncate">{user.username}/{repo.name}</span>
+                        <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0 h-4 bg-transparent border-white/20 text-gray-400">
+                          {repo.visibility}
+                        </Badge>
+                      </div>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div class="p-4 text-center text-sm text-gray-500">No repositories yet.</div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Feed: Activity & Inbox -->
+      <div class="lg:col-span-8 xl:col-span-9 space-y-8">
+        
         <!-- Inbox Section -->
         {
           inboxItems.length > 0 && (
@@ -375,280 +417,96 @@ function getActivityText(activity: any) {
           )
         }
 
-        <div class="flex items-center justify-between">
+        <!-- Recent Activity Feed -->
+        <div class="space-y-4">
           <h2 class="text-xl font-semibold text-white flex items-center gap-2">
-            <svg
-              class="h-5 w-5 text-cyan-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              ><path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-              ></path></svg
-            >
-            Repositories
+            Activity Feed
           </h2>
-          <!-- Filter/Search could go here -->
-        </div>
-
-        {
-          repos.length > 0 ? (
-            <div class="grid gap-4">
-              {repos.map((repo) => (
-                <a href={`/${user.username}/${repo.name}`} class="block group">
-                  <Card className="bg-[#0d1117]/80 border-white/10 hover:border-white/20 hover:bg-[#161b22] transition-all duration-200">
-                    <CardContent className="p-5">
-                      <div class="flex items-start justify-between">
-                        <div class="space-y-1">
-                          <div class="flex items-center gap-2">
-                            <h3 class="font-semibold text-lg text-white group-hover:text-cyan-400 transition-colors">
-                              {repo.name}
-                            </h3>
-                            <Badge
-                              variant="secondary"
-                              className={`bg-opacity-10 border ${repo.visibility === "public" ? "border-green-500/30 text-green-400 bg-green-500" : "border-orange-500/30 text-orange-400 bg-orange-500"}`}
-                            >
-                              {repo.visibility}
-                            </Badge>
-                          </div>
-                          <p class="text-sm text-gray-400 line-clamp-1">
-                            {repo.description || "No description provided."}
-                          </p>
-                        </div>
-                        <div class="text-xs text-gray-500 whitespace-nowrap">
-                          {timeAgo(repo.updatedAt)}
-                        </div>
-                      </div>
-                      <div class="mt-4 flex items-center gap-6 text-sm text-gray-500">
-                        {repo.language && (
-                          <div class="flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-blue-500" />
-                            {repo.language}
-                          </div>
-                        )}
-                        <div class="flex items-center gap-1 hover:text-yellow-400 transition-colors">
-                          <svg
-                            class="h-4 w-4"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                          </svg>
-                          {repo.starCount || 0}
-                        </div>
-                        <div class="flex items-center gap-1 hover:text-purple-400 transition-colors">
-                          <svg
-                            class="h-4 w-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
-                            />
-                          </svg>
-                          {repo.forkCount || 0}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </a>
-              ))}
-            </div>
-          ) : (
-            <div class="bg-[#0d1117]/30 border border-white/5 rounded-xl p-12 text-center">
-              <div class="inline-flex items-center justify-center p-4 bg-white/5 rounded-full mb-4">
-                <svg
-                  class="h-8 w-8 text-gray-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                  />
-                </svg>
-              </div>
-              <h3 class="text-lg font-medium text-white mb-2">
-                No repositories found
-              </h3>
-              <p class="text-gray-500 mb-6">
-                Get started by creating your first repository.
-              </p>
-              <a href="/new">
-                <Button>Create Repository</Button>
-              </a>
-            </div>
-          )
-        }
-      </div>
-
-      <!-- Sidebar / Activity -->
-      <div class="space-y-6">
-        <Card className="bg-[#0d1117]/50 border-white/10 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
-              <svg
-                class="h-5 w-5 text-orange-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                ><path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg
-              >
-              Recent Activity
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {
-              activities.length > 0 ? (
-                <div class="space-y-4">
-                  {activities.map((activity) => {
-                    const style = getActivityIcon(
-                      activity.type,
-                      activity.action,
-                    );
-                    const payload = activity.payload
-                      ? JSON.parse(activity.payload)
-                      : {};
-                    return (
-                      <div class="flex gap-3">
-                        <div
-                          class={`flex-shrink-0 w-8 h-8 rounded-full ${style.bg} flex items-center justify-center`}
-                        >
-                          <svg
-                            class={`w-4 h-4 ${style.color}`}
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d={style.icon}
-                            />
-                          </svg>
-                        </div>
-                        <div class="min-w-0 flex-1">
-                          <p class="text-sm text-gray-300">
-                            <a
-                              href={`/${activity.user.username}`}
-                              class="font-medium text-white hover:underline"
-                            >
-                              {activity.user.username}
-                            </a>{" "}
-                            <span class="text-gray-400">
-                              {(() => {
-                                switch (activity.type) {
-                                  case "create_repo":
-                                    return "created repository";
-                                  case "star":
-                                    return "starred";
-                                  case "fork":
-                                    return "forked";
-                                  case "follow":
-                                    return "followed";
-                                  case "issue":
-                                    return `opened issue #${payload.number || ""} in`;
-                                  case "open_pr":
-                                    return `opened PR #${payload.number || ""} in`;
-                                  default:
-                                    return `${activity.action} ${activity.type}`;
-                                }
-                              })()}
-                            </span>{" "}
-                            {activity.repository && (
+          <Card className="bg-[#0d1117]/80 border-white/10 backdrop-blur-sm">
+            <CardContent className="p-0">
+              {
+                activities.length > 0 ? (
+                  <div class="divide-y divide-white/5">
+                    {activities.map((activity) => {
+                      const style = getActivityIcon(
+                        activity.type,
+                        activity.action,
+                      );
+                      const payload = activity.payload
+                        ? JSON.parse(activity.payload)
+                        : {};
+                      return (
+                        <div class="flex gap-4 p-5 hover:bg-[#161b22]/50 transition-colors">
+                          <UserAvatar user={activity.user} className="w-8 h-8" client:load />
+                          <div class="min-w-0 flex-1">
+                            <p class="text-sm text-gray-300">
                               <a
-                                href={`/${activity.repository.ownerId /* We need owner username here. fetching owner relation is better */}/${activity.repository.name}`}
-                                class="font-medium text-cyan-400 hover:underline"
+                                href={`/${activity.user.username}`}
+                                class="font-medium text-white hover:text-blue-400 hover:underline transition-colors"
                               >
-                                {activity.repository.name}
-                              </a>
-                            )}
-                            {!activity.repository &&
-                              activity.type === "follow" && (
+                                {activity.user.username}
+                              </a>{" "}
+                              <span class="text-gray-400">
+                                {(() => {
+                                  switch (activity.type) {
+                                    case "create_repo":
+                                      return "created a repository";
+                                    case "star":
+                                      return "starred";
+                                    case "fork":
+                                      return "forked";
+                                    case "follow":
+                                      return "started following";
+                                    case "issue":
+                                      return `opened issue #${payload.number || ""} in`;
+                                    case "open_pr":
+                                      return `opened pull request #${payload.number || ""} in`;
+                                    default:
+                                      return `${activity.action} ${activity.type}`;
+                                  }
+                                })()}
+                              </span>{" "}
+                              {activity.repository && (
                                 <a
-                                  href={`/${payload.targetUsername}`}
-                                  class="font-medium text-cyan-400 hover:underline"
+                                  href={`/${activity.repository.ownerId}/${activity.repository.name}`}
+                                  class="font-medium text-white hover:text-blue-400 hover:underline transition-colors"
                                 >
-                                  {payload.targetUsername}
+                                  {activity.repository.name}
                                 </a>
                               )}
-                          </p>
-                          <p class="text-xs text-gray-500 mt-0.5">
-                            {timeAgo(activity.createdAt)}
-                          </p>
+                              {!activity.repository &&
+                                activity.type === "follow" && (
+                                  <a
+                                    href={`/${payload.targetUsername}`}
+                                    class="font-medium text-white hover:text-blue-400 hover:underline transition-colors"
+                                  >
+                                    {payload.targetUsername}
+                                  </a>
+                                )}
+                            </p>
+                            <p class="text-xs text-gray-500 mt-1">
+                              {timeAgo(activity.createdAt)}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div class="text-center py-6 text-gray-500 text-sm">
-                  No recent activity to show.
-                </div>
-              )
-            }
-            <div class="pt-4 mt-4 border-t border-white/5">
-              <a href="/explore" class="block">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-gray-400 hover:text-white"
-                >
-                  <svg
-                    class="mr-2 h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    ><path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    ></path></svg
-                  >
-                  Explore Repositories
-                </Button>
-              </a>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card
-          className="bg-gradient-to-br from-purple-900/10 to-blue-900/10 border-white/10"
-        >
-          <CardContent className="p-6">
-            <h3 class="font-semibold text-white mb-2">Try the CLI</h3>
-            <p class="text-sm text-gray-400 mb-4">
-              Push code, create PRs, and manage stacks directly from your
-              terminal.
-            </p>
-            <div
-              class="bg-black/50 rounded-lg p-3 font-mono text-xs text-green-400 mb-4 border border-white/10"
-            >
-              npm install -g opencodehub
-            </div>
-            <a
-              href="/docs/cli"
-              class="text-sm text-blue-400 hover:text-blue-300 hover:underline"
-            >
-              Read the documentation &rarr;
-            </a>
-          </CardContent>
-        </Card>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div class="text-center py-12">
+                    <h3 class="text-lg font-medium text-white mb-2">Discover interesting projects</h3>
+                    <p class="text-gray-500 mb-6 text-sm">Follow users and star repositories to see activity here.</p>
+                    <a href="/explore">
+                      <Button variant="outline" className="border-white/10 text-gray-300">
+                        Explore OpenCodeHub
+                      </Button>
+                    </a>
+                  </div>
+                )
+              }
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   </div>

@@ -37,13 +37,13 @@ export const apiCommands = new Command("api")
   .action(async (endpoint: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
     if (!config.serverUrl) {
       console.error(
-        chalk.red(
+        chalk.hex("#ff5555")(
           "Server URL not configured. Run 'och config set serverUrl <url>' or 'och auth login --url <url>'.",
         ),
       );
@@ -54,8 +54,8 @@ export const apiCommands = new Command("api")
       const method = String(options.method || "GET").toUpperCase();
       const allowedMethods = new Set(["GET", "POST", "PATCH", "PUT", "DELETE"]);
       if (!allowedMethods.has(method)) {
-        console.error(chalk.red(`Unsupported method: ${options.method}`));
-        console.error(chalk.dim("Allowed methods: GET, POST, PATCH, PUT, DELETE"));
+        console.error(chalk.hex("#ff5555")(`Unsupported method: ${options.method}`));
+        console.error(chalk.hex("#6272a4")("Allowed methods: GET, POST, PATCH, PUT, DELETE"));
         process.exit(1);
       }
 
@@ -106,7 +106,7 @@ export const apiCommands = new Command("api")
       const url = `${config.serverUrl}${endpoint}`;
 
       if (!options.quiet) {
-        console.error(chalk.dim(`${method} ${url}\n`));
+        console.error(chalk.hex("#6272a4")(`${method} ${url}\n`));
       }
 
       applyTlsConfig();
@@ -119,7 +119,7 @@ export const apiCommands = new Command("api")
       // Output headers if requested
       if (options.include) {
         console.log(
-          chalk.cyan(`HTTP/1.1 ${response.status} ${response.statusText}`),
+          chalk.hex("#8be9fd")(`HTTP/1.1 ${response.status} ${response.statusText}`),
         );
         response.headers.forEach((value, key) => {
           console.log(`${key}: ${value}`);
@@ -149,9 +149,9 @@ export const apiCommands = new Command("api")
         process.exit(1);
       }
     } catch (error) {
-      console.error(chalk.red("API request failed"));
+      console.error(chalk.hex("#ff5555")("API request failed"));
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }

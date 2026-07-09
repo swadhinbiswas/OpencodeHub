@@ -48,15 +48,15 @@ async function getRepoInfo() {
 function getSeverityIcon(severity: string): string {
   switch (severity) {
     case "critical":
-      return chalk.red("🔴");
+      return chalk.hex("#ff5555")("🔴");
     case "error":
-      return chalk.red("⛔");
+      return chalk.hex("#ff5555")("⛔");
     case "warning":
-      return chalk.yellow("⚠️");
+      return chalk.hex("#f1fa8c")("⚠️");
     case "info":
       return chalk.blue("ℹ️");
     default:
-      return chalk.dim("○");
+      return chalk.hex("#6272a4")("○");
   }
 }
 
@@ -68,7 +68,7 @@ reviewCommands
   .action(async (prNumber: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -103,7 +103,7 @@ reviewCommands
       } else {
         spinner.succeed(`AI review triggered for PR #${prNumber}`);
         console.log(
-          chalk.dim(
+          chalk.hex("#6272a4")(
             "  Run 'och review status " + prNumber + "' to check progress",
           ),
         );
@@ -111,7 +111,7 @@ reviewCommands
     } catch (error) {
       spinner.fail("Failed to trigger AI review");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -124,7 +124,7 @@ reviewCommands
   .action(async (prNumber: string) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -148,7 +148,7 @@ reviewCommands
     } catch (error) {
       spinner.fail("Failed to fetch review status");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -165,33 +165,33 @@ function displayReview(review: AIReview) {
   }
 
   if (review.summary) {
-    console.log(chalk.dim("\n─".repeat(40)));
+    console.log(chalk.hex("#6272a4")("\n─".repeat(40)));
     console.log(chalk.bold("Summary:"));
     console.log(review.summary);
   }
 
   if (review.suggestions && review.suggestions.length > 0) {
-    console.log(chalk.dim("\n─".repeat(40)));
+    console.log(chalk.hex("#6272a4")("\n─".repeat(40)));
     console.log(chalk.bold(`\nSuggestions (${review.suggestions.length}):\n`));
 
     for (const suggestion of review.suggestions) {
       const icon = getSeverityIcon(suggestion.severity);
       console.log(`${icon} ${chalk.bold(suggestion.title)}`);
       console.log(
-        chalk.dim(
+        chalk.hex("#6272a4")(
           `  ${suggestion.path}${suggestion.line ? `:${suggestion.line}` : ""}`,
         ),
       );
       console.log(`  ${suggestion.message}`);
       if (suggestion.suggestedFix) {
-        console.log(chalk.green(`  Fix: ${suggestion.suggestedFix}`));
+        console.log(chalk.hex("#50fa7b")(`  Fix: ${suggestion.suggestedFix}`));
       }
       console.log("");
     }
   }
 
   if (review.tokensUsed) {
-    console.log(chalk.dim(`Tokens used: ${review.tokensUsed}`));
+    console.log(chalk.hex("#6272a4")(`Tokens used: ${review.tokensUsed}`));
   }
 }
 
@@ -203,7 +203,7 @@ reviewCommands
   .action(async (prNumber: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -228,7 +228,7 @@ reviewCommands
     } catch (error) {
       spinner.fail("Failed to approve pull request");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -242,7 +242,7 @@ reviewCommands
   .action(async (prNumber: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -260,7 +260,7 @@ reviewCommands
     }
 
     if (!body || body.trim() === "") {
-      console.error(chalk.red("A comment is required when requesting changes"));
+      console.error(chalk.hex("#ff5555")("A comment is required when requesting changes"));
       process.exit(1);
     }
 
@@ -285,7 +285,7 @@ reviewCommands
     } catch (error) {
       spinner.fail("Failed to request changes");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -299,7 +299,7 @@ reviewCommands
   .action(async (prNumber: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -317,7 +317,7 @@ reviewCommands
     }
 
     if (!body || body.trim() === "") {
-      console.error(chalk.red("Comment cannot be empty"));
+      console.error(chalk.hex("#ff5555")("Comment cannot be empty"));
       process.exit(1);
     }
 
@@ -342,7 +342,7 @@ reviewCommands
     } catch (error) {
       spinner.fail("Failed to add comment");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }

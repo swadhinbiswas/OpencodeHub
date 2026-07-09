@@ -169,15 +169,21 @@ export const PUT: APIRoute = withErrorHandler(async ({ params, request }) => {
       // Insert new checks
       if (requiredChecks.length > 0) {
         await tx.insert(schema.requiredStatusChecks).values(
-          requiredChecks.map((check: string) => ({
-            id: crypto.randomUUID(),
-            repositoryId: repoId,
-            branch: currentRule.pattern,
-            checkName: check,
-            isRequired: true,
-            strictMode: true,
-            createdAt: new Date(),
-          })),
+          requiredChecks.map((checkStr: string) => {
+            const parts = checkStr.split(":");
+            const checkName = parts[0].trim();
+            const pathFilter = parts.length > 1 ? parts.slice(1).join(":").trim() : null;
+            return {
+              id: crypto.randomUUID(),
+              repositoryId: repoId,
+              branch: currentRule.pattern,
+              checkName: checkName,
+              pathFilter: pathFilter,
+              isRequired: true,
+              strictMode: true,
+              createdAt: new Date(),
+            };
+          }),
         );
       }
     }

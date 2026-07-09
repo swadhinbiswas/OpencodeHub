@@ -174,7 +174,7 @@ const repo = {
   </div>
 </BaseLayout>
 
-<script define:vars={{ repoOwner: repo.owner, repoName: repo.name, initialAwsId: byProvider.aws?.id || null, initialGcpId: byProvider.gcp?.id || null, initialAzureId: byProvider.azure?.id || null, initialK8sId: byProvider.kubernetes?.id || null, initialTfId: byProvider.terraform?.id || null }}>
+<script is:inline define:vars={{ repoOwner: repo.owner, repoName: repo.name, initialAwsId: byProvider.aws?.id || null, initialGcpId: byProvider.gcp?.id || null, initialAzureId: byProvider.azure?.id || null, initialK8sId: byProvider.kubernetes?.id || null, initialTfId: byProvider.terraform?.id || null }}>
   let awsId = initialAwsId;
   let gcpId = initialGcpId;
   let azureId = initialAzureId;

@@ -7,10 +7,18 @@ dist/
 # Data directory (contains db, repos, uploads)
 data/
 
-# Environment files
+# Environment files (never commit secrets)
 .env
 .env.local
 .env.production
+.env.development
+.env.test
+.env.*.local
+.env.backup-*
+.env.bak
+*.env
+!env.example
+!env.d.ts
 
 # IDE
 .vscode/

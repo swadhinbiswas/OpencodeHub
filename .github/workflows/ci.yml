@@ -311,6 +311,21 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build]
     timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -328,8 +343,8 @@ jobs:
       - name: Build application
         run: bun run build
         env:
-          DATABASE_URL: "file:./test.db"
-          REDIS_URL: redis://localhost:6379
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+          DATABASE_DRIVER: postgres
       - name: Start server and run perf check
         run: |
           bun run dev &
@@ -338,6 +353,14 @@ jobs:
           bun run perf:baseline
           kill $SERVER_PID 2>/dev/null || true
         env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+          DATABASE_DRIVER: postgres
+          JWT_SECRET: "ci-perf-secret"
+          SITE_URL: http://127.0.0.1:4321
+          INTERNAL_HOOK_SECRET: "ci-perf-hook"
+          CSRF_SKIP_DEV: "true"
+          RATE_LIMIT_SKIP_DEV: "true"
+          SKIP_REDIS_CHECK: "1"
           PERF_BASE_URL: http://127.0.0.1:4321
           PERF_PATHS: /api/health,/api/metrics
           PERF_CONCURRENCY: 4
@@ -466,7 +489,7 @@ jobs:
         working-directory: cli
 
       - name: Publish to npm
-        run: bun npm publish --access public --provenance
+        run: npm publish --access public --provenance
         working-directory: cli
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

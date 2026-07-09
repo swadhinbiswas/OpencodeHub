@@ -207,7 +207,7 @@ const repo = {
     </div>
 </BaseLayout>
 
-<script define:vars={{ repoId: repo.id }}>
+<script is:inline define:vars={{ repoId: repo.id }}>
     document.querySelectorAll(".delete-webhook").forEach((btn) => {
         btn.addEventListener("click", async (e) => {
             if (!confirm("Are you sure you want to delete this webhook?"))

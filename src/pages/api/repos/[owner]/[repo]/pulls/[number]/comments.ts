@@ -197,6 +197,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
         startLine: parsed.data.startLine,
         commitSha: parsed.data.commitSha,
         inReplyToId: parsed.data.inReplyToId,
+        suggestionContent: parsed.data.suggestedChange,
         createdAt: now,
         updatedAt: now,
     });

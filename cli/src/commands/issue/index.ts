@@ -51,14 +51,14 @@ issueCommands
   .action(async (options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
     try {
       const repoInfo = await getRepoInfo();
       if (!repoInfo) {
-        console.error(chalk.red("Could not determine repository"));
+        console.error(chalk.hex("#ff5555")("Could not determine repository"));
         process.exit(1);
       }
 
@@ -100,14 +100,14 @@ issueCommands
         `Created issue #${result.data.number}: ${result.data.title}`,
       );
       console.log(
-        chalk.dim(
+        chalk.hex("#6272a4")(
           `  ${config.serverUrl}/${repoInfo.owner}/${repoInfo.repo}/issues/${result.data.number}`,
         ),
       );
     } catch (error) {
-      console.error(chalk.red("Failed to create issue"));
+      console.error(chalk.hex("#ff5555")("Failed to create issue"));
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -127,7 +127,7 @@ issueCommands
   .action(async (options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -155,7 +155,7 @@ issueCommands
       spinner.stop();
 
       if (result.data.length === 0) {
-        console.log(chalk.dim("No issues found."));
+        console.log(chalk.hex("#6272a4")("No issues found."));
         return;
       }
 
@@ -163,7 +163,7 @@ issueCommands
 
       for (const issue of result.data) {
         const stateIcon =
-          issue.state === "open" ? chalk.green("●") : chalk.red("●");
+          issue.state === "open" ? chalk.hex("#50fa7b")("●") : chalk.hex("#ff5555")("●");
         const labels =
           issue.labels
             ?.map((l) => chalk.hex(l.color || "#888")(l.name))
@@ -171,7 +171,7 @@ issueCommands
 
         console.log(`${stateIcon} #${issue.number} ${issue.title} ${labels}`);
         console.log(
-          chalk.dim(
+          chalk.hex("#6272a4")(
             `  @${issue.author.username} • ${new Date(issue.createdAt).toLocaleDateString()}`,
           ),
         );
@@ -181,7 +181,7 @@ issueCommands
     } catch (error) {
       spinner.fail("Failed to list issues");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -195,7 +195,7 @@ issueCommands
   .action(async (number: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -215,7 +215,7 @@ issueCommands
       spinner.stop();
 
       const issue = result.data;
-      const stateColor = issue.state === "open" ? chalk.green : chalk.red;
+      const stateColor = issue.state === "open" ? chalk.hex("#50fa7b") : chalk.hex("#ff5555");
 
       console.log(chalk.bold(`\n#${issue.number} ${issue.title}\n`));
       console.log(`State: ${stateColor(issue.state.toUpperCase())}`);
@@ -241,13 +241,13 @@ issueCommands
       }
 
       if (result.data.body) {
-        console.log(chalk.dim("\n─".repeat(40)));
+        console.log(chalk.hex("#6272a4")("\n─".repeat(40)));
         console.log(result.data.body);
       }
 
-      console.log(chalk.dim("\n─".repeat(40)));
+      console.log(chalk.hex("#6272a4")("\n─".repeat(40)));
       console.log(
-        chalk.dim(
+        chalk.hex("#6272a4")(
           `${config.serverUrl}/${repoInfo.owner}/${repoInfo.repo}/issues/${number}`,
         ),
       );
@@ -255,7 +255,7 @@ issueCommands
     } catch (error) {
       spinner.fail("Failed to fetch issue");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -269,7 +269,7 @@ issueCommands
   .action(async (number: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -298,7 +298,7 @@ issueCommands
     } catch (error) {
       spinner.fail("Failed to close issue");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -311,7 +311,7 @@ issueCommands
   .action(async (number: string) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -333,7 +333,7 @@ issueCommands
     } catch (error) {
       spinner.fail("Failed to reopen issue");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -347,14 +347,14 @@ issueCommands
   .action(async (number: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
     try {
       const repoInfo = await getRepoInfo();
       if (!repoInfo) {
-        console.error(chalk.red("Could not determine repository"));
+        console.error(chalk.hex("#ff5555")("Could not determine repository"));
         process.exit(1);
       }
 
@@ -372,7 +372,7 @@ issueCommands
       }
 
       if (!body || body.trim() === "") {
-        console.error(chalk.red("Comment cannot be empty"));
+        console.error(chalk.hex("#ff5555")("Comment cannot be empty"));
         process.exit(1);
       }
 
@@ -385,9 +385,9 @@ issueCommands
 
       spinner.succeed(`Added comment to issue #${number}`);
     } catch (error) {
-      console.error(chalk.red("Failed to add comment"));
+      console.error(chalk.hex("#ff5555")("Failed to add comment"));
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }

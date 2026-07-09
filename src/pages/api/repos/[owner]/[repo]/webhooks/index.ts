@@ -95,7 +95,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
 
     // Parse body
     const body = await request.json();
-    const { url, secret, events } = body;
+    const { url, secret, events, provider = "generic" } = body;
 
     if (!url) return badRequest('URL is required');
     if (!events || !Array.isArray(events) || events.length === 0) {
@@ -124,6 +124,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
         url,
         secret: hashedSecret,
         events: JSON.stringify(events),
+        provider,
         active: true,
         createdAt: timestamp,
         updatedAt: timestamp,

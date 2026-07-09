@@ -1,0 +1,107 @@
+# OpenCodeHub Production Reverse Proxy
+# Caddy auto-provisions TLS certificates via Let's Encrypt
+# Usage: Place this in /etc/caddy/Caddyfile or mount into the container
+
+# Replace with your actual domain
+opencodehub.example.com {
+    # Auto HTTPS with Let's Encrypt
+    tls admin@example.com
+
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+        -Server
+        -X-Powered-By
+    }
+
+    # Request body size limit (10MB default, git push needs more)
+    request_body {
+        max_size 50MB
+    }
+
+    # Proxy to OpenCodeHub app
+    reverse_proxy app:4321 {
+        # Health check the upstream
+        health_uri /api/health
+        health_interval 30s
+        health_timeout 10s
+
+        # Pass real client info
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+
+        # Timeouts
+        transport http {
+            dial_timeout 10s
+            response_header_timeout 300s
+            read_timeout 300s
+            write_timeout 300s
+        }
+    }
+
+    # Git smart HTTP endpoint — larger timeouts for push/pull
+    handle_path /git/* {
+        reverse_proxy app:4321 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+
+            transport http {
+                dial_timeout 10s
+                response_header_timeout 600s
+                read_timeout 600s
+                write_timeout 600s
+            }
+        }
+    }
+
+    # Git LFS endpoints
+    handle_path /info/* {
+        reverse_proxy app:4321 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+
+            transport http {
+                dial_timeout 10s
+                response_header_timeout 600s
+                read_timeout 600s
+                write_timeout 600s
+            }
+        }
+    }
+
+    # Prometheus metrics — restrict to internal network
+    handle /api/metrics {
+        # Only allow from localhost/monitoring
+        remote_ip 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 {
+            not remote_ip 0.0.0.0/0
+        }
+        reverse_proxy app:4321
+    }
+
+    # Health check endpoint — public
+    handle /api/health {
+        reverse_proxy app:4321
+    }
+
+    # Logging
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 100mb
+            roll_keep 10
+        }
+        format json
+    }
+}
+
+# Metrics-only listener (internal network)
+:9090 {
+    metrics
+}

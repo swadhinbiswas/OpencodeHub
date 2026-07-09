@@ -24,18 +24,17 @@ Two backends are supported:
 
 ## 📂 Local storage (default)
 
-Data is written under the directory pointed to by `STORAGE_PATH`
-(default `./data/storage`). A `.meta` sidecar file is written next to
-each uploaded blob to persist content-type metadata.
+Data is written under the directory pointed to by `DATA_DIR` (e.g., `/data/storage`). A `.meta` sidecar file is written next to each uploaded blob to persist content-type metadata.
 
 ```bash
 STORAGE_TYPE=local
-STORAGE_PATH=./data/storage
+# If using the 1-click install, DATA_DIR handles this automatically.
+# Otherwise, manually set:
+DATA_DIR=./data
+# (Which internally resolves STORAGE_PATH to ./data/storage)
 ```
 
-**When to choose local:** single-server deployments, self-hosting on a
-home server or NAS, development, and CI runners that do not need
-distributed blob storage.
+**When to choose local:** single-server deployments, self-hosting on a home server or NAS, development, and CI runners that do not need distributed blob storage.
 
 ---
 

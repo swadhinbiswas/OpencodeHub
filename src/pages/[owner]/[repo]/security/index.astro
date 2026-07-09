@@ -558,7 +558,7 @@ vulns.sort(
     </div>
 </BaseLayout>
 
-<script define:vars={{ repoOwner: repoInfo.owner, repoName: repoInfo.name, isAuthenticated }}>
+<script is:inline define:vars={{ repoOwner: repoInfo.owner, repoName: repoInfo.name, isAuthenticated }}>
     const scanBtn = document.getElementById("scan-btn");
     const secretScanBtn = document.getElementById("secret-scan-btn");
     const policyForm = document.getElementById("security-policy-form");

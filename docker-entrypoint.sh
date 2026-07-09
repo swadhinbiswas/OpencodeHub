@@ -5,7 +5,7 @@ echo "╔═══════════════════════�
 echo "║      OpenCodeHub Starting...             ║"
 echo "╚══════════════════════════════════════════╝"
 
-# Wait for database to be ready
+# ── Wait for database ────────────────────────────────────────
 if [ -n "$DATABASE_URL" ]; then
   echo "⏳ Waiting for database..."
   for i in $(seq 1 30); do
@@ -30,15 +30,16 @@ if [ -n "$DATABASE_URL" ]; then
   echo "✅ Migrations complete"
 fi
 
-# Initialize SSH host key if not exists
+# ── Initialize SSH host key ──────────────────────────────────
 if [ -n "$SSH_HOST_KEY_PATH" ] && [ ! -f "$SSH_HOST_KEY_PATH" ]; then
   echo "🔑 Generating SSH host key..."
   ssh-keygen -t ed25519 -f "$SSH_HOST_KEY_PATH" -N "" -q
   echo "✅ SSH host key generated"
 fi
 
-# Create required directories
+# ── Create required directories ──────────────────────────────
 mkdir -p "${REPOS_PATH:-/data/repos}" "${STORAGE_PATH:-/data/storage}" "${CACHE_PATH:-/data/cache}"
+mkdir -p "$(dirname "${LOG_FILE:-/data/logs/opencodehub.log}")"
 
 echo "🚀 Starting OpenCodeHub on port ${PORT:-4321}..."
 exec bun ./dist/server/entry.mjs
