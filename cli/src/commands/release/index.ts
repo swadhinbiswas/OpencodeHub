@@ -50,14 +50,14 @@ releaseCommands
   .action(async (tag: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
     try {
       const repoInfo = await getRepoInfo();
       if (!repoInfo) {
-        console.error(chalk.red("Could not determine repository"));
+        console.error(chalk.hex("#ff5555")("Could not determine repository"));
         process.exit(1);
       }
 
@@ -109,16 +109,16 @@ releaseCommands
         : result.data.isPrerelease
           ? " (pre-release)"
           : "";
-      spinner.succeed(`Created release ${chalk.green(tag)}${status}`);
+      spinner.succeed(`Created release ${chalk.hex("#50fa7b")(tag)}${status}`);
       console.log(
-        chalk.dim(
+        chalk.hex("#6272a4")(
           `  ${config.serverUrl}/${repoInfo.owner}/${repoInfo.repo}/releases/tag/${tag}`,
         ),
       );
     } catch (error) {
-      console.error(chalk.red("Failed to create release"));
+      console.error(chalk.hex("#ff5555")("Failed to create release"));
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -134,7 +134,7 @@ releaseCommands
   .action(async (options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -158,7 +158,7 @@ releaseCommands
       spinner.stop();
 
       if (result.data.length === 0) {
-        console.log(chalk.dim("No releases found."));
+        console.log(chalk.hex("#6272a4")("No releases found."));
         return;
       }
 
@@ -166,12 +166,12 @@ releaseCommands
 
       for (const release of result.data) {
         const icon = release.isDraft
-          ? chalk.yellow("◌")
+          ? chalk.hex("#f1fa8c")("◌")
           : release.isPrerelease
             ? chalk.blue("●")
-            : chalk.green("●");
+            : chalk.hex("#50fa7b")("●");
         const labels = [
-          release.isDraft ? chalk.yellow("[draft]") : "",
+          release.isDraft ? chalk.hex("#f1fa8c")("[draft]") : "",
           release.isPrerelease ? chalk.blue("[pre-release]") : "",
         ]
           .filter(Boolean)
@@ -181,7 +181,7 @@ releaseCommands
           `${icon} ${chalk.bold(release.tagName)} ${release.name !== release.tagName ? `- ${release.name}` : ""} ${labels}`,
         );
         console.log(
-          chalk.dim(
+          chalk.hex("#6272a4")(
             `  ${new Date(release.publishedAt || release.createdAt).toLocaleDateString()} • @${release.author.username}`,
           ),
         );
@@ -191,7 +191,7 @@ releaseCommands
     } catch (error) {
       spinner.fail("Failed to list releases");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -204,7 +204,7 @@ releaseCommands
   .action(async (tag: string) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -234,11 +234,11 @@ releaseCommands
         `Date: ${new Date(release.publishedAt || release.createdAt).toLocaleString()}`,
       );
 
-      if (release.isDraft) console.log(chalk.yellow("Status: Draft"));
+      if (release.isDraft) console.log(chalk.hex("#f1fa8c")("Status: Draft"));
       if (release.isPrerelease) console.log(chalk.blue("Status: Pre-release"));
 
       if (release.body) {
-        console.log(chalk.dim("\n─".repeat(40)));
+        console.log(chalk.hex("#6272a4")("\n─".repeat(40)));
         console.log(release.body);
       }
 
@@ -250,9 +250,9 @@ releaseCommands
         }
       }
 
-      console.log(chalk.dim("\n─".repeat(40)));
+      console.log(chalk.hex("#6272a4")("\n─".repeat(40)));
       console.log(
-        chalk.dim(
+        chalk.hex("#6272a4")(
           `${config.serverUrl}/${repoInfo.owner}/${repoInfo.repo}/releases/tag/${tag}`,
         ),
       );
@@ -260,7 +260,7 @@ releaseCommands
     } catch (error) {
       spinner.fail("Failed to fetch release");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -274,14 +274,14 @@ releaseCommands
   .action(async (tag: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
     try {
       const repoInfo = await getRepoInfo();
       if (!repoInfo) {
-        console.error(chalk.red("Could not determine repository"));
+        console.error(chalk.hex("#ff5555")("Could not determine repository"));
         process.exit(1);
       }
 
@@ -295,7 +295,7 @@ releaseCommands
           },
         ]);
         if (!confirm) {
-          console.log(chalk.dim("Cancelled."));
+          console.log(chalk.hex("#6272a4")("Cancelled."));
           return;
         }
       }
@@ -309,9 +309,9 @@ releaseCommands
 
       spinner.succeed(`Deleted release ${tag}`);
     } catch (error) {
-      console.error(chalk.red("Failed to delete release"));
+      console.error(chalk.hex("#ff5555")("Failed to delete release"));
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }

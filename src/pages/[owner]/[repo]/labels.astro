@@ -242,7 +242,7 @@ function isLightColor(hex: string) {
   </div>
 </BaseLayout>
 
-<script define:vars={{ owner: repo.owner, repo: repo.name }}>
+<script is:inline define:vars={{ owner: repo.owner, repo: repo.name }}>
   // Color preview
   const colorInput = document.getElementById('color');
   const preview = document.getElementById('color-preview');

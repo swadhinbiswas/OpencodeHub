@@ -34,7 +34,7 @@ const requiredChecks = await db.query.requiredStatusChecks.findMany({
   ),
 });
 
-const requiredChecksString = requiredChecks.map((c) => c.checkName).join("\n");
+const requiredChecksString = requiredChecks.map((c: any) => c.pathFilter ? `${c.checkName}:${c.pathFilter}` : c.checkName).join("\n");
 ---
 
 <BaseLayout title={`Edit Branch Protection Rule - ${owner}/${repo}`}>
@@ -53,18 +53,14 @@ const requiredChecksString = requiredChecks.map((c) => c.checkName).join("\n");
           <input
             type="text"
             name="pattern"
-            value={rule.pattern}
-            placeholder="main, release/*, *"
-            required
             class="w-full rounded border border-gray-600 bg-gray-900 px-4 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+            placeholder="main, release/*, *"
+            value={rule.pattern}
+            required
           />
         </div>
 
         <div class="space-y-4">
-          <label class="block font-medium text-gray-300"
-            >Protect matching branches</label
-          >
-
           <div class="flex items-start gap-3">
             <input
               type="checkbox"
@@ -78,26 +74,27 @@ const requiredChecksString = requiredChecks.map((c) => c.checkName).join("\n");
                 >Require a pull request before merging</label
               >
               <p class="text-sm text-gray-500">
-                All commits must be made to a non-protected branch and submitted
-                via a pull request.
+                When enabled, all commits must be made to a non-protected branch
+                and submitted via a pull request.
               </p>
             </div>
           </div>
 
-          <div class="ml-7">
-            <label class="block text-sm text-gray-400">Required approvals</label
+          <div class="ml-7 flex items-center gap-3">
+            <label class="text-sm font-medium text-gray-300"
+              >Required number of approvals:</label
             >
             <input
               type="number"
               name="requiredApprovals"
               min="0"
               max="10"
+              class="w-20 rounded border border-gray-600 bg-gray-900 px-3 py-1 text-white focus:border-blue-500 focus:outline-none"
               value={rule.requiredApprovals}
-              class="mt-1 w-20 rounded border border-gray-600 bg-gray-900 px-2 py-1 text-white"
             />
           </div>
 
-          <div class="flex items-start gap-3">
+          <div class="ml-7 flex items-start gap-3">
             <input
               type="checkbox"
               name="dismissStaleReviews"
@@ -107,13 +104,12 @@ const requiredChecksString = requiredChecks.map((c) => c.checkName).join("\n");
             />
             <div>
               <label for="dismissStaleReviews" class="font-medium text-white"
-                >Dismiss stale pull request approvals when new commits are
-                pushed</label
+                >Dismiss stale pull request approvals when new commits are pushed</label
               >
             </div>
           </div>
 
-          <div class="flex items-start gap-3">
+          <div class="ml-7 flex items-start gap-3">
             <input
               type="checkbox"
               name="requireCodeOwnerReviews"
@@ -137,16 +133,14 @@ const requiredChecksString = requiredChecks.map((c) => c.checkName).join("\n");
               >Required Status Checks</label
             >
             <p class="mb-2 text-sm text-gray-500">
-              Enter the names of CI jobs that must pass (one per line). Example: <code
-                >build</code
-              >, <code>test</code>, <code>lint</code>.
+              Enter CI jobs that must pass (one per line). Monorepo path scoping is supported via colon syntax. Example: <code>build</code>, <code>test:packages/frontend/**</code>.
             </p>
             <textarea
               name="requiredChecks"
               rows="3"
               class="w-full rounded border border-gray-600 bg-gray-900 px-4 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
               placeholder="build
-test
+test:packages/backend/**
 lint">{requiredChecksString}</textarea
             >
           </div>
@@ -204,7 +198,7 @@ lint">{requiredChecksString}</textarea
   </div>
 </BaseLayout>
 
-<script define:vars={{ repoId: repository.id, ruleId: rule.id, owner, repo }}>
+<script is:inline define:vars={{ repoId: repository.id, ruleId: rule.id, owner, repo }}>
   const form = document.getElementById("edit-rule-form");
 
   form.addEventListener("submit", async (e) => {

@@ -542,30 +542,59 @@ export async function canMerge(
   });
 
   if (requiredChecksForBranch.length > 0) {
-    if (runsForHead.length === 0) {
-      return {
-        canMerge: false,
-        reason: "Required status checks not found for latest commit",
-      };
+    let effectiveRequiredChecks = requiredChecksForBranch;
+
+    // Filter checks by pathFilter if specified
+    const checksWithPaths = requiredChecksForBranch.filter((c: any) => c.pathFilter);
+    if (checksWithPaths.length > 0) {
+      const repo = await db.query.repositories.findFirst({
+        where: eq(schema.repositories.id, pr.repositoryId),
+      });
+      if (repo) {
+        try {
+          const { resolveRepoPath } = await import("@/lib/git-storage");
+          const { getChangedFiles } = await import("@/lib/git");
+          const localRepoPath = await resolveRepoPath(repo.diskPath);
+          const changedFiles = await getChangedFiles(localRepoPath, pr.baseBranch, pr.headBranch);
+          
+          const { minimatch } = await import("minimatch");
+          effectiveRequiredChecks = requiredChecksForBranch.filter((check: any) => {
+            if (!check.pathFilter) return true;
+            return changedFiles.some((f: string) => minimatch(f, check.pathFilter!));
+          });
+        } catch (e) {
+          // If we can't determine changed files, fail safe and require everything
+          console.error("Failed to fetch changed files for path filter", e);
+        }
+      }
     }
 
-    const successfulRunNames = new Set(
-      runsForHead
-        .filter((run) => {
-          if (run.status === "success") return true;
-          if (run.status === "completed" && run.conclusion === "success")
-            return true;
-          return false;
-        })
-        .map((run) => run.name),
-    );
-
-    for (const requiredCheck of requiredChecksForBranch) {
-      if (!successfulRunNames.has(requiredCheck.checkName)) {
+    if (effectiveRequiredChecks.length > 0) {
+      if (runsForHead.length === 0) {
         return {
           canMerge: false,
-          reason: `Required status check "${requiredCheck.checkName}" has not succeeded`,
+          reason: "Required status checks not found for latest commit",
         };
+      }
+
+      const successfulRunNames = new Set(
+        runsForHead
+          .filter((run) => {
+            if (run.status === "success") return true;
+            if (run.status === "completed" && run.conclusion === "success")
+              return true;
+            return false;
+          })
+          .map((run) => run.name),
+      );
+
+      for (const requiredCheck of effectiveRequiredChecks) {
+        if (!successfulRunNames.has(requiredCheck.checkName)) {
+          return {
+            canMerge: false,
+            reason: `Required status check '${requiredCheck.checkName}' is missing or failed`,
+          };
+        }
       }
     }
   } else {
@@ -645,6 +674,62 @@ export async function canMerge(
         canMerge: false,
         reason: codeOwnerCheck.reason || "Code owner approval required",
       };
+    }
+  }
+
+  // Enforce Custom State specific reviewers
+  if (pr.stateId) {
+    const customState = await db.query.prStateDefinitions.findFirst({
+      where: eq(schema.prStateDefinitions.id, pr.stateId)
+    });
+    
+    if (customState) {
+      const stateReviewers = await db.query.prStateReviewers.findMany({
+        where: eq(schema.prStateReviewers.stateDefinitionId, customState.id)
+      });
+
+      if (stateReviewers.length > 0) {
+        for (const req of stateReviewers) {
+          if (req.userId) {
+            const userReview = latestReviewsByUser.get(req.userId);
+            if (!userReview || userReview.state !== "approved") {
+              const requiredUser = await db.query.users.findFirst({
+                where: eq(schema.users.id, req.userId)
+              });
+              return { canMerge: false, reason: `State requires approval from @${requiredUser?.username || "user"}` };
+            }
+          }
+          
+          if (req.teamId) {
+            const [team, members] = await Promise.all([
+              db.query.teams.findFirst({
+                where: eq(schema.teams.id, req.teamId),
+              }),
+              db.query.teamMembers.findMany({
+                where: eq(schema.teamMembers.teamId, req.teamId),
+              }),
+            ]);
+
+            const requiredCount = Math.max(1, req.requiredCount ?? 1);
+            const approvedFromTeam = members.filter((member) => {
+              const latestReview = latestReviewsByUser.get(member.userId);
+              return latestReview?.state === "approved";
+            }).length;
+
+            if (approvedFromTeam < requiredCount) {
+              return { canMerge: false, reason: `State requires approval from team ${team?.name || "team"} (${approvedFromTeam}/${requiredCount})` };
+            }
+          }
+        }
+      }
+
+      if (customState.requireCodeOwner) {
+        const { checkCodeOwnerApprovalsForPR } = await import("./pr-codeowner");
+        const codeOwnerCheck = await checkCodeOwnerApprovalsForPR(db, pr.id);
+        if (!codeOwnerCheck.ok) {
+          return { canMerge: false, reason: codeOwnerCheck.reason || "Code owner approval required for this state" };
+        }
+      }
     }
   }
 

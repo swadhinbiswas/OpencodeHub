@@ -56,8 +56,6 @@ Ship OpenCodeHub to a production-grade state by closing all partial (`⚠️`) a
 - Required reviewers per PR state
 - PR checks completion
 - Suggested changes
-- Review templates
-- Partial file approvals
 - Custom issue fields
 - Issue workflows
 - Cross-repo issues
@@ -127,14 +125,7 @@ Ship OpenCodeHub to a production-grade state by closing all partial (`⚠️`) a
 
 ## Phase 1 (Weeks 3-8): Core Collaboration Completion
 ### Scope
-- Custom PR states
-- Required reviewers per state
-- Suggested changes
-- Review templates
-- Partial file approvals
 - Multi-reviewer rules completion
-- Code owner enforcement
-- Batch comments UI completion
 - PR checks completion
 - PR↔Issue linking completion
 - Custom issue fields

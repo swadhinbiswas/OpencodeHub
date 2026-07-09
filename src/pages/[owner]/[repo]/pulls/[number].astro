@@ -11,7 +11,7 @@ import {
   type CommitInfo,
   type DiffInfo,
 } from "@/lib/git";
-import { and, eq, sql, asc, count } from "drizzle-orm";
+import { and, eq, sql, asc, desc, count } from "drizzle-orm";
 import {
   GitPullRequest,
   CheckCircle2,
@@ -33,6 +33,9 @@ import { AIReviewSummary } from "@/components/pulls/AIReviewSummary";
 import PRConversation from "@/components/pulls/PRConversation";
 import { DiffView } from "@/components/diff/DiffView";
 import { InlineDiffReview } from "@/components/pulls/InlineDiffReview";
+import { PipelineVisualizer } from "@/components/actions/PipelineVisualizer";
+import { CustomPRState } from "@/components/pulls/CustomPRState";
+import { CodeOwnersEnforcement } from "@/components/pulls/CodeOwnersEnforcement";
 
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
@@ -161,6 +164,29 @@ let diffData: { commits: CommitInfo[]; diffs: DiffInfo[] } = {
 };
 let patchDiff = "";
 
+// Fetch Workflow Run for Visualizer
+const latestRun = await db.query.workflowRuns.findFirst({
+  where: eq(schema.workflowRuns.headSha, pr.headSha),
+  orderBy: [desc(schema.workflowRuns.createdAt)],
+  with: {
+    jobs: true
+  }
+});
+
+let visualizerJobs: any[] = [];
+if (latestRun) {
+  visualizerJobs = latestRun.jobs.map(job => ({
+    id: job.id,
+    name: job.name,
+    status: job.status,
+    conclusion: job.conclusion,
+    needs: job.needs ? JSON.parse(job.needs) : []
+  }));
+}
+
+let codeOwnersSummary: { path: string; owners: string[] }[] = [];
+let uniqueRequiredOwners: string[] = [];
+
 import { resolveRepoPath } from "@/lib/git-storage";
 try {
   const repoPath = await resolveRepoPath(
@@ -168,6 +194,18 @@ try {
   );
   diffData = await compareBranches(repoPath, pr.baseBranch, pr.headBranch);
   patchDiff = await getComparePatchDiff(repoPath, pr.baseBranch, pr.headBranch);
+
+  const changedFiles = diffData.diffs.map(d => d.file || d.oldPath).filter(Boolean) as string[];
+  const { getCodeOwnersSummary } = await import("@/lib/codeowners-enforcement");
+  codeOwnersSummary = await getCodeOwnersSummary(repoData.id, changedFiles);
+  
+  const ownersSet = new Set<string>();
+  for (const summary of codeOwnersSummary) {
+    for (const owner of summary.owners) {
+      ownersSet.add(owner);
+    }
+  }
+  uniqueRequiredOwners = Array.from(ownersSet);
 } catch (error) {
   console.error("Error fetching comparison:", error);
 }
@@ -235,36 +273,18 @@ try {
           </div>
         </div>
         {canWrite && pr.state !== "merged" && (
-          <div class="w-full max-w-sm rounded-lg border p-3 space-y-2">
-            <div class="text-xs font-medium text-muted-foreground">PR Workflow State</div>
-            <div class="flex items-center gap-2">
-              <select
-                id="pr-state-select"
-                class="h-8 flex-1 rounded-md border bg-background px-2 text-xs"
-              >
-                <option value="builtin:open">Open</option>
-                <option value="builtin:closed">Closed</option>
-                {customStates.map((state) => (
-                  <option
-                    value={`custom:${state.id}`}
-                    data-name={state.name}
-                    data-description={state.description || ""}
-                    data-allow-merge={state.allowMerge ? "true" : "false"}
-                    data-require-codeowner={state.requireCodeOwner ? "true" : "false"}
-                    selected={pr.stateId === state.id}
-                  >
-                    {state.displayName}
-                  </option>
-                ))}
-              </select>
-              <Button id="pr-state-apply" variant="outline" className="h-8 text-xs">
-                Apply
-              </Button>
-            </div>
-            <div id="pr-state-hint" class="text-xs text-muted-foreground"></div>
-            <div id="pr-state-reviewers" class="text-xs text-muted-foreground"></div>
-            <div id="pr-state-msg" class="text-xs text-muted-foreground"></div>
-          </div>
+          <CustomPRState 
+            client:load 
+            initialStateId={pr.stateId} 
+            customStates={customStates.map(state => ({
+              ...state,
+              allowMerge: state.allowMerge ?? false,
+              requireCodeOwner: state.requireCodeOwner ?? false
+            }))} 
+            repoOwner={repo.owner} 
+            repoName={repo.name} 
+            prNumber={pr.number} 
+          />
         )}
       </div>
 
@@ -396,83 +416,105 @@ try {
                     )}
 
                     {canWrite && (
-                      <div class="mt-4 rounded-md border border-dashed p-3 space-y-2">
-                        <div class="flex items-center justify-between gap-2">
-                          <div class="text-xs font-medium text-muted-foreground">Auto-merge</div>
+                      <div class="mt-4 rounded-md border p-4 space-y-4 bg-background shadow-sm">
+                        <div class="flex items-center justify-between">
+                          <div class="text-sm font-semibold flex items-center gap-2">
+                            <Layers className="h-4 w-4 text-primary" />
+                            Auto-merge
+                          </div>
                           <div class="flex items-center gap-2">
                             <select
                               id="auto-merge-method"
-                              class="h-8 rounded-md border bg-background px-2 text-xs"
+                              class="h-8 rounded-md border bg-muted/50 px-2 text-xs focus:ring-1 focus:ring-primary"
                             >
-                              <option value="merge">Merge</option>
-                              <option value="squash">Squash</option>
-                              <option value="rebase">Rebase</option>
+                              <option value="merge">Create a merge commit</option>
+                              <option value="squash">Squash and merge</option>
+                              <option value="rebase">Rebase and merge</option>
                             </select>
                             <button
                               id="auto-merge-toggle"
-                              class="h-8 rounded-md border border-primary/30 px-3 text-xs text-primary"
+                              class="h-8 rounded-md bg-primary/10 hover:bg-primary/20 px-3 text-xs font-medium text-primary transition-colors"
                             >
                               Enable auto-merge
                             </button>
                             <button
                               id="auto-merge-refresh"
-                              class="h-8 rounded-md border px-3 text-xs text-muted-foreground"
+                              class="h-8 rounded-md hover:bg-muted p-2 text-muted-foreground transition-colors"
+                              title="Refresh auto-merge status"
                             >
-                              Refresh
+                              <RefreshCw className="h-3.5 w-3.5" />
                             </button>
                           </div>
                         </div>
-                        <div id="auto-merge-status" class="text-xs text-muted-foreground"></div>
-                        <div id="auto-merge-summary" class="text-xs text-muted-foreground"></div>
-                        <div id="auto-merge-blockers" class="space-y-1 text-xs text-amber-500"></div>
-                        <div id="auto-merge-rules" class="space-y-1 text-xs text-muted-foreground"></div>
+                        <div class="text-sm text-muted-foreground">
+                          <div id="auto-merge-status" class="flex items-center gap-2">
+                            <span class="animate-pulse">Loading auto-merge status...</span>
+                          </div>
+                          <div id="auto-merge-summary" class="mt-1 text-xs"></div>
+                        </div>
+                        <div id="auto-merge-blockers" class="space-y-1 text-sm text-amber-600 font-medium"></div>
+                        <div id="auto-merge-rules" class="space-y-1 text-xs text-muted-foreground mt-2 border-t pt-2"></div>
                       </div>
                     )}
 
-                    <div class="mt-4 rounded-md border border-dashed p-3 space-y-2">
-                      <div class="flex items-center justify-between">
-                        <div class="text-xs font-medium text-muted-foreground">PR checks</div>
+                    <div class="mt-4 border rounded-md overflow-hidden bg-background shadow-sm">
+                      <div class="bg-muted/30 p-3 border-b flex items-center justify-between">
+                        <div class="text-sm font-semibold flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-muted-foreground" id="checks-overall-icon" />
+                          Checks
+                        </div>
                         <button
                           id="pr-checks-refresh"
-                          class="h-8 rounded-md border px-3 text-xs text-muted-foreground"
+                          class="h-6 rounded hover:bg-muted p-1.5 text-muted-foreground transition-colors"
+                          title="Refresh checks"
                         >
-                          Refresh
+                          <RefreshCw className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                      <div id="pr-checks-summary" class="text-xs text-muted-foreground"></div>
-                      <div id="pr-checks-list" class="space-y-1 text-xs text-muted-foreground"></div>
-                    </div>
-
-                    <div class="mt-4 rounded-md border border-dashed p-3 space-y-2">
-                      <div class="flex items-center justify-between">
-                        <div class="text-xs font-medium text-muted-foreground">Code owner enforcement</div>
-                        <button
-                          id="codeowner-refresh"
-                          class="h-8 rounded-md border px-3 text-xs text-muted-foreground"
-                        >
-                          Refresh
-                        </button>
+                      <div class="p-3 bg-background">
+                        {visualizerJobs.length > 0 && (
+                          <div class="mb-6">
+                            <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">
+                              <Sparkles className="h-4 w-4 text-violet-400" />
+                              CI/CD Pipeline Execution
+                            </h3>
+                            <div class="rounded-xl overflow-hidden border border-white/10">
+                              <PipelineVisualizer client:idle jobs={visualizerJobs} />
+                            </div>
+                          </div>
+                        )}
+                        <div id="pr-checks-summary" class="text-sm text-muted-foreground mb-2">Loading checks...</div>
+                        <div id="pr-checks-list" class="space-y-2 text-sm divide-y"></div>
                       </div>
-                      <div id="codeowner-summary" class="text-xs text-muted-foreground"></div>
-                      <div id="codeowner-policy" class="text-xs text-muted-foreground"></div>
-                      <div id="codeowner-blockers" class="space-y-1 text-xs text-amber-500"></div>
-                      <div id="codeowner-files" class="space-y-1 text-xs text-muted-foreground"></div>
                     </div>
 
-                    <div class="mt-4 rounded-md border border-dashed p-3 space-y-2">
-                      <div class="flex items-center justify-between">
-                        <div class="text-xs font-medium text-muted-foreground">Merge gate policy</div>
+                    <CodeOwnersEnforcement 
+                      client:load 
+                      repoOwner={repo.owner} 
+                      repoName={repo.name} 
+                      prNumber={pr.number} 
+                    />
+
+                    <div class="mt-4 border rounded-md overflow-hidden bg-background shadow-sm">
+                      <div class="bg-muted/30 p-3 border-b flex items-center justify-between">
+                        <div class="text-sm font-semibold flex items-center gap-2">
+                          <ListOrdered className="h-4 w-4 text-muted-foreground" id="merge-gate-overall-icon" />
+                          Merge Gates
+                        </div>
                         <button
                           id="merge-readiness-refresh"
-                          class="h-8 rounded-md border px-3 text-xs text-muted-foreground"
+                          class="h-6 rounded hover:bg-muted p-1.5 text-muted-foreground transition-colors"
+                          title="Refresh merge gates"
                         >
-                          Refresh
+                          <RefreshCw className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                      <div id="merge-readiness-summary" class="text-xs text-muted-foreground"></div>
-                      <div id="merge-readiness-breakdown" class="text-xs text-muted-foreground"></div>
-                      <div id="merge-readiness-blockers" class="space-y-1 text-xs text-amber-500"></div>
-                      <div id="merge-readiness-recommendations" class="space-y-1 text-xs text-muted-foreground"></div>
+                      <div class="p-3 bg-background space-y-3">
+                        <div id="merge-readiness-summary" class="text-sm font-medium">Loading merge readiness...</div>
+                        <div id="merge-readiness-breakdown" class="text-xs text-muted-foreground flex gap-2"></div>
+                        <div id="merge-readiness-blockers" class="space-y-1 text-sm text-amber-600 font-medium bg-amber-500/5 p-2 rounded"></div>
+                        <div id="merge-readiness-recommendations" class="space-y-1 text-xs text-muted-foreground"></div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -734,7 +776,24 @@ try {
             <div class="text-sm font-medium mb-2 text-muted-foreground">
               Reviewers
             </div>
-            <div class="text-sm">No reviewers</div>
+            {uniqueRequiredOwners.length > 0 ? (
+              <div class="flex flex-col gap-2">
+                <div class="text-xs text-muted-foreground flex items-center gap-1 mb-1">
+                  <AlertCircle className="h-3 w-3" />
+                  Required by CODEOWNERS
+                </div>
+                {uniqueRequiredOwners.map((owner) => (
+                  <div class="flex items-center gap-2 text-sm">
+                    <div class="h-5 w-5 rounded-full bg-muted flex items-center justify-center text-[10px] font-semibold border">
+                      {owner.replace('@', '')[0]?.toUpperCase()}
+                    </div>
+                    <span class="font-medium text-primary">{owner}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div class="text-sm">No reviewers</div>
+            )}
           </div>
           <div>
             <div class="text-sm font-medium mb-2 text-muted-foreground">
@@ -841,11 +900,6 @@ try {
   const prChecksRefresh = document.getElementById("pr-checks-refresh");
   const prChecksSummary = document.getElementById("pr-checks-summary");
   const prChecksList = document.getElementById("pr-checks-list");
-  const codeOwnerRefresh = document.getElementById("codeowner-refresh");
-  const codeOwnerSummary = document.getElementById("codeowner-summary");
-  const codeOwnerPolicy = document.getElementById("codeowner-policy");
-  const codeOwnerBlockers = document.getElementById("codeowner-blockers");
-  const codeOwnerFiles = document.getElementById("codeowner-files");
   const mergeReadinessRefresh = document.getElementById("merge-readiness-refresh");
   const mergeReadinessSummary = document.getElementById("merge-readiness-summary");
   const mergeReadinessBreakdown = document.getElementById("merge-readiness-breakdown");
@@ -984,6 +1038,7 @@ try {
 
     const targetValue = prStateSelect.value;
     prStateApply.setAttribute("disabled", "true");
+    prStateMsg.classList.remove("hidden");
     prStateMsg.textContent = "Applying state transition...";
 
     try {
@@ -1004,9 +1059,10 @@ try {
         throw new Error(data?.error?.message || data?.message || "Failed to transition state");
       }
 
-      prStateMsg.textContent = "State transition complete.";
+      prStateMsg.textContent = "State transition complete. Reloading...";
       window.location.reload();
     } catch (error) {
+      prStateMsg.classList.add("text-red-500");
       prStateMsg.textContent = error.message || "Failed to transition state";
     } finally {
       prStateApply.removeAttribute("disabled");
@@ -1038,36 +1094,50 @@ try {
     const evaluations = status?.ruleEvaluations || [];
 
     autoMergeToggle.textContent = enabled ? "Disable auto-merge" : "Enable auto-merge";
-    autoMergeStatus.textContent = enabled
+    autoMergeToggle.className = enabled 
+       ? "h-8 rounded-md bg-muted hover:bg-muted/80 px-3 text-xs font-medium text-foreground transition-colors"
+       : "h-8 rounded-md bg-primary/10 hover:bg-primary/20 px-3 text-xs font-medium text-primary transition-colors";
+
+    autoMergeStatus.innerHTML = enabled
       ? eligible
-        ? "Auto-merge is enabled and currently merge-ready."
-        : "Auto-merge is enabled but waiting for merge policy."
-      : "Auto-merge is disabled.";
+        ? `<span class="text-green-600 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-green-500"></span> Auto-merge enabled and currently merge-ready</span>`
+        : `<span class="text-amber-600 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Auto-merge enabled but waiting for policy</span>`
+      : `<span class="text-muted-foreground flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-muted-foreground/30"></span> Auto-merge is disabled</span>`;
 
     if (status?.enabledBy || status?.enabledAt) {
       const enabledBy = status?.enabledBy ? `by ${status.enabledBy}` : "by unknown user";
       const enabledAt = status?.enabledAt ? ` at ${new Date(status.enabledAt).toLocaleString()}` : "";
-      autoMergeStatus.textContent += ` Enabled ${enabledBy}${enabledAt}.`;
+      autoMergeSummary.textContent = `Enabled ${enabledBy}${enabledAt}. `;
+    } else {
+      autoMergeSummary.textContent = "";
     }
 
     if (!summary || summary.totalRules === 0) {
-      autoMergeSummary.textContent = "No repository auto-merge rules configured.";
+      autoMergeSummary.textContent += "No repository auto-merge rules configured.";
     } else {
-      autoMergeSummary.textContent = `Rules: ${summary.passedRules}/${summary.totalRules} passing • failed ${summary.failedRules} • unmatched ${summary.unmatchedRules}`;
+      autoMergeSummary.textContent += `Rules: ${summary.passedRules}/${summary.totalRules} passing • failed ${summary.failedRules} • unmatched ${summary.unmatchedRules}`;
     }
 
     if (autoMergeBlockers) {
-      autoMergeBlockers.innerHTML = blockers.map((blocker) => `<div>• ${blocker}</div>`).join("");
+      autoMergeBlockers.innerHTML = blockers.map((blocker) => `<div class="flex items-start gap-2 bg-amber-50 p-2 rounded text-amber-700 border border-amber-100">
+         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-0.5 flex-shrink-0"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+         <span>${blocker}</span>
+      </div>`).join("");
     }
 
     if (autoMergeRules) {
-      autoMergeRules.innerHTML = evaluations.map((rule) => {
-        const state = !rule.matched ? "not matched" : rule.passed ? "passing" : "failing";
-        const reasons = (rule.reasons || []).length > 0
-          ? ` (${rule.reasons.join(" | ")})`
-          : "";
-        return `<div>• ${rule.name}: ${state}${reasons}</div>`;
-      }).join("");
+      if (evaluations.length === 0) {
+        autoMergeRules.innerHTML = "";
+      } else {
+        autoMergeRules.innerHTML = `<div class="font-medium text-foreground mb-1 text-sm">Rule Evaluations</div>` + evaluations.map((rule) => {
+          const state = !rule.matched ? "not matched" : rule.passed ? "passing" : "failing";
+          const stateColor = !rule.matched ? "text-muted-foreground" : rule.passed ? "text-green-600" : "text-amber-600";
+          const reasons = (rule.reasons || []).length > 0
+            ? `<div class="text-xs text-muted-foreground mt-0.5 pl-4">${rule.reasons.join(" | ")}</div>`
+            : "";
+          return `<div class="py-1"><div class="flex items-center justify-between gap-2"><span class="font-medium text-sm">${rule.name}</span> <span class="${stateColor}">${state}</span></div>${reasons}</div>`;
+        }).join("");
+      }
     }
   }
 
@@ -1167,24 +1237,35 @@ try {
       const data = payload?.data || payload;
       const summary = data?.summary || {};
       const checks = data?.checks || [];
-      prChecksSummary.textContent =
-        `Passed ${summary.passed || 0}/${summary.total || 0} • Failed ${summary.failed || 0} • Pending ${summary.pending || 0}`;
+
+      if (checks.length > 0 && summary.failed > 0) {
+        document.getElementById("checks-overall-icon")?.classList.replace("text-muted-foreground", "text-red-500");
+      } else if (checks.length > 0 && summary.pending === 0 && summary.failed === 0) {
+        document.getElementById("checks-overall-icon")?.classList.replace("text-muted-foreground", "text-green-500");
+      }
+
+      prChecksSummary.innerHTML =
+        `<span class="font-medium text-foreground">Passed ${summary.passed || 0}/${summary.total || 0}</span> <span class="mx-2 text-muted">|</span> <span class="text-red-500">Failed ${summary.failed || 0}</span> <span class="mx-2 text-muted">|</span> <span class="text-amber-500">Pending ${summary.pending || 0}</span>`;
 
       if (checks.length === 0) {
-        prChecksList.textContent = "No checks reported yet.";
+        prChecksList.innerHTML = `<div class="p-4 text-center text-muted-foreground">No checks reported yet.</div>`;
         return;
       }
 
       prChecksList.innerHTML = checks
         .map((check) => {
           const state = formatCheckState(check);
-          const label = `${check.name}: ${state}`;
+          const icon = state === "passed" ? "✓" : state === "failed" ? "✕" : "○";
+          const label = `<span class="font-medium">${check.name}</span> <span class="text-muted-foreground ml-2">— ${state}</span>`;
           const link = check.detailsUrl
-            ? `<a href="${check.detailsUrl}" target="_blank" rel="noopener noreferrer" class="hover:underline">${label}</a>`
-            : `<span>${label}</span>`;
-          return `<div class="flex items-center justify-between gap-2">
-            <span class="${checkStateClass(state)}">${link}</span>
-            <span class="text-[11px] text-muted-foreground">${check.headSha?.slice(0, 7) || ""}</span>
+            ? `<a href="${check.detailsUrl}" target="_blank" rel="noopener noreferrer" class="hover:underline flex items-center gap-2">${label}</a>`
+            : `<div class="flex items-center gap-2">${label}</div>`;
+          return `<div class="flex items-center justify-between py-2.5">
+            <div class="flex items-center gap-3">
+              <span class="${checkStateClass(state)} font-bold w-4 text-center">${icon}</span>
+              ${link}
+            </div>
+            <span class="text-xs font-mono text-muted-foreground bg-muted/30 px-2 py-0.5 rounded">${check.headSha?.slice(0, 7) || ""}</span>
           </div>`;
         })
         .join("");
@@ -1199,81 +1280,7 @@ try {
     loadPrChecks();
   });
 
-  async function loadCodeOwnerEnforcement() {
-    if (!codeOwnerSummary || !codeOwnerPolicy || !codeOwnerFiles) return;
-    codeOwnerSummary.textContent = "Loading code owner policy...";
-    codeOwnerPolicy.textContent = "";
-    if (codeOwnerBlockers) codeOwnerBlockers.innerHTML = "";
-    codeOwnerFiles.innerHTML = "";
 
-    try {
-      const res = await fetch(
-        `/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}/codeowner-enforcement`,
-      );
-      const payload = await res.json();
-      if (!res.ok) {
-        throw new Error(payload?.error?.message || payload?.message || "Failed to load code owner policy");
-      }
-
-      const data = payload?.data || payload;
-      if (!data?.enforced) {
-        codeOwnerSummary.textContent = "Code owner approval is not required by active review/branch policy.";
-        const activeRule = data?.activeRule;
-        codeOwnerPolicy.textContent = activeRule
-          ? `Active branch rule: ${activeRule.pattern} (code owner review disabled).`
-          : "No active matching branch protection rule.";
-        return;
-      }
-
-      const ready = !!data?.ready;
-      codeOwnerSummary.textContent = ready
-        ? "Code owner requirements satisfied."
-        : "Code owner approval is required and currently blocking merge.";
-
-      const policyParts = [];
-      if (data?.requiredBy?.reviewPolicy) policyParts.push("review requirements");
-      if (data?.requiredBy?.branchRule) {
-        const rulePattern = data?.activeRule?.pattern ? `branch rule ${data.activeRule.pattern}` : "branch protection rule";
-        policyParts.push(rulePattern);
-      }
-      codeOwnerPolicy.textContent = policyParts.length > 0
-        ? `Enforced by ${policyParts.join(" + ")}.`
-        : "Enforced by repository policy.";
-
-      const blockers = data?.blockers || [];
-      if (codeOwnerBlockers) {
-        codeOwnerBlockers.innerHTML = blockers.map((blocker) => `<div>• ${blocker}</div>`).join("");
-      }
-
-      const files = data?.files || [];
-      if (files.length === 0) {
-        codeOwnerFiles.textContent = "No CODEOWNERS-mapped files in this pull request.";
-        return;
-      }
-
-      codeOwnerFiles.innerHTML = files
-        .map((file) => {
-          const ownerText = file.owners?.length ? file.owners.join(", ") : "no owners";
-          const state = file.approved ? "approved" : "missing approval";
-          const stateClass = file.approved ? "text-green-500" : "text-amber-500";
-          return `<div class="flex items-start justify-between gap-2">
-            <span class="font-mono">${file.path}</span>
-            <span class="text-right ${stateClass}">${state} (${ownerText})</span>
-          </div>`;
-        })
-        .join("");
-    } catch (error) {
-      codeOwnerSummary.textContent = error.message || "Failed to load code owner policy";
-      codeOwnerPolicy.textContent = "";
-      if (codeOwnerBlockers) codeOwnerBlockers.innerHTML = "";
-      codeOwnerFiles.innerHTML = "";
-    }
-  }
-
-  codeOwnerRefresh?.addEventListener("click", async (event) => {
-    event.preventDefault();
-    loadCodeOwnerEnforcement();
-  });
 
   async function loadMergeReadiness() {
     if (!mergeReadinessSummary || !mergeReadinessBreakdown) return;
@@ -1298,29 +1305,46 @@ try {
       const failedByType = report?.failedByType || {};
       const recommendations = report?.recommendations || [];
 
-      mergeReadinessSummary.textContent = canMerge
-        ? "All merge gates are currently satisfied."
-        : "Merge is currently blocked by one or more gates.";
-      mergeReadinessBreakdown.textContent =
-        `Gates: passed ${report?.passedGates || 0}/${report?.totalGates || 0} • failed ${report?.failedGates || 0}`;
+      const overallIcon = document.getElementById("merge-gate-overall-icon");
+      if (overallIcon) {
+         if (canMerge) {
+             overallIcon.classList.replace("text-muted-foreground", "text-green-500");
+         } else {
+             overallIcon.classList.replace("text-muted-foreground", "text-red-500");
+         }
+      }
 
-      if (mergeReadinessBlockers) {
-        mergeReadinessBlockers.innerHTML = blockers.map((blocker) => `<div>• ${blocker}</div>`).join("");
+      mergeReadinessSummary.innerHTML = canMerge
+        ? `<span class="text-green-600 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-green-500"></span> All merge gates are currently satisfied.</span>`
+        : `<span class="text-red-600 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-red-500"></span> Merge is currently blocked by one or more gates.</span>`;
+      
+      mergeReadinessBreakdown.innerHTML =
+        `<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded border border-green-200">Passed ${report?.passedGates || 0}/${report?.totalGates || 0}</span> 
+         <span class="${report?.failedGates > 0 ? "bg-red-100 text-red-700 border-red-200" : "bg-muted text-muted-foreground border-transparent"} px-2 py-0.5 rounded border">Failed ${report?.failedGates || 0}</span>`;
+
+      if (mergeReadinessBlockers && blockers.length > 0) {
+        mergeReadinessBlockers.innerHTML = blockers.map((blocker) => `<div class="flex items-start gap-2">
+          <span class="text-amber-500 mt-0.5 text-lg leading-none">•</span>
+          <span>${blocker}</span>
+        </div>`).join("");
+      } else if (mergeReadinessBlockers) {
+        mergeReadinessBlockers.innerHTML = "";
+        mergeReadinessBlockers.classList.remove("bg-amber-500/5", "p-2", "rounded");
       }
 
       if (mergeReadinessRecommendations) {
-        const typeParts = Object.entries(failedByType).map(([key, count]) => `${key}: ${count}`);
+        const typeParts = Object.entries(failedByType).map(([key, count]) => `${key}: <span class="font-medium">${count}</span>`);
         const sections = [];
         if (typeParts.length > 0) {
-          sections.push(`<div>Failed gate types: ${typeParts.join(", ")}</div>`);
+          sections.push(`<div class="mb-2">Failed gate types: ${typeParts.join(", ")}</div>`);
         }
         if (recommendations.length > 0) {
-          sections.push(...recommendations.map((item) => `<div>• ${item}</div>`));
+          sections.push(`<div class="space-y-1">` + recommendations.map((item) => `<div class="flex gap-2 items-start"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-0.5 flex-shrink-0 text-primary"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> <span>${item}</span></div>`).join("") + `</div>`);
         }
         mergeReadinessRecommendations.innerHTML = sections.join("");
       }
     } catch (error) {
-      mergeReadinessSummary.textContent = error.message || "Failed to load merge readiness";
+      mergeReadinessSummary.innerHTML = `<span class="text-red-500 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-red-500"></span> ${error.message || "Failed to load merge readiness"}</span>`;
       mergeReadinessBreakdown.textContent = "";
       if (mergeReadinessBlockers) mergeReadinessBlockers.innerHTML = "";
       if (mergeReadinessRecommendations) mergeReadinessRecommendations.innerHTML = "";

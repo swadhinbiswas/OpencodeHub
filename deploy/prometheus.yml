@@ -1,0 +1,34 @@
+# Prometheus scrape configuration for OpenCodeHub
+# Add this to your prometheus.yml or include as a file
+
+scrape_configs:
+  - job_name: "opencodehub"
+    metrics_path: "/api/metrics"
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ["opencodehub-app:4321"]
+        labels:
+          service: "opencodehub"
+          environment: "production"
+
+  - job_name: "opencodehub-worker"
+    # Worker exposes metrics on port 9090
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    static_configs:
+      - targets: ["opencodehub-worker:9090"]
+        labels:
+          service: "opencodehub-worker"
+          environment: "production"
+
+  - job_name: "postgres"
+    # Requires postgres_exporter sidecar
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+
+  - job_name: "redis"
+    # Requires redis_exporter sidecar
+    static_configs:
+      - targets: ["redis-exporter:9121"]

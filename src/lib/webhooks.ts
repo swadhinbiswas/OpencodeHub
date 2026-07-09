@@ -87,12 +87,24 @@ async function dispatchWebhook(
   try {
     // SSRF protection: validate URL resolves to a public IP
     const urlCheck = await validateWebhookUrl(webhook.url);
-    if (!urlCheck.valid) {
-      logger.warn(
-        { webhookId: webhook.id, url: webhook.url, reason: urlCheck.reason },
-        "Webhook URL blocked by SSRF protection",
-      );
-      throw new Error(`SSRF blocked: ${urlCheck.reason}`);
+    const { isOfflineMode } = await import("@/lib/config");
+    
+    if (isOfflineMode()) {
+      if (urlCheck.valid) {
+        throw new Error(`Webhook blocked: External webhooks are disabled in Air-Gapped/Offline mode`);
+      }
+      if (urlCheck.reason && (urlCheck.reason.includes("Invalid") || urlCheck.reason.includes("localhost"))) {
+        throw new Error(`Webhook blocked: ${urlCheck.reason}`);
+      }
+      // If it's a private IP, we ALLOW it in offline mode!
+    } else {
+      if (!urlCheck.valid) {
+        logger.warn(
+          { webhookId: webhook.id, url: webhook.url, reason: urlCheck.reason },
+          "Webhook URL blocked by SSRF protection",
+        );
+        throw new Error(`SSRF blocked: ${urlCheck.reason}`);
+      }
     }
 
     // Generate signature (skip header entirely when no secret is configured)

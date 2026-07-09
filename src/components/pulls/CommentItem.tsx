@@ -32,11 +32,11 @@ export function CommentItem({ comment, owner, repo, pullNumber, currentUser, onR
 
         setIsApplying(true);
         try {
-            const res = await fetch(`/api/repos/${owner}/${repo}/pulls/${pullNumber}/suggestions/apply`, {
+            const res = await fetch(`/api/repos/${owner}/${repo}/pulls/${pullNumber}/comments/apply-suggestion`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    commentIds: [comment.id],
+                    commentId: comment.id,
                     commitMessage: `Apply suggestion from @${comment.author.username}`
                 })
             });

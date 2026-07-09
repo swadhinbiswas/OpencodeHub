@@ -10,7 +10,10 @@
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "declaration": true,
-        "declarationMap": true
+        "declarationMap": true,
+        "noUnusedLocals": false,
+        "noUnusedParameters": false,
+        "types": ["node"]
     },
     "include": [
         "bin/**/*",

@@ -127,6 +127,20 @@ docker-compose exec app bun run scripts/seed-admin.ts
 open http://localhost:4321
 ```
 
+### NAS & Edge Deployment (Cloudflare / Tailscale)
+
+Deploying on a home server or NAS? Use the provided `docker-compose.nas.yml` which includes `cloudflared` and `tailscale` configurations for seamless zero-trust exposure without port forwarding.
+
+```bash
+# Expose via Cloudflare Tunnel
+TUNNEL_TOKEN=your_token docker-compose -f docker-compose.nas.yml --profile cloudflare up -d
+
+# OR Expose via Tailscale
+TS_AUTHKEY=your_key docker-compose -f docker-compose.nas.yml --profile tailscale up -d
+```
+See the [NAS Deployment Guide](docs/administration/deploy-nas.md) and [Exposing NAS Guide](docs/administration/expose-nas.md) for full details.
+
+
 ### Manual Setup
 
 ```bash

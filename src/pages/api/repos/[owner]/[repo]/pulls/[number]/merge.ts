@@ -80,6 +80,13 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals }) => {
         }
     }
 
+    // CodeOwner validation
+    const { checkCodeOwnerApprovals } = await import("@/lib/codeowners-enforcement");
+    const codeOwnerResult = await checkCodeOwnerApprovals(repo.id, pr.id, changedFiles);
+    if (!codeOwnerResult.canMerge) {
+        return conflict(`Merge blocked: Missing CodeOwner approvals for ${codeOwnerResult.missingApprovals.length} files.`);
+    }
+
     // Verify CI Gates (Strict Merge Checks)
     const gateResult = await evaluateGates(pr.id);
 

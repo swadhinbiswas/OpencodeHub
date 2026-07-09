@@ -67,20 +67,20 @@ stackCommands
       await setParentBranch(git, newBranch, currentBranch);
 
       spinner.succeed(
-        `Created branch ${chalk.green(newBranch)} (stacked on ${chalk.cyan(currentBranch)})`,
+        `Created branch ${chalk.hex("#50fa7b")(newBranch)} (stacked on ${chalk.hex("#8be9fd")(currentBranch)})`,
       );
 
-      console.log("\n" + chalk.dim("Next steps:"));
-      console.log(chalk.dim("  • Make your changes"));
+      console.log("\n" + chalk.hex("#6272a4")("Next steps:"));
+      console.log(chalk.hex("#6272a4")("  • Make your changes"));
       console.log(
-        chalk.dim("  • Run ") +
-        chalk.cyan("och stack submit") +
-        chalk.dim(" to push and create PRs"),
+        chalk.hex("#6272a4")("  • Run ") +
+        chalk.hex("#8be9fd")("och stack submit") +
+        chalk.hex("#6272a4")(" to push and create PRs"),
       );
     } catch (error) {
       spinner.fail("Failed to create branch");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -96,7 +96,7 @@ stackCommands
     const config = getConfig();
 
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -121,9 +121,9 @@ stackCommands
       if (sortedStackBranches.length === 0) {
         spinner.fail("No stack branches found");
         console.log(
-          chalk.dim("Run ") +
-          chalk.cyan("och stack create <name>") +
-          chalk.dim(" to start a stack."),
+          chalk.hex("#6272a4")("Run ") +
+          chalk.hex("#8be9fd")("och stack create <name>") +
+          chalk.hex("#6272a4")(" to start a stack."),
         );
         process.exit(1);
       }
@@ -153,7 +153,7 @@ stackCommands
       try {
         for (const branch of sortedStackBranches) {
           try {
-            console.log(chalk.dim(`  Pushing ${branch} to origin...`));
+            console.log(chalk.hex("#6272a4")(`  Pushing ${branch} to origin...`));
             const result = spawnSync(
               "git",
               ["push", "origin", branch, "--force-with-lease"],
@@ -170,10 +170,10 @@ stackCommands
             }
 
             pushedBranches.push(branch);
-            console.log(chalk.green(`  ✓ Pushed ${branch}`));
+            console.log(chalk.hex("#50fa7b")(`  ✓ Pushed ${branch}`));
           } catch (e) {
             console.log(
-              chalk.red(
+              chalk.hex("#ff5555")(
                 `\n  ✗ Could not push ${branch}: ${e instanceof Error ? e.message : "Unknown error"}`,
               ),
             );
@@ -232,30 +232,30 @@ stackCommands
         if (result.data?.stack?.pullRequests) {
           console.log(chalk.bold("\n📋 Pull Requests Created:\n"));
           for (const pr of result.data.stack.pullRequests) {
-            console.log(`  ${chalk.green("●")} #${pr.number}: ${pr.title}`);
-            console.log(chalk.dim(`    ${pr.branch} → ${pr.baseBranch}`));
+            console.log(`  ${chalk.hex("#50fa7b")("●")} #${pr.number}: ${pr.title}`);
+            console.log(chalk.hex("#6272a4")(`    ${pr.branch} → ${pr.baseBranch}`));
           }
         }
       } catch (apiError) {
         // API might not be available, just show success for pushing
         spinner.succeed(`Pushed ${pushedBranches.length} branches`);
         console.log(
-          chalk.yellow("\n  Note: Could not auto-create PRs (API unavailable)"),
+          chalk.hex("#f1fa8c")("\n  Note: Could not auto-create PRs (API unavailable)"),
         );
-        console.log(chalk.dim("  Create PRs manually at your repository\n"));
+        console.log(chalk.hex("#6272a4")("  Create PRs manually at your repository\n"));
       }
 
-      console.log(chalk.dim("\nNext steps:"));
-      console.log(chalk.dim("  • Get reviews on your PRs"));
+      console.log(chalk.hex("#6272a4")("\nNext steps:"));
+      console.log(chalk.hex("#6272a4")("  • Get reviews on your PRs"));
       console.log(
-        chalk.dim("  • Run ") +
-        chalk.cyan("och stack sync") +
-        chalk.dim(" to keep in sync"),
+        chalk.hex("#6272a4")("  • Run ") +
+        chalk.hex("#8be9fd")("och stack sync") +
+        chalk.hex("#6272a4")(" to keep in sync"),
       );
     } catch (error) {
       spinner.fail("Failed to submit stack");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -270,22 +270,41 @@ stackCommands
   .action(async () => {
     try {
       const roots = await getStackTopology(git);
+        console.log(chalk.hex("#6272a4")("No stack found."));
+        return;
+      }
 
-      console.log(chalk.bold("\n📚 Stack Topology\n"));
+      const { printSectionHeader, formatBadge } = await import("../../lib/formatter.js");
+
+      // Use Dracula colors directly or via chalk
+      const cyan = chalk.hex("#8be9fd");
+      const green = chalk.hex("#50fa7b");
+      const purple = chalk.hex("#bd93f9");
+      const comment = chalk.hex("#6272a4");
+      const pink = chalk.hex("#ff79c6");
+
+      printSectionHeader("Stack Topology", "Current branch and dependencies", "STACK");
 
       if (roots.length === 0) {
-        console.log(chalk.dim("No stack found."));
+        console.log(comment("  No stack branches found.\n"));
         return;
       }
 
       const printNode = (node: any, prefix: string, isLast: boolean, isRoot: boolean) => {
-        const marker = isRoot ? "" : (isLast ? "└─" : "├─");
-        const branchColor = node.isCurrent ? chalk.green.bold : chalk.cyan;
-        const status = node.isCurrent ? chalk.yellow(" (current)") : "";
+        // Use beautiful thick unicode borders for the tree
+        const marker = isRoot ? "" : (isLast ? " └── " : " ├── ");
+        
+        // Color coding
+        const isCurrent = node.isCurrent;
+        const branchColor = isCurrent ? green.bold : cyan;
+        
+        // Badges
+        const currentBadge = isCurrent ? formatBadge("current", "success") + " " : "";
+        const baseBadge = isRoot ? formatBadge("base", "accent") + " " : "";
+        
+        console.log(`  ${comment(prefix)}${comment(marker)}${baseBadge}${currentBadge}${branchColor(node.branch)}`);
 
-        console.log(`${prefix}${marker} ${branchColor(node.branch)}${status}`);
-
-        const newPrefix = isRoot ? "" : (prefix + (isLast ? "   " : "│  "));
+        const newPrefix = isRoot ? "" : (prefix + (isLast ? "     " : " │   "));
 
         for (let i = 0; i < node.children.length; i++) {
           printNode(node.children[i], newPrefix, i === node.children.length - 1, false);
@@ -293,15 +312,15 @@ stackCommands
       };
 
       for (const root of roots) {
-        // If root has children or is interesting (e.g. main)
         if (root.children.length > 0 || root.branch === 'main') {
+          console.log(""); // Spacing
           printNode(root, "", true, true);
-          console.log("");
         }
       }
+      console.log(""); // Bottom Spacing
 
     } catch (error) {
-      console.error(chalk.red("Failed to view stack"), error);
+      console.error(chalk.hex("#ff5555")("Failed to view stack"), error);
       process.exit(1);
     }
   });
@@ -356,8 +375,8 @@ stackCommands
           syncedCount++;
         } catch (e) {
           spinner.fail(`Conflict rebasing ${node.branch} onto ${parentBranch}`);
-          console.log(chalk.yellow("\nResolve conflicts manually, then continue with:"));
-          console.log(chalk.cyan(`  git rebase --continue`));
+          console.log(chalk.hex("#f1fa8c")("\nResolve conflicts manually, then continue with:"));
+          console.log(chalk.hex("#8be9fd")(`  git rebase --continue`));
           // We have to stop here because children depend on this
           process.exit(1);
         }
@@ -373,7 +392,7 @@ stackCommands
     } catch (error) {
       spinner.fail("Failed to sync stack");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }

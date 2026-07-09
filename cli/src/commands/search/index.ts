@@ -61,7 +61,7 @@ searchCommands
   .action(async (query: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -81,7 +81,7 @@ searchCommands
       spinner.stop();
 
       if (result.data.items.length === 0) {
-        console.log(chalk.dim(`No repositories found matching "${query}"`));
+        console.log(chalk.hex("#6272a4")(`No repositories found matching "${query}"`));
         return;
       }
 
@@ -94,18 +94,18 @@ searchCommands
       for (const repo of result.data.items) {
         const icon =
           repo.visibility === "private"
-            ? chalk.yellow("🔒")
-            : chalk.green("📦");
+            ? chalk.hex("#f1fa8c")("🔒")
+            : chalk.hex("#50fa7b")("📦");
         console.log(`${icon} ${chalk.bold(repo.fullName)}`);
         if (repo.description) {
           console.log(
-            chalk.dim(
+            chalk.hex("#6272a4")(
               `   ${repo.description.slice(0, 80)}${repo.description.length > 80 ? "..." : ""}`,
             ),
           );
         }
         console.log(
-          chalk.dim(
+          chalk.hex("#6272a4")(
             `   ⭐ ${repo.stars}  🍴 ${repo.forks}  Updated ${new Date(repo.updatedAt).toLocaleDateString()}`,
           ),
         );
@@ -115,7 +115,7 @@ searchCommands
     } catch (error) {
       spinner.fail("Search failed");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -132,7 +132,7 @@ searchCommands
   .action(async (query: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -152,7 +152,7 @@ searchCommands
       spinner.stop();
 
       if (result.data.items.length === 0) {
-        console.log(chalk.dim(`No issues found matching "${query}"`));
+        console.log(chalk.hex("#6272a4")(`No issues found matching "${query}"`));
         return;
       }
 
@@ -163,12 +163,12 @@ searchCommands
       );
 
       for (const issue of result.data.items) {
-        const icon = issue.state === "open" ? chalk.green("●") : chalk.red("●");
+        const icon = issue.state === "open" ? chalk.hex("#50fa7b")("●") : chalk.hex("#ff5555")("●");
         console.log(
-          `${icon} ${chalk.cyan(issue.repository.fullName)}#${issue.number} ${issue.title}`,
+          `${icon} ${chalk.hex("#8be9fd")(issue.repository.fullName)}#${issue.number} ${issue.title}`,
         );
         console.log(
-          chalk.dim(
+          chalk.hex("#6272a4")(
             `   @${issue.author.username} • ${new Date(issue.createdAt).toLocaleDateString()}`,
           ),
         );
@@ -178,7 +178,7 @@ searchCommands
     } catch (error) {
       spinner.fail("Search failed");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -199,7 +199,7 @@ searchCommands
   .action(async (query: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -219,7 +219,7 @@ searchCommands
       spinner.stop();
 
       if (result.data.items.length === 0) {
-        console.log(chalk.dim(`No pull requests found matching "${query}"`));
+        console.log(chalk.hex("#6272a4")(`No pull requests found matching "${query}"`));
         return;
       }
 
@@ -232,15 +232,15 @@ searchCommands
       for (const pr of result.data.items) {
         const icon =
           pr.state === "open"
-            ? chalk.green("●")
+            ? chalk.hex("#50fa7b")("●")
             : pr.state === "merged"
-              ? chalk.magenta("●")
-              : chalk.red("●");
+              ? chalk.hex("#ff79c6")("●")
+              : chalk.hex("#ff5555")("●");
         console.log(
-          `${icon} ${chalk.cyan(pr.repository.fullName)}#${pr.number} ${pr.title}`,
+          `${icon} ${chalk.hex("#8be9fd")(pr.repository.fullName)}#${pr.number} ${pr.title}`,
         );
         console.log(
-          chalk.dim(
+          chalk.hex("#6272a4")(
             `   ${pr.sourceBranch} → ${pr.targetBranch} • @${pr.author.username}`,
           ),
         );
@@ -250,7 +250,7 @@ searchCommands
     } catch (error) {
       spinner.fail("Search failed");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -266,7 +266,7 @@ searchCommands
   .action(async (query: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -290,7 +290,7 @@ searchCommands
       spinner.stop();
 
       if (result.data.items.length === 0) {
-        console.log(chalk.dim(`No code found matching "${query}"`));
+        console.log(chalk.hex("#6272a4")(`No code found matching "${query}"`));
         return;
       }
 
@@ -302,17 +302,17 @@ searchCommands
 
       for (const item of result.data.items) {
         console.log(
-          `${chalk.cyan(item.repository.fullName)}/${chalk.bold(item.path)}`,
+          `${chalk.hex("#8be9fd")(item.repository.fullName)}/${chalk.bold(item.path)}`,
         );
         for (const match of item.matches.slice(0, 3)) {
-          console.log(chalk.dim(`   ${match.line}: `) + match.content.trim());
+          console.log(chalk.hex("#6272a4")(`   ${match.line}: `) + match.content.trim());
         }
         console.log("");
       }
     } catch (error) {
       spinner.fail("Search failed");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }

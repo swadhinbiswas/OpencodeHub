@@ -177,6 +177,14 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
     }
   }
 
+  // Trigger automation
+  import("@/lib/automations").then(({ triggerAutomation }) => {
+    triggerAutomation(repo.id, "issue_opened" as any, {
+      issueId: issueId,
+      userId: userId,
+    }).catch((err) => logger.error({ err }, "Failed to trigger automations for new issue"));
+  });
+
   return new Response(
     JSON.stringify({
       ...newIssue,

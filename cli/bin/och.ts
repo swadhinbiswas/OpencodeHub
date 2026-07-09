@@ -7,6 +7,9 @@
 import chalk from "chalk";
 import { Command } from "commander";
 import { simpleGit } from "simple-git";
+import boxen from "boxen";
+import figlet from "figlet";
+import gradient from "gradient-string";
 
 // Import all command modules
 import { apiCommands } from "../src/commands/api/index.js";
@@ -15,6 +18,7 @@ import { automateCommand } from "../src/commands/automate/index.js";
 import { branchCommands } from "../src/commands/branch/index.js";
 import { ciCommands } from "../src/commands/ci/index.js";
 import { configCommands } from "../src/commands/config/index.js";
+import { focusCommand } from "../src/commands/focus/index.js";
 import { inboxCommand } from "../src/commands/inbox/index.js";
 import { insightsCommand } from "../src/commands/insights/index.js";
 import { issueCommands } from "../src/commands/issue/index.js";
@@ -23,6 +27,7 @@ import { notifyCommand } from "../src/commands/notify/index.js";
 import { prCommands } from "../src/commands/pr/index.js";
 import { queueCommands } from "../src/commands/queue/index.js";
 import { releaseCommands } from "../src/commands/release/index.js";
+import { runnerCommands } from "../src/commands/runner/index.js";
 import {
   cloneRepo,
   createRepo,
@@ -50,18 +55,19 @@ program.configureHelp({
 
 // Add custom help banner with Dracula colors
 program.addHelpText("beforeAll", () => {
-  const banner = `
-  ╔═══════════════════════════════════╗
-  ║     OpenCodeHub CLI (OCH)         ║
-  ╚═══════════════════════════════════╝`;
+  const ascii = figlet.textSync("OpenCodeHub", { font: "Standard" });
+  const gradientText = gradient.pastel.multiline(ascii);
+  
+  const box = boxen(gradientText + "\n" + chalk.hex("#6272a4")("Stack-first ") + chalk.hex("#bd93f9").bold("PR workflows") + chalk.hex("#6272a4")(" from your terminal"), {
+    padding: 1,
+    margin: 1,
+    borderStyle: "round",
+    borderColor: "cyan",
+    title: "OCH CLI",
+    titleAlignment: "center"
+  });
 
-  return (
-    chalk.hex("#ff79c6")(banner) +
-    "\n" + // Dracula pink
-    chalk.hex("#6272a4")("    Stack-first ") + // Dracula comment gray
-    chalk.hex("#bd93f9").bold("PR workflows") + // Dracula purple
-    chalk.hex("#6272a4")(" from your terminal\n")
-  ); // Dracula comment gray
+  return box + "\n";
 });
 
 function isHiddenCommand(cmd: Command) {
@@ -178,6 +184,7 @@ program.addCommand(issueCommands);
 
 // CI/CD commands
 program.addCommand(ciCommands);
+program.addCommand(runnerCommands);
 
 // Merge Queue commands
 program.addCommand(queueCommands);
@@ -199,6 +206,9 @@ program.addCommand(automateCommand);
 
 // Insights commands
 program.addCommand(insightsCommand);
+
+// Focus command (Interactive Cockpit)
+program.addCommand(focusCommand);
 
 // ================================
 // Repository Commands
@@ -386,16 +396,27 @@ program
       const currentBranch = branches.current;
       const stackBranches = branches.all.filter((b) => b.startsWith("stack/"));
 
-      console.log(chalk.bold("\n📊 Status\n"));
-      console.log(`Current branch: ${chalk.cyan(currentBranch)}`);
+      const { renderPanel, printMetricStrip, formatBadge } = await import("../src/lib/formatter.js");
 
+      const metrics = [
+        { label: "Current Branch", value: currentBranch, tone: "info" as const },
+        { label: "Stack Branches", value: stackBranches.length, tone: stackBranches.length > 0 ? "accent" as const : "muted" as const }
+      ];
+
+      console.log("");
+      printMetricStrip(metrics);
+      console.log("");
+
+      const lines = [];
+      
       if (stackBranches.length > 0) {
-        console.log(`\nStack branches: ${stackBranches.length}`);
+        lines.push(chalk.hex("#bd93f9").bold("Stack Branches:"));
         for (const branch of stackBranches) {
           const isCurrent = branch === currentBranch;
-          const marker = isCurrent ? chalk.yellow("●") : chalk.dim("○");
-          console.log(`  ${marker} ${isCurrent ? chalk.bold(branch) : branch}`);
+          const marker = isCurrent ? chalk.hex("#50fa7b")("▶") : chalk.hex("#6272a4")("•");
+          lines.push(`  ${marker} ${isCurrent ? chalk.bold.hex("#f8f8f2")(branch) : chalk.hex("#6272a4")(branch)}`);
         }
+        lines.push("");
       }
 
       // Show git status
@@ -405,23 +426,25 @@ program
         status.not_added.length > 0 ||
         status.staged.length > 0
       ) {
-        console.log(chalk.bold("\nChanges:"));
+        lines.push(chalk.hex("#f1fa8c").bold("Uncommitted Changes:"));
         if (status.staged.length > 0) {
-          console.log(chalk.green(`  Staged: ${status.staged.length} files`));
+          lines.push(`  ${formatBadge(String(status.staged.length), "success")} staged`);
         }
         if (status.modified.length > 0) {
-          console.log(
-            chalk.yellow(`  Modified: ${status.modified.length} files`),
-          );
+          lines.push(`  ${formatBadge(String(status.modified.length), "warning")} modified`);
         }
         if (status.not_added.length > 0) {
-          console.log(
-            chalk.red(`  Untracked: ${status.not_added.length} files`),
-          );
+          lines.push(`  ${formatBadge(String(status.not_added.length), "danger")} untracked`);
         }
       } else {
-        console.log(chalk.dim("\nWorking tree clean"));
+        lines.push(chalk.hex("#6272a4")("Working tree clean"));
       }
+
+      renderPanel({
+        title: "Repository Status",
+        lines,
+        tone: "neutral"
+      });
 
       console.log("");
     } catch (error) {
@@ -480,7 +503,7 @@ program
 # OpenCodeHub CLI bash completion
 _och_completions() {
     local cur="\${COMP_WORDS[COMP_CWORD]}"
-    local commands="auth stack pr issue ci queue review metrics repo branch config release search secret ssh-key api push init sync status whoami"
+    local commands="auth stack pr issue ci queue review metrics repo branch config release search secret ssh-key api push init sync status whoami focus runner"
     COMPREPLY=($(compgen -W "$commands" -- "$cur"))
 }
 complete -F _och_completions och
@@ -513,6 +536,8 @@ _och() {
         'sync:Sync with remote'
         'status:Show status'
         'whoami:Show current user'
+        'focus:Interactive stack and review cockpit'
+        'runner:Manage OpenCodeHub CI runners'
     )
     _describe 'command' commands
 }
@@ -543,6 +568,8 @@ complete -c och -n "__fish_use_subcommand" -a "init" -d "Initialize repository"
 complete -c och -n "__fish_use_subcommand" -a "sync" -d "Sync with remote"
 complete -c och -n "__fish_use_subcommand" -a "status" -d "Show status"
 complete -c och -n "__fish_use_subcommand" -a "whoami" -d "Show current user"
+complete -c och -n "__fish_use_subcommand" -a "focus" -d "Interactive stack and review cockpit"
+complete -c och -n "__fish_use_subcommand" -a "runner" -d "Manage OpenCodeHub CI runners"
 `,
     };
 

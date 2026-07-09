@@ -1,0 +1,56 @@
+[Unit]
+Description=OpenCodeHub Self-Hosted Git Platform
+Documentation=https://github.com/swadhinbiswas/OpencodeHub
+After=network.target postgresql.service redis.service
+Wants=postgresql.service redis.service
+
+[Service]
+Type=simple
+User=opencodehub
+Group=opencodehub
+WorkingDirectory=/opt/opencodehub
+
+# Environment
+EnvironmentFile=/opt/opencodehub/.env
+Environment=NODE_ENV=production
+Environment=HOST=0.0.0.0
+Environment=PORT=4321
+
+# Start the app
+ExecStart=/usr/bin/node /opt/opencodehub/dist/server/entry.mjs
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Graceful shutdown
+TimeoutStopSec=30
+KillMode=mixed
+KillSignal=SIGTERM
+Restart=on-failure
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/opencodehub/data
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+MemoryDenyWriteExecute=yes
+LockPersonality=yes
+
+# Resource limits
+LimitNOFILE=65535
+LimitNPROC=4096
+MemoryMax=2G
+CPUQuota=200%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=opencodehub
+
+[Install]
+WantedBy=multi-user.target

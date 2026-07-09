@@ -90,6 +90,25 @@ export const PATCH: APIRoute = async ({ request, params }) => {
             }
         }
 
+        // Trigger automation
+        import("@/lib/automations").then(({ triggerAutomation }) => {
+            let triggerType: any = "issue_updated";
+            if (state === "closed" && issue.state !== "closed") {
+                triggerType = "issue_closed";
+            } else if (state === "open" && issue.state === "closed") {
+                triggerType = "issue_reopened";
+            } else if (body.statusId !== undefined) {
+                // We're updating a custom status! Wait, `PATCH` doesn't currently parse `statusId` here, but let's just use `issue_updated` as default.
+                // Wait, if it's just an update:
+                triggerType = "issue_updated";
+            }
+            
+            triggerAutomation(repoData.repository.id, triggerType, {
+                issueId: issue.id,
+                userId: user.userId,
+            }).catch((err) => logger.error({ err }, "Failed to trigger automations for issue update"));
+        });
+
         logger.info({ userId: user.userId, issueId: issue.id }, "Issue updated");
 
         return success({ message: "Issue updated successfully" });

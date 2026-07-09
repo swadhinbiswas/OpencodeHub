@@ -1,0 +1,62 @@
+# .understandignore — patterns for files/dirs to exclude from analysis
+# Syntax: same as .gitignore (globs, # comments, ! negation, trailing / for dirs)
+# Lines below are suggestions — uncomment to activate.
+# Use ! prefix to force-include something excluded by defaults.
+#
+# Built-in defaults (always excluded unless negated):
+#   node_modules/, .git/, dist/, build/, obj/, *.lock, *.min.js, etc.
+#
+# --- From .gitignore (uncomment to exclude) ---
+
+# data/
+# .env
+# .env.local
+# .env.production
+# .env.development
+# .env.test
+# .env.*.local
+# .env.backup-*
+# .env.bak
+# *.env
+# !env.example
+# !env.d.ts
+# *.swp
+# *.swo
+# .DS_Store
+# Thumbs.db
+# logs/
+# .nyc_output/
+# tmp/
+# temp/
+# *.tmp
+# *_debug.txt
+# *_output.txt
+# *_report.txt
+# lint_output*
+# lint_report*
+# cookies.txt
+# fix_get_calls.sh
+# pci/
+# *.pem
+# *.key
+# !*.key.pub
+# .docker/
+# drizzle/meta/
+# .monaco/
+# .vercel
+# test-results/
+# playwright-report/
+# .vitest-cache/
+# .astro/
+
+# --- Detected directories (uncomment to exclude) ---
+
+# tests/
+# docs/
+# scripts/
+
+# --- Test file patterns (uncomment to exclude) ---
+
+# *.test.*
+# *.spec.*
+# *.snap

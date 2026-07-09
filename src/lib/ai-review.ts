@@ -142,6 +142,11 @@ export async function triggerAIReview(
 ): Promise<typeof schema.aiReviews.$inferSelect> {
   const db = getDatabase() as NodePgDatabase<typeof schema>;
 
+  const { isOfflineMode } = await import("@/lib/config");
+  if (isOfflineMode() && config.provider !== "local" && config.provider !== "ollama") {
+    throw new Error("AI review is disabled in Air-Gapped/Offline mode unless using local models.");
+  }
+
   // Rate limit check (per repository)
   if (repositoryId) {
     checkReviewRateLimit(repositoryId);

@@ -4,6 +4,7 @@ import RepoHeader from "@/components/repo/RepoHeader.astro";
 import { getDatabase, schema } from "@/db";
 import { eq, and, asc } from "drizzle-orm";
 import { canReadRepo } from "@/lib/permissions";
+import { PipelineVisualizer } from "@/components/actions/PipelineVisualizer";
 
 import {
     CheckCircle2,
@@ -116,8 +117,17 @@ const getStatusColor = (status: string, conclusion?: string | null) => {
 
 const activeJob = run.jobs[0];
 const activeJobId = activeJob?.id || "";
----
 
+// Parse needs for the visualizer
+const visualizerJobs = run.jobs.map(job => ({
+    id: job.id,
+    name: job.name,
+    status: job.status,
+    conclusion: job.conclusion,
+    needs: job.needs ? JSON.parse(job.needs) : []
+}));
+
+---
 
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
@@ -181,6 +191,15 @@ const activeJobId = activeJob?.id || "";
                     {run.headSha.substring(0, 7)}
                 </a>
             </div>
+        </div>
+
+        <!-- Pipeline DAG Visualizer -->
+        <div class="mb-6">
+            <PipelineVisualizer 
+                client:load 
+                jobs={visualizerJobs} 
+                activeJobId={activeJobId} 
+            />
         </div>
 
         <!-- Layout -->
@@ -286,7 +305,7 @@ const activeJobId = activeJob?.id || "";
     </div>
 </BaseLayout>
 
-<script define:vars={{ repoOwner: repo.owner, repoName: repo.name, runId: run.id, activeJobId }}>
+<script is:inline define:vars={{ repoOwner: repo.owner, repoName: repo.name, runId: run.id, activeJobId }}>
     const jobSelectors = Array.from(document.querySelectorAll("[data-job-id]")).filter((el) => el.closest(".border-r"));
     const jobState = new Map();
 
@@ -301,7 +320,29 @@ const activeJobId = activeJob?.id || "";
         document.querySelectorAll(".job-logs").forEach((el) => el.classList.add("hidden"));
         const panel = document.getElementById(`logs-${jobId}`);
         if (panel) panel.classList.remove("hidden");
+        
+        // Update sidebar highlight
+        document.querySelectorAll("[data-job-id]").forEach((el) => {
+            if (el.closest(".border-r")) {
+                if (el.getAttribute("data-job-id") === jobId) {
+                    el.classList.add("bg-blue-500/10", "text-blue-400");
+                    el.classList.remove("text-gray-400", "hover:bg-white/5", "hover:text-gray-200");
+                } else {
+                    el.classList.remove("bg-blue-500/10", "text-blue-400");
+                    el.classList.add("text-gray-400", "hover:bg-white/5", "hover:text-gray-200");
+                }
+            }
+        });
     }
+
+    // Listen for custom events from React Visualizer
+    window.addEventListener("job-selected", async (e) => {
+        const jobId = e.detail?.jobId;
+        if (jobId) {
+            setActiveJob(jobId);
+            await loadLogs(jobId);
+        }
+    });
 
     function renderLogLines(jobId, logs) {
         const container = document.getElementById(`log-lines-${jobId}`);
@@ -373,8 +414,10 @@ const activeJobId = activeJob?.id || "";
         selector.addEventListener("click", async () => {
             const jobId = selector.getAttribute("data-job-id");
             if (!jobId) return;
-            setActiveJob(jobId);
-            await loadLogs(jobId);
+            // Dispatch event for React Visualizer to pick up
+            window.dispatchEvent(new CustomEvent("job-selected", { detail: { jobId } }));
+            // We don't need to call setActiveJob here directly because the event listener above will catch it,
+            // but calling it anyway for immediate feedback is fine (event listener will just call it again idempotently).
         });
     }
 

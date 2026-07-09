@@ -1,0 +1,129 @@
+services:
+  # Main OpenCodeHub application
+  app:
+    image: swadhinbiswas/opencodehub:latest
+    container_name: opencodehub
+    restart: unless-stopped
+    ports:
+      - "4321:4321" # Web interface (Internal)
+      - "2222:2222" # SSH Git (Internal)
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://opencodehub:opencodehub@postgres:5432/opencodehub
+      - DATABASE_TYPE=postgres
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
+      - WORKFLOW_SECRET_ENCRYPTION_KEY=${WORKFLOW_SECRET_ENCRYPTION_KEY:?WORKFLOW_SECRET_ENCRYPTION_KEY is required}
+      - SSH_HOST_KEY_PATH=/data/ssh/host_key
+      - SERVER_URL=${SITE_URL:-http://localhost:4321}
+      - STORAGE_TYPE=local
+      - STORAGE_PATH=/data/storage
+      - REPOS_PATH=/data/repos
+      # TRUSTED_PROXIES allows real IP mapping from Cloudflare or Tailscale sidecars
+      - TRUSTED_PROXIES=127.0.0.1,172.16.0.0/12,100.64.0.0/10
+    volumes:
+      - repos-data:/data/repos
+      - storage-data:/data/storage
+      - ssh-data:/data/ssh
+      - cache-data:/data/cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - opencodehub-network
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:16-alpine
+    container_name: opencodehub-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: opencodehub
+      POSTGRES_PASSWORD: opencodehub
+      POSTGRES_DB: opencodehub
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - opencodehub-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opencodehub -d opencodehub"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching and sessions
+  redis:
+    image: redis:7-alpine
+    container_name: opencodehub-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - opencodehub-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # -------------------------------------------------------------
+  # OPTION 1: Cloudflare Tunnel (Uncomment 'profiles' to use)
+  # Run with: docker-compose -f docker-compose.nas.yml --profile cloudflare up -d
+  # -------------------------------------------------------------
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: opencodehub-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN:-}
+    networks:
+      - opencodehub-network
+    profiles:
+      - cloudflare
+
+  # -------------------------------------------------------------
+  # OPTION 2: Tailscale (Uncomment 'profiles' to use)
+  # Run with: docker-compose -f docker-compose.nas.yml --profile tailscale up -d
+  # -------------------------------------------------------------
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: opencodehub-tailscale
+    hostname: opencodehub-nas
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY:-}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=false
+    volumes:
+      - tailscale-data:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - net_admin
+      - sys_module
+    networks:
+      - opencodehub-network
+    profiles:
+      - tailscale
+
+volumes:
+  repos-data:
+    driver: local
+  storage-data:
+    driver: local
+  ssh-data:
+    driver: local
+  cache-data:
+    driver: local
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  tailscale-data:
+    driver: local
+
+networks:
+  opencodehub-network:
+    driver: bridge

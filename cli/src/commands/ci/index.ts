@@ -50,26 +50,26 @@ function getStatusIcon(status: string, conclusion?: string): string {
   if (status === "completed") {
     switch (conclusion) {
       case "success":
-        return chalk.green("✓");
+        return chalk.hex("#50fa7b")("✓");
       case "failure":
-        return chalk.red("✗");
+        return chalk.hex("#ff5555")("✗");
       case "cancelled":
-        return chalk.yellow("⊘");
+        return chalk.hex("#f1fa8c")("⊘");
       case "skipped":
-        return chalk.dim("○");
+        return chalk.hex("#6272a4")("○");
       default:
-        return chalk.dim("?");
+        return chalk.hex("#6272a4")("?");
     }
   }
   switch (status) {
     case "queued":
-      return chalk.yellow("◷");
+      return chalk.hex("#f1fa8c")("◷");
     case "in_progress":
       return chalk.blue("●");
     case "waiting":
-      return chalk.dim("◌");
+      return chalk.hex("#6272a4")("◌");
     default:
-      return chalk.dim("?");
+      return chalk.hex("#6272a4")("?");
   }
 }
 
@@ -95,7 +95,7 @@ ciCommands
   .action(async (options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -120,7 +120,7 @@ ciCommands
       spinner.stop();
 
       if (result.data.length === 0) {
-        console.log(chalk.dim("No pipeline runs found."));
+        console.log(chalk.hex("#6272a4")("No pipeline runs found."));
         return;
       }
 
@@ -132,10 +132,10 @@ ciCommands
         const time = new Date(run.createdAt).toLocaleString();
 
         console.log(
-          `${icon} #${run.number} ${run.event} on ${chalk.cyan(run.branch)}`,
+          `${icon} #${run.number} ${run.event} on ${chalk.hex("#8be9fd")(run.branch)}`,
         );
         console.log(
-          chalk.dim(`  ${run.commit.slice(0, 7)} • ${time} • ${duration}`),
+          chalk.hex("#6272a4")(`  ${run.commit.slice(0, 7)} • ${time} • ${duration}`),
         );
       }
 
@@ -143,7 +143,7 @@ ciCommands
     } catch (error) {
       spinner.fail("Failed to list pipeline runs");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -157,7 +157,7 @@ ciCommands
   .action(async (runId: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -184,7 +184,7 @@ ciCommands
         `Status: ${run.status}${run.conclusion ? ` (${run.conclusion})` : ""}`,
       );
       console.log(`Event: ${run.event}`);
-      console.log(`Branch: ${chalk.cyan(run.branch)}`);
+      console.log(`Branch: ${chalk.hex("#8be9fd")(run.branch)}`);
       console.log(`Commit: ${run.commit.slice(0, 7)}`);
       console.log(
         `Started: ${run.startedAt ? new Date(run.startedAt).toLocaleString() : "-"}`,
@@ -203,7 +203,7 @@ ciCommands
     } catch (error) {
       spinner.fail("Failed to fetch pipeline run");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -218,7 +218,7 @@ ciCommands
   .action(async (runId: string, jobId: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -241,7 +241,7 @@ ciCommands
     } catch (error) {
       spinner.fail("Failed to fetch job logs");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -256,7 +256,7 @@ ciCommands
   .action(async (runId: string, options) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -278,7 +278,7 @@ ciCommands
     } catch (error) {
       spinner.fail("Failed to retry pipeline run");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -291,7 +291,7 @@ ciCommands
   .action(async (runId: string) => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -313,7 +313,7 @@ ciCommands
     } catch (error) {
       spinner.fail("Failed to cancel pipeline run");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -326,7 +326,7 @@ ciCommands
   .action(async () => {
     const config = getConfig();
     if (!config.token) {
-      console.error(chalk.red("Not logged in. Run 'och auth login' first."));
+      console.error(chalk.hex("#ff5555")("Not logged in. Run 'och auth login' first."));
       process.exit(1);
     }
 
@@ -350,7 +350,7 @@ ciCommands
       spinner.stop();
 
       if (result.data.length === 0) {
-        console.log(chalk.dim(`No CI runs found for branch ${currentBranch}`));
+        console.log(chalk.hex("#6272a4")(`No CI runs found for branch ${currentBranch}`));
         return;
       }
 
@@ -360,9 +360,9 @@ ciCommands
       console.log(
         `\n${icon} ${run.status}${run.conclusion ? ` (${run.conclusion})` : ""}`,
       );
-      console.log(chalk.dim(`  Run #${run.number} on ${currentBranch}`));
+      console.log(chalk.hex("#6272a4")(`  Run #${run.number} on ${currentBranch}`));
       console.log(
-        chalk.dim(
+        chalk.hex("#6272a4")(
           `  ${run.commit.slice(0, 7)} • ${formatDuration(run.duration)}`,
         ),
       );
@@ -370,7 +370,7 @@ ciCommands
     } catch (error) {
       spinner.fail("Failed to check CI status");
       console.error(
-        chalk.red(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#ff5555")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }

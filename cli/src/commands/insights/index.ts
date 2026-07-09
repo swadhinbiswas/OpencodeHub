@@ -61,7 +61,7 @@ insightsCommand
 
       console.log(chalk.bold("\n📊 Your Developer Metrics\n"));
       console.log(
-        chalk.gray(`  Period: Last ${formatPeriod(options.period)}\n`),
+        chalk.hex("#6272a4")(`  Period: Last ${formatPeriod(options.period)}\n`),
       );
 
       // Main metrics
@@ -70,15 +70,15 @@ insightsCommand
       });
 
       table.push(
-        [chalk.cyan("PRs Opened"), chalk.bold.white(metrics.prsOpened)],
-        [chalk.magenta("PRs Merged"), chalk.bold.white(metrics.prsMerged)],
+        [chalk.hex("#8be9fd")("PRs Opened"), chalk.bold.white(metrics.prsOpened)],
+        [chalk.hex("#ff79c6")("PRs Merged"), chalk.bold.white(metrics.prsMerged)],
         [chalk.blue("Reviews Given"), chalk.bold.white(metrics.reviewsGiven)],
         [
-          chalk.yellow("Avg Time to Merge"),
+          chalk.hex("#f1fa8c")("Avg Time to Merge"),
           chalk.bold.white(formatDuration(metrics.avgTimeToMerge)),
         ],
         [
-          chalk.green("Merge Rate"),
+          chalk.hex("#50fa7b")("Merge Rate"),
           chalk.bold.white(
             metrics.prsOpened > 0
               ? `${Math.round((metrics.prsMerged / metrics.prsOpened) * 100)}%`
@@ -93,14 +93,14 @@ insightsCommand
       // Productivity tip
       if (metrics.prsOpened > 0 && metrics.avgTimeToMerge > 48) {
         console.log(
-          chalk.yellow(
+          chalk.hex("#f1fa8c")(
             "  💡 Tip: Your PRs take an average of " +
               formatDuration(metrics.avgTimeToMerge) +
               " to merge.",
           ),
         );
         console.log(
-          chalk.gray("     Consider smaller PRs for faster reviews.\n"),
+          chalk.hex("#6272a4")("     Consider smaller PRs for faster reviews.\n"),
         );
       }
     } catch (error: any) {
@@ -161,14 +161,14 @@ insightsCommand
       }
 
       console.log(
-        chalk.gray(`  Period: Last ${formatPeriod(options.period)}\n`),
+        chalk.hex("#6272a4")(`  Period: Last ${formatPeriod(options.period)}\n`),
       );
 
       // Repository summary
       if (repoMetrics.totalPrs !== undefined) {
-        console.log(`  Total PRs: ${chalk.cyan(repoMetrics.totalPrs)}`);
-        console.log(`  Merged: ${chalk.green(repoMetrics.mergedPrs || 0)}`);
-        console.log(`  Open: ${chalk.yellow(repoMetrics.openPrs || 0)}`);
+        console.log(`  Total PRs: ${chalk.hex("#8be9fd")(repoMetrics.totalPrs)}`);
+        console.log(`  Merged: ${chalk.hex("#50fa7b")(repoMetrics.mergedPrs || 0)}`);
+        console.log(`  Open: ${chalk.hex("#f1fa8c")(repoMetrics.openPrs || 0)}`);
         console.log();
       }
 
@@ -178,11 +178,11 @@ insightsCommand
 
         const table = new Table({
           head: [
-            chalk.gray("#"),
-            chalk.gray("Developer"),
-            chalk.gray("PRs"),
-            chalk.gray("Reviews"),
-            chalk.gray("Score"),
+            chalk.hex("#6272a4")("#"),
+            chalk.hex("#6272a4")("Developer"),
+            chalk.hex("#6272a4")("PRs"),
+            chalk.hex("#6272a4")("Reviews"),
+            chalk.hex("#6272a4")("Score"),
           ],
         });
 
@@ -194,15 +194,15 @@ insightsCommand
           table.push([
             medal,
             chalk.white(c.username),
-            chalk.cyan(c.prs || 0),
+            chalk.hex("#8be9fd")(c.prs || 0),
             chalk.blue(c.reviews || 0),
-            chalk.yellow(score),
+            chalk.hex("#f1fa8c")(score),
           ]);
         });
 
         console.log(table.toString());
       } else {
-        console.log(chalk.gray("  No contributor data available.\n"));
+        console.log(chalk.hex("#6272a4")("  No contributor data available.\n"));
       }
 
       console.log();
@@ -248,14 +248,14 @@ insightsCommand
 
       const table = new Table();
       table.push(
-        [chalk.gray("Stars"), chalk.yellow(`⭐ ${m.stars || 0}`)],
-        [chalk.gray("Forks"), chalk.blue(`🍴 ${m.forks || 0}`)],
-        [chalk.gray("Open PRs"), chalk.green(`📝 ${m.openPrs || 0}`)],
-        [chalk.gray("Open Issues"), chalk.red(`🐛 ${m.openIssues || 0}`)],
-        [chalk.gray("Contributors"), chalk.cyan(`👥 ${m.contributors || 0}`)],
+        [chalk.hex("#6272a4")("Stars"), chalk.hex("#f1fa8c")(`⭐ ${m.stars || 0}`)],
+        [chalk.hex("#6272a4")("Forks"), chalk.blue(`🍴 ${m.forks || 0}`)],
+        [chalk.hex("#6272a4")("Open PRs"), chalk.hex("#50fa7b")(`📝 ${m.openPrs || 0}`)],
+        [chalk.hex("#6272a4")("Open Issues"), chalk.hex("#ff5555")(`🐛 ${m.openIssues || 0}`)],
+        [chalk.hex("#6272a4")("Contributors"), chalk.hex("#8be9fd")(`👥 ${m.contributors || 0}`)],
         [
-          chalk.gray("Commits (30d)"),
-          chalk.magenta(`📊 ${m.recentCommits || 0}`),
+          chalk.hex("#6272a4")("Commits (30d)"),
+          chalk.hex("#ff79c6")(`📊 ${m.recentCommits || 0}`),
         ],
       );
 

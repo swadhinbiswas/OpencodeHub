@@ -1,0 +1,122 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "Request Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(http_requests_total[5m])",
+          "legendFormat": "{{method}} {{route}} {{code}}"
+        }
+      ]
+    },
+    {
+      "title": "Request Latency (p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "title": "Error Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "rate(http_requests_total{code=~\"5..\"}[5m])",
+          "legendFormat": "5xx errors"
+        },
+        {
+          "expr": "rate(http_requests_total{code=~\"4..\"}[5m])",
+          "legendFormat": "4xx errors"
+        }
+      ]
+    },
+    {
+      "title": "Database Query Latency",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(db_query_duration_seconds_bucket[5m]))",
+          "legendFormat": "p95 {{operation}} {{table}}"
+        }
+      ]
+    },
+    {
+      "title": "Git Operations",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "expr": "rate(git_clone_total[5m])",
+          "legendFormat": "clones ({{status}})"
+        },
+        {
+          "expr": "rate(git_push_total[5m])",
+          "legendFormat": "pushes ({{status}})"
+        }
+      ]
+    },
+    {
+      "title": "CI/CD Queue Depth",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        {
+          "expr": "ci_queue_depth",
+          "legendFormat": "queue depth"
+        },
+        {
+          "expr": "active_runners",
+          "legendFormat": "active runners"
+        }
+      ]
+    },
+    {
+      "title": "Rate Limit Rejections",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "targets": [
+        {
+          "expr": "rate(rate_limit_hits_total[5m])",
+          "legendFormat": "{{tier}}"
+        }
+      ]
+    },
+    {
+      "title": "Auth Attempts",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "targets": [
+        {
+          "expr": "rate(auth_attempts_total[5m])",
+          "legendFormat": "{{method}} {{result}}"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["opencodehub"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "OpenCodeHub Overview",
+  "uid": "opencodehub-overview"
+}

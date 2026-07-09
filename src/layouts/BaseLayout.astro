@@ -78,6 +78,35 @@ const {
       </footer>
     </div>
     <Toaster client:idle />
+    <script is:inline>
+      document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable) return;
+        if (e.key === '.') {
+          const parts = window.location.pathname.split('/').filter(Boolean);
+          if (parts.length >= 2) {
+            const owner = parts[0];
+            const repo = parts[1];
+            const excluded = ['docs', 'api', 'admin', 'login', 'register', 'settings'];
+            if (!excluded.includes(owner)) {
+              e.preventDefault();
+              let url = `/${owner}/${repo}/ide`;
+              const type = parts[2];
+              if (type === 'tree' || type === 'blob' || type === 'edit') {
+                const branch = parts[3];
+                if (branch) {
+                  url += `?branch=${encodeURIComponent(branch)}`;
+                  const fileParts = parts.slice(4);
+                  if (fileParts.length > 0) {
+                    url += `&file=${encodeURIComponent(fileParts.join('/'))}`;
+                  }
+                }
+              }
+              window.location.href = url;
+            }
+          }
+        }
+      });
+    </script>
   </body>
 </html>
 

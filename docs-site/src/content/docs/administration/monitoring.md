@@ -1,3 +1,7 @@
+---
+title: "Monitoring and Observability"
+---
+
 # Monitoring and Observability
 
 OpenCodeHub supports OpenTelemetry (OTLP) for logs and metrics, allowing you to stream data to any compatible backend (Grafana Cloud, Prometheus/Loki, Datadog).

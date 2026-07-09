@@ -440,7 +440,7 @@ function parseActions(actionsJson: string): { type: string; label: string }[] {
   </div>
 </BaseLayout>
 
-<script define:vars={{ repoId }}>
+<script is:inline define:vars={{ repoId }}>
   // Repo selector
   const repoSelect = document.getElementById("repo-select");
   repoSelect?.addEventListener("change", (e) => {

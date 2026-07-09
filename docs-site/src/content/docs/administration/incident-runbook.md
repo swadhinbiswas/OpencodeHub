@@ -1,3 +1,7 @@
+---
+title: Incident Runbook
+---
+
 # OpenCodeHub Incident Runbook
 
 Date: 2026-04-21

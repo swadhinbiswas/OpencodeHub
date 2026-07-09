@@ -47,7 +47,7 @@ inboxCommand
             }
 
             if (prs.length === 0) {
-                console.log(chalk.gray("\n  📭 Your inbox is empty!\n"));
+                console.log(chalk.hex("#6272a4")("\n  📭 Your inbox is empty!\n"));
                 return;
             }
 
@@ -60,7 +60,7 @@ inboxCommand
                         return true;
                     });
                     console.log(
-                        `  ${chalk.cyan(section.name)} ${chalk.gray(`(${sectionPrs.length})`)}`
+                        `  ${chalk.hex("#8be9fd")(section.name)} ${chalk.hex("#6272a4")(`(${sectionPrs.length})`)}`
                     );
                 }
                 console.log();
@@ -69,11 +69,11 @@ inboxCommand
             // Display PRs
             const table = new Table({
                 head: [
-                    chalk.gray("#"),
-                    chalk.gray("Title"),
-                    chalk.gray("Author"),
-                    chalk.gray("Status"),
-                    chalk.gray("Updated"),
+                    chalk.hex("#6272a4")("#"),
+                    chalk.hex("#6272a4")("Title"),
+                    chalk.hex("#6272a4")("Author"),
+                    chalk.hex("#6272a4")("Status"),
+                    chalk.hex("#6272a4")("Updated"),
                 ],
                 colWidths: [8, 40, 15, 12, 12],
             });
@@ -81,13 +81,13 @@ inboxCommand
             for (const pr of prs.slice(0, 20)) {
                 const statusColor =
                     pr.state === "open"
-                        ? chalk.green
+                        ? chalk.hex("#50fa7b")
                         : pr.state === "merged"
-                            ? chalk.magenta
-                            : chalk.red;
+                            ? chalk.hex("#ff79c6")
+                            : chalk.hex("#ff5555");
 
                 table.push([
-                    chalk.cyan(`#${pr.number}`),
+                    chalk.hex("#8be9fd")(`#${pr.number}`),
                     pr.title.substring(0, 38),
                     pr.author?.username || "unknown",
                     statusColor(pr.state),
@@ -97,7 +97,7 @@ inboxCommand
 
             console.log(table.toString());
             console.log(
-                chalk.gray(`\n  Showing ${Math.min(prs.length, 20)} of ${prs.length} PRs\n`)
+                chalk.hex("#6272a4")(`\n  Showing ${Math.min(prs.length, 20)} of ${prs.length} PRs\n`)
             );
         } catch (error: any) {
             spinner.fail(`Failed to load inbox: ${error.message}`);
@@ -123,7 +123,7 @@ sectionCommand
             spinner.stop();
 
             if (sections.length === 0) {
-                console.log(chalk.gray("\n  No custom sections. Create one with: och inbox section create\n"));
+                console.log(chalk.hex("#6272a4")("\n  No custom sections. Create one with: och inbox section create\n"));
                 return;
             }
 
@@ -131,7 +131,7 @@ sectionCommand
             for (const section of sections) {
                 const filters = section.filters ? Object.keys(section.filters).length : 0;
                 console.log(
-                    `  ${section.isDefault ? "📌" : "📁"} ${chalk.cyan(section.name)} ${chalk.gray(
+                    `  ${section.isDefault ? "📌" : "📁"} ${chalk.hex("#8be9fd")(section.name)} ${chalk.hex("#6272a4")(
                         `(${filters} filters)`
                     )}`
                 );
@@ -180,9 +180,9 @@ sectionCommand
                 filters,
             });
 
-            spinner.succeed(`Created section: ${chalk.cyan(answers.name)}`);
+            spinner.succeed(`Created section: ${chalk.hex("#8be9fd")(answers.name)}`);
         } catch (error: any) {
-            console.error(chalk.red(`Failed to create section: ${error.message}`));
+            console.error(chalk.hex("#ff5555")(`Failed to create section: ${error.message}`));
         }
     });
 
@@ -201,7 +201,7 @@ sectionCommand
             ]);
 
             if (!confirm) {
-                console.log(chalk.gray("Cancelled"));
+                console.log(chalk.hex("#6272a4")("Cancelled"));
                 return;
             }
 
@@ -221,9 +221,9 @@ sectionCommand
                 id: section.id,
             });
 
-            spinner.succeed(`Deleted section: ${chalk.cyan(name)}`);
+            spinner.succeed(`Deleted section: ${chalk.hex("#8be9fd")(name)}`);
         } catch (error: any) {
-            console.error(chalk.red(`Failed to delete section: ${error.message}`));
+            console.error(chalk.hex("#ff5555")(`Failed to delete section: ${error.message}`));
         }
     });
 

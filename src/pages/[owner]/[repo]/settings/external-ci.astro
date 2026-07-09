@@ -578,7 +578,7 @@ const repo = {
   </div>
 </BaseLayout>
 
-<script define:vars={{ repoOwner: repo.owner, repoName: repo.name, initialGitlabConfigId: gitlabConfig?.id || null, initialCircleciConfigId: circleciConfig?.id || null, initialBuildkiteConfigId: buildkiteConfig?.id || null, initialJenkinsConfigId: jenkinsConfig?.id || null, initialCodecovConfigId: codecovConfig?.id || null, initialCoverallsConfigId: coverallsConfig?.id || null, initialSonarConfigId: sonarqubeConfig?.id || null, initialSnykConfigId: snykConfig?.id || null }}>
+<script is:inline define:vars={{ repoOwner: repo.owner, repoName: repo.name, initialGitlabConfigId: gitlabConfig?.id || null, initialCircleciConfigId: circleciConfig?.id || null, initialBuildkiteConfigId: buildkiteConfig?.id || null, initialJenkinsConfigId: jenkinsConfig?.id || null, initialCodecovConfigId: codecovConfig?.id || null, initialCoverallsConfigId: coverallsConfig?.id || null, initialSonarConfigId: sonarqubeConfig?.id || null, initialSnykConfigId: snykConfig?.id || null }}>
   const btn = document.getElementById("generate-token");
   const output = document.getElementById("token-output");
   const providerTemplate = document.getElementById("provider-template");

@@ -1,3 +1,7 @@
+---
+title: Deployment Compatibility Matrix
+---
+
 # Deployment Compatibility Matrix
 
 OpenCodeHub supports multiple deployment configurations. This document maps features to deployment modes.
@@ -9,33 +13,31 @@ OpenCodeHub supports multiple deployment configurations. This document maps feat
 | **Single-Node (Docker)** | Docker Compose on one VM | Small teams (<50 users), self-hosted | ✅ Production-ready |
 | **Single-Node (Bare Metal)** | Direct Node.js on one server | Air-gapped, minimal cloud | ✅ Production-ready |
 | **Multi-Node (K8s)** | Helm chart on Kubernetes | Teams of any size, HA | ✅ Production-ready |
-| **Managed Cloud (Vercel)** | Vercel adapter | Quick demos, prototyping | ⚠️ Experimental |
-| **Edge / CDN** | Workers/Edge runtime | Ultra-low latency global | ⚠️ Not supported |
 
 ## Feature Compatibility by Mode
 
-| Feature | Single-Node (Docker) | Multi-Node (K8s) | Air-Gapped | Vercel |
-|---|---|---|---|---|
-| Git over SSH | ✅ | ✅ | ✅ | ❌ |
-| Git over HTTPS | ✅ | ✅ | ✅ | ✅ |
-| CI/CD Runners | ✅ | ✅ | ✅ | ❌ |
-| Merge Queues | ✅ | ✅ | ✅ | ❌ |
-| Real-time (SSE) | ✅ | ✅ | ✅ | ⚠️ |
-| Rate Limiting (Redis) | ✅ | ✅ | ⚠️ | ❌ |
-| AI Code Review | ✅ | ✅ | ⚠️ | ✅ |
-| Object Storage (S3) | ✅ | ✅ | ✅ | ⚠️ |
-| Email Notifications | ✅ | ✅ | ✅ | ✅ |
-| Slack Notifications | ✅ | ✅ | ✅ | ✅ |
-| Prometheus Metrics | ✅ | ✅ | ✅ | ⚠️ |
-| OTLP Logging | ✅ | ✅ | ⚠️ | ❌ |
-| Webhook Events | ✅ | ✅ | ✅ | ✅ |
-| LFS (Large Files) | ✅ | ✅ | ✅ | ⚠️ |
-| Database: PostgreSQL | ✅ | ✅ | ✅ | ✅ |
-| Database: MySQL | ✅ | ✅ | ✅ | ⚠️ |
-| Database: SQLite | ✅ | ❌ | ✅ | ✅ |
-| Database: Turso/LibSQL | ✅ | ✅ | ✅ | ✅ |
-| Backup & Restore | ✅ | ✅ | ✅ | ❌ |
-| Horizontal Scaling | ❌ | ✅ | ✅ | ✅ |
+| Feature | Single-Node (Docker) | Multi-Node (K8s) | Air-Gapped |
+|---|---|---|---|
+| Git over SSH | ✅ | ✅ | ✅ |
+| Git over HTTPS | ✅ | ✅ | ✅ |
+| CI/CD Runners | ✅ | ✅ | ✅ |
+| Merge Queues | ✅ | ✅ | ✅ |
+| Real-time (SSE) | ✅ | ✅ | ✅ |
+| Rate Limiting (Redis) | ✅ | ✅ | ⚠️ |
+| AI Code Review | ✅ | ✅ | ⚠️ |
+| Object Storage (S3) | ✅ | ✅ | ✅ |
+| Email Notifications | ✅ | ✅ | ✅ |
+| Slack Notifications | ✅ | ✅ | ✅ |
+| Prometheus Metrics | ✅ | ✅ | ✅ |
+| OTLP Logging | ✅ | ✅ | ⚠️ |
+| Webhook Events | ✅ | ✅ | ✅ |
+| LFS (Large Files) | ✅ | ✅ | ✅ |
+| Database: PostgreSQL | ✅ | ✅ | ✅ |
+| Database: MySQL | ✅ | ✅ | ✅ |
+| Database: SQLite | ✅ | ❌ | ✅ |
+| Database: Turso/LibSQL | ✅ | ✅ | ✅ |
+| Backup & Restore | ✅ | ✅ | ✅ |
+| Horizontal Scaling | ❌ | ✅ | ✅ |
 
 Legend: ✅ Supported, ⚠️ Partial/Config needed, ❌ Not supported
 
@@ -57,8 +59,6 @@ Legend: ✅ Supported, ⚠️ Partial/Config needed, ❌ Not supported
 |---|---|---|---|
 | **Local disk** | ✅ | ✅ | ✅ | ✅ Default |
 | **S3-compatible** | ✅ | ✅ | ✅ | ❌ |
-| **Google Cloud Storage** | ✅ | ✅ | ⚠️ | ❌ |
-| **Azure Blob** | ✅ | ✅ | ⚠️ | ❌ |
 | **Backblaze B2** | ✅ | ✅ | ⚠️ | ❌ |
 
 ## Network & Security
@@ -109,11 +109,11 @@ REDIS_URL=redis://host:6379
 
 ### Object Storage (Required for S3)
 ```bash
-STORAGE_ADAPTER=s3
-AWS_ACCESS_KEY_ID=...
-AWS_SECRET_ACCESS_KEY=...
-AWS_REGION=us-east-1
-AWS_BUCKET=opencodehub-storage
+STORAGE_TYPE=s3
+STORAGE_ACCESS_KEY_ID=...
+STORAGE_SECRET_ACCESS_KEY=...
+STORAGE_REGION=us-east-1
+STORAGE_BUCKET=opencodehub-storage
 ```
 
 ### Email (Optional)

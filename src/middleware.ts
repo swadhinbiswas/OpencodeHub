@@ -6,6 +6,7 @@ import { logger } from "./lib/logger";
 import { httpRequestDurationMicroseconds } from "./lib/metrics";
 import { applyCsrfProtection } from "./middleware/csrf";
 import { createRateLimitMiddleware } from "./middleware/rate-limit";
+import { isConfigured } from "./lib/config";
 
 // Define tiers for different routes
 const apiLimiter = createRateLimitMiddleware("api");
@@ -17,10 +18,24 @@ const CSRF_EXEMPT_PREFIXES = [
   "/api/graphql", // Uses Bearer token auth
   "/api/git/", // Uses Git protocol auth
   "/api/auth/csrf-token", // The CSRF token endpoint itself
+  "/api/setup", // Setup wizard has no active sessions to protect
 ];
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { request, url } = context;
+
+  // ── Configuration Check ──
+  const configured = isConfigured();
+  const isSetupRoute = url.pathname === "/setup" || url.pathname.startsWith("/api/setup");
+  const isAssetRoute = url.pathname.startsWith("/_astro/") || url.pathname.startsWith("/assets/") || url.pathname.includes(".");
+
+  if (!configured && !isSetupRoute && !isAssetRoute) {
+    return context.redirect("/setup");
+  }
+
+  if (configured && url.pathname === "/setup") {
+    return context.redirect("/");
+  }
 
   // ── Populate Astro.locals.user from session cookie or Bearer token ──
   context.locals.user = null;
@@ -76,7 +91,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const durationSec = durationMs / 1000;
 
   // Record request duration metric
-  const route = url.pathname.replace(/\/[0-9a-f-]{8,}/g, "/:id");
+  // Prevent Prometheus cardinality explosion memory leak by genericizing route
+  let route = url.pathname
+    .replace(/\/[0-9a-fA-F-]{8,}/g, "/:id") // UUIDs
+    .replace(/\/(pulls|issues|commits)\/\d+/g, "/$1/:id") // PRs and Issues
+    .replace(/^\/api\/repos\/[^/]+\/[^/]+/, "/api/repos/:owner/:repo") // API Repo paths
+    .replace(/^\/[^/]+\/[^/]+\/(pulls|issues|settings|actions|wiki)/, "/:owner/:repo/$1"); // UI Repo paths
+
   httpRequestDurationMicroseconds
     .labels(request.method, route, String(response.status))
     .observe(durationSec);

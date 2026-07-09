@@ -58,9 +58,9 @@ authCommands
       } else if (options.withToken) {
         // Interactive token entry (GitHub style: gh auth login --with-token)
         console.log(
-          chalk.dim("Tip: You can create a Personal Access Token at:"),
+          chalk.hex("#6272a4")("Tip: You can create a Personal Access Token at:"),
         );
-        console.log(chalk.cyan(`${serverUrl}/settings/tokens\n`));
+        console.log(chalk.hex("#8be9fd")(`${serverUrl}/settings/tokens\n`));
 
         const answers = await inquirer.prompt([
           {
@@ -73,13 +73,13 @@ authCommands
         token = answers.token;
       } else {
         // Default: Open browser for token creation (like gh auth login)
-        console.log(chalk.yellow("! No token provided."));
+        console.log(chalk.hex("#f1fa8c")("! No token provided."));
         console.log(
-          chalk.dim("\nTo authenticate, you need a Personal Access Token."),
+          chalk.hex("#6272a4")("\nTo authenticate, you need a Personal Access Token."),
         );
         console.log(
-          chalk.dim("Create one at: ") +
-            chalk.cyan(`${serverUrl}/settings/tokens`),
+          chalk.hex("#6272a4")("Create one at: ") +
+            chalk.hex("#8be9fd")(`${serverUrl}/settings/tokens`),
         );
         console.log();
 
@@ -94,9 +94,9 @@ authCommands
 
         if (!useToken) {
           console.log(
-            chalk.dim("\nRun ") +
-              chalk.cyan("och auth login --with-token") +
-              chalk.dim(" after creating a token."),
+            chalk.hex("#6272a4")("\nRun ") +
+              chalk.hex("#8be9fd")("och auth login --with-token") +
+              chalk.hex("#6272a4")(" after creating a token."),
           );
           process.exit(0);
         }
@@ -117,7 +117,7 @@ authCommands
 
       if (token.trim().length < 8) {
         spinner.fail("Invalid token format");
-        console.error(chalk.red("Token looks too short"));
+        console.error(chalk.hex("#ff5555")("Token looks too short"));
         process.exit(1);
       }
 
@@ -144,7 +144,7 @@ authCommands
       const userData = await response.json();
       const username = userData.data?.username || "unknown";
 
-      spinner.succeed(`Authenticated as ${chalk.green(username)}`);
+      spinner.succeed(`Authenticated as ${chalk.hex("#50fa7b")(username)}`);
 
       // Save config
       saveConfig({
@@ -155,18 +155,18 @@ authCommands
         insecure: options.insecure ?? existingConfig.insecure,
       });
 
-      console.log(chalk.green("\n✓ Logged in to " + serverUrl));
+      console.log(chalk.hex("#50fa7b")("\n✓ Logged in to " + serverUrl));
       console.log(
-        chalk.dim(
+        chalk.hex("#6272a4")(
           supportsSecureTokenStorage()
             ? "  Token saved to system keychain"
             : "  Token saved to CLI config fallback (set OCH_TOKEN to avoid local persistence)",
         ),
       );
     } catch (error) {
-      console.error(chalk.red("Login failed"));
+      console.error(chalk.hex("#ff5555")("Login failed"));
       console.error(
-        chalk.dim(error instanceof Error ? error.message : "Unknown error"),
+        chalk.hex("#6272a4")(error instanceof Error ? error.message : "Unknown error"),
       );
       process.exit(1);
     }
@@ -178,7 +178,7 @@ authCommands
   .description("Logout from OpenCodeHub")
   .action(async () => {
     saveConfig({ serverUrl: "", token: "" });
-    console.log(chalk.green("✓ Logged out successfully"));
+    console.log(chalk.hex("#50fa7b")("✓ Logged out successfully"));
   });
 
 // Status
@@ -203,31 +203,31 @@ authCommands
           const userData = await response.json();
           spinner.succeed("Authenticated");
           console.log(
-            chalk.dim("  User: ") +
-              chalk.cyan(userData.data?.username || "unknown"),
+            chalk.hex("#6272a4")("  User: ") +
+              chalk.hex("#8be9fd")(userData.data?.username || "unknown"),
           );
-          console.log(chalk.dim("  Server: ") + config.serverUrl);
+          console.log(chalk.hex("#6272a4")("  Server: ") + config.serverUrl);
           console.log(
-            chalk.dim("  Token: ") + config.token.slice(0, 12) + "...",
+            chalk.hex("#6272a4")("  Token: ") + config.token.slice(0, 12) + "...",
           );
         } else {
           spinner.fail("Token is invalid or expired");
           console.log(
-            chalk.dim("  Run ") +
-              chalk.cyan("och auth login") +
-              chalk.dim(" to re-authenticate"),
+            chalk.hex("#6272a4")("  Run ") +
+              chalk.hex("#8be9fd")("och auth login") +
+              chalk.hex("#6272a4")(" to re-authenticate"),
           );
         }
       } catch (error) {
         spinner.fail("Could not connect to server");
-        console.log(chalk.dim("  Server: ") + config.serverUrl);
+        console.log(chalk.hex("#6272a4")("  Server: ") + config.serverUrl);
       }
     } else {
-      console.log(chalk.yellow("✗ Not authenticated"));
+      console.log(chalk.hex("#f1fa8c")("✗ Not authenticated"));
       console.log(
-        chalk.dim("  Run ") +
-          chalk.cyan("och auth login") +
-          chalk.dim(" to authenticate"),
+        chalk.hex("#6272a4")("  Run ") +
+          chalk.hex("#8be9fd")("och auth login") +
+          chalk.hex("#6272a4")(" to authenticate"),
       );
     }
   });

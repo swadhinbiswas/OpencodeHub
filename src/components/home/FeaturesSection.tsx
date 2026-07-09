@@ -110,7 +110,7 @@ export default function FeaturesSection() {
                     <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/20 bg-primary/5 text-sm text-primary mb-4">
                         ✨ New Features
                     </span>
-                    <h2 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400">
+                    <h2 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-b dark:from-neutral-50 dark:to-neutral-400 from-neutral-900 to-neutral-500">
                         Graphite-Inspired Developer Experience
                     </h2>
                     <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">
@@ -122,7 +122,7 @@ export default function FeaturesSection() {
             </div>
 
             {/* Core Features */}
-            <div className="max-w-7xl mx-auto px-4 border-t border-white/5 pt-20">
+            <div className="max-w-7xl mx-auto px-4 border-t border-border pt-20">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}

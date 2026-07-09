@@ -74,7 +74,7 @@ automateCommand
 
       if (rules.length === 0) {
         console.log(
-          chalk.gray(
+          chalk.hex("#6272a4")(
             "\n  ⚡ No automation rules. Create one with: och automate create\n",
           ),
         );
@@ -89,10 +89,10 @@ automateCommand
 
       const table = new Table({
         head: [
-          chalk.gray("Name"),
-          chalk.gray("Trigger"),
-          chalk.gray("Status"),
-          chalk.gray("Runs"),
+          chalk.hex("#6272a4")("Name"),
+          chalk.hex("#6272a4")("Trigger"),
+          chalk.hex("#6272a4")("Status"),
+          chalk.hex("#6272a4")("Runs"),
         ],
       });
 
@@ -100,7 +100,7 @@ automateCommand
         table.push([
           rule.name,
           formatTrigger(rule.trigger),
-          rule.isEnabled ? chalk.green("enabled") : chalk.gray("disabled"),
+          rule.isEnabled ? chalk.hex("#50fa7b")("enabled") : chalk.hex("#6272a4")("disabled"),
           String(rule.runCount || 0),
         ]);
       }
@@ -122,14 +122,14 @@ automateCommand
       const config = getConfig();
       if (!config.token) {
         console.log(
-          chalk.red("Not authenticated. Run 'och auth login' first."),
+          chalk.hex("#ff5555")("Not authenticated. Run 'och auth login' first."),
         );
         process.exit(1);
       }
 
       const repoInfo = await getRepoInfo();
       if (!repoInfo) {
-        console.log(chalk.red("Not in a git repository"));
+        console.log(chalk.hex("#ff5555")("Not in a git repository"));
         process.exit(1);
       }
 
@@ -138,7 +138,7 @@ automateCommand
         `/api/repos/${repoInfo.owner}/${repoInfo.name}`,
       );
       if (!repoRes.repository?.id) {
-        console.log(chalk.red("Repository not found on OpenCodeHub"));
+        console.log(chalk.hex("#ff5555")("Repository not found on OpenCodeHub"));
         process.exit(1);
       }
 
@@ -221,9 +221,9 @@ automateCommand
         actions: JSON.stringify(actions),
       });
 
-      spinner.succeed(`Created automation: ${chalk.cyan(answers.name)}`);
+      spinner.succeed(`Created automation: ${chalk.hex("#8be9fd")(answers.name)}`);
     } catch (error: any) {
-      console.error(chalk.red(`Failed: ${error.message}`));
+      console.error(chalk.hex("#ff5555")(`Failed: ${error.message}`));
     }
   });
 
@@ -268,7 +268,7 @@ async function toggleRule(name: string, enabled: boolean) {
     await patchWithAuth(`/api/automation-rules?id=${rule.id}`, {
       isEnabled: enabled,
     });
-    spinner.succeed(`${enabled ? "Enabled" : "Disabled"}: ${chalk.cyan(name)}`);
+    spinner.succeed(`${enabled ? "Enabled" : "Disabled"}: ${chalk.hex("#8be9fd")(name)}`);
   } catch (error: any) {
     spinner.fail(`Failed: ${error.message}`);
   }
@@ -313,9 +313,9 @@ automateCommand
       }
 
       await deleteWithAuth(`/api/automation-rules?id=${rule.id}`);
-      spinner.succeed(`Deleted: ${chalk.cyan(name)}`);
+      spinner.succeed(`Deleted: ${chalk.hex("#8be9fd")(name)}`);
     } catch (error: any) {
-      console.error(chalk.red(`Failed: ${error.message}`));
+      console.error(chalk.hex("#ff5555")(`Failed: ${error.message}`));
     }
   });
 

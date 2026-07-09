@@ -94,6 +94,25 @@ const repo = {
                     </div>
 
                     <div class="space-y-2">
+                        <label for="provider" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Webhook Provider
+                        </label>
+                        <select
+                            id="provider"
+                            name="provider"
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            <option value="generic">Generic (JSON Webhook)</option>
+                            <option value="slack">Slack</option>
+                            <option value="discord">Discord</option>
+                            <option value="teams">Microsoft Teams</option>
+                            <option value="linear">Linear (Issue Tracker)</option>
+                            <option value="trello">Trello (Board)</option>
+                            <option value="clickup">ClickUp (Tasks)</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-2">
                         <label for="content_type" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                             Content Type
                         </label>
@@ -184,7 +203,7 @@ const repo = {
     </div>
 </BaseLayout>
 
-<script define:vars={{ repoId: repo.id, owner: repo.owner, repoName: repo.name }}>
+<script is:inline define:vars={{ repoId: repo.id, owner: repo.owner, repoName: repo.name }}>
     const allRadio = document.getElementById('events_all');
     const selectedRadio = document.getElementById('events_selected');
     const selectionDiv = document.getElementById('event-selection');
@@ -206,6 +225,7 @@ const repo = {
         const formData = new FormData(e.target);
         const data = {
             url: formData.get('url'),
+            provider: formData.get('provider'),
             content_type: formData.get('content_type'),
             secret: formData.get('secret'),
             active: formData.get('active') === 'on',

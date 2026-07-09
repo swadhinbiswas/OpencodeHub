@@ -16,65 +16,44 @@ OpenCodeHub allows you to host your own GitHub-like platform. You can run it via
 
 ---
 
-## 🐳 Docker Production Setup
+## ⚡ 1-Click Installation (Recommended)
 
-This is the most robust way to deploy OpenCodeHub.
-
-### 1. Structure Setup
-
-Create a directory for your deployment:
+The easiest way to install OpenCodeHub on a VPS, NAS, or edge device is using the automated installation script. This script automatically handles Docker setup, environment variables, database generation, and configuring the unified `DATA_DIR`.
 
 ```bash
-mkdir opencodehub && cd opencodehub
-mkdir -p data/postgres data/redis data/storage
+curl -sSL https://raw.githubusercontent.com/swadhinbiswas/OpencodeHub/main/install.sh | bash
 ```
 
-### 2. Configuration Files
+The script will:
+1. Ensure Docker and Docker Compose are installed.
+2. Clone the latest stable release.
+3. Automatically configure a unified `/data` mount point (`DATA_DIR`) for all your databases, git repos, and storage to easily enable painless backups.
+4. Prompt you to create an initial Admin user account.
 
-Download the production compose file:
+### Manual Setup (Advanced)
 
+If you prefer to configure Docker Compose manually:
+
+1. Clone the repository:
 ```bash
-curl -o docker-compose.yml https://raw.githubusercontent.com/swadhinbiswas/OpencodeHub/main/docker-compose.yml
-curl -o .env https://raw.githubusercontent.com/swadhinbiswas/OpencodeHub/main/.env.example
+git clone https://github.com/swadhinbiswas/OpencodeHub.git
+cd OpenCodeHub
 ```
 
-### 3. Environment Configuration
-
-Edit `.env` and set **production values**.
-
+2. Configure environment:
 ```bash
-# Critical Security (Generate new keys!)
-JWT_SECRET=<openssl rand -hex 32>
-SESSION_SECRET=<openssl rand -hex 32>
-INTERNAL_HOOK_SECRET=<openssl rand -hex 32>
-
-# Domain Configuration
-SITE_URL=https://git.yourcompany.com
-PORT=3000
-
-# Database (Using the Postgres container defined in compose)
-DATABASE_URL=postgresql://opencodehub:securepassword@postgres:5432/opencodehub
-
-# Object Storage (Highly Recommended for Production)
-STORAGE_TYPE=s3
-STORAGE_BUCKET=my-git-bucket
-STORAGE_REGION=us-east-1
-STORAGE_ACCESS_KEY_ID=...
-STORAGE_SECRET_ACCESS_KEY=...
-# STORAGE_ENDPOINT=https://<account>.r2.cloudflarestorage.com  # set for non-AWS vendors
+cp .env.example .env
 ```
+Open `.env` and set your `DATA_DIR` (e.g., `DATA_DIR=/home/user/opencodehub-data`). The system will automatically map the database, SSH keys, git repositories, and object storage paths to this unified folder.
 
-### 4. Start Services
-
+3. Start services:
 ```bash
 docker-compose up -d
 ```
 
-### 5. Initialization
-
-Initialize the admin user:
+4. Initialize the database and admin user:
 ```bash
-docker-compose exec app bun run scripts/seed-admin.ts
+bun run scripts/seed-admin.ts
 ```
 
 ---

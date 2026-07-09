@@ -149,7 +149,7 @@ if (!repository || repository.owner.username !== owner) {
   </div>
 </Layout>
 
-<script define:vars={{ repoId: repository.id, owner, repo }}>
+<script is:inline define:vars={{ repoId: repository.id, owner, repo }}>
   const form = document.getElementById("new-rule-form");
 
   form.addEventListener("submit", async (e) => {

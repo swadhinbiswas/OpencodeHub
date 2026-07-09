@@ -542,6 +542,42 @@ async function executeAction(
           createdAt: new Date(),
           updatedAt: new Date(),
         });
+      } else if (context.issueId && action.params.body) {
+        await db.insert(schema.issueComments).values({
+          id: generateId(),
+          issueId: context.issueId,
+          authorId: context.userId || "system",
+          body: action.params.body as string,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+      break;
+    }
+
+    case "update_issue_status": {
+      if (context.issueId && action.params.statusId) {
+        // If statusId is a special keyword 'closed' or 'open', update the basic state
+        if (action.params.statusId === "closed" || action.params.statusId === "open") {
+          await db
+            .update(schema.issues)
+            .set({ 
+              state: action.params.statusId,
+              statusId: null, // clear custom status if transitioning to basic state
+              updatedAt: new Date()
+            })
+            .where(eq(schema.issues.id, context.issueId));
+        } else {
+          // Otherwise, it's a custom status ID
+          await db
+            .update(schema.issues)
+            .set({ 
+              statusId: action.params.statusId as string,
+              state: "open", // assuming custom statuses map to 'open' state generally unless specified
+              updatedAt: new Date() 
+            })
+            .where(eq(schema.issues.id, context.issueId));
+        }
       }
       break;
     }
@@ -656,7 +692,7 @@ async function executeAction(
     }
 
     case "assign_user": {
-      if (context.pullRequestId && action.params.user) {
+      if (action.params.user) {
         const username = action.params.user as string;
         // Find user
         const user = await db.query.users.findFirst({
@@ -665,14 +701,24 @@ async function executeAction(
 
         if (user) {
           const { generateId } = await import("./utils");
-          await db
-            .insert(schema.pullRequestAssignees)
-            .values({
-              id: generateId(),
-              pullRequestId: context.pullRequestId,
-              userId: user.id,
-            })
-            .onConflictDoNothing();
+          if (context.pullRequestId) {
+            await db
+              .insert(schema.pullRequestAssignees)
+              .values({
+                id: generateId(),
+                pullRequestId: context.pullRequestId,
+                userId: user.id,
+              })
+              .onConflictDoNothing();
+          } else if (context.issueId) {
+            await db
+              .update(schema.issues)
+              .set({
+                assigneeId: user.id,
+                updatedAt: new Date(),
+              })
+              .where(eq(schema.issues.id, context.issueId));
+          }
         }
       }
       break;

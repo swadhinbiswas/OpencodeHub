@@ -1,0 +1,1209 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "OpenCodeHub",
+    "languages": ["TypeScript", "Astro", "React", "SQL"],
+    "frameworks": ["Astro", "React", "Tailwind CSS", "Drizzle ORM", "Docker"],
+    "description": "A fully self-hosted, open-source GitHub/GitLab alternative with SSH git hosting, pipelines/actions, and advanced UI",
+    "analyzedAt": "2026-06-20T12:00:00Z",
+    "gitCommitHash": "c33981f12fa7e18ad1474aa5519bb5df7a7eeac3"
+  },
+  "nodes": [
+    {
+      "id": "file:src/lib/auth.ts",
+      "type": "file",
+      "name": "Authentication",
+      "filePath": "src/lib/auth.ts",
+      "summary": "JWT token management, password hashing, 2FA, and user authentication utilities",
+      "tags": ["auth", "security", "jwt"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/db/index.ts",
+      "type": "file",
+      "name": "Database Connection",
+      "filePath": "src/db/index.ts",
+      "summary": "Multi-database driver support (SQLite, PostgreSQL, LibSQL/Turso) with Drizzle ORM",
+      "tags": ["database", "orm", "persistence"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/lib/git-server.ts",
+      "type": "file",
+      "name": "Git HTTP Server",
+      "filePath": "src/lib/git-server.ts",
+      "summary": "Smart HTTP Git protocol implementation for push/pull operations with stateless RPC",
+      "tags": ["git", "protocol", "http"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:src/lib/storage.ts",
+      "type": "file",
+      "name": "Storage System",
+      "filePath": "src/lib/storage.ts",
+      "summary": "Pluggable storage backend with local filesystem and S3-compatible object storage support",
+      "tags": ["storage", "s3", "filesystem"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:src/lib/ssh.ts",
+      "type": "file",
+      "name": "SSH Git Server",
+      "filePath": "src/lib/ssh.ts",
+      "summary": "SSH server implementation for git push/pull with key-based authentication and rate limiting",
+      "tags": ["ssh", "git", "security"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:src/lib/pipeline.ts",
+      "type": "file",
+      "name": "CI/CD Pipeline Engine",
+      "filePath": "src/lib/pipeline.ts",
+      "summary": "GitHub Actions compatible workflow engine with Docker-based execution",
+      "tags": ["ci", "cd", "pipeline", "docker"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:src/lib/stacks.ts",
+      "type": "file",
+      "name": "Stacked PRs",
+      "filePath": "src/lib/stacks.ts",
+      "summary": "Core logic for managing stacked pull request workflows (Graphite-style)",
+      "tags": ["pr", "stack", "workflow"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/middleware.ts",
+      "type": "file",
+      "name": "Global Middleware",
+      "filePath": "src/middleware.ts",
+      "summary": "Request middleware for auth, rate limiting, CSRF protection, and CSP headers",
+      "tags": ["middleware", "security", "auth"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/lib/pull-requests.ts",
+      "type": "file",
+      "name": "Pull Requests",
+      "filePath": "src/lib/pull-requests.ts",
+      "summary": "PR CRUD operations, merge logic, and review management",
+      "tags": ["pr", "merge", "review"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:src/lib/merge-queue.ts",
+      "type": "file",
+      "name": "Merge Queue",
+      "filePath": "src/lib/merge-queue.ts",
+      "summary": "Stack-aware merge queue with speculative builds and priority lanes",
+      "tags": ["merge", "queue", "ci"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:src/lib/webhooks.ts",
+      "type": "file",
+      "name": "Webhooks",
+      "filePath": "src/lib/webhooks.ts",
+      "summary": "Outbound webhook delivery with event filtering and retry logic",
+      "tags": ["webhooks", "events", "integration"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/lib/automations.ts",
+      "type": "file",
+      "name": "Automations",
+      "filePath": "src/lib/automations.ts",
+      "summary": "Workflow automation rules for repository events",
+      "tags": ["automations", "rules", "workflow"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/lib/ai-review.ts",
+      "type": "file",
+      "name": "AI Code Review",
+      "filePath": "src/lib/ai-review.ts",
+      "summary": "AI-powered code review with configurable rules and suggestions",
+      "tags": ["ai", "review", "code-quality"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:src/lib/permissions.ts",
+      "type": "file",
+      "name": "Permissions",
+      "filePath": "src/lib/permissions.ts",
+      "summary": "RBAC and repository access control with fine-grained permissions",
+      "tags": ["permissions", "rbac", "security"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/lib/logger.ts",
+      "type": "file",
+      "name": "Logger",
+      "filePath": "src/lib/logger.ts",
+      "summary": "Structured logging with pino for application events",
+      "tags": ["logging", "observability"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/lib/utils.ts",
+      "type": "file",
+      "name": "Utilities",
+      "filePath": "src/lib/utils.ts",
+      "summary": "Common utility functions (ID generation, date formatting, etc.)",
+      "tags": ["utils", "helpers"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/lib/email.ts",
+      "type": "file",
+      "name": "Email Service",
+      "filePath": "src/lib/email.ts",
+      "summary": "SMTP email sending with templates for notifications",
+      "tags": ["email", "notifications"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/lib/analytics.ts",
+      "type": "file",
+      "name": "Analytics",
+      "filePath": "src/lib/analytics.ts",
+      "summary": "Repository and user analytics tracking",
+      "tags": ["analytics", "metrics"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/lib/ci-formats.ts",
+      "type": "file",
+      "name": "CI Formats",
+      "filePath": "src/lib/ci-formats.ts",
+      "summary": "GitHub Actions YAML workflow parsing and validation",
+      "tags": ["ci", "yaml", "parsing"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/lib/ci-gates.ts",
+      "type": "file",
+      "name": "CI Gates",
+      "filePath": "src/lib/ci-gates.ts",
+      "summary": "CI status checks and gate enforcement for branch protection",
+      "tags": ["ci", "gates", "branch-protection"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/runner/index.ts",
+      "type": "file",
+      "name": "CI Runner",
+      "filePath": "src/runner/index.ts",
+      "summary": "Docker-based CI runner for executing workflow jobs",
+      "tags": ["runner", "ci", "docker"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:src/runner/executor.ts",
+      "type": "file",
+      "name": "Job Executor",
+      "filePath": "src/runner/executor.ts",
+      "summary": "Job execution logic with step management and artifact handling",
+      "tags": ["executor", "jobs", "steps"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:src/runner/client.ts",
+      "type": "file",
+      "name": "Runner Client",
+      "filePath": "src/runner/client.ts",
+      "summary": "Client for communicating with the CI server",
+      "tags": ["client", "api", "ci"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/pages/api/auth/login.ts",
+      "type": "file",
+      "name": "Login API",
+      "filePath": "src/pages/api/auth/login.ts",
+      "summary": "User login endpoint with JWT token generation",
+      "tags": ["api", "auth", "login"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/pages/api/auth/register.ts",
+      "type": "file",
+      "name": "Register API",
+      "filePath": "src/pages/api/auth/register.ts",
+      "summary": "User registration endpoint",
+      "tags": ["api", "auth", "register"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/pages/api/repos/[owner]/[repo]/index.ts",
+      "type": "file",
+      "name": "Repository API",
+      "filePath": "src/pages/api/repos/[owner]/[repo]/index.ts",
+      "summary": "Repository CRUD operations and metadata",
+      "tags": ["api", "repos", "crud"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/db/schema/index.ts",
+      "type": "file",
+      "name": "Schema Index",
+      "filePath": "src/db/schema/index.ts",
+      "summary": "Drizzle ORM schema exports for all database tables",
+      "tags": ["schema", "database", "orm"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/db/schema/users.ts",
+      "type": "file",
+      "name": "Users Schema",
+      "filePath": "src/db/schema/users.ts",
+      "summary": "User accounts, passwords, OAuth, 2FA secrets, admin flags",
+      "tags": ["schema", "users", "auth"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/db/schema/repositories.ts",
+      "type": "file",
+      "name": "Repositories Schema",
+      "filePath": "src/db/schema/repositories.ts",
+      "summary": "Git repositories, visibility, disk paths, settings",
+      "tags": ["schema", "repos", "git"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/db/schema/pull-requests.ts",
+      "type": "file",
+      "name": "Pull Requests Schema",
+      "filePath": "src/db/schema/pull-requests.ts",
+      "summary": "PRs, states, branches, merge status",
+      "tags": ["schema", "pr", "merge"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/db/schema/merge-queue.ts",
+      "type": "file",
+      "name": "Merge Queue Schema",
+      "filePath": "src/db/schema/merge-queue.ts",
+      "summary": "Queue entries with priority, CI status, attempts",
+      "tags": ["schema", "merge", "queue"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/db/schema/workflows.ts",
+      "type": "file",
+      "name": "Workflows Schema",
+      "filePath": "src/db/schema/workflows.ts",
+      "summary": "CI/CD workflow definitions and run history",
+      "tags": ["schema", "ci", "workflows"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/db/schema/issues.ts",
+      "type": "file",
+      "name": "Issues Schema",
+      "filePath": "src/db/schema/issues.ts",
+      "summary": "Issue tracking with labels, milestones, assignees",
+      "tags": ["schema", "issues", "tracking"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/db/schema/organizations.ts",
+      "type": "file",
+      "name": "Organizations Schema",
+      "filePath": "src/db/schema/organizations.ts",
+      "summary": "Organization and team structure",
+      "tags": ["schema", "orgs", "teams"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/db/schema/webhooks.ts",
+      "type": "file",
+      "name": "Webhooks Schema",
+      "filePath": "src/db/schema/webhooks.ts",
+      "summary": "Outbound webhook configurations",
+      "tags": ["schema", "webhooks", "integration"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/db/schema/automations.ts",
+      "type": "file",
+      "name": "Automations Schema",
+      "filePath": "src/db/schema/automations.ts",
+      "summary": "Automation rules and triggers",
+      "tags": ["schema", "automations", "rules"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/db/schema/branch-protection.ts",
+      "type": "file",
+      "name": "Branch Protection Schema",
+      "filePath": "src/db/schema/branch-protection.ts",
+      "summary": "Branch protection rules and required status checks",
+      "tags": ["schema", "branch-protection", "security"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/db/schema/ai-reviews.ts",
+      "type": "file",
+      "name": "AI Reviews Schema",
+      "filePath": "src/db/schema/ai-reviews.ts",
+      "summary": "AI code review results and rules",
+      "tags": ["schema", "ai", "review"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/db/schema/deploy-keys.ts",
+      "type": "file",
+      "name": "Deploy Keys Schema",
+      "filePath": "src/db/schema/deploy-keys.ts",
+      "summary": "SSH deploy keys for repository access",
+      "tags": ["schema", "ssh", "keys"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/db/schema/roles.ts",
+      "type": "file",
+      "name": "Roles Schema",
+      "filePath": "src/db/schema/roles.ts",
+      "summary": "Role-based access control definitions",
+      "tags": ["schema", "roles", "rbac"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/db/adapter/index.ts",
+      "type": "file",
+      "name": "Database Adapter",
+      "filePath": "src/db/adapter/index.ts",
+      "summary": "Database adapter factory for multiple drivers",
+      "tags": ["adapter", "database", "factory"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/pages/index.astro",
+      "type": "file",
+      "name": "Home Page",
+      "filePath": "src/pages/index.astro",
+      "summary": "Landing page with project overview and features",
+      "tags": ["page", "home", "marketing"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/pages/dashboard.astro",
+      "type": "file",
+      "name": "Dashboard",
+      "filePath": "src/pages/dashboard.astro",
+      "summary": "Main user dashboard with repositories and activity",
+      "tags": ["page", "dashboard", "main"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/pages/login.astro",
+      "type": "file",
+      "name": "Login Page",
+      "filePath": "src/pages/login.astro",
+      "summary": "User login page with OAuth and 2FA support",
+      "tags": ["page", "auth", "login"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/pages/repositories.astro",
+      "type": "file",
+      "name": "Repositories Page",
+      "filePath": "src/pages/repositories.astro",
+      "summary": "Repository listing and search",
+      "tags": ["page", "repos", "list"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/pages/pulls.astro",
+      "type": "file",
+      "name": "Pull Requests Page",
+      "filePath": "src/pages/pulls.astro",
+      "summary": "Pull request listing across repositories",
+      "tags": ["page", "pr", "list"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/pages/issues.astro",
+      "type": "file",
+      "name": "Issues Page",
+      "filePath": "src/pages/issues.astro",
+      "summary": "Issue tracking across repositories",
+      "tags": ["page", "issues", "list"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/pages/stacks.astro",
+      "type": "file",
+      "name": "Stacks Page",
+      "filePath": "src/pages/stacks.astro",
+      "summary": "Stacked PR workflow visualization",
+      "tags": ["page", "stacks", "workflow"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/pages/merge-queue.astro",
+      "type": "file",
+      "name": "Merge Queue Page",
+      "filePath": "src/pages/merge-queue.astro",
+      "summary": "Merge queue status and management",
+      "tags": ["page", "merge", "queue"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/pages/inbox.astro",
+      "type": "file",
+      "name": "Inbox Page",
+      "filePath": "src/pages/inbox.astro",
+      "summary": "Notification inbox for user",
+      "tags": ["page", "inbox", "notifications"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/pages/insights.astro",
+      "type": "file",
+      "name": "Insights Page",
+      "filePath": "src/pages/insights.astro",
+      "summary": "Analytics and insights dashboard",
+      "tags": ["page", "insights", "analytics"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/pages/settings/profile.astro",
+      "type": "file",
+      "name": "Profile Settings",
+      "filePath": "src/pages/settings/profile.astro",
+      "summary": "User profile settings and preferences",
+      "tags": ["page", "settings", "profile"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/pages/admin/index.astro",
+      "type": "file",
+      "name": "Admin Dashboard",
+      "filePath": "src/pages/admin/index.astro",
+      "summary": "Admin panel for system management",
+      "tags": ["page", "admin", "dashboard"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/components/ui/button.tsx",
+      "type": "file",
+      "name": "Button Component",
+      "filePath": "src/components/ui/button.tsx",
+      "summary": "Reusable button component with variants",
+      "tags": ["component", "ui", "button"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/components/ui/dialog.tsx",
+      "type": "file",
+      "name": "Dialog Component",
+      "filePath": "src/components/ui/dialog.tsx",
+      "summary": "Modal dialog component using Radix UI",
+      "tags": ["component", "ui", "dialog"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/components/ui/input.tsx",
+      "type": "file",
+      "name": "Input Component",
+      "filePath": "src/components/ui/input.tsx",
+      "summary": "Form input component with validation",
+      "tags": ["component", "ui", "input"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/components/pr/pr-list.tsx",
+      "type": "file",
+      "name": "PR List Component",
+      "filePath": "src/components/pr/pr-list.tsx",
+      "summary": "Pull request listing with filters and sorting",
+      "tags": ["component", "pr", "list"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/components/pr/pr-detail.tsx",
+      "type": "file",
+      "name": "PR Detail Component",
+      "filePath": "src/components/pr/pr-detail.tsx",
+      "summary": "Pull request detail view with diff and reviews",
+      "tags": ["component", "pr", "detail"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:src/components/issues/issue-list.tsx",
+      "type": "file",
+      "name": "Issue List Component",
+      "filePath": "src/components/issues/issue-list.tsx",
+      "summary": "Issue listing with filters and labels",
+      "tags": ["component", "issues", "list"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/components/repo/repo-browser.tsx",
+      "type": "file",
+      "name": "Repository Browser",
+      "filePath": "src/components/repo/repo-browser.tsx",
+      "summary": "File browser for repository contents",
+      "tags": ["component", "repo", "browser"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:src/components/queue/queue-status.tsx",
+      "type": "file",
+      "name": "Queue Status",
+      "filePath": "src/components/queue/queue-status.tsx",
+      "summary": "Merge queue status display",
+      "tags": ["component", "queue", "status"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:cli/src/commands/auth.ts",
+      "type": "file",
+      "name": "CLI Auth",
+      "filePath": "cli/src/commands/auth.ts",
+      "summary": "CLI authentication commands (login/logout)",
+      "tags": ["cli", "auth", "commands"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:cli/src/commands/stack/index.ts",
+      "type": "file",
+      "name": "CLI Stack Commands",
+      "filePath": "cli/src/commands/stack/index.ts",
+      "summary": "CLI commands for stacked PR workflows",
+      "tags": ["cli", "stack", "commands"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:cli/src/lib/api.ts",
+      "type": "file",
+      "name": "CLI API Client",
+      "filePath": "cli/src/lib/api.ts",
+      "summary": "API client for CLI to communicate with server",
+      "tags": ["cli", "api", "client"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:docker-compose.yml",
+      "type": "config",
+      "name": "Docker Compose",
+      "filePath": "docker-compose.yml",
+      "summary": "Docker Compose configuration for full stack deployment",
+      "tags": ["docker", "deployment", "compose"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:Dockerfile",
+      "type": "config",
+      "name": "Main Dockerfile",
+      "filePath": "Dockerfile",
+      "summary": "Dockerfile for main application container",
+      "tags": ["docker", "container", "build"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:Dockerfile.runner",
+      "type": "config",
+      "name": "Runner Dockerfile",
+      "filePath": "Dockerfile.runner",
+      "summary": "Dockerfile for CI runner container",
+      "tags": ["docker", "runner", "ci"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:astro.config.mjs",
+      "type": "config",
+      "name": "Astro Config",
+      "filePath": "astro.config.mjs",
+      "summary": "Astro framework configuration with SSR adapter",
+      "tags": ["config", "astro", "ssr"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:drizzle.config.ts",
+      "type": "config",
+      "name": "Drizzle Config",
+      "filePath": "drizzle.config.ts",
+      "summary": "Drizzle ORM configuration for database migrations",
+      "tags": ["config", "drizzle", "database"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:package.json",
+      "type": "config",
+      "name": "Package.json",
+      "filePath": "package.json",
+      "summary": "Root package.json with dependencies and scripts",
+      "tags": ["config", "package", "dependencies"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:tsconfig.json",
+      "type": "config",
+      "name": "TypeScript Config",
+      "filePath": "tsconfig.json",
+      "summary": "TypeScript compiler configuration",
+      "tags": ["config", "typescript", "compiler"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:tailwind.config.mjs",
+      "type": "config",
+      "name": "Tailwind Config",
+      "filePath": "tailwind.config.mjs",
+      "summary": "Tailwind CSS configuration",
+      "tags": ["config", "tailwind", "css"],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:README.md",
+      "type": "document",
+      "name": "README",
+      "filePath": "README.md",
+      "summary": "Project documentation with features and setup instructions",
+      "tags": ["docs", "readme", "documentation"],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:docs/index.md",
+      "type": "document",
+      "name": "Documentation Index",
+      "filePath": "docs/index.md",
+      "summary": "Documentation site index",
+      "tags": ["docs", "index", "documentation"],
+      "complexity": "simple"
+    },
+    {
+      "id": "service:scripts/ssh-server.ts",
+      "type": "service",
+      "name": "SSH Server Script",
+      "filePath": "scripts/ssh-server.ts",
+      "summary": "Standalone SSH git server entry point",
+      "tags": ["service", "ssh", "git"],
+      "complexity": "simple"
+    },
+    {
+      "id": "service:scripts/worker.ts",
+      "type": "service",
+      "name": "Worker Script",
+      "filePath": "scripts/worker.ts",
+      "summary": "Background worker entry point",
+      "tags": ["service", "worker", "background"],
+      "complexity": "simple"
+    },
+    {
+      "id": "pipeline:scripts/backup.ts",
+      "type": "pipeline",
+      "name": "Backup Script",
+      "filePath": "scripts/backup.ts",
+      "summary": "Database and repository backup utility",
+      "tags": ["pipeline", "backup", "maintenance"],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:src/db/schema/users.ts:users",
+      "type": "table",
+      "name": "Users Table",
+      "filePath": "src/db/schema/users.ts",
+      "summary": "User accounts with authentication data",
+      "tags": ["table", "users", "auth"],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:src/db/schema/repositories.ts:repositories",
+      "type": "table",
+      "name": "Repositories Table",
+      "filePath": "src/db/schema/repositories.ts",
+      "summary": "Repository metadata and settings",
+      "tags": ["table", "repos", "git"],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:src/db/schema/pull-requests.ts:pullRequests",
+      "type": "table",
+      "name": "Pull Requests Table",
+      "filePath": "src/db/schema/pull-requests.ts",
+      "summary": "Pull request data and state",
+      "tags": ["table", "pr", "merge"],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:src/db/schema/issues.ts:issues",
+      "type": "table",
+      "name": "Issues Table",
+      "filePath": "src/db/schema/issues.ts",
+      "summary": "Issue tracking data",
+      "tags": ["table", "issues", "tracking"],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:src/db/schema/workflows.ts:workflows",
+      "type": "table",
+      "name": "Workflows Table",
+      "filePath": "src/db/schema/workflows.ts",
+      "summary": "CI/CD workflow definitions",
+      "tags": ["table", "ci", "workflows"],
+      "complexity": "simple"
+    },
+    {
+      "id": "table:src/db/schema/merge-queue.ts:mergeQueue",
+      "type": "table",
+      "name": "Merge Queue Table",
+      "filePath": "src/db/schema/merge-queue.ts",
+      "summary": "Merge queue entries",
+      "tags": ["table", "merge", "queue"],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:src/lib/auth.ts",
+      "target": "file:src/db/index.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/lib/auth.ts",
+      "target": "file:src/db/schema/users.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/lib/git-server.ts",
+      "target": "file:src/lib/storage.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/lib/ssh.ts",
+      "target": "file:src/lib/logger.ts",
+      "type": "imports",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/lib/pipeline.ts",
+      "target": "file:src/lib/logger.ts",
+      "type": "imports",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/lib/stacks.ts",
+      "target": "file:src/db/index.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/lib/stacks.ts",
+      "target": "file:src/db/schema/pull-requests.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/middleware.ts",
+      "target": "file:src/lib/auth.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/middleware.ts",
+      "target": "file:src/db/index.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/pages/api/auth/login.ts",
+      "target": "file:src/lib/auth.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/pages/api/repos/[owner]/[repo]/index.ts",
+      "target": "file:src/db/index.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/pages/api/repos/[owner]/[repo]/index.ts",
+      "target": "file:src/db/schema/repositories.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/runner/index.ts",
+      "target": "file:src/runner/executor.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/runner/index.ts",
+      "target": "file:src/runner/client.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:cli/src/commands/auth.ts",
+      "target": "file:cli/src/lib/api.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:cli/src/commands/stack/index.ts",
+      "target": "file:cli/src/lib/api.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/lib/pull-requests.ts",
+      "target": "file:src/db/index.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/lib/pull-requests.ts",
+      "target": "file:src/db/schema/pull-requests.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/lib/merge-queue.ts",
+      "target": "file:src/db/index.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/lib/merge-queue.ts",
+      "target": "file:src/db/schema/merge-queue.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/lib/webhooks.ts",
+      "target": "file:src/db/index.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/lib/webhooks.ts",
+      "target": "file:src/db/schema/webhooks.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/lib/automations.ts",
+      "target": "file:src/db/index.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/lib/automations.ts",
+      "target": "file:src/db/schema/automations.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/lib/ai-review.ts",
+      "target": "file:src/db/index.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/lib/ai-review.ts",
+      "target": "file:src/db/schema/ai-reviews.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/lib/permissions.ts",
+      "target": "file:src/db/index.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/lib/permissions.ts",
+      "target": "file:src/db/schema/repositories.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/lib/email.ts",
+      "target": "file:src/lib/logger.ts",
+      "type": "imports",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/lib/analytics.ts",
+      "target": "file:src/db/index.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/lib/ci-formats.ts",
+      "target": "file:src/lib/logger.ts",
+      "type": "imports",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/lib/ci-gates.ts",
+      "target": "file:src/db/index.ts",
+      "type": "imports",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/components/pr/pr-list.tsx",
+      "target": "file:src/components/ui/button.tsx",
+      "type": "imports",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/components/pr/pr-detail.tsx",
+      "target": "file:src/components/ui/dialog.tsx",
+      "type": "imports",
+      "weight": 0.5
+    },
+    {
+      "source": "file:src/components/issues/issue-list.tsx",
+      "target": "file:src/components/ui/button.tsx",
+      "type": "imports",
+      "weight": 0.5
+    },
+    {
+      "source": "file:docker-compose.yml",
+      "target": "file:Dockerfile",
+      "type": "deploys",
+      "weight": 0.6
+    },
+    {
+      "source": "file:docker-compose.yml",
+      "target": "file:Dockerfile.runner",
+      "type": "deploys",
+      "weight": 0.6
+    },
+    {
+      "source": "file:src/db/schema/users.ts:users",
+      "target": "file:src/db/schema/index.ts",
+      "type": "contains",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/db/schema/repositories.ts:repositories",
+      "target": "file:src/db/schema/index.ts",
+      "type": "contains",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/db/schema/pull-requests.ts:pullRequests",
+      "target": "file:src/db/schema/index.ts",
+      "type": "contains",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/db/schema/issues.ts:issues",
+      "target": "file:src/db/schema/index.ts",
+      "type": "contains",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/db/schema/workflows.ts:workflows",
+      "target": "file:src/db/schema/index.ts",
+      "type": "contains",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/db/schema/merge-queue.ts:mergeQueue",
+      "target": "file:src/db/schema/index.ts",
+      "type": "contains",
+      "weight": 1.0
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer:presentation",
+      "name": "Presentation Layer",
+      "description": "Astro pages and React components for the user interface",
+      "nodeIds": [
+        "file:src/pages/index.astro",
+        "file:src/pages/dashboard.astro",
+        "file:src/pages/login.astro",
+        "file:src/pages/repositories.astro",
+        "file:src/pages/pulls.astro",
+        "file:src/pages/issues.astro",
+        "file:src/pages/stacks.astro",
+        "file:src/pages/merge-queue.astro",
+        "file:src/pages/inbox.astro",
+        "file:src/pages/insights.astro",
+        "file:src/pages/settings/profile.astro",
+        "file:src/pages/admin/index.astro",
+        "file:src/components/ui/button.tsx",
+        "file:src/components/ui/dialog.tsx",
+        "file:src/components/ui/input.tsx",
+        "file:src/components/pr/pr-list.tsx",
+        "file:src/components/pr/pr-detail.tsx",
+        "file:src/components/issues/issue-list.tsx",
+        "file:src/components/repo/repo-browser.tsx",
+        "file:src/components/queue/queue-status.tsx"
+      ]
+    },
+    {
+      "id": "layer:api",
+      "name": "API Layer",
+      "description": "REST API endpoints and route handlers",
+      "nodeIds": [
+        "file:src/pages/api/auth/login.ts",
+        "file:src/pages/api/auth/register.ts",
+        "file:src/pages/api/repos/[owner]/[repo]/index.ts"
+      ]
+    },
+    {
+      "id": "layer:business-logic",
+      "name": "Business Logic Layer",
+      "description": "Core business logic modules for authentication, git, CI/CD, and collaboration",
+      "nodeIds": [
+        "file:src/lib/auth.ts",
+        "file:src/lib/git-server.ts",
+        "file:src/lib/ssh.ts",
+        "file:src/lib/storage.ts",
+        "file:src/lib/pipeline.ts",
+        "file:src/lib/stacks.ts",
+        "file:src/lib/pull-requests.ts",
+        "file:src/lib/merge-queue.ts",
+        "file:src/lib/webhooks.ts",
+        "file:src/lib/automations.ts",
+        "file:src/lib/ai-review.ts",
+        "file:src/lib/permissions.ts",
+        "file:src/lib/email.ts",
+        "file:src/lib/analytics.ts",
+        "file:src/lib/ci-formats.ts",
+        "file:src/lib/ci-gates.ts",
+        "file:src/lib/logger.ts",
+        "file:src/lib/utils.ts"
+      ]
+    },
+    {
+      "id": "layer:data",
+      "name": "Data Layer",
+      "description": "Database schema definitions, ORM configuration, and data access",
+      "nodeIds": [
+        "file:src/db/index.ts",
+        "file:src/db/adapter/index.ts",
+        "file:src/db/schema/index.ts",
+        "file:src/db/schema/users.ts",
+        "file:src/db/schema/repositories.ts",
+        "file:src/db/schema/pull-requests.ts",
+        "file:src/db/schema/issues.ts",
+        "file:src/db/schema/workflows.ts",
+        "file:src/db/schema/merge-queue.ts",
+        "file:src/db/schema/organizations.ts",
+        "file:src/db/schema/webhooks.ts",
+        "file:src/db/schema/automations.ts",
+        "file:src/db/schema/branch-protection.ts",
+        "file:src/db/schema/ai-reviews.ts",
+        "file:src/db/schema/deploy-keys.ts",
+        "file:src/db/schema/roles.ts"
+      ]
+    },
+    {
+      "id": "layer:infrastructure",
+      "name": "Infrastructure Layer",
+      "description": "Docker configuration, deployment scripts, and CI runner",
+      "nodeIds": [
+        "file:docker-compose.yml",
+        "file:Dockerfile",
+        "file:Dockerfile.runner",
+        "file:astro.config.mjs",
+        "file:drizzle.config.ts",
+        "file:package.json",
+        "file:tsconfig.json",
+        "file:tailwind.config.mjs",
+        "file:src/runner/index.ts",
+        "file:src/runner/executor.ts",
+        "file:src/runner/client.ts",
+        "file:service:scripts/ssh-server.ts",
+        "file:service:scripts/worker.ts",
+        "file:pipeline:scripts/backup.ts"
+      ]
+    },
+    {
+      "id": "layer:cli",
+      "name": "CLI Layer",
+      "description": "Command-line interface for OpenCodeHub",
+      "nodeIds": [
+        "file:cli/src/commands/auth.ts",
+        "file:cli/src/commands/stack/index.ts",
+        "file:cli/src/lib/api.ts"
+      ]
+    },
+    {
+      "id": "layer:documentation",
+      "name": "Documentation Layer",
+      "description": "Project documentation and README files",
+      "nodeIds": [
+        "file:document:README.md",
+        "file:document:docs/index.md"
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "title": "Project Overview",
+      "description": "Start with the README to understand OpenCodeHub's purpose: a self-hosted GitHub/GitLab alternative with stacked PRs, merge queue, and CI/CD.",
+      "nodeIds": ["file:document:README.md"]
+    },
+    {
+      "order": 2,
+      "title": "Database Schema",
+      "description": "Understand the data model with 38 tables covering users, repositories, PRs, issues, workflows, and more.",
+      "nodeIds": ["file:src/db/schema/index.ts", "file:src/db/index.ts"]
+    },
+    {
+      "order": 3,
+      "title": "Authentication System",
+      "description": "JWT-based auth with bcrypt password hashing, 2FA support, and OAuth integration.",
+      "nodeIds": ["file:src/lib/auth.ts", "file:src/pages/api/auth/login.ts"]
+    },
+    {
+      "order": 4,
+      "title": "Git Protocol Handling",
+      "description": "Smart HTTP and SSH Git servers for push/pull operations with pluggable storage.",
+      "nodeIds": ["file:src/lib/git-server.ts", "file:src/lib/ssh.ts", "file:src/lib/storage.ts"]
+    },
+    {
+      "order": 5,
+      "title": "Pull Requests & Stacks",
+      "description": "PR management with Graphite-style stacked workflows and merge queue integration.",
+      "nodeIds": ["file:src/lib/pull-requests.ts", "file:src/lib/stacks.ts", "file:src/lib/merge-queue.ts"]
+    },
+    {
+      "order": 6,
+      "title": "CI/CD Pipeline",
+      "description": "GitHub Actions compatible workflow engine with Docker-based runner execution.",
+      "nodeIds": ["file:src/lib/pipeline.ts", "file:src/runner/index.ts", "file:src/runner/executor.ts"]
+    },
+    {
+      "order": 7,
+      "title": "Web UI Components",
+      "description": "Astro pages and React components for the user interface with Tailwind CSS styling.",
+      "nodeIds": ["file:src/pages/dashboard.astro", "file:src/components/pr/pr-detail.tsx", "file:src/components/repo/repo-browser.tsx"]
+    },
+    {
+      "order": 8,
+      "title": "Middleware & Security",
+      "description": "Request middleware for rate limiting, CSRF protection, and Content Security Policy.",
+      "nodeIds": ["file:src/middleware.ts", "file:src/lib/permissions.ts"]
+    },
+    {
+      "order": 9,
+      "title": "CLI Interface",
+      "description": "Command-line interface for stack workflows, auth, and repository management.",
+      "nodeIds": ["file:cli/src/commands/stack/index.ts", "file:cli/src/commands/auth.ts"]
+    },
+    {
+      "order": 10,
+      "title": "Deployment Configuration",
+      "description": "Docker Compose setup for full stack deployment with PostgreSQL, Redis, and CI runner.",
+      "nodeIds": ["file:docker-compose.yml", "file:Dockerfile", "file:Dockerfile.runner"]
+    }
+  ]
+}

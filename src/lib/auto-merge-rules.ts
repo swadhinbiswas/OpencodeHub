@@ -50,67 +50,21 @@ async function getCodeOwnerBlockers(
   headBranch: string
 ): Promise<string[]> {
   const blockers: string[] = [];
-
   try {
     const { getChangedFiles } = await import("./git");
-    const { parseCodeOwners, findOwnersForFile, expandOwnersToUsernames } = await import("./codeowners");
-    const fs = await import("fs/promises");
-    const path = await import("path");
-
+    const { checkCodeOwnerApprovals } = await import("./codeowners-enforcement");
     const changedFiles = await getChangedFiles(repoDiskPath, baseBranch, headBranch);
-    if (changedFiles.length === 0) return blockers;
-
-    const possiblePaths = ["CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS"];
-    let codeOwnersContent: string | null = null;
-
-    for (const p of possiblePaths) {
-      try {
-        codeOwnersContent = await fs.readFile(path.join(repoDiskPath, p), "utf-8");
-        break;
-      } catch (error) {}
-    }
-
-    if (!codeOwnersContent) return blockers;
-
-    const codeOwners = parseCodeOwners(codeOwnersContent);
-
-    const approvals = await db.query.pullRequestReviews.findMany({
-      where: and(
-        eq(schema.pullRequestReviews.pullRequestId, prId),
-        eq(schema.pullRequestReviews.state, "approved")
-      ),
-    });
-
-    const approverUserIds = approvals.map((review) => review.reviewerId);
-    const approverUsers = approverUserIds.length
-      ? await db.query.users.findMany({
-          where: (users, { inArray }) => inArray(users.id, approverUserIds),
-        })
-      : [];
-    const approverUsernames = new Set(approverUsers.map((user) => user.username));
-
-    for (const file of changedFiles) {
-      const owners = findOwnersForFile(codeOwners, file);
-      if (owners.length === 0) continue;
-
-      const expandedOwners = await expandOwnersToUsernames({
-        db,
-        repository,
-        owners,
-      });
-
-      const hasOwnerApproval = Array.from(expandedOwners).some((owner) =>
-        approverUsernames.has(owner)
-      );
-
-      if (!hasOwnerApproval) {
-        blockers.push(`Missing Code Owner approval for ${file} (requires: ${owners.join(", ")})`);
+    
+    const result = await checkCodeOwnerApprovals(repository.id, prId, changedFiles);
+    
+    if (!result.canMerge) {
+      for (const missing of result.missingApprovals) {
+        blockers.push(`Missing Code Owner approval for ${missing.path} (requires: ${missing.requiredOwners.join(", ")})`);
       }
     }
   } catch (error) {
     logger.error({ error, prId }, "Failed to check Code Owners for auto-merge rules");
   }
-
   return blockers;
 }
 

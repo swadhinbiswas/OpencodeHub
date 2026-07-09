@@ -172,6 +172,16 @@ const envVars: EnvConfig[] = [
 export function validateEnvironment(exitOnError: boolean = true): boolean {
     logger.info("🔍 Validating environment configuration...");
 
+    // Auto-configure all paths if DATA_DIR is provided (All-in-one VPS/NAS mode)
+    if (process.env.DATA_DIR) {
+        const dataDir = process.env.DATA_DIR.replace(/\/$/, "");
+        if (!process.env.DATABASE_URL) process.env.DATABASE_URL = `${dataDir}/opencodehub.db`;
+        if (!process.env.STORAGE_PATH) process.env.STORAGE_PATH = `${dataDir}/storage`;
+        if (!process.env.GIT_REPOS_PATH) process.env.GIT_REPOS_PATH = `${dataDir}/repositories`;
+        if (!process.env.SSH_HOST_KEY_PATH) process.env.SSH_HOST_KEY_PATH = `${dataDir}/ssh/host_key`;
+        logger.info(`📦 DATA_DIR mode enabled. All local data mapped to ${dataDir}`);
+    }
+
     const errors: string[] = [];
     const warnings: string[] = [];
 

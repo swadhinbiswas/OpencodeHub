@@ -9,9 +9,9 @@ import { getStorage } from "./storage";
 
 // ---------- Configurable limits ----------
 const MAX_PACK_SIZE_BYTES =
-  parseInt(process.env.MAX_PACK_SIZE_MB || "500", 10) * 1024 * 1024;
+  parseInt(process.env.MAX_PACK_SIZE_MB || "2048", 10) * 1024 * 1024;
 const GIT_PROCESS_TIMEOUT_MS =
-  parseInt(process.env.GIT_PROCESS_TIMEOUT_SECS || "300", 10) * 1000;
+  parseInt(process.env.GIT_PROCESS_TIMEOUT_SECS || "3600", 10) * 1000;
 
 // Packet Line Utilities
 export function pktLine(str: string): string {

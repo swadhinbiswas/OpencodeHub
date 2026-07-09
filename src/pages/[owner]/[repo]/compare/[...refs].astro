@@ -242,7 +242,7 @@ const repoUrl = `/${repo.owner}/${repo.name}`;
   </div>
 </BaseLayout>
 
-<script define:vars={{ repoUrl }}>
+<script is:inline define:vars={{ repoUrl }}>
   const form = document.getElementById("compare-form");
   const baseSelect = document.getElementById("base-select");
   const headSelect = document.getElementById("head-select");

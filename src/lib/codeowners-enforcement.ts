@@ -37,11 +37,14 @@ export async function checkCodeOwnerApprovals(
         return { canMerge: true, missingApprovals: [] };
     }
 
+    const { resolveRepoPath } = await import("./git-storage");
+    const repoPath = await resolveRepoPath(repo.diskPath);
+
     // Try to find CODEOWNERS file
     let codeOwnersContent: string | null = null;
     for (const path of CODEOWNERS_PATHS) {
         try {
-            const result = await getFileContent(repositoryId, repo.defaultBranch, path);
+            const result = await getFileContent(repoPath, path, repo.defaultBranch);
             if (result && result.content) {
                 codeOwnersContent = result.content;
                 break;
@@ -137,10 +140,13 @@ export async function getCodeOwnersSummary(
 
     if (!repo) return [];
 
+    const { resolveRepoPath } = await import("./git-storage");
+    const repoPath = await resolveRepoPath(repo.diskPath);
+
     // Try to find CODEOWNERS file
     for (const path of CODEOWNERS_PATHS) {
         try {
-            const result = await getFileContent(repositoryId, repo.defaultBranch, path);
+            const result = await getFileContent(repoPath, path, repo.defaultBranch);
             if (result?.content) {
                 const codeOwners = parseCodeOwners(result.content);
                 return changedFiles.map(file => ({

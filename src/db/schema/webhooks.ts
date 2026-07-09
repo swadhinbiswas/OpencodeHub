@@ -24,7 +24,7 @@ export const webhooks = pgTable(
       .references(() => repositories.id, { onDelete: "cascade" }),
 
     // Provider and configuration
-    provider: text("provider").default("generic"), // teams, discord, slack, generic
+    provider: text("provider").default("generic"), // teams, discord, slack, generic, linear, trello, clickup
     name: text("name"), // Display name for the webhook
     url: text("url").notNull(),
     secret: text("secret"), // Encrypted or plain? For now plain/masked in UI

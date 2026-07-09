@@ -1,0 +1,60 @@
+---
+import { getDatabase, schema } from "@/db";
+import { eq, and } from "drizzle-orm";
+import { canReadRepo } from "@/lib/permissions";
+import { WebIDE } from "@/components/ide/WebIDE";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase();
+
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!),
+  ),
+  with: { owner: true },
+});
+if (!repoData) return Astro.redirect("/404");
+
+const currentUser = Astro.locals.user;
+if (!(await canReadRepo(currentUser?.id, repoData))) {
+  return Astro.redirect("/404");
+}
+
+const defaultBranch = repoData.defaultBranch;
+const initialBranch = Astro.url.searchParams.get("branch") || defaultBranch;
+const initialFile = Astro.url.searchParams.get("file") || "";
+---
+
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{repoName} - Web IDE</title>
+    <!-- Preload fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <style>
+      body { margin: 0; padding: 0; overflow: hidden; background-color: #1e1e1e; font-family: "Inter", sans-serif; color: #ccc; }
+      * { box-sizing: border-box; }
+    </style>
+  </head>
+  <body>
+    <WebIDE 
+      client:only="react" 
+      owner={ownerName!} 
+      repo={repoName!} 
+      defaultBranch={defaultBranch} 
+      initialBranch={initialBranch}
+      initialFile={initialFile}
+      currentUser={currentUser}
+    />
+  </body>
+</html>

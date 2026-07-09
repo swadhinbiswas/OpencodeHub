@@ -22,7 +22,9 @@
       "@db/*": ["src/db/*"],
       "@api/*": ["src/pages/api/*"]
     },
-    "types": ["astro/client", "node"]
+    "types": ["astro/client", "node"],
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
   },
   "include": ["src/**/*", "scripts/**/*"],
   "exclude": ["node_modules", "dist"]

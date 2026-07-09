@@ -240,6 +240,129 @@ export async function applySuggestion(
 }
 
 /**
+ * Apply an AI Review suggestion to the PR branch
+ */
+export async function applyAiSuggestion(
+    suggestionId: string,
+    appliedById: string
+): Promise<{ success: boolean; commitSha?: string; error?: string }> {
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
+
+    // Get suggestion
+    const suggestion = await db.query.aiReviewSuggestions.findFirst({
+        where: eq(schema.aiReviewSuggestions.id, suggestionId),
+        with: {
+            aiReview: {
+                with: {
+                    pullRequest: {
+                        with: {
+                            repository: true,
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    if (!suggestion) {
+        return { success: false, error: "AI Suggestion not found" };
+    }
+
+    if (!suggestion.suggestedFix) {
+        return { success: false, error: "No code fix provided in suggestion" };
+    }
+
+    if (suggestion.isApplied) {
+        return { success: false, error: "Suggestion already applied" };
+    }
+
+    if (!suggestion.path || !suggestion.line) {
+        return { success: false, error: "Suggestion missing file path or line number" };
+    }
+
+    const pr = suggestion.aiReview?.pullRequest;
+    if (!pr || !pr.repository) {
+        return { success: false, error: "Pull request or repository not found" };
+    }
+
+    try {
+        const { resolveRepoPath } = await import("./git-storage");
+        const { getFileContent, getGit } = await import("./git");
+
+        const repoPath = await resolveRepoPath(pr.repository.diskPath);
+        const fileResult = await getFileContent(repoPath, suggestion.path, pr.headBranch);
+        if (!fileResult) {
+            return { success: false, error: "File not found in the branch" };
+        }
+
+        const lines = fileResult.content.split("\n");
+        const startLine = suggestion.line;
+        const endLine = suggestion.endLine || suggestion.line;
+
+        if (startLine < 1 || endLine > lines.length) {
+            return { success: false, error: "Invalid line numbers" };
+        }
+
+        const newLines = [
+            ...lines.slice(0, startLine - 1),
+            ...suggestion.suggestedFix.split("\n"),
+            ...lines.slice(endLine),
+        ];
+        const newContent = newLines.join("\n");
+
+        const fs = await import("fs/promises");
+        const path = await import("path");
+        const tempPath = `${repoPath}.worktree-${suggestionId}`;
+        
+        await fs.mkdir(tempPath, { recursive: true });
+        const workGit = (await import("simple-git")).simpleGit(tempPath);
+        await workGit.clone(repoPath, tempPath, ["--branch", pr.headBranch]);
+
+        const filePath = path.join(tempPath, suggestion.path);
+        await fs.mkdir(path.dirname(filePath), { recursive: true });
+        await fs.writeFile(filePath, newContent);
+
+        const user = await db.query.users.findFirst({
+            where: eq(schema.users.id, appliedById),
+        });
+
+        await workGit.addConfig("user.name", user?.displayName || "OpenCodeHub AI");
+        await workGit.addConfig("user.email", user?.email || "ai@opencodehub.local");
+        await workGit.add(suggestion.path);
+
+        const commitMessage = `Apply AI suggestion for ${suggestion.path}\n\nSuggested-by: OpenCodeHub AI Reviewer`;
+        await workGit.commit(commitMessage);
+        await workGit.push("origin", pr.headBranch);
+
+        const log = await workGit.log({ n: 1 });
+        const newCommitSha = log.latest?.hash || "";
+
+        await db.update(schema.aiReviewSuggestions)
+            .set({
+                isApplied: true,
+                appliedById: appliedById,
+                appliedAt: new Date(),
+            })
+            .where(eq(schema.aiReviewSuggestions.id, suggestionId));
+
+        await db.update(schema.pullRequests)
+            .set({
+                headSha: newCommitSha,
+                updatedAt: new Date(),
+            })
+            .where(eq(schema.pullRequests.id, pr.id));
+
+        await fs.rm(tempPath, { recursive: true, force: true });
+        logger.info({ suggestionId, commitSha: newCommitSha }, "AI Suggestion applied");
+        
+        return { success: true, commitSha: newCommitSha };
+    } catch (error) {
+        logger.error({ error, suggestionId }, "Failed to apply AI suggestion");
+        return { success: false, error: error instanceof Error ? error.message : "Failed to apply AI suggestion" };
+    }
+}
+
+/**
  * Batch apply multiple suggestions
  */
 export async function batchApplySuggestions(
