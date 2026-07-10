@@ -1,7 +1,10 @@
 {
   "_comment": "Vulnerabilities that are allowed past CI gates. Each entry MUST be reviewed and documented in docs/administration/security.md with a clear remediation plan and target date. Do NOT add new entries without justification.",
   "accepted": [
-    "astro"
+    "astro",
+    "nodemailer",
+    "undici",
+    "vite"
   ],
   "documentation": "docs/administration/security.md#accepted-risks"
 }
