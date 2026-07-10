@@ -42,6 +42,7 @@ export const GET: APIRoute = withErrorHandler(async () => {
   try {
     const fs = await import("fs/promises");
     const storagePath = process.env.STORAGE_PATH || "./data/storage";
+    await fs.mkdir(storagePath, { recursive: true }).catch(() => {});
     await fs.access(storagePath);
     checks.storage = { status: "ok" };
   } catch (error) {
