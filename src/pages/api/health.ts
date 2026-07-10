@@ -58,17 +58,19 @@ export const GET: APIRoute = withErrorHandler(async () => {
   const production = process.env.NODE_ENV === "production";
   const scalingIssues: string[] = [];
 
-  if (production && !redisConfigured) {
-    scalingIssues.push("REDIS_URL is required in production for distributed coordination");
-  }
-  if (production && !isDistributedLocking) {
-    scalingIssues.push("Distributed locking is not active");
-  }
-  if (production && !isDistributedRateLimit) {
-    scalingIssues.push("Distributed rate limiting is not active");
-  }
-  if (production && !queueWorker.multiInstanceSafe) {
-    scalingIssues.push("Queue worker is not multi-instance safe");
+  if (production && process.env.SKIP_REDIS_CHECK !== "1") {
+    if (!redisConfigured) {
+      scalingIssues.push("REDIS_URL is required in production for distributed coordination");
+    }
+    if (!isDistributedLocking) {
+      scalingIssues.push("Distributed locking is not active");
+    }
+    if (!isDistributedRateLimit) {
+      scalingIssues.push("Distributed rate limiting is not active");
+    }
+    if (!queueWorker.multiInstanceSafe) {
+      scalingIssues.push("Queue worker is not multi-instance safe");
+    }
   }
 
   checks.scaling = {
