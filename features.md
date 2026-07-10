@@ -5,7 +5,7 @@ Canonical source: `doc/feature_audit.md`
 
 ## Recently completed
 - Local free-model AI support (`local` provider, Ollama/OpenAI-compatible) with configurable `localBaseUrl` and key.
-- External-agent (CodeRabbit-like) callback and async AI review flow documented and supported.
+- External-agent (Greptile-like) callback and async AI review flow documented and supported.
 - PR dependency APIs:
   - `GET /api/repos/{owner}/{repo}/pulls/dependencies`
   - `POST /api/repos/{owner}/{repo}/pulls/stack-order`
