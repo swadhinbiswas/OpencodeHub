@@ -1,6 +1,8 @@
 import { execSync } from 'child_process';
+import { GoogleGenAI } from '@google/genai';
+import type { Interactions } from '@google/genai';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_KEY || process.env.GEMINI_API_KEY;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const PR_NUMBER = process.env.PR_NUMBER;
 const REPO = process.env.REPO;
@@ -8,7 +10,7 @@ const BASE_SHA = process.env.BASE_SHA;
 const HEAD_SHA = process.env.HEAD_SHA;
 
 if (!GEMINI_API_KEY) {
-  console.log("GEMINI_API_KEY is not set. Skipping AI review.");
+  console.log("GEMINI_KEY is not set. Skipping AI review.");
   process.exit(0);
 }
 
@@ -16,6 +18,21 @@ if (!GITHUB_TOKEN) {
   console.log("GITHUB_TOKEN is not set. Skipping AI review.");
   process.exit(0);
 }
+
+const ai = new GoogleGenAI({
+    apiKey: GEMINI_API_KEY,
+});
+
+const tools: Interactions.Tool[] = [
+    {
+        type: 'google_search',
+    },
+];
+
+const generationConfig = {
+    max_output_tokens: 65536,
+    thinkingLevel: 'medium',
+};
 
 async function run() {
   try {
@@ -34,7 +51,7 @@ async function run() {
     }
 
     // 2. Call Gemini API
-    console.log("Requesting review from Gemini 1.5 Flash...");
+    console.log("Requesting review from Gemini 3.5 Flash...");
     const prompt = `You are a senior software engineer conducting a code review on a pull request.
 Review the following git diff and provide constructive, human-like, and professional feedback.
 Focus on identifying logic errors, security issues, performance bottlenecks, and best practice violations.
@@ -51,36 +68,18 @@ ${diff}
 \`\`\`
 `;
 
-    // We use the same API endpoint format from your curl command
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt
-              }
-            ]
-          }
-        ]
-      })
+    const interaction = await ai.interactions.create({
+        model: 'models/gemini-3.5-flash',
+        input: prompt,
+        tools: tools,
+        generation_config: generationConfig,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Gemini API Error: ${response.status} - ${errorText}`);
-      process.exit(1);
-    }
-
-    const data = await response.json();
-    let reviewComment = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const step = interaction.steps?.at(-1);
+    let reviewComment = step?.text || step?.parts?.[0]?.text;
 
     if (!reviewComment) {
-      console.error("No content received from Gemini.");
+      console.error("No content received from Gemini.", JSON.stringify(step));
       process.exit(1);
     }
     
