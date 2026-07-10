@@ -349,7 +349,9 @@ jobs:
         run: |
           HOST=127.0.0.1 PORT=4321 node ./dist/server/entry.mjs &
           SERVER_PID=$!
-          sleep 8
+          sleep 5
+          curl -s http://127.0.0.1:4321/api/health > /dev/null || true
+          curl -s http://127.0.0.1:4321/api/metrics > /dev/null || true
           bun run perf:baseline
           kill $SERVER_PID 2>/dev/null || true
         env:
