@@ -31,7 +31,7 @@ const tools: Interactions.Tool[] = [
 
 const generationConfig = {
     max_output_tokens: 65536,
-    thinkingLevel: 'medium',
+    thinking_level: 'medium',
 };
 
 async function run() {
