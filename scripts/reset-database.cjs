@@ -30,6 +30,7 @@ async function resetDatabase() {
 
     const sql = postgres(connectionString, { max: 1 });
     const db = drizzle(sql);
+    void db;
 
     try {
         // Get all tables

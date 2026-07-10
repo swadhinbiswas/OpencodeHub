@@ -15,7 +15,7 @@
  *   1 — fail (disallowed high/critical vulnerability present)
  *   2 — script error
  */
-import { existsSync, readFileSync, statSync, copyFileSync, mkdtempSync, rmSync, copyFileSync as copyFileSyncEsm } from "node:fs";
+import { existsSync, readFileSync, statSync, copyFileSync, mkdtempSync, rmSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";

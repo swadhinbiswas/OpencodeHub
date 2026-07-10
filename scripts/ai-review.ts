@@ -1,7 +1,6 @@
 import { execSync } from 'child_process';
 import { Mistral } from '@mistralai/mistralai';
 import { GoogleGenAI } from '@google/genai';
-import type { Interactions } from '@google/genai';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -61,15 +60,15 @@ ${diff}
     if (AGENT_API_KEY) {
       console.log("Requesting review from Mistral Agent...");
       const client = new Mistral({ apiKey: AGENT_API_KEY });
-      const messages = [{ "role": "user", "content": prompt }];
+      const messages = [{ "role": "user" as const, "content": prompt }];
 
       const response = await client.beta.conversations.start({
         agentId: 'ag_019f4ae0eb2e764aaa3f1dec318fc748',
         agentVersion: 0,
-        inputs: messages,
+        inputs: messages as any,
       });
 
-      reviewComment = response?.choices?.[0]?.message?.content || response?.message?.content || "";
+      reviewComment = (response as any)?.choices?.[0]?.message?.content || (response as any)?.message?.content || "";
       
       if (!reviewComment) {
         console.log("Could not find standard content in response. Fallback to full response.");
@@ -80,7 +79,7 @@ ${diff}
     } else if (GEMINI_API_KEY) {
       console.log("Requesting review from Gemini 3.5 Flash...");
       const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-      const tools: Interactions.Tool[] = [{ type: 'google_search' }];
+      const tools: any[] = [{ type: 'google_search' }];
       
       // Fixed config: Using camelCase and nested thinkingConfig
       const generationConfig = {
@@ -92,11 +91,11 @@ ${diff}
           model: 'models/gemini-3.5-flash',
           input: prompt,
           tools: tools,
-          generation_config: generationConfig, // the sdk still expects the property to be named generation_config
-      });
+          generation_config: generationConfig as any, // the sdk still expects the property to be named generation_config
+      } as any);
 
       const step = interaction.steps?.at(-1);
-      reviewComment = step?.text || step?.parts?.[0]?.text || "";
+      reviewComment = (step as any)?.text || (step as any)?.parts?.[0]?.text || "";
 
       if (!reviewComment) {
         console.error("No content received from Gemini.");
