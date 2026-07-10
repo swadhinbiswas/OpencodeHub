@@ -1,4 +1,5 @@
-import { getDb } from "@/db/adapter";
+import { getDatabase } from "@/db";
+import { sql } from "drizzle-orm";
 import type { APIRoute } from "astro";
 import { withErrorHandler } from "@/lib/errors";
 import { isDistributedLocking } from "@/lib/distributed-lock";
@@ -14,8 +15,12 @@ export const GET: APIRoute = withErrorHandler(async () => {
   // Check database
   const dbStart = Date.now();
   try {
-    const db = getDb();
-    await db.rawQuery("SELECT 1");
+    const db = getDatabase() as any;
+    if (db.execute) {
+      await db.execute(sql`SELECT 1`);
+    } else {
+      await db.run(sql`SELECT 1`);
+    }
     checks.database = { status: "ok", latency: Date.now() - dbStart };
   } catch (error) {
     checks.database = {
