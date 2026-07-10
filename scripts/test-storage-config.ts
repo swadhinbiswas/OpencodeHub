@@ -1,5 +1,5 @@
 
-import { getStorage, getStorageConfig, resetStorage } from "../src/lib/storage";
+import { getStorage, getStorageConfig } from "../src/lib/storage";
 
 async function main() {
     console.log("--- Testing Storage Configuration ---");
