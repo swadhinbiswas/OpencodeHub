@@ -37,6 +37,7 @@ vi.mock("@/lib/queue-worker", () => ({
 
 vi.mock("fs/promises", () => ({
   access: fsAccessMock,
+  mkdir: vi.fn(async () => undefined),
 }));
 
 import { GET as healthGet } from "@/pages/api/health";
