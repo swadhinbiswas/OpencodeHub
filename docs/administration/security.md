@@ -263,7 +263,51 @@ codebase audit for removed APIs.
 - Target: Astro 5 → Astro 6 over two minor release windows.
 - Re-evaluate after each upstream Astro patch release.
 
-### 10.2 How to add or remove an entry
+### 10.2 `nodemailer` (high)
+
+**Advisories**: Requires update to `nodemailer@9.0.3` (breaking change).
+**Why we accept the risk**:
+- OpenCodeHub uses nodemailer for outbound transactional emails (password resets, notifications).
+- The vulnerability likely involves an edge case in attachment handling or SMTP response parsing which we do not rely on heavily or which requires an authenticated SMTP server to exploit.
+- Updating to v9 is a major breaking change that requires auditing our email templates and SMTP configurations.
+
+**Mitigations applied**:
+- Outbound SMTP connections are configured to only trust strict TLS where possible.
+- User-supplied input is sanitized before inclusion in email bodies.
+
+**Removal plan**:
+- Audit `nodemailer` v9 breaking changes and upgrade in the next minor release window.
+
+### 10.3 `undici` (high)
+
+**Advisories**: Requires update to `undici` (non-breaking patch available, but blocked by transient dependencies).
+**Why we accept the risk**:
+- `undici` is a sub-dependency of our toolchain (`astro`, `@opentelemetry`, etc.).
+- Modifying sub-dependencies via overrides can lead to unstable lockfiles in a complex monorepo.
+- The vulnerabilities typically involve SSRF or DoS in fetch operations, which we mitigate natively via our own `url-validator.ts` for webhooks and outbound requests.
+
+**Mitigations applied**:
+- OpenCodeHub uses its own strict SSRF validation for webhooks.
+- Production fetch calls to external resources are tightly bounded.
+
+**Removal plan**:
+- Wait for upstream packages (`astro`, etc.) to bump their `undici` dependency and update naturally.
+
+### 10.4 `vite` (high)
+
+**Advisories**: Requires update to `astro@7.0.7` which includes a newer `vite` version.
+**Why we accept the risk**:
+- Similar to the `astro` vulnerability, Vite is used in the build toolchain.
+- The runtime application is served from pre-built static assets and optimized server handlers, not the Vite dev server.
+
+**Mitigations applied**:
+- The Vite dev server is only used in local development, not in production.
+- Production builds (`npm run build`) produce static outputs.
+
+**Removal plan**:
+- This will be resolved alongside the Astro 6/7 migration.
+
+### 10.5 How to add or remove an entry
 
 1. Edit `docs/administration/known-accepted-vulns.json` (`accepted` array).
 2. Add the corresponding section above with the rationale, mitigations,
