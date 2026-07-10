@@ -5,7 +5,7 @@ import { logger } from "@/lib/logger";
 import { syncAllMirrors } from "@/lib/mirror-sync";
 import { queueWorker } from "@/lib/queue-worker";
 import { runDueDigests } from "@/lib/chat-notifications";
-import { and, eq, lt } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { createServer } from "http";
 
 // ── Configuration ─────────────────────────────────────────────────────────────

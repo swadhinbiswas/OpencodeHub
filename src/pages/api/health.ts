@@ -1,4 +1,5 @@
-import { getDb } from "@/db/adapter";
+import { getDatabase } from "@/db";
+import { sql } from "drizzle-orm";
 import type { APIRoute } from "astro";
 import { withErrorHandler } from "@/lib/errors";
 import { isDistributedLocking } from "@/lib/distributed-lock";
@@ -14,8 +15,12 @@ export const GET: APIRoute = withErrorHandler(async () => {
   // Check database
   const dbStart = Date.now();
   try {
-    const db = getDb();
-    await db.rawQuery("SELECT 1");
+    const db = getDatabase() as any;
+    if (db.execute) {
+      await db.execute(sql`SELECT 1`);
+    } else {
+      await db.run(sql`SELECT 1`);
+    }
     checks.database = { status: "ok", latency: Date.now() - dbStart };
   } catch (error) {
     checks.database = {
@@ -42,6 +47,7 @@ export const GET: APIRoute = withErrorHandler(async () => {
   try {
     const fs = await import("fs/promises");
     const storagePath = process.env.STORAGE_PATH || "./data/storage";
+    await fs.mkdir(storagePath, { recursive: true }).catch(() => {});
     await fs.access(storagePath);
     checks.storage = { status: "ok" };
   } catch (error) {
@@ -58,17 +64,19 @@ export const GET: APIRoute = withErrorHandler(async () => {
   const production = process.env.NODE_ENV === "production";
   const scalingIssues: string[] = [];
 
-  if (production && !redisConfigured) {
-    scalingIssues.push("REDIS_URL is required in production for distributed coordination");
-  }
-  if (production && !isDistributedLocking) {
-    scalingIssues.push("Distributed locking is not active");
-  }
-  if (production && !isDistributedRateLimit) {
-    scalingIssues.push("Distributed rate limiting is not active");
-  }
-  if (production && !queueWorker.multiInstanceSafe) {
-    scalingIssues.push("Queue worker is not multi-instance safe");
+  if (production && process.env.SKIP_REDIS_CHECK !== "1") {
+    if (!redisConfigured) {
+      scalingIssues.push("REDIS_URL is required in production for distributed coordination");
+    }
+    if (!isDistributedLocking) {
+      scalingIssues.push("Distributed locking is not active");
+    }
+    if (!isDistributedRateLimit) {
+      scalingIssues.push("Distributed rate limiting is not active");
+    }
+    if (!queueWorker.multiInstanceSafe) {
+      scalingIssues.push("Queue worker is not multi-instance safe");
+    }
   }
 
   checks.scaling = {

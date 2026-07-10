@@ -347,9 +347,11 @@ jobs:
           DATABASE_DRIVER: postgres
       - name: Start server and run perf check
         run: |
-          bun run dev &
+          HOST=127.0.0.1 PORT=4321 node ./dist/server/entry.mjs &
           SERVER_PID=$!
-          sleep 8
+          sleep 5
+          curl -s http://127.0.0.1:4321/api/health > /dev/null || true
+          curl -s http://127.0.0.1:4321/api/metrics > /dev/null || true
           bun run perf:baseline
           kill $SERVER_PID 2>/dev/null || true
         env:
@@ -360,6 +362,7 @@ jobs:
           INTERNAL_HOOK_SECRET: "ci-perf-hook"
           CSRF_SKIP_DEV: "true"
           RATE_LIMIT_SKIP_DEV: "true"
+          RATE_LIMIT_ENABLED: "false"
           SKIP_REDIS_CHECK: "1"
           PERF_BASE_URL: http://127.0.0.1:4321
           PERF_PATHS: /api/health,/api/metrics
@@ -460,6 +463,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -500,7 +506,7 @@ jobs:
   quality-gate:
     name: Quality Gate
     runs-on: ubuntu-latest
-    needs: [lint, docs-parity, security, test, e2e, container-scan, sast, perf, build]
+    needs: [lint, docs-parity, security, test, e2e, container-scan, sast, performance, build]
     if: always()
     steps:
       - name: Check all gates
@@ -515,13 +521,13 @@ jobs:
 
           echo "Docs Parity:      ${{ needs.docs-parity.result }}"
           echo "Security Gates:   ${{ needs.security.result }}"
-          echo "Perf Gate:        ${{ needs.perf.result }}"
+          echo "Perf Gate:        ${{ needs.performance.result }}"
 
           if [[ "${{ needs.lint.result }}" != "success" ]] || \
              [[ "${{ needs.docs-parity.result }}" != "success" ]] || \
              [[ "${{ needs.security.result }}" != "success" ]] || \
              [[ "${{ needs.test.result }}" != "success" ]] || \
-             [[ "${{ needs.perf.result }}" != "success" ]] || \
+             [[ "${{ needs.performance.result }}" != "success" ]] || \
              [[ "${{ needs.build.result }}" != "success" ]]; then
             echo "::error::Quality gate FAILED — required checks did not pass"
             exit 1

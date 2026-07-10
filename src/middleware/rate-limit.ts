@@ -61,6 +61,11 @@ export function createRateLimitMiddleware(
     const config = customLimit || RATE_LIMITS[tier];
 
     return async (request: Request, context?: any): Promise<Response | null> => {
+        // Skip if globally disabled
+        if (process.env.RATE_LIMIT_ENABLED === "false" || process.env.RATE_LIMIT_ENABLED === "0") {
+            return null;
+        }
+
         // Skip rate limiting in development if configured
         if (
             process.env.NODE_ENV === "development" &&
