@@ -362,6 +362,7 @@ jobs:
           INTERNAL_HOOK_SECRET: "ci-perf-hook"
           CSRF_SKIP_DEV: "true"
           RATE_LIMIT_SKIP_DEV: "true"
+          RATE_LIMIT_ENABLED: "false"
           SKIP_REDIS_CHECK: "1"
           PERF_BASE_URL: http://127.0.0.1:4321
           PERF_PATHS: /api/health,/api/metrics
