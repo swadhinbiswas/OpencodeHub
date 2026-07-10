@@ -500,7 +500,7 @@ jobs:
   quality-gate:
     name: Quality Gate
     runs-on: ubuntu-latest
-    needs: [lint, test, e2e, container-scan, sast, build]
+    needs: [lint, docs-parity, security, test, e2e, container-scan, sast, perf, build]
     if: always()
     steps:
       - name: Check all gates
@@ -513,8 +513,15 @@ jobs:
           echo "SAST:             ${{ needs.sast.result }}"
           echo "Build:            ${{ needs.build.result }}"
 
+          echo "Docs Parity:      ${{ needs.docs-parity.result }}"
+          echo "Security Gates:   ${{ needs.security.result }}"
+          echo "Perf Gate:        ${{ needs.perf.result }}"
+
           if [[ "${{ needs.lint.result }}" != "success" ]] || \
+             [[ "${{ needs.docs-parity.result }}" != "success" ]] || \
+             [[ "${{ needs.security.result }}" != "success" ]] || \
              [[ "${{ needs.test.result }}" != "success" ]] || \
+             [[ "${{ needs.perf.result }}" != "success" ]] || \
              [[ "${{ needs.build.result }}" != "success" ]]; then
             echo "::error::Quality gate FAILED — required checks did not pass"
             exit 1
