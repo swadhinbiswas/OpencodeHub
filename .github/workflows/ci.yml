@@ -347,7 +347,7 @@ jobs:
           DATABASE_DRIVER: postgres
       - name: Start server and run perf check
         run: |
-          bun run dev &
+          HOST=127.0.0.1 PORT=4321 node ./dist/server/entry.mjs &
           SERVER_PID=$!
           sleep 8
           bun run perf:baseline
