@@ -23,7 +23,7 @@ describe('CLI Smoke Test', () => {
             if (error?.code === 'EPERM') return;
             throw error;
         }
-        expect(output).toContain('OpenCodeHub CLI');
+        expect(output).toContain('OCH CLI');
         expect(output).toContain('Usage: och');
     });
 

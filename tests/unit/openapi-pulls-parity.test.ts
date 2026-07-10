@@ -54,6 +54,9 @@ describe("openapi pulls parity", () => {
       "/repos/{}/{}/pulls/bulk-queue-manage",
       "/repos/{}/{}/pulls/bulk-queue",
       "/repos/{}/{}/pulls/review-health",
+      "/repos/{}/{}/pulls/{}/code-quality",
+      "/repos/{}/{}/pulls/{}/comments/apply-suggestion",
+      "/repos/{}/{}/pulls/{}/ai-suggestions/{}/apply",
     ]);
 
     const missing = expectedPaths.filter(

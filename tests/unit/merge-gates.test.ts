@@ -99,7 +99,7 @@ describe("merge gate enforcement", () => {
 
     const result = await canMerge("pr1");
     expect(result.canMerge).toBe(false);
-    expect(result.reason).toContain('Required status check "build"');
+    expect(result.reason).toContain("Required status check 'build'");
   });
 
   it("blocks when external CI is still running", async () => {

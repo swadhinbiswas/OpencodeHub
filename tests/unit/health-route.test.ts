@@ -9,9 +9,9 @@ const state = vi.hoisted(() => ({
 const rawQueryMock = vi.hoisted(() => vi.fn(async () => [{ "?column?": 1 }]));
 const fsAccessMock = vi.hoisted(() => vi.fn(async () => undefined));
 
-vi.mock("@/db", () => ({
-  getDatabase: () => ({
-    execute: rawQueryMock,
+vi.mock("@/db/adapter", () => ({
+  getDb: () => ({
+    rawQuery: rawQueryMock,
   }),
 }));
 
