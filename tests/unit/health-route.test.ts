@@ -6,12 +6,12 @@ const state = vi.hoisted(() => ({
   queueMultiInstanceSafe: true,
 }));
 
-const rawQueryMock = vi.hoisted(() => vi.fn(async () => [{ "?column?": 1 }]));
+const executeMock = vi.hoisted(() => vi.fn(async () => [{ "?column?": 1 }]));
 const fsAccessMock = vi.hoisted(() => vi.fn(async () => undefined));
 
-vi.mock("@/db/adapter", () => ({
-  getDb: () => ({
-    rawQuery: rawQueryMock,
+vi.mock("@/db", () => ({
+  getDatabase: () => ({
+    execute: executeMock,
   }),
 }));
 
@@ -37,6 +37,7 @@ vi.mock("@/lib/queue-worker", () => ({
 
 vi.mock("fs/promises", () => ({
   access: fsAccessMock,
+  mkdir: vi.fn(async () => undefined),
 }));
 
 import { GET as healthGet } from "@/pages/api/health";

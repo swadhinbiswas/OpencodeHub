@@ -496,7 +496,7 @@ export const openApiSpec = {
             post: {
                 tags: ["AI Review"],
                 summary: "Receive external AI agent callback",
-                description: "Authenticated callback endpoint for external agents (CodeRabbit-like) to finalize async AI reviews.",
+                description: "Authenticated callback endpoint for external agents (Greptile-like) to finalize async AI reviews.",
                 parameters: [
                     { name: "owner", in: "path", required: true, schema: { type: "string" } },
                     { name: "repo", in: "path", required: true, schema: { type: "string" } },
