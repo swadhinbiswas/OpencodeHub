@@ -1,16 +1,18 @@
 import { execSync } from 'child_process';
-import { GoogleGenAI } from '@google/genai';
-import type { Interactions } from '@google/genai';
+import { Mistral } from '@mistralai/mistralai';
+import dotenv from 'dotenv';
 
-const GEMINI_API_KEY = process.env.GEMINI_KEY || process.env.GEMINI_API_KEY;
+dotenv.config();
+
+const AGENT_API_KEY = process.env.AGENT_API_KEY;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const PR_NUMBER = process.env.PR_NUMBER;
 const REPO = process.env.REPO;
 const BASE_SHA = process.env.BASE_SHA;
 const HEAD_SHA = process.env.HEAD_SHA;
 
-if (!GEMINI_API_KEY) {
-  console.log("GEMINI_KEY is not set. Skipping AI review.");
+if (!AGENT_API_KEY) {
+  console.log("AGENT_API_KEY is not set. Skipping AI review.");
   process.exit(0);
 }
 
@@ -19,20 +21,9 @@ if (!GITHUB_TOKEN) {
   process.exit(0);
 }
 
-const ai = new GoogleGenAI({
-    apiKey: GEMINI_API_KEY,
+const client = new Mistral({
+  apiKey: AGENT_API_KEY,
 });
-
-const tools: Interactions.Tool[] = [
-    {
-        type: 'google_search',
-    },
-];
-
-const generationConfig = {
-    max_output_tokens: 65536,
-    thinking_level: 'medium',
-};
 
 async function run() {
   try {
@@ -50,8 +41,8 @@ async function run() {
       return;
     }
 
-    // 2. Call Gemini API
-    console.log("Requesting review from Gemini 3.5 Flash...");
+    // 2. Call Mistral API
+    console.log("Requesting review from Mistral Agent...");
     const prompt = `You are a senior software engineer conducting a code review on a pull request.
 Review the following git diff and provide constructive, human-like, and professional feedback.
 Focus on identifying logic errors, security issues, performance bottlenecks, and best practice violations.
@@ -68,23 +59,25 @@ ${diff}
 \`\`\`
 `;
 
-    const interaction = await ai.interactions.create({
-        model: 'models/gemini-3.5-flash',
-        input: prompt,
-        tools: tools,
-        generation_config: generationConfig,
+    const messages = [
+      {"role":"user","content": prompt}
+    ];
+
+    const response = await client.beta.conversations.start({
+      agentId: 'ag_019f4ae0eb2e764aaa3f1dec318fc748',
+      agentVersion: 0,
+      inputs: messages,
     });
 
-    const step = interaction.steps?.at(-1);
-    let reviewComment = step?.text || step?.parts?.[0]?.text;
+    let reviewComment = response?.choices?.[0]?.message?.content || response?.message?.content;
 
     if (!reviewComment) {
-      console.error("No content received from Gemini.", JSON.stringify(step));
+      console.log("Could not find standard content in response. Fallback to full response:", JSON.stringify(response));
       process.exit(1);
     }
     
     // Add a signature
-    reviewComment += "\n\n— *AI Code Review (Powered by Gemini)*";
+    reviewComment += "\n\n— *AI Code Review (Powered by Mistral Agent)*";
 
     // 3. Post to GitHub
     console.log("Posting review to GitHub PR...");

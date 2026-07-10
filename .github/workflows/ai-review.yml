@@ -26,7 +26,7 @@ jobs:
         env:
           # Use user's PAT to count towards their GitHub contribution graph, fallback to standard bot token
           GITHUB_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_KEY }}
+          AGENT_API_KEY: ${{ secrets.AGENT_API_KEY }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
