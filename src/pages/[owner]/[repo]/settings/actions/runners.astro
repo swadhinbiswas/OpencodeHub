@@ -147,7 +147,7 @@ const repo = {
                                             <div class="flex items-center gap-4">
                                                 <div class="relative">
                                                     <div
-                                                        class={`p-2.5 rounded-full ${runner.status === "online" ? "bg-green-500/10 text-green-500" : "bg-white/5 text-gray-500"}`}
+                                                        class={`p-2.5 rounded-full ${runner.status === "online" ? "bg-green-500/10 text-green-500" : "bg-secondary text-muted-foreground"}`}
                                                     >
                                                         <Server className="h-5 w-5" />
                                                     </div>
@@ -160,19 +160,19 @@ const repo = {
                                                     )}
                                                 </div>
                                                 <div>
-                                                    <div class="font-medium text-white flex items-center gap-2">
+                                                    <div class="font-medium text-foreground flex items-center gap-2">
                                                         {runner.name}
                                                         <span
-                                                            class={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${runner.status === "online" ? "border-green-500/20 bg-green-500/5 text-green-400" : "border-white/10 bg-white/5 text-gray-500"}`}
+                                                            class={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${runner.status === "online" ? "border-green-500/20 bg-green-500/5 text-green-400" : "border-border bg-secondary text-muted-foreground"}`}
                                                         >
                                                             {runner.status}
                                                         </span>
                                                     </div>
-                                                    <div class="text-xs text-gray-400 mt-1 flex items-center gap-2">
-                                                        <span class="px-1.5 py-0.5 rounded bg-white/5 border border-white/5 font-mono text-[10px]">
+                                                    <div class="text-xs text-muted-foreground mt-1 flex items-center gap-2">
+                                                        <span class="px-1.5 py-0.5 rounded bg-secondary border border-border/50 font-mono text-[10px]">
                                                             {runner.os}
                                                         </span>
-                                                        <span class="px-1.5 py-0.5 rounded bg-white/5 border border-white/5 font-mono text-[10px]">
+                                                        <span class="px-1.5 py-0.5 rounded bg-secondary border border-border/50 font-mono text-[10px]">
                                                             {runner.arch}
                                                         </span>
                                                         <span>·</span>
@@ -227,10 +227,10 @@ const repo = {
 
                 <div class="space-y-6">
                     <div>
-                        <h3 class="text-lg font-medium text-white mb-1">
+                        <h3 class="text-lg font-medium text-foreground mb-1">
                             Add a new runner
                         </h3>
-                        <p class="text-sm text-gray-400">
+                        <p class="text-sm text-muted-foreground">
                             Configure a self-hosted runner to execute your
                             workflows.
                         </p>
@@ -238,10 +238,10 @@ const repo = {
 
                     <div class="border rounded-xl bg-card overflow-hidden">
                         <div
-                            class="flex border-b border-white/5 bg-white/[0.02] p-4"
+                            class="flex border-b border-border/50 bg-muted/30 p-4"
                         >
                             <h4
-                                class="text-sm font-medium text-white flex items-center gap-2"
+                                class="text-sm font-medium text-foreground flex items-center gap-2"
                             >
                                 <Terminal className="h-4 w-4" />
                                 CLI Setup
@@ -250,7 +250,7 @@ const repo = {
                         <div
                             class="p-6 bg-slate-950 text-slate-50 font-mono text-sm space-y-4"
                         >
-                            <p class="text-gray-400 font-sans">
+                            <p class="text-muted-foreground font-sans">
                                 Generate a one-time registration token, then run:
                             </p>
                             <div
@@ -265,11 +265,11 @@ const repo = {
                             </div>
                             <div
                                 id="registration-command"
-                                class="p-4 rounded-lg bg-white/5 border border-white/10 select-all font-mono text-sm break-all text-gray-400"
+                                class="p-4 rounded-lg bg-secondary border border-border select-all font-mono text-sm break-all text-muted-foreground"
                             >
                                 Generate a token to see command...
                             </div>
-                            <p id="token-expiry" class="text-xs text-gray-500 font-sans"></p>
+                            <p id="token-expiry" class="text-xs text-muted-foreground font-sans"></p>
                         </div>
                     </div>
                 </div>
@@ -302,9 +302,9 @@ const repo = {
                 : `user ${event.actorId || ""}`.trim();
             const action = event.action?.replace("runner_token_", "") || "event";
             return `
-                <div class="rounded border border-white/10 bg-white/5 p-2">
-                    <div class="font-medium text-white">${action} • token ${tokenId}</div>
-                    <div class="text-xs text-gray-400 mt-1">${when} • ${actor}${event.actorIp ? ` • ${event.actorIp}` : ""}</div>
+                <div class="rounded border border-border bg-secondary p-2">
+                    <div class="font-medium text-foreground">${action} • token ${tokenId}</div>
+                    <div class="text-xs text-muted-foreground mt-1">${when} • ${actor}${event.actorIp ? ` • ${event.actorIp}` : ""}</div>
                 </div>
             `;
         }).join("");
@@ -343,7 +343,7 @@ const repo = {
             const data = payload.data;
             currentTokenId = data.tokenId;
             commandEl.textContent = `och runner config --token ${data.token} --url ${serverUrl}`;
-            commandEl.classList.remove("text-gray-400");
+            commandEl.classList.remove("text-muted-foreground");
             if (tokenExpiryEl) {
                 tokenExpiryEl.textContent = `Expires: ${new Date(data.expiresAt).toLocaleString()} (one-time use)`;
             }
@@ -374,7 +374,7 @@ const repo = {
             currentTokenId = null;
             if (commandEl) {
                 commandEl.textContent = "Generate a token to see command...";
-                commandEl.classList.add("text-gray-400");
+                commandEl.classList.add("text-muted-foreground");
             }
             if (tokenExpiryEl) tokenExpiryEl.textContent = "";
             await loadAuditEvents();

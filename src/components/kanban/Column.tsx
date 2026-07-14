@@ -67,17 +67,17 @@ export const KanbanColumn: React.FC<Props> = ({ column, createCard, deleteCard }
         <div
             ref={setNodeRef}
             style={style}
-            className="bg-[#161b22] w-[350px] h-[500px] max-h-[500px] rounded-md flex flex-col border border-gray-800"
+            className="bg-accent w-[350px] h-[500px] max-h-[500px] rounded-md flex flex-col border border-gray-800"
         >
             <div
                 {...attributes}
                 {...listeners}
                 onClick={() => { }}
-                className="bg-[#0d1117] text-md h-[60px] cursor-grab rounded-md rounded-b-none p-3 font-bold border-b border-gray-800 flex items-center justify-between"
+                className="bg-card text-md h-[60px] cursor-grab rounded-md rounded-b-none p-3 font-bold border-b border-gray-800 flex items-center justify-between"
             >
                 <div className="flex gap-2 text-gray-200">
                     {column.name}
-                    <span className="flex justify-center items-center bg-gray-800 px-2 py-1 text-sm rounded-full text-gray-400">
+                    <span className="flex justify-center items-center bg-gray-800 px-2 py-1 text-sm rounded-full text-muted-foreground">
                         {column.cards.length}
                     </span>
                 </div>
@@ -104,7 +104,7 @@ export const KanbanColumn: React.FC<Props> = ({ column, createCard, deleteCard }
                     <div className="flex gap-2 items-center p-2">
                         <input
                             autoFocus
-                            className="bg-[#0d1117] border border-gray-700 rounded p-2 w-full text-white"
+                            className="bg-card border border-gray-700 rounded p-2 w-full text-foreground"
                             placeholder="Card content..."
                             value={newCardNote}
                             onChange={(e) => setNewCardNote(e.target.value)}
@@ -114,7 +114,7 @@ export const KanbanColumn: React.FC<Props> = ({ column, createCard, deleteCard }
                             }}
                         />
                         <button onClick={handleCreateCard} className="text-green-400 font-bold p-2">Add</button>
-                        <button onClick={() => setIsCreating(false)} className="text-gray-500 p-2">X</button>
+                        <button onClick={() => setIsCreating(false)} className="text-muted-foreground p-2">X</button>
                     </div>
                 )}
             </div>

@@ -1,5 +1,6 @@
-import rehypeSanitize from "rehype-sanitize";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
+import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
@@ -67,7 +68,15 @@ export async function renderMarkdown(content: string): Promise<string> {
     .use(remarkGfm)
     .use(remarkCrossRepoLinks) // Add custom plugin
     .use(remarkRehype)
-    .use(rehypeSanitize)
+    .use(rehypeHighlight) // Code highlighting
+    .use(rehypeSanitize, {
+      ...defaultSchema,
+      attributes: {
+        ...defaultSchema.attributes,
+        code: [...(defaultSchema.attributes?.code || []), "className"],
+        span: [...(defaultSchema.attributes?.span || []), "className"],
+      },
+    })
     .use(rehypeStringify)
     .process(content);
 

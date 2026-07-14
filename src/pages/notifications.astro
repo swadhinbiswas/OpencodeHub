@@ -87,7 +87,7 @@ function getIconAndColor(type: string) {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
             </svg>
           </div>
-          <h1 class="text-2xl font-bold text-white">Notifications</h1>
+          <h1 class="text-2xl font-bold text-foreground">Notifications</h1>
           {unreadCount > 0 && (
             <span class="inline-flex items-center justify-center rounded-full bg-cyan-500/20 border border-cyan-500/30 px-2.5 py-0.5 text-xs font-medium text-cyan-400">
               {unreadCount}
@@ -98,7 +98,7 @@ function getIconAndColor(type: string) {
           {unreadCount > 0 && (
             <button 
               id="mark-all-read-btn"
-              class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-300 hover:bg-white/10 transition-colors"
+              class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-secondary text-sm text-muted-foreground hover:bg-secondary/80 transition-colors"
             >
               <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -108,7 +108,7 @@ function getIconAndColor(type: string) {
           )}
           <a 
             href="/settings/notifications"
-            class="p-2 rounded-lg border border-white/10 bg-white/5 text-gray-400 hover:bg-white/10 transition-colors"
+            class="p-2 rounded-lg border border-border bg-secondary text-muted-foreground hover:bg-secondary/80 transition-colors"
           >
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
@@ -126,7 +126,7 @@ function getIconAndColor(type: string) {
             "inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all",
             filter === "unread" 
               ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/30" 
-              : "text-gray-400 hover:text-white hover:bg-white/5"
+              : "text-muted-foreground hover:text-foreground hover:bg-accent"
           ]}
         >
           <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -134,7 +134,7 @@ function getIconAndColor(type: string) {
           </svg>
           Unread
           {unreadCount > 0 && filter !== "unread" && (
-            <span class="text-xs bg-white/10 px-1.5 py-0.5 rounded-full">{unreadCount}</span>
+            <span class="text-xs bg-secondary/80 px-1.5 py-0.5 rounded-full">{unreadCount}</span>
           )}
         </a>
         <a 
@@ -142,8 +142,8 @@ function getIconAndColor(type: string) {
           class:list={[
             "inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all",
             filter === "all" 
-              ? "bg-white/10 text-white border border-white/20" 
-              : "text-gray-400 hover:text-white hover:bg-white/5"
+              ? "bg-secondary/80 text-foreground border border-border/80" 
+              : "text-muted-foreground hover:text-foreground hover:bg-accent"
           ]}
         >
           All
@@ -154,7 +154,7 @@ function getIconAndColor(type: string) {
             "inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all",
             filter === "read" 
               ? "bg-green-500/10 text-green-400 border border-green-500/30" 
-              : "text-gray-400 hover:text-white hover:bg-white/5"
+              : "text-muted-foreground hover:text-foreground hover:bg-accent"
           ]}
         >
           <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -168,7 +168,7 @@ function getIconAndColor(type: string) {
             "inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all",
             filter === "archived" 
               ? "bg-purple-500/10 text-purple-400 border border-purple-500/30" 
-              : "text-gray-400 hover:text-white hover:bg-white/5"
+              : "text-muted-foreground hover:text-foreground hover:bg-accent"
           ]}
         >
           <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -181,7 +181,7 @@ function getIconAndColor(type: string) {
       <!-- Notifications List -->
       <div class="relative">
         <div class="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/20 via-transparent to-purple-500/20 rounded-xl opacity-50"></div>
-        <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm overflow-hidden">
+        <div class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden">
           {notifications.length === 0 ? (
             <div class="text-center py-16">
               <div class="relative inline-block mb-4">
@@ -190,8 +190,8 @@ function getIconAndColor(type: string) {
                 </svg>
                 <div class="absolute inset-0 bg-cyan-500 blur-2xl opacity-20"></div>
               </div>
-              <h3 class="text-lg font-semibold text-white mb-2">No notifications</h3>
-              <p class="text-gray-500">
+              <h3 class="text-lg font-semibold text-foreground mb-2">No notifications</h3>
+              <p class="text-muted-foreground">
                 {filter === "unread" 
                   ? "You're all caught up! No unread notifications." 
                   : filter === "archived" 
@@ -207,7 +207,7 @@ function getIconAndColor(type: string) {
                   <a 
                     href={notification.url || "#"}
                     class:list={[
-                      "group flex items-start gap-4 p-4 transition-all hover:bg-white/[0.02]",
+                      "group flex items-start gap-4 p-4 transition-all hover:bg-accent/50",
                       !notification.isRead && "bg-cyan-500/[0.03]"
                     ]}
                   >
@@ -224,23 +224,23 @@ function getIconAndColor(type: string) {
                         <div>
                           <span class:list={[
                             "font-medium transition-colors line-clamp-1",
-                            !notification.isRead ? "text-white" : "text-gray-300",
+                            !notification.isRead ? "text-foreground" : "text-muted-foreground",
                             "group-hover:text-cyan-400"
                           ]}>
                             {notification.title}
                           </span>
                           {notification.body && (
-                            <p class="text-sm text-gray-500 mt-0.5 line-clamp-2">
+                            <p class="text-sm text-muted-foreground mt-0.5 line-clamp-2">
                               {notification.body}
                             </p>
                           )}
                         </div>
-                        <span class="text-xs text-gray-600 whitespace-nowrap">
+                        <span class="text-xs text-muted-foreground whitespace-nowrap">
                           {timeAgo(notification.createdAt)}
                         </span>
                       </div>
                       
-                      <div class="flex items-center gap-2 mt-2 text-xs text-gray-500">
+                      <div class="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
                         {notification.repository && (
                           <span class="text-purple-400">{notification.repository.name}</span>
                         )}
@@ -255,7 +255,7 @@ function getIconAndColor(type: string) {
                                   class="h-4 w-4 rounded-full"
                                 />
                               ) : (
-                                <div class="h-4 w-4 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-[8px] font-bold text-white">
+                                <div class="h-4 w-4 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-[8px] font-bold text-foreground">
                                   {notification.actor.username?.[0]?.toUpperCase()}
                                 </div>
                               )}

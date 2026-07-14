@@ -23,7 +23,7 @@ const getTypeIcon = (type: string) => {
         case "fork": return <GitFork className={`${iconClass} text-purple-400`} />;
         case "star": return <Star className={`${iconClass} text-yellow-400`} />;
         case "comment": return <MessageSquare className={`${iconClass} text-cyan-400`} />;
-        default: return <Radio className={`${iconClass} text-gray-400`} />;
+        default: return <Radio className={`${iconClass} text-muted-foreground`} />;
     }
 };
 
@@ -34,7 +34,7 @@ const getTypeColor = (type: string) => {
         case "fork": return "text-purple-400";
         case "star": return "text-yellow-400";
         case "comment": return "text-cyan-400";
-        default: return "text-gray-400";
+        default: return "text-muted-foreground";
     }
 };
 
@@ -74,10 +74,10 @@ export default function LiveLogStream({ logs }: Props) {
                         <h3 className="text-sm font-semibold bg-gradient-to-r from-gray-100 to-gray-400 bg-clip-text text-transparent">
                             Data Stream
                         </h3>
-                        <div className="text-[10px] text-gray-500 uppercase tracking-wider">Real-Time</div>
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Real-Time</div>
                     </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
                     <Clock className="w-3 h-3" />
                     {currentTime}
                 </div>
@@ -96,7 +96,7 @@ export default function LiveLogStream({ logs }: Props) {
                             className={`relative overflow-hidden rounded-lg bg-gradient-to-r ${getTypeBg(log.type)} p-2`}
                         >
                             {/* Timestamp */}
-                            <div className="text-[10px] text-gray-600 font-mono mb-1">
+                            <div className="text-[10px] text-muted-foreground font-mono mb-1">
                                 {log.timestamp}
                             </div>
 
@@ -110,13 +110,13 @@ export default function LiveLogStream({ logs }: Props) {
                                 {/* Details */}
                                 <div className="flex-1 min-w-0 text-xs">
                                     <div className="flex flex-wrap gap-x-1.5 items-center">
-                                        <span className="text-gray-600 font-mono">#{log.id.substring(0, 7)}</span>
-                                        <span className="text-gray-600">:</span>
+                                        <span className="text-muted-foreground font-mono">#{log.id.substring(0, 7)}</span>
+                                        <span className="text-muted-foreground">:</span>
                                         <span className={`font-semibold ${getTypeColor(log.type)}`}>
                                             {log.type.toUpperCase().replace("_", " ")}
                                         </span>
                                     </div>
-                                    <div className="text-gray-400 truncate mt-0.5">
+                                    <div className="text-muted-foreground truncate mt-0.5">
                                         {log.message}
                                     </div>
                                 </div>

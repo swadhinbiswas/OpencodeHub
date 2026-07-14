@@ -355,14 +355,14 @@ function formatSize(bytes: number) {
                      </a>
                   </div>
                ) : isMarkdown ? (
-                  <div class="p-8 bg-[#0d1117] rounded-b-lg">
+                  <div class="p-8 bg-card rounded-b-lg">
                      <article class="markdown-body" set:html={markdownHtml} />
                   </div>
                ) : (
-                  <div class="overflow-x-auto text-sm leading-6 custom-scrollbar bg-[#0d1117] text-[#c9d1d9] rounded-b-lg">
+                  <div class="overflow-x-auto text-sm leading-6 custom-scrollbar bg-card text-[#c9d1d9] rounded-b-lg">
                      <div class="flex min-w-full">
                         {/* Line Numbers */}
-                        <div class="flex flex-col items-end px-3 py-4 text-xs font-mono text-gray-600 bg-[#0d1117] select-none border-r border-gray-800">
+                        <div class="flex flex-col items-end px-3 py-4 text-xs font-mono text-muted-foreground bg-card select-none border-r border-gray-800">
                            {Array.from({ length: lineCount }).map((_, i) => (
                               <div class="h-6">{i + 1}</div>
                            ))}

@@ -8,217 +8,172 @@ if (!user) {
 }
 ---
 
-<SettingsLayout title="Public Profile">
-  <div class="space-y-6">
+<SettingsLayout title="Public profile">
+  <div class="max-w-[640px]">
     <!-- Header -->
-    <div>
-      <h3 class="text-xl font-bold text-white flex items-center gap-3">
-        <div
-          class="p-2 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30"
-        >
-          <svg
-            class="h-5 w-5 text-cyan-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-            ></path>
-          </svg>
-        </div>
-        Public Profile
-      </h3>
-      <p class="text-gray-500 text-sm mt-2 ml-12">
-        This information will be displayed publicly so be careful what you
-        share.
+    <div class="mb-6">
+      <h2 class="text-[28px] font-semibold text-foreground">Public profile</h2>
+      <p class="text-sm text-muted-foreground mt-1">
+        This information will be displayed publicly so be careful what you share.
       </p>
     </div>
 
-    <!-- Form Card -->
-    <div class="relative">
-      <div
-        class="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/20 via-transparent to-purple-500/20 rounded-xl opacity-50"
-      >
-      </div>
-      <div
-        class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-6"
-      >
-        <form id="profile-form" class="space-y-6">
-          <!-- Avatar Section -->
-          <div class="flex items-start gap-6 pb-6 border-b border-white/10">
-            <div class="relative group">
-              <div
-                class="absolute -inset-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 rounded-full blur opacity-40 group-hover:opacity-60 transition-opacity"
-              >
-              </div>
-              <div
-                id="avatar-preview"
-                class="relative w-24 h-24 rounded-full overflow-hidden border-4 border-[#0d1117] bg-gradient-to-br from-cyan-400 to-purple-600 flex items-center justify-center"
-              >
-                {
-                  user.avatarUrl ? (
-                    <img
-                      src={user.avatarUrl}
-                      alt={user.username}
-                      class="w-full h-full object-cover"
-                      id="avatar-img"
-                    />
-                  ) : (
-                    <span
-                      class="text-2xl font-bold text-white"
-                      id="avatar-letter"
-                    >
-                      {user.username[0].toUpperCase()}
-                    </span>
-                  )
-                }
-              </div>
+    <form id="profile-form" class="space-y-0">
+      <!-- Avatar -->
+      <div class="flex flex-col sm:flex-row gap-6 py-5 border-t border-border">
+        <label class="text-sm font-medium text-foreground sm:w-[180px] sm:pt-2 shrink-0">
+          Profile picture
+        </label>
+        <div class="flex-1">
+          <div class="flex items-start gap-4">
+            <div id="avatar-preview" class="w-[128px] h-[128px] rounded-full overflow-hidden border border-border bg-secondary flex-shrink-0">
+              {user.avatarUrl ? (
+                <img src={user.avatarUrl} alt={user.username} class="w-full h-full object-cover" id="avatar-img" />
+              ) : (
+                <div class="w-full h-full flex items-center justify-center text-4xl font-semibold text-muted-foreground bg-secondary" id="avatar-letter">
+                  {user.username[0].toUpperCase()}
+                </div>
+              )}
             </div>
-            <div class="flex-1 space-y-3">
-              <label
-                for="avatarUrl"
-                class="block text-sm font-medium text-gray-300"
-              >
-                Profile Picture URL
-              </label>
+            <div class="flex-1 space-y-2">
               <input
                 type="url"
                 name="avatarUrl"
                 id="avatarUrl"
-                placeholder="https://example.com/your-avatar.jpg"
+                placeholder="https://example.com/avatar.jpg"
                 value={user.avatarUrl || ""}
-                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                class="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff]/30 transition-colors"
               />
-              <p class="text-xs text-gray-600">
-                Enter a URL to an image (PNG, JPG, GIF). The image will be
-                displayed on your profile.
+              <p class="text-xs text-muted-foreground">
+                URL to an image (PNG, JPG, GIF, SVG). Recommended 500x500px.
               </p>
             </div>
           </div>
-
-          <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-            <!-- Name -->
-            <div class="sm:col-span-4">
-              <label
-                for="displayName"
-                class="block text-sm font-medium text-gray-300 mb-2"
-              >
-                Name
-              </label>
-              <input
-                type="text"
-                name="displayName"
-                id="displayName"
-                value={user.displayName || ""}
-                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
-              />
-              <p class="mt-2 text-xs text-gray-600">
-                Your name may appear around OpenCodeHub where you contribute or
-                are mentioned.
-              </p>
-            </div>
-
-            <!-- Bio -->
-            <div class="sm:col-span-6">
-              <label
-                for="bio"
-                class="block text-sm font-medium text-gray-300 mb-2"
-              >
-                Bio
-              </label>
-              <textarea
-                id="bio"
-                name="bio"
-                rows="3"
-                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all resize-none"
-                >{user.bio || ""}</textarea
-              >
-              <p class="mt-2 text-xs text-gray-600">
-                You can @mention other users and organizations to link to them.
-              </p>
-            </div>
-
-            <!-- Company -->
-            <div class="sm:col-span-3">
-              <label
-                for="company"
-                class="block text-sm font-medium text-gray-300 mb-2"
-              >
-                Company
-              </label>
-              <input
-                type="text"
-                name="company"
-                id="company"
-                value={user.company || ""}
-                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
-              />
-            </div>
-
-            <!-- Location -->
-            <div class="sm:col-span-3">
-              <label
-                for="location"
-                class="block text-sm font-medium text-gray-300 mb-2"
-              >
-                Location
-              </label>
-              <input
-                type="text"
-                name="location"
-                id="location"
-                value={user.location || ""}
-                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
-              />
-            </div>
-
-            <!-- Website -->
-            <div class="sm:col-span-4">
-              <label
-                for="website"
-                class="block text-sm font-medium text-gray-300 mb-2"
-              >
-                Website
-              </label>
-              <input
-                type="url"
-                name="website"
-                id="website"
-                placeholder="https://example.com"
-                value={user.website || ""}
-                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
-              />
-            </div>
-          </div>
-
-          <!-- Submit -->
-          <div class="flex justify-end pt-4 border-t border-white/5">
-            <button
-              type="submit"
-              class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-sm font-medium text-white shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all"
-            >
-              <svg
-                class="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M5 13l4 4L19 7"></path>
-              </svg>
-              Save Profile
-            </button>
-          </div>
-        </form>
+        </div>
       </div>
-    </div>
+
+      <!-- Name -->
+      <div class="flex flex-col sm:flex-row gap-6 py-5 border-t border-border">
+        <label for="displayName" class="text-sm font-medium text-foreground sm:w-[180px] sm:pt-2 shrink-0">
+          Name
+        </label>
+        <div class="flex-1">
+          <input
+            type="text"
+            name="displayName"
+            id="displayName"
+            value={user.displayName || ""}
+            class="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff]/30 transition-colors"
+          />
+          <p class="text-xs text-muted-foreground mt-2">
+            Your name may appear around OpenCodeHub where you contribute or are mentioned.
+          </p>
+        </div>
+      </div>
+
+      <!-- Bio -->
+      <div class="flex flex-col sm:flex-row gap-6 py-5 border-t border-border">
+        <label for="bio" class="text-sm font-medium text-foreground sm:w-[180px] sm:pt-2 shrink-0">
+          Bio
+        </label>
+        <div class="flex-1">
+          <textarea
+            id="bio"
+            name="bio"
+            rows="3"
+            maxlength="160"
+            class="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff]/30 transition-colors resize-none"
+          >{user.bio || ""}</textarea>
+          <p class="text-xs text-muted-foreground mt-2">
+            You can @mention other users or organizations to link to them.
+            <span id="bio-count" class="float-right">{160 - (user.bio?.length || 0)}/160</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Company -->
+      <div class="flex flex-col sm:flex-row gap-6 py-5 border-t border-border">
+        <label for="company" class="text-sm font-medium text-foreground sm:w-[180px] sm:pt-2 shrink-0">
+          Company
+        </label>
+        <div class="flex-1">
+          <input
+            type="text"
+            name="company"
+            id="company"
+            value={user.company || ""}
+            class="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff]/30 transition-colors"
+          />
+        </div>
+      </div>
+
+      <!-- Location -->
+      <div class="flex flex-col sm:flex-row gap-6 py-5 border-t border-border">
+        <label for="location" class="text-sm font-medium text-foreground sm:w-[180px] sm:pt-2 shrink-0">
+          Location
+        </label>
+        <div class="flex-1">
+          <input
+            type="text"
+            name="location"
+            id="location"
+            value={user.location || ""}
+            placeholder="San Francisco, CA"
+            class="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff]/30 transition-colors"
+          />
+        </div>
+      </div>
+
+      <!-- Website -->
+      <div class="flex flex-col sm:flex-row gap-6 py-5 border-t border-border">
+        <label for="website" class="text-sm font-medium text-foreground sm:w-[180px] sm:pt-2 shrink-0">
+          Website
+        </label>
+        <div class="flex-1">
+          <input
+            type="url"
+            name="website"
+            id="website"
+            placeholder="https://example.com"
+            value={user.website || ""}
+            class="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff]/30 transition-colors"
+          />
+        </div>
+      </div>
+
+      <!-- Email (read-only) -->
+      <div class="flex flex-col sm:flex-row gap-6 py-5 border-t border-border">
+        <label class="text-sm font-medium text-foreground sm:w-[180px] sm:pt-2 shrink-0">
+          Email
+        </label>
+        <div class="flex-1">
+          <input
+            type="email"
+            value={user.email || ""}
+            disabled
+            class="w-full rounded-md border border-border bg-secondary px-3 py-1.5 text-sm text-muted-foreground cursor-not-allowed"
+          />
+          <p class="text-xs text-muted-foreground mt-2">
+            Your email is used for notifications and sign-in. <a href="/settings/account" class="text-[#58a6ff] hover:underline">Change in account settings</a>.
+          </p>
+        </div>
+      </div>
+
+      <!-- Submit -->
+      <div class="flex justify-end py-6 border-t border-border mt-2">
+        <div class="flex items-center gap-3">
+          <span id="save-status" class="text-sm hidden">
+            <span class="text-green-500">Profile updated successfully.</span>
+          </span>
+          <button
+            type="submit"
+            class="px-4 py-1.5 rounded-md bg-[#238636] border border-[#2ea043] text-sm font-medium text-white hover:bg-[#2ea043] transition-colors"
+          >
+            Update profile
+          </button>
+        </div>
+      </div>
+    </form>
   </div>
 </SettingsLayout>
 
@@ -226,6 +181,9 @@ if (!user) {
   const form = document.getElementById("profile-form") as HTMLFormElement;
   const avatarInput = document.getElementById("avatarUrl") as HTMLInputElement;
   const avatarPreview = document.getElementById("avatar-preview");
+  const bioTextarea = document.getElementById("bio") as HTMLTextAreaElement;
+  const bioCount = document.getElementById("bio-count");
+  const saveStatus = document.getElementById("save-status");
 
   // Live avatar preview
   let debounceTimer: any;
@@ -234,35 +192,35 @@ if (!user) {
     debounceTimer = setTimeout(() => {
       const url = avatarInput.value.trim();
       if (url && avatarPreview) {
-        // Try to load the image
         const img = new Image();
         img.onload = () => {
           avatarPreview.innerHTML = `<img src="${url}" alt="Avatar" class="w-full h-full object-cover" />`;
         };
-        img.onerror = () => {
-          // Keep existing or show letter
-          const letter = document.getElementById("avatar-letter");
-          if (!letter && avatarPreview) {
-            avatarPreview.innerHTML = `<span class="text-2xl font-bold text-white">?</span>`;
-          }
-        };
+        img.onerror = () => {};
         img.src = url;
       }
     }, 500);
   });
 
+  // Bio character count
+  bioTextarea?.addEventListener("input", () => {
+    if (bioCount) {
+      const remaining = 160 - bioTextarea.value.length;
+      bioCount.textContent = `${remaining}/160`;
+      bioCount.className = remaining < 0 ? "float-right text-red-500" : "float-right";
+    }
+  });
+
+  // Form submission
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const formData = new FormData(form);
     const data = Object.fromEntries(formData);
 
-    const submitBtn = form.querySelector(
-      'button[type="submit"]',
-    ) as HTMLButtonElement;
-    const originalText = submitBtn.innerHTML;
+    const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+    const originalText = submitBtn.textContent;
     submitBtn.disabled = true;
-    submitBtn.innerHTML =
-      '<svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>Saving...';
+    submitBtn.textContent = "Updating...";
 
     try {
       const response = await fetch("/api/auth/me", {
@@ -272,19 +230,27 @@ if (!user) {
       });
 
       if (response.ok) {
-        submitBtn.innerHTML =
-          '<svg class="h-4 w-4 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>Saved!';
-        setTimeout(() => window.location.reload(), 1000);
+        submitBtn.textContent = "Updated!";
+        if (saveStatus) {
+          saveStatus.classList.remove("hidden");
+        }
+        setTimeout(() => {
+          submitBtn.textContent = originalText;
+          submitBtn.disabled = false;
+          if (saveStatus) {
+            saveStatus.classList.add("hidden");
+          }
+        }, 3000);
       } else {
         const error = await response.json();
         alert(error.message || "Failed to update profile");
-        submitBtn.innerHTML = originalText;
+        submitBtn.textContent = originalText;
         submitBtn.disabled = false;
       }
     } catch (error) {
       console.error("Error updating profile:", error);
       alert("An error occurred while updating profile");
-      submitBtn.innerHTML = originalText;
+      submitBtn.textContent = originalText;
       submitBtn.disabled = false;
     }
   });

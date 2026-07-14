@@ -49,7 +49,7 @@ const initialSets = (await db.query.changeSets?.findMany({
             <div class="text-muted-foreground">No change sets yet.</div>
           ) : (
             initialSets.map((item) => (
-              <button data-id={item.id} class="change-set-entry w-full text-left rounded-md border border-white/10 bg-white/5 px-3 py-2 hover:bg-white/10">
+              <button data-id={item.id} class="change-set-entry w-full text-left rounded-md border border-border bg-secondary px-3 py-2 hover:bg-secondary/80">
                 <div class="font-medium">{item.name}</div>
                 <div class="text-xs text-muted-foreground">{item.status} · {new Date(item.updatedAt).toLocaleString()}</div>
               </button>
@@ -105,7 +105,7 @@ const initialSets = (await db.query.changeSets?.findMany({
     }
 
     listContainer.innerHTML = sets.map((item) => `
-      <button data-id="${item.id}" class="change-set-entry w-full text-left rounded-md border border-white/10 bg-white/5 px-3 py-2 hover:bg-white/10">
+      <button data-id="${item.id}" class="change-set-entry w-full text-left rounded-md border border-border bg-secondary px-3 py-2 hover:bg-secondary/80">
         <div class="font-medium">${item.name}</div>
         <div class="text-xs text-muted-foreground">${item.status} · ${new Date(item.updatedAt).toLocaleString()}</div>
       </button>
@@ -137,7 +137,7 @@ const initialSets = (await db.query.changeSets?.findMany({
           ${items.length === 0
             ? '<div class="text-muted-foreground">No linked repositories.</div>'
             : items.map((item, idx) => `
-              <div class="rounded border border-white/10 bg-white/5 px-2 py-1.5">
+              <div class="rounded border border-border bg-secondary px-2 py-1.5">
                 <div>#${idx + 1} ${item.repository?.name || "repo"}</div>
                 <div class="text-xs text-muted-foreground">PR ${item.pullRequest?.number ? `#${item.pullRequest.number}` : "(none)"}</div>
               </div>

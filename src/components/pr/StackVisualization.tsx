@@ -57,7 +57,7 @@ export function StackVisualization({
             return <GitMerge className="h-4 w-4 text-purple-500" />;
         }
         if (entry.pr.isDraft) {
-            return <FileEdit className="h-4 w-4 text-gray-400" />;
+            return <FileEdit className="h-4 w-4 text-muted-foreground" />;
         }
         if (entry.pr.state === "open") {
             return <GitPullRequest className="h-4 w-4 text-green-500" />;

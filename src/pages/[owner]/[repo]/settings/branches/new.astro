@@ -28,7 +28,7 @@ if (!repository || repository.owner.username !== owner) {
         class="space-y-6 rounded-lg border border-gray-700 bg-gray-800 p-6"
       >
         <div>
-          <label class="mb-2 block font-medium text-gray-300"
+          <label class="mb-2 block font-medium text-muted-foreground"
             >Branch Pattern</label
           >
           <input
@@ -36,15 +36,15 @@ if (!repository || repository.owner.username !== owner) {
             name="pattern"
             placeholder="main, release/*, *"
             required
-            class="w-full rounded border border-gray-600 bg-gray-900 px-4 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+            class="w-full rounded border border-gray-600 bg-gray-900 px-4 py-2 text-foreground placeholder-gray-500 focus:border-blue-500 focus:outline-none"
           />
-          <p class="mt-1 text-sm text-gray-500">
+          <p class="mt-1 text-sm text-muted-foreground">
             Glob patterns supported (e.g., release/*)
           </p>
         </div>
 
         <div class="space-y-4">
-          <label class="block font-medium text-gray-300"
+          <label class="block font-medium text-muted-foreground"
             >Protect matching branches</label
           >
 
@@ -56,10 +56,10 @@ if (!repository || repository.owner.username !== owner) {
               class="mt-1"
             />
             <div>
-              <label for="requiresPr" class="font-medium text-white"
+              <label for="requiresPr" class="font-medium text-foreground"
                 >Require a pull request before merging</label
               >
-              <p class="text-sm text-gray-500">
+              <p class="text-sm text-muted-foreground">
                 All commits must be made to a non-protected branch and submitted
                 via a pull request.
               </p>
@@ -67,7 +67,7 @@ if (!repository || repository.owner.username !== owner) {
           </div>
 
           <div class="ml-7">
-            <label class="block text-sm text-gray-400">Required approvals</label
+            <label class="block text-sm text-muted-foreground">Required approvals</label
             >
             <input
               type="number"
@@ -75,7 +75,7 @@ if (!repository || repository.owner.username !== owner) {
               min="0"
               max="10"
               value="1"
-              class="mt-1 w-20 rounded border border-gray-600 bg-gray-900 px-2 py-1 text-white"
+              class="mt-1 w-20 rounded border border-gray-600 bg-gray-900 px-2 py-1 text-foreground"
             />
           </div>
 
@@ -87,7 +87,7 @@ if (!repository || repository.owner.username !== owner) {
               class="mt-1"
             />
             <div>
-              <label for="dismissStaleReviews" class="font-medium text-white"
+              <label for="dismissStaleReviews" class="font-medium text-foreground"
                 >Dismiss stale pull request approvals when new commits are
                 pushed</label
               >
@@ -104,7 +104,7 @@ if (!repository || repository.owner.username !== owner) {
             <div>
               <label
                 for="requireCodeOwnerReviews"
-                class="font-medium text-white"
+                class="font-medium text-foreground"
                 >Require review from Code Owners</label
               >
             </div>
@@ -120,10 +120,10 @@ if (!repository || repository.owner.username !== owner) {
               class="mt-1"
             />
             <div>
-              <label for="allowForcePushes" class="font-medium text-white"
+              <label for="allowForcePushes" class="font-medium text-foreground"
                 >Allow force pushes</label
               >
-              <p class="text-sm text-gray-500">
+              <p class="text-sm text-muted-foreground">
                 Permit force pushes for all users with write access.
               </p>
             </div>
@@ -133,13 +133,13 @@ if (!repository || repository.owner.username !== owner) {
         <div class="flex justify-end gap-3 pt-4">
           <a
             href={`/${owner}/${repo}/settings/branches`}
-            class="rounded px-4 py-2 text-gray-300 hover:bg-gray-700"
+            class="rounded px-4 py-2 text-muted-foreground hover:bg-gray-700"
           >
             Cancel
           </a>
           <button
             type="submit"
-            class="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+            class="rounded bg-green-600 px-4 py-2 text-foreground hover:bg-green-700"
           >
             Create Rule
           </button>

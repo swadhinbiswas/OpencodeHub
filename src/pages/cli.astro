@@ -183,7 +183,7 @@ const commands = [
                                 1. Installation
                             </h3>
                             <div
-                                class="rounded-md bg-muted px-4 py-2 font-mono text-sm"
+                                class="rounded-md bg-muted px-4 py-2 font-mono text-sm border border-border"
                             >
                                 npm install -g opencodehub-cli
                             </div>
@@ -204,7 +204,7 @@ const commands = [
                                 Login with your credentials or a token.
                             </p>
                             <div
-                                class="rounded-md bg-muted px-4 py-2 font-mono text-sm"
+                                class="rounded-md bg-muted px-4 py-2 font-mono text-sm border border-border"
                             >
                                 och auth login
                             </div>
@@ -225,7 +225,7 @@ const commands = [
                                 Run this once in your repository.
                             </p>
                             <div
-                                class="rounded-md bg-muted px-4 py-2 font-mono text-sm"
+                                class="rounded-md bg-muted px-4 py-2 font-mono text-sm border border-border"
                             >
                                 och init
                             </div>
@@ -246,7 +246,7 @@ const commands = [
                                 Create specific feature branches.
                             </p>
                             <div
-                                class="rounded-md bg-muted px-4 py-2 font-mono text-sm"
+                                class="rounded-md bg-muted px-4 py-2 font-mono text-sm border border-border"
                             >
                                 och stack create feature-a
                             </div>
@@ -261,7 +261,7 @@ const commands = [
                     {
                         commands.map((item, i) => (
                             <div
-                                class={`flex flex-col sm:flex-row sm:items-center justify-between p-4 ${i !== commands.length - 1 ? "border-b border-white/5" : ""} hover:bg-muted/50 transition-colors`}
+                                class={`flex flex-col sm:flex-row sm:items-center justify-between p-4 ${i !== commands.length - 1 ? "border-b border-border/50" : ""} hover:bg-muted/50 transition-colors`}
                             >
                                 <code class="text-sm font-mono text-primary bg-primary/10 px-2 py-1 rounded w-fit mb-2 sm:mb-0">
                                     {item.cmd}

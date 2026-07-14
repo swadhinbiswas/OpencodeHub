@@ -55,7 +55,7 @@ function timeAgo(date: string | number | Date) {
     <!-- Header -->
     <div class="flex items-center justify-between mb-8">
       <div>
-        <h1 class="text-3xl font-bold text-white flex items-center gap-3">
+        <h1 class="text-3xl font-bold text-foreground flex items-center gap-3">
           <div class="p-2 rounded-lg bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-500/30">
             <svg class="h-7 w-7 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
@@ -63,53 +63,53 @@ function timeAgo(date: string | number | Date) {
           </div>
           Your Stars
         </h1>
-        <p class="text-gray-500 mt-2">Repositories you've starred</p>
+        <p class="text-muted-foreground mt-2">Repositories you've starred</p>
       </div>
-      <div class="text-sm text-gray-400">
+      <div class="text-sm text-muted-foreground">
         {starredRepos.length} starred
       </div>
     </div>
 
     <!-- Search -->
     <div class="relative mb-6">
-      <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
       </svg>
       <input
         type="search"
         id="star-search"
         placeholder="Search your stars..."
-        class="w-full rounded-lg border border-white/10 bg-white/5 pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/20 transition-all"
+        class="w-full rounded-lg border border-border bg-secondary pl-10 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/20 transition-all"
       />
     </div>
 
     <!-- Starred Repositories List -->
     <div class="relative">
       <div class="absolute -inset-[1px] bg-gradient-to-r from-yellow-500/20 via-transparent to-amber-500/20 rounded-xl opacity-50"></div>
-      <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm overflow-hidden">
+      <div class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden">
         {starredRepos.length > 0 ? (
           <div id="stars-list" class="divide-y divide-white/5">
             {starredRepos.map((star) => (
               <a
                 href={`/${star.repository?.owner?.username}/${star.repository?.name}`}
-                class="star-item block p-5 hover:bg-white/[0.02] transition-colors group"
+                class="star-item block p-5 hover:bg-accent/50 transition-colors group"
                 data-name={star.repository?.name?.toLowerCase() || ''}
                 data-desc={star.repository?.description?.toLowerCase() || ''}
               >
                 <div class="flex items-start justify-between">
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 mb-1">
-                      <span class="text-sm text-gray-500">
+                      <span class="text-sm text-muted-foreground">
                         {star.repository?.owner?.username}
                       </span>
-                      <span class="text-gray-600">/</span>
+                      <span class="text-muted-foreground">/</span>
                       <h3 class="font-semibold text-cyan-400 group-hover:underline">
                         {star.repository?.name}
                       </h3>
                       <span class:list={[
                         "px-2 py-0.5 rounded-full text-xs border",
                         star.repository?.visibility === 'public' 
-                          ? "border-gray-500/30 text-gray-400" 
+                          ? "border-gray-500/30 text-muted-foreground" 
                           : "border-yellow-500/30 text-yellow-400"
                       ]}>
                         {star.repository?.visibility}
@@ -117,12 +117,12 @@ function timeAgo(date: string | number | Date) {
                     </div>
                     
                     {star.repository?.description && (
-                      <p class="text-gray-400 text-sm mb-3 line-clamp-2">
+                      <p class="text-muted-foreground text-sm mb-3 line-clamp-2">
                         {star.repository.description}
                       </p>
                     )}
 
-                    <div class="flex items-center gap-4 text-xs text-gray-500">
+                    <div class="flex items-center gap-4 text-xs text-muted-foreground">
                       {star.repository?.language && (
                         <div class="flex items-center gap-1.5">
                           <span class={`h-3 w-3 rounded-full ${langColors[star.repository.language] || 'bg-gray-400'}`}></span>
@@ -167,13 +167,13 @@ function timeAgo(date: string | number | Date) {
               </svg>
               <div class="absolute inset-0 bg-yellow-500 blur-2xl opacity-20"></div>
             </div>
-            <h3 class="text-lg font-semibold text-white mb-2">No starred repositories</h3>
-            <p class="text-gray-500 mb-4">
+            <h3 class="text-lg font-semibold text-foreground mb-2">No starred repositories</h3>
+            <p class="text-muted-foreground mb-4">
               Star repositories to bookmark them for later.
             </p>
             <a
               href="/explore"
-              class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-600 text-sm font-medium text-white"
+              class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-600 text-sm font-medium text-foreground"
             >
               <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>

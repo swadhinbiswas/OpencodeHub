@@ -8,7 +8,6 @@ services:
     restart: unless-stopped
     ports:
       - "4321:4321" # Web interface
-      - "2222:2222" # SSH Git
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://opencodehub:opencodehub@postgres:5432/opencodehub
@@ -16,9 +15,15 @@ services:
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=${JWT_SECRET:-supersecretjwtkey}
       - WORKFLOW_SECRET_ENCRYPTION_KEY=${WORKFLOW_SECRET_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef}
+      - INTERNAL_HOOK_SECRET=${INTERNAL_HOOK_SECRET:-supersecrethookkey}
+      - CRON_SECRET=${CRON_SECRET:-supersecretcronkey}
+      - RUNNER_SECRET=${RUNNER_SECRET:-supersecretrunnerkey}
+      - AI_CONFIG_ENCRYPTION_KEY=${AI_CONFIG_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef}
       - SERVER_URL=http://localhost:4321
       - DATA_DIR=/data
       - STORAGE_TYPE=local
+      - GIT_REPOS_PATH=/data/repositories
+      - GIT_SSH_PORT=2222
     volumes:
       - ./data/opencodehub:/data
     depends_on:
@@ -42,6 +47,40 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  # SSH Git server
+  ssh-git:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: opencodehub-ssh
+    restart: unless-stopped
+    command: ["bun", "scripts/ssh-server.ts"]
+    ports:
+      - "2222:2222" # SSH Git
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://opencodehub:opencodehub@postgres:5432/opencodehub
+      - DATABASE_TYPE=postgres
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-supersecretjwtkey}
+      - WORKFLOW_SECRET_ENCRYPTION_KEY=${WORKFLOW_SECRET_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef}
+      - AI_CONFIG_ENCRYPTION_KEY=${AI_CONFIG_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef}
+      - SERVER_URL=http://app:4321
+      - DATA_DIR=/data
+      - STORAGE_TYPE=local
+      - GIT_REPOS_PATH=/data/repositories
+      - GIT_SSH_PORT=2222
+      - GIT_SSH_HOST_KEY=/data/ssh/host_key
+    volumes:
+      - ./data/opencodehub:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - opencodehub-network
 
   # PostgreSQL database
   postgres:

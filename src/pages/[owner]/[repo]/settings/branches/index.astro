@@ -51,13 +51,13 @@ const repoHeaderData = {
       <div class="mb-6 flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-bold">Branch Protection Rules</h1>
-          <p class="text-gray-400">
+          <p class="text-muted-foreground">
             Define rules to enforce workflows on specific branches.
           </p>
         </div>
         <a
           href={`/${owner}/${repoName}/settings/branches/new`}
-          class="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+          class="rounded bg-green-600 px-4 py-2 text-foreground hover:bg-green-700"
         >
           Add Rule
         </a>
@@ -66,7 +66,7 @@ const repoHeaderData = {
       {
         rules.length === 0 ? (
           <div class="rounded-lg border border-gray-700 bg-gray-800 p-8 text-center">
-            <p class="text-gray-400">No branch protection rules defined yet.</p>
+            <p class="text-muted-foreground">No branch protection rules defined yet.</p>
             <a
               href={`/${owner}/${repoName}/settings/branches/new`}
               class="mt-4 inline-block text-blue-400 hover:underline"
@@ -76,8 +76,8 @@ const repoHeaderData = {
           </div>
         ) : (
           <div class="overflow-hidden rounded-lg border border-gray-700 bg-gray-800">
-            <table class="w-full text-left text-sm text-gray-400">
-              <thead class="bg-gray-900 text-xs uppercase text-gray-400">
+            <table class="w-full text-left text-sm text-muted-foreground">
+              <thead class="bg-gray-900 text-xs uppercase text-muted-foreground">
                 <tr>
                   <th class="px-6 py-3">Branch Pattern</th>
                   <th class="px-6 py-3">Required Approvals</th>
@@ -89,7 +89,7 @@ const repoHeaderData = {
               <tbody class="divide-y divide-gray-700">
                 {rules.map((rule) => (
                   <tr class="hover:bg-gray-750">
-                    <td class="px-6 py-4 font-medium text-white">
+                    <td class="px-6 py-4 font-medium text-foreground">
                       {rule.pattern}
                     </td>
                     <td class="px-6 py-4">

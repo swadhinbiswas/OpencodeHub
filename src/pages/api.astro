@@ -1,328 +1,399 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import { Code2, Webhook, Key, BookOpen } from "lucide-react";
 
-const apiSections = [
+const baseUrl = "https://docs.opencodehub.space";
+
+const apiCategories = [
   {
-    icon: Code2,
-    title: "REST API",
-    description: "Complete REST API reference for repositories, pull requests, and more",
-    href: "/docs/api/rest-api",
-    status: "Available",
-    statusColor: "text-green-400"
-  },
-  {
-    icon: Webhook,
-    title: "Webhooks",
-    description: "Event-driven integrations with webhook payloads",
-    href: "/docs/api/webhooks",
-    status: "Available",
-    statusColor: "text-green-400"
-  },
-  {
-    icon: Key,
     title: "Authentication",
-    description: "API tokens, OAuth, and authentication flows",
-    href: "/docs/api/authentication",
-    status: "Available",
-    statusColor: "text-green-400"
+    description: "Login, register, 2FA, OAuth, SSO/SAML, session management",
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
+    color: "text-blue-500",
+    bgColor: "bg-blue-500/10",
+    borderColor: "border-blue-500/20",
+    href: `${baseUrl}/api/authentication/`,
+    endpoints: [
+      { method: "POST", path: "/api/auth/login", desc: "Sign in with credentials" },
+      { method: "POST", path: "/api/auth/register", desc: "Create new account" },
+      { method: "POST", path: "/api/auth/logout", desc: "Sign out" },
+      { method: "GET", path: "/api/auth/me", desc: "Get current user" },
+      { method: "POST", path: "/api/auth/2fa/setup", desc: "Set up TOTP 2FA" },
+      { method: "POST", path: "/api/auth/2fa/enable", desc: "Enable 2FA" },
+      { method: "POST", path: "/api/auth/2fa/disable", desc: "Disable 2FA" },
+      { method: "POST", path: "/api/auth/password", desc: "Change password" },
+      { method: "POST", path: "/api/auth/password-reset", desc: "Request password reset" },
+      { method: "GET", path: "/api/auth/google", desc: "Google OAuth login" },
+      { method: "GET", path: "/api/auth/sso/:provider", desc: "SSO login" },
+    ],
   },
   {
-    icon: BookOpen,
-    title: "GraphQL API",
-    description: "Flexible data querying with GraphQL",
-    href: "/docs/api/graphql",
-    status: "Coming Soon",
-    statusColor: "text-yellow-400"
-  }
+    title: "Repositories",
+    description: "Create, read, update, delete repositories. Manage branches, collaborators, labels, wiki",
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>`,
+    color: "text-green-500",
+    bgColor: "bg-green-500/10",
+    borderColor: "border-green-500/20",
+    href: `${baseUrl}/api/rest-api/`,
+    endpoints: [
+      { method: "GET", path: "/api/repos", desc: "List repositories" },
+      { method: "POST", path: "/api/repos", desc: "Create repository" },
+      { method: "GET", path: "/api/repos/:owner/:repo", desc: "Get repository" },
+      { method: "PATCH", path: "/api/repos/:owner/:repo", desc: "Update repository" },
+      { method: "DELETE", path: "/api/repos/:owner/:repo", desc: "Delete repository" },
+      { method: "GET", path: "/api/repos/:owner/:repo/branches", desc: "List branches" },
+      { method: "GET", path: "/api/repos/:owner/:repo/collaborators", desc: "List collaborators" },
+      { method: "POST", path: "/api/repos/:owner/:repo/collaborators", desc: "Add collaborator" },
+      { method: "GET", path: "/api/repos/:owner/:repo/labels", desc: "List labels" },
+      { method: "POST", path: "/api/repos/:owner/:repo/star", desc: "Star/unstar repo" },
+      { method: "POST", path: "/api/repos/:owner/:repo/fork", desc: "Fork repository" },
+      { method: "GET", path: "/api/repos/:owner/:repo/wiki", desc: "List wiki pages" },
+      { method: "PUT", path: "/api/repos/:owner/:repo/wiki/:slug", desc: "Create/update wiki page" },
+    ],
+  },
+  {
+    title: "Pull Requests",
+    description: "Create, review, merge PRs. Manage reviews, comments, dependencies, stacks",
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>`,
+    color: "text-purple-500",
+    bgColor: "bg-purple-500/10",
+    borderColor: "border-purple-500/20",
+    href: `${baseUrl}/api/rest-api/`,
+    endpoints: [
+      { method: "GET", path: "/api/repos/:owner/:repo/pulls", desc: "List pull requests" },
+      { method: "POST", path: "/api/repos/:owner/:repo/pulls", desc: "Create pull request" },
+      { method: "GET", path: "/api/repos/:owner/:repo/pulls/:number", desc: "Get pull request" },
+      { method: "PATCH", path: "/api/repos/:owner/:repo/pulls/:number", desc: "Update pull request" },
+      { method: "POST", path: "/api/repos/:owner/:repo/pulls/:number/merge", desc: "Merge pull request" },
+      { method: "GET", path: "/api/repos/:owner/:repo/pulls/:number/diff", desc: "Get PR diff" },
+      { method: "POST", path: "/api/repos/:owner/:repo/pulls/:number/reviews", desc: "Submit review" },
+      { method: "GET", path: "/api/repos/:owner/:repo/pulls/:number/comments", desc: "List comments" },
+      { method: "POST", path: "/api/repos/:owner/:repo/pulls/:number/comments", desc: "Add comment" },
+      { method: "POST", path: "/api/repos/:owner/:repo/pulls/:number/ai-review", desc: "Trigger AI review" },
+      { method: "POST", path: "/api/repos/:owner/:repo/pulls/:number/auto-merge", desc: "Enable auto-merge" },
+      { method: "GET", path: "/api/repos/:owner/:repo/pulls/:number/linked-prs", desc: "List linked PRs" },
+      { method: "GET", path: "/api/repos/:owner/:repo/pulls/:number/checks", desc: "List status checks" },
+    ],
+  },
+  {
+    title: "Stacked PRs",
+    description: "Graphite-style stacked branches with rebase, approval propagation, merge readiness",
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v4H4z"/><path d="M4 12h16v4H4z"/><path d="M4 20h16v4H4z"/><path d="M12 8v4"/><path d="M12 16v4"/></svg>`,
+    color: "text-cyan-500",
+    bgColor: "bg-cyan-500/10",
+    borderColor: "border-cyan-500/20",
+    href: `${baseUrl}/features/stacked-prs/`,
+    endpoints: [
+      { method: "GET", path: "/api/stacks", desc: "List all stacks" },
+      { method: "GET", path: "/api/repos/stacks/:stackId", desc: "Get stack details" },
+      { method: "POST", path: "/api/repos/:owner/:repo/stacks/submit", desc: "Submit stack" },
+      { method: "POST", path: "/api/repos/:owner/:repo/stacks/:stackId/rebase", desc: "Rebase stack" },
+      { method: "GET", path: "/api/repos/:owner/:repo/stacks/:stackId/merge-readiness", desc: "Check merge readiness" },
+      { method: "POST", path: "/api/repos/:owner/:repo/stacks/:stackId/merge", desc: "Merge stack" },
+      { method: "GET", path: "/api/repos/:owner/:repo/pulls/dependencies", desc: "Get PR dependencies" },
+      { method: "GET", path: "/api/repos/:owner/:repo/pulls/stack-order", desc: "Get stack order" },
+    ],
+  },
+  {
+    title: "Issues",
+    description: "Create, manage, and link issues. Cross-repo links and linked PRs",
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+    color: "text-amber-500",
+    bgColor: "bg-amber-500/10",
+    borderColor: "border-amber-500/20",
+    href: `${baseUrl}/api/rest-api/`,
+    endpoints: [
+      { method: "GET", path: "/api/repos/:owner/:repo/issues", desc: "List issues" },
+      { method: "POST", path: "/api/repos/:owner/:repo/issues", desc: "Create issue" },
+      { method: "GET", path: "/api/repos/:owner/:repo/issues/:number", desc: "Get issue" },
+      { method: "PATCH", path: "/api/repos/:owner/:repo/issues/:number", desc: "Update issue" },
+      { method: "POST", path: "/api/repos/:owner/:repo/issues/:number/comments", desc: "Add comment" },
+      { method: "GET", path: "/api/repos/:owner/:repo/issues/:number/cross-repo-links", desc: "Cross-repo links" },
+      { method: "GET", path: "/api/repos/:owner/:repo/issues/:number/linked-prs", desc: "Linked PRs" },
+    ],
+  },
+  {
+    title: "CI/CD Actions",
+    description: "GitHub Actions-compatible pipelines, runners, artifacts, secrets",
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`,
+    color: "text-orange-500",
+    bgColor: "bg-orange-500/10",
+    borderColor: "border-orange-500/20",
+    href: `${baseUrl}/features/ci-actions/`,
+    endpoints: [
+      { method: "GET", path: "/api/repos/:owner/:repo/actions/runs", desc: "List workflow runs" },
+      { method: "GET", path: "/api/repos/:owner/:repo/actions/runs/:runId", desc: "Get run details" },
+      { method: "POST", path: "/api/repos/:owner/:repo/actions/runs/:runId/cancel", desc: "Cancel run" },
+      { method: "POST", path: "/api/repos/:owner/:repo/actions/runs/:runId/rerun", desc: "Rerun run" },
+      { method: "GET", path: "/api/repos/:owner/:repo/actions/runs/:runId/artifacts", desc: "List artifacts" },
+      { method: "GET", path: "/api/repos/:owner/:repo/actions/secrets", desc: "List secrets" },
+      { method: "POST", path: "/api/repos/:owner/:repo/actions/secrets/:name", desc: "Create/update secret" },
+      { method: "POST", path: "/api/actions/runners/register", desc: "Register runner" },
+      { method: "POST", path: "/api/actions/runners/poll", desc: "Poll for jobs" },
+    ],
+  },
+  {
+    title: "Merge Queue",
+    description: "Priority lanes, speculative builds, conflict detection, automated merge ordering",
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+    color: "text-emerald-500",
+    bgColor: "bg-emerald-500/10",
+    borderColor: "border-emerald-500/20",
+    href: `${baseUrl}/features/merge-queue/`,
+    endpoints: [
+      { method: "GET", path: "/api/repos/:owner/:repo/queue", desc: "List queue entries" },
+      { method: "POST", path: "/api/repos/:owner/:repo/queue/join", desc: "Join queue" },
+      { method: "GET", path: "/api/repos/:owner/:repo/queue/:id/conflicts", desc: "Check conflicts" },
+      { method: "GET", path: "/api/repos/:owner/:repo/pulls/:number/merge-readiness", desc: "Check merge readiness" },
+    ],
+  },
+  {
+    title: "AI Code Review",
+    description: "10+ AI providers: OpenAI, Anthropic, Google, Groq, Ollama, OpenRouter, Together",
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>`,
+    color: "text-violet-500",
+    bgColor: "bg-violet-500/10",
+    borderColor: "border-violet-500/20",
+    href: `${baseUrl}/features/ai-review/`,
+    endpoints: [
+      { method: "POST", path: "/api/repos/:owner/:repo/pulls/:number/ai-review", desc: "Trigger AI review" },
+      { method: "GET", path: "/api/repos/:owner/:repo/pulls/:number/ai-review", desc: "Get AI review" },
+      { method: "GET", path: "/api/ai-review-rules", desc: "List review rules" },
+      { method: "POST", path: "/api/ai-review-rules", desc: "Create review rule" },
+      { method: "PATCH", path: "/api/ai-review-rules/:id", desc: "Update review rule" },
+      { method: "DELETE", path: "/api/ai-review-rules/:id", desc: "Delete review rule" },
+      { method: "POST", path: "/api/repos/:owner/:repo/pulls/:number/suggestions/:id/apply", desc: "Apply AI suggestion" },
+    ],
+  },
+  {
+    title: "Webhooks & Automations",
+    description: "Outbound webhooks with HMAC signing, rule-based automation engine",
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2"/><path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06"/><path d="m12 6 3.13 5.73C15.66 12.7 16.9 13 18 13a4 4 0 0 1 0 8H12"/></svg>`,
+    color: "text-rose-500",
+    bgColor: "bg-rose-500/10",
+    borderColor: "border-rose-500/20",
+    href: `${baseUrl}/guides/webhooks/`,
+    endpoints: [
+      { method: "GET", path: "/api/repos/:repoId/webhooks", desc: "List webhooks" },
+      { method: "POST", path: "/api/repos/:repoId/webhooks", desc: "Create webhook" },
+      { method: "PATCH", path: "/api/repos/:repoId/webhooks/:id", desc: "Update webhook" },
+      { method: "DELETE", path: "/api/repos/:repoId/webhooks/:id", desc: "Delete webhook" },
+      { method: "POST", path: "/api/repos/:repoId/webhooks/:id/test", desc: "Test webhook" },
+      { method: "GET", path: "/api/automation-rules", desc: "List automation rules" },
+      { method: "POST", path: "/api/automation-rules", desc: "Create automation rule" },
+    ],
+  },
+  {
+    title: "Organizations & Teams",
+    description: "Multi-tenant orgs, team management, role-based access control",
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+    color: "text-indigo-500",
+    bgColor: "bg-indigo-500/10",
+    borderColor: "border-indigo-500/20",
+    href: `${baseUrl}/api/rest-api/`,
+    endpoints: [
+      { method: "GET", path: "/api/orgs/:org/members", desc: "List members" },
+      { method: "POST", path: "/api/orgs/:org/members", desc: "Add member" },
+      { method: "DELETE", path: "/api/orgs/:org/members/:userId", desc: "Remove member" },
+      { method: "GET", path: "/api/orgs/:org/roles", desc: "List roles" },
+      { method: "POST", path: "/api/orgs/:org/roles", desc: "Create role" },
+    ],
+  },
+  {
+    title: "Notifications",
+    description: "In-app notifications, email digests, blocking notifications, SSE realtime",
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>`,
+    color: "text-sky-500",
+    bgColor: "bg-sky-500/10",
+    borderColor: "border-sky-500/20",
+    href: `${baseUrl}/features/notifications/`,
+    endpoints: [
+      { method: "GET", path: "/api/notifications", desc: "List notifications" },
+      { method: "POST", path: "/api/notifications/:id/read", desc: "Mark as read" },
+      { method: "POST", path: "/api/notifications/:id/archive", desc: "Archive notification" },
+      { method: "POST", path: "/api/notifications/mark-all-read", desc: "Mark all as read" },
+      { method: "GET", path: "/api/user/notification-preferences", desc: "Get preferences" },
+      { method: "PATCH", path: "/api/user/notification-preferences", desc: "Update preferences" },
+    ],
+  },
+  {
+    title: "Packages",
+    description: "Built-in npm and Docker container registry for private packages",
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>`,
+    color: "text-teal-500",
+    bgColor: "bg-teal-500/10",
+    borderColor: "border-teal-500/20",
+    href: `${baseUrl}/api/rest-api/`,
+    endpoints: [
+      { method: "GET", path: "/api/packages/npm/:package", desc: "Get npm package" },
+      { method: "GET", path: "/api/packages/docker/v2/:path", desc: "Docker registry API" },
+    ],
+  },
 ];
 
-const quickExamples = [
+const authMethods = [
   {
-    title: "Create Repository",
-    method: "POST",
-    endpoint: "/api/repos",
-    code: `curl -X POST https://git.yourcompany.com/api/repos \\
-  -H "Authorization: Bearer YOUR_TOKEN" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "name": "my-project",
-    "description": "My awesome project",
-    "visibility": "private"
-  }'`
+    name: "Bearer Token (PAT)",
+    description: "Personal access tokens for API access",
+    header: "Authorization: Bearer och_xxxxxxxxxxxx",
+    example: `curl -H "Authorization: Bearer och_abc123def456" \\
+  https://git.yourcompany.com/api/repos`,
   },
   {
-    title: "List Pull Requests",
-    method: "GET",
-    endpoint: "/api/repos/:owner/:repo/pulls",
-    code: `curl https://git.yourcompany.com/api/repos/owner/repo/pulls \\
-  -H "Authorization: Bearer YOUR_TOKEN"`
+    name: "Basic Auth (Git HTTP)",
+    description: "Username + PAT for git clone/push over HTTPS",
+    header: "Authorization: Basic base64(username:token)",
+    example: `git clone https://username:och_abc123@git.yourcompany.com/owner/repo.git`,
   },
   {
-    title: "Create Pull Request",
-    method: "POST",
-    endpoint: "/api/repos/:owner/:repo/pulls",
-    code: `curl -X POST https://git.yourcompany.com/api/repos/owner/repo/pulls \\
-  -H "Authorization: Bearer YOUR_TOKEN" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "title": "Add new feature",
-    "head": "feature-branch",
-    "base": "main",
-    "body": "This PR adds..."
-  }'`
-  }
+    name: "Session Cookie",
+    description: "Browser sessions via och_session cookie (web UI only)",
+    header: "Cookie: och_session=eyJhbG...",
+    example: `# Automatically set by the web UI after login`,
+  },
 ];
 ---
 
 <BaseLayout title="API Documentation - OpenCodeHub">
-  <div class="container mx-auto py-12 px-4">
+  <div class="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
     <!-- Hero -->
-    <div class="text-center mb-16">
-      <h1 class="text-5xl font-bold mb-4">
-        <span class="bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-400">
-          API Documentation
-        </span>
-      </h1>
-      <p class="text-xl text-muted-foreground max-w-2xl mx-auto">
-        Integrate OpenCodeHub into your workflow with our comprehensive REST API
+    <div class="mb-8 sm:mb-10">
+      <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-3">API Reference</h1>
+      <p class="text-sm sm:text-base md:text-lg text-muted-foreground max-w-3xl">
+        Integrate OpenCodeHub into your workflow. {apiCategories.reduce((sum, c) => sum + c.endpoints.length, 0)}+ endpoints
+        across repositories, pull requests, CI/CD, AI review, and more.
       </p>
     </div>
 
-    <!-- API Overview -->
-    <section class="mb-16">
-      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {apiSections.map((section) => {
-          const Icon = section.icon;
-          return (
-            <a
-              href={section.href}
-              class="group relative p-6 rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm hover:border-primary/50 transition-all hover:scale-105"
-            >
-              <div class="flex items-center justify-between mb-4">
-                <Icon className="h-8 w-8 text-primary" />
-                <span class={`text-xs font-medium ${section.statusColor}`}>
-                  {section.status}
-                </span>
-              </div>
-              <h3 class="text-lg font-semibold mb-2">{section.title}</h3>
-              <p class="text-sm text-muted-foreground">{section.description}</p>
-            </a>
-          );
-        })}
+    <!-- Quick Info -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+      <div class="rounded-lg border border-border/60 bg-background p-4">
+        <div class="text-sm text-muted-foreground mb-1">Base URL</div>
+        <code class="text-sm font-mono text-foreground">/api</code>
       </div>
-    </section>
-
-    <!-- Quick Start -->
-    <section class="mb-16">
-      <h2 class="text-3xl font-bold mb-8">Quick Start</h2>
-      <div class="grid md:grid-cols-2 gap-6">
-        <!-- Authentication -->
-        <div class="p-6 rounded-xl border border-white/10 bg-card/50">
-          <h3 class="text-xl font-semibold mb-4">1. Get API Token</h3>
-          <div class="space-y-3">
-            <p class="text-sm text-muted-foreground">
-              Generate a personal access token from your settings:
-            </p>
-            <ol class="list-decimal list-inside space-y-2 text-sm">
-              <li>Go to <a href="/settings/tokens" class="text-primary hover:underline">Settings → Tokens</a></li>
-              <li>Click "Generate New Token"</li>
-              <li>Select scopes: <code class="bg-muted px-2 py-1 rounded">repo</code>, <code class="bg-muted px-2 py-1 rounded">pr</code></li>
-              <li>Copy and save your token securely</li>
-            </ol>
-          </div>
-        </div>
-
-        <!-- Base URL -->
-        <div class="p-6 rounded-xl border border-white/10 bg-card/50">
-          <h3 class="text-xl font-semibold mb-4">2. API Base URL</h3>
-          <div class="space-y-3">
-            <p class="text-sm text-muted-foreground">
-              All API requests should be made to:
-            </p>
-            <pre class="text-sm bg-black/50 p-3 rounded overflow-x-auto"><code>https://git.yourcompany.com/api</code></pre>
-            <p class="text-xs text-muted-foreground">
-              Replace <code class="bg-muted px-1 rounded">git.yourcompany.com</code> with your instance URL
-            </p>
-          </div>
-        </div>
+      <div class="rounded-lg border border-border/60 bg-background p-4">
+        <div class="text-sm text-muted-foreground mb-1">Authentication</div>
+        <code class="text-sm font-mono text-foreground">Bearer token</code>
       </div>
-    </section>
+      <div class="rounded-lg border border-border/60 bg-background p-4">
+        <div class="text-sm text-muted-foreground mb-1">Rate Limit</div>
+        <code class="text-sm font-mono text-foreground">100 req/min (auth'd)</code>
+      </div>
+    </div>
 
-    <!-- Quick Examples -->
-    <section class="mb-16">
-      <h2 class="text-3xl font-bold mb-8">Quick Examples</h2>
-      <div class="space-y-6">
-        {quickExamples.map((example) => (
-          <div class="p-6 rounded-xl border border-white/10 bg-card/50">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold">{example.title}</h3>
-              <div class="flex items-center gap-2">
-                <span class={`px-3 py-1 rounded-full text-xs font-medium ${
-                  example.method === 'GET' 
-                    ? 'bg-blue-500/20 text-blue-400'
-                    : example.method === 'POST'
-                    ? 'bg-green-500/20 text-green-400'
-                    : 'bg-yellow-500/20 text-yellow-400'
-                }`}>
-                  {example.method}
-                </span>
-                <code class="text-xs text-muted-foreground">{example.endpoint}</code>
-              </div>
+    <!-- Authentication Methods -->
+    <section class="mb-10">
+      <h2 class="text-xl font-semibold text-foreground mb-4">Authentication</h2>
+      <div class="space-y-3">
+        {authMethods.map((method) => (
+          <div class="rounded-lg border border-border/60 bg-background p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <h3 class="text-sm font-semibold text-foreground">{method.name}</h3>
+              <span class="text-xs text-muted-foreground">— {method.description}</span>
             </div>
-            <pre class="text-sm bg-black/80 p-4 rounded overflow-x-auto border border-white/5"><code>{example.code}</code></pre>
+            <pre class="text-xs bg-muted rounded-md p-3 overflow-x-auto"><code>{method.example}</code></pre>
+          </div>
+        ))}
+      </div>
+      <p class="text-xs text-muted-foreground mt-3">
+        Generate tokens at <a href="/settings/tokens" class="text-[#58a6ff] hover:underline">Settings → Tokens</a>.
+        See <a href={`${baseUrl}/api/authentication/`} target="_blank" rel="noopener noreferrer" class="text-[#58a6ff] hover:underline">full authentication docs</a> for details.
+      </p>
+    </section>
+
+    <!-- API Categories -->
+    <section class="mb-10">
+      <h2 class="text-xl font-semibold text-foreground mb-4">Endpoints by Category</h2>
+      <div class="space-y-4">
+        {apiCategories.map((category) => (
+          <div class="rounded-lg border border-border/60 bg-background overflow-hidden">
+            <div class="flex items-center gap-3 p-4 border-b border-border/60">
+              <div class:list={["p-2 rounded-md", category.bgColor]}>
+                <Fragment set:html={category.icon} />
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                  <h3 class="text-sm font-semibold text-foreground">{category.title}</h3>
+                  <span class="text-xs text-muted-foreground">— {category.description}</span>
+                </div>
+              </div>
+              <a href={category.href} target="_blank" rel="noopener noreferrer" class="text-xs text-[#58a6ff] hover:underline flex-shrink-0">
+                Docs →
+              </a>
+            </div>
+            <div class="divide-y divide-border/40">
+              {category.endpoints.map((endpoint) => (
+                <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 px-4 py-2.5 hover:bg-accent/50 transition-colors">
+                  <div class="flex items-center gap-2 sm:gap-3">
+                    <span class:list={[
+                      "inline-flex items-center justify-center w-14 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase flex-shrink-0",
+                      endpoint.method === "GET" && "bg-[#58a6ff]/10 text-[#58a6ff]",
+                      endpoint.method === "POST" && "bg-green-500/10 text-green-500",
+                      endpoint.method === "PATCH" && "bg-amber-500/10 text-amber-500",
+                      endpoint.method === "PUT" && "bg-amber-500/10 text-amber-500",
+                      endpoint.method === "DELETE" && "bg-red-500/10 text-red-500",
+                    ]}>
+                      {endpoint.method}
+                    </span>
+                    <code class="text-xs font-mono text-foreground">{endpoint.path}</code>
+                  </div>
+                  <span class="text-xs text-muted-foreground sm:ml-auto">{endpoint.desc}</span>
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
     </section>
 
-    <!-- Rate Limiting -->
-    <section class="mb-16">
-      <h2 class="text-3xl font-bold mb-8">Rate Limiting</h2>
-      <div class="p-6 rounded-xl border border-white/10 bg-card/50">
-        <div class="grid md:grid-cols-3 gap-6">
-          <div>
-            <h4 class="font-semibold mb-2">Authenticated Requests</h4>
-            <p class="text-3xl font-bold text-primary">5,000</p>
-            <p class="text-sm text-muted-foreground">requests per hour</p>
-          </div>
-          <div>
-            <h4 class="font-semibold mb-2">Unauthenticated Requests</h4>
-            <p class="text-3xl font-bold text-yellow-400">60</p>
-            <p class="text-sm text-muted-foreground">requests per hour</p>
-          </div>
-          <div>
-            <h4 class="font-semibold mb-2">Check Limits</h4>
-            <p class="text-sm text-muted-foreground mb-2">Response headers:</p>
-            <code class="text-xs bg-muted px-2 py-1 rounded block">X-RateLimit-Remaining</code>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- Response Format -->
-    <section class="mb-16">
-      <h2 class="text-3xl font-bold mb-8">Response Format</h2>
-      <div class="grid md:grid-cols-2 gap-6">
-        <!-- Success -->
-        <div class="p-6 rounded-xl border border-white/10 bg-card/50">
-          <h3 class="text-lg font-semibold mb-4 text-green-400">Success Response</h3>
-          <pre class="text-sm bg-black/80 p-4 rounded overflow-x-auto"><code>{`{
+    <section class="mb-10">
+      <h2 class="text-xl font-semibold text-foreground mb-4">Response Format</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="rounded-lg border border-border/60 bg-background p-4">
+          <h3 class="text-sm font-semibold text-green-500 mb-3">Success</h3>
+          <pre class="text-xs bg-muted rounded-md p-3 overflow-x-auto"><code>{`{
   "data": {
     "id": "repo-123",
     "name": "my-project",
-    "owner": {
-      "username": "swadhin",
-      "id": "user-456"
-    },
-    "visibility": "private",
-    "created_at": "2024-01-01T12:00:00Z"
-  },
-  "meta": {
-    "timestamp": "2024-01-01T12:00:01Z"
+    "visibility": "private"
   }
 }`}</code></pre>
         </div>
-
-        <!-- Error -->
-        <div class="p-6 rounded-xl border border-white/10 bg-card/50">
-          <h3 class="text-lg font-semibold mb-4 text-red-400">Error Response</h3>
-          <pre class="text-sm bg-black/80 p-4 rounded overflow-x-auto"><code>{`{
+        <div class="rounded-lg border border-border/60 bg-background p-4">
+          <h3 class="text-sm font-semibold text-red-500 mb-3">Error</h3>
+          <pre class="text-xs bg-muted rounded-md p-3 overflow-x-auto"><code>{`{
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "Repository name is required",
-    "details": {
-      "field": "name",
-      "constraint": "required"
-    }
-  },
-  "meta": {
-    "timestamp": "2024-01-01T12:00:01Z",
-    "request_id": "req-abc123"
+    "message": "Repository name is required"
   }
 }`}</code></pre>
-        </div>
-      </div>
-    </section>
-
-    <!-- SDKs & Libraries -->
-    <section class="mb-16">
-      <h2 class="text-3xl font-bold mb-8">SDKs & Libraries</h2>
-      <div class="grid md:grid-cols-3 gap-6">
-        <div class="p-6 rounded-xl border border-white/10 bg-card/50">
-          <h3 class="text-lg font-semibold mb-2">JavaScript/TypeScript</h3>
-          <pre class="text-sm bg-black/50 p-3 rounded mb-3"><code>npm install @opencodehub/sdk</code></pre>
-          <a href="https://github.com/swadhinbiswas/OpencodeHub/tree/main/sdk/js" class="text-sm text-primary hover:underline">
-            View docs →
-          </a>
-        </div>
-        <div class="p-6 rounded-xl border border-white/10 bg-card/50">
-          <h3 class="text-lg font-semibold mb-2">Python</h3>
-          <pre class="text-sm bg-black/50 p-3 rounded mb-3"><code>pip install opencodehub</code></pre>
-          <a href="https://github.com/swadhinbiswas/OpencodeHub/tree/main/sdk/python" class="text-sm text-primary hover:underline">
-            View docs →
-          </a>
-        </div>
-        <div class="p-6 rounded-xl border border-white/10 bg-card/50">
-          <h3 class="text-lg font-semibold mb-2">Go</h3>
-          <pre class="text-sm bg-black/50 p-3 rounded mb-3"><code>go get github.com/opencodehub/sdk-go</code></pre>
-          <a href="https://github.com/swadhinbiswas/OpencodeHub/tree/main/sdk/go" class="text-sm text-primary hover:underline">
-            View docs →
-          </a>
         </div>
       </div>
     </section>
 
     <!-- Resources -->
     <section>
-      <h2 class="text-3xl font-bold mb-8">Additional Resources</h2>
-      <div class="grid md:grid-cols-2 gap-6">
-        <a
-          href="/docs"
-          class="p-6 rounded-xl border border-white/10 bg-card/50 hover:border-primary/50 transition-all"
-        >
-          <h3 class="text-lg font-semibold mb-2">📖 Full Documentation</h3>
-          <p class="text-sm text-muted-foreground">
-            Complete guides, tutorials, and feature documentation
-          </p>
+      <h2 class="text-xl font-semibold text-foreground mb-4">Resources</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <a href={`${baseUrl}/api/rest-api/`} target="_blank" rel="noopener noreferrer" class="rounded-lg border border-border/60 bg-background p-4 hover:border-[#58a6ff]/40 transition-colors">
+          <h3 class="text-sm font-semibold text-foreground mb-1">REST API Docs</h3>
+          <p class="text-xs text-muted-foreground">Full endpoint reference with examples</p>
         </a>
-        <a
-          href="https://github.com/swadhinbiswas/OpencodeHub/tree/main/examples"
-          target="_blank"
-          class="p-6 rounded-xl border border-white/10 bg-card/50 hover:border-primary/50 transition-all"
-        >
-          <h3 class="text-lg font-semibold mb-2">💡 Code Examples</h3>
-          <p class="text-sm text-muted-foreground">
-            Real-world integration examples and sample code
-          </p>
+        <a href={`${baseUrl}/api/webhooks-api/`} target="_blank" rel="noopener noreferrer" class="rounded-lg border border-border/60 bg-background p-4 hover:border-[#58a6ff]/40 transition-colors">
+          <h3 class="text-sm font-semibold text-foreground mb-1">Webhooks</h3>
+          <p class="text-xs text-muted-foreground">Event payloads and integration setup</p>
         </a>
-        <a
-          href="https://github.com/swadhinbiswas/OpencodeHub/discussions"
-          target="_blank"
-          class="p-6 rounded-xl border border-white/10 bg-card/50 hover:border-primary/50 transition-all"
-        >
-          <h3 class="text-lg font-semibold mb-2">💬 Community</h3>
-          <p class="text-sm text-muted-foreground">
-            Ask questions and discuss API usage
-          </p>
+        <a href={`${baseUrl}/api/authentication/`} target="_blank" rel="noopener noreferrer" class="rounded-lg border border-border/60 bg-background p-4 hover:border-[#58a6ff]/40 transition-colors">
+          <h3 class="text-sm font-semibold text-foreground mb-1">Auth Guide</h3>
+          <p class="text-xs text-muted-foreground">Token types, OAuth, SSO setup</p>
         </a>
-        <a
-          href="https://github.com/swadhinbiswas/OpencodeHub/blob/main/CHANGELOG.md"
-          target="_blank"
-          class="p-6 rounded-xl border border-white/10 bg-card/50 hover:border-primary/50 transition-all"
-        >
-          <h3 class="text-lg font-semibold mb-2">📝 Changelog</h3>
-          <p class="text-sm text-muted-foreground">
-            API changes and version history
-          </p>
+        <a href="https://github.com/swadhinbiswas/OpencodeHub" target="_blank" rel="noopener noreferrer" class="rounded-lg border border-border/60 bg-background p-4 hover:border-[#58a6ff]/40 transition-colors">
+          <h3 class="text-sm font-semibold text-foreground mb-1">GitHub</h3>
+          <p class="text-xs text-muted-foreground">Source code and examples</p>
         </a>
       </div>
     </section>
+
   </div>
 </BaseLayout>
-
-<style>
-  .container {
-    max-width: 1200px;
-  }
-</style>

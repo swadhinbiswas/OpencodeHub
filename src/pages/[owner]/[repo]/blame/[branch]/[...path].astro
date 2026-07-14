@@ -193,18 +193,18 @@ const repo = {
       </div>
 
       <!-- Blame Table -->
-      <div class="border rounded-b-lg -mt-4 shadow-sm overflow-x-auto custom-scrollbar bg-[#0d1117]">
+      <div class="border rounded-b-lg -mt-4 shadow-sm overflow-x-auto custom-scrollbar bg-card">
         <table class="w-full text-sm font-mono border-collapse">
           <tbody>
             {blameBlocks.map((block, blockIdx) => (
               block.lines.map((line, lineIdx) => (
                 <tr class:list={[
-                  "hover:bg-[#161b22] transition-colors",
+                  "hover:bg-accent transition-colors",
                   lineIdx === 0 && blockIdx > 0 ? "border-t border-gray-700" : "",
                 ]}>
                   {/* Blame info column — show only on first line of block */}
                   <td class:list={[
-                    "align-top whitespace-nowrap px-3 py-0 text-xs text-gray-400 select-none border-r border-gray-800 min-w-[220px] max-w-[280px]",
+                    "align-top whitespace-nowrap px-3 py-0 text-xs text-muted-foreground select-none border-r border-gray-800 min-w-[220px] max-w-[280px]",
                     lineIdx === 0 ? "pt-1" : "",
                   ]}>
                     {lineIdx === 0 && (
@@ -216,17 +216,17 @@ const repo = {
                         >
                           {block.sha.substring(0, 8)}
                         </a>
-                        <span class="truncate max-w-[100px] text-gray-300" title={block.author}>
+                        <span class="truncate max-w-[100px] text-muted-foreground" title={block.author}>
                           {block.author}
                         </span>
-                        <span class="text-gray-500 shrink-0">
+                        <span class="text-muted-foreground shrink-0">
                           {timeAgo(block.date)}
                         </span>
                       </div>
                     )}
                   </td>
                   {/* Line number */}
-                  <td class="text-right px-3 py-0 text-xs text-gray-600 select-none border-r border-gray-800 w-[1%]">
+                  <td class="text-right px-3 py-0 text-xs text-muted-foreground select-none border-r border-gray-800 w-[1%]">
                     <div class="leading-6">
                       <a
                         id={`L${line.lineNum}`}

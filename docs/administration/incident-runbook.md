@@ -48,7 +48,7 @@ curl -s https://your-domain.com/api/metrics | grep active_runners
 kubectl set env deployment/opencodehub FEATURE_X_DISABLED=true
 
 # Option B: Rollback (Docker)
-docker run --rm swadhinbiswas/opencodehub:previous-tag
+docker run --rm opencodehub/opencodehub:previous-tag
 # Update docker-compose.yml with previous tag
 docker compose -f docker-compose.production.yml up -d
 

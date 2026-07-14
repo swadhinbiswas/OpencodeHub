@@ -154,7 +154,7 @@ docker run -d \
   -v /volume1/opencodehub/storage:/data/storage \
   -v /volume1/opencodehub/ssh:/data/ssh \
   -v /volume1/opencodehub/cache:/data/cache \
-  swadhinbiswas/opencodehub:latest
+  opencodehub/opencodehub:latest
 ```
 
 > **Note:** On Synology, `host.docker.internal` may not work. Use your NAS IP address instead (e.g., `192.168.1.100`).
@@ -301,7 +301,7 @@ version: '3.8'
 
 services:
   app:
-    image: swadhinbiswas/opencodehub:latest
+    image: opencodehub/opencodehub:latest
     container_name: opencodehub
     restart: unless-stopped
     ports:
@@ -443,7 +443,7 @@ Install Nginx Proxy Manager from the TrueNAS Apps catalog:
 
 #### Create OpenCodeHub:
 
-1. Search and install `swadhinbiswas/opencodehub:latest`
+1. Search and install `opencodehub/opencodehub:latest`
 2. Name: `opencodehub`
 3. Network: `opencodehub-network`
 4. Environment variables (same as Synology example)
@@ -496,7 +496,7 @@ version: '3.8'
 
 services:
   app:
-    image: swadhinbiswas/opencodehub:latest
+    image: opencodehub/opencodehub:latest
     container_name: opencodehub
     restart: unless-stopped
     ports:

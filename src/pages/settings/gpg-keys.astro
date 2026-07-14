@@ -21,7 +21,7 @@ const keys = await db.query.gpgKeys.findMany({
   <div class="space-y-6">
     <div>
       <h3 class="text-lg font-medium leading-6 text-gray-900">GPG Keys</h3>
-      <p class="mt-1 text-sm text-gray-500">
+      <p class="mt-1 text-sm text-muted-foreground">
         This is a list of GPG keys associated with your account. Keys are used to verify commit signatures.
       </p>
     </div>
@@ -32,7 +32,7 @@ const keys = await db.query.gpgKeys.findMany({
         <button
           type="button"
           id="add-key-btn"
-          class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-foreground bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           New GPG Key
         </button>
@@ -45,10 +45,10 @@ const keys = await db.query.gpgKeys.findMany({
               <li class="py-4 flex items-center justify-between">
                 <div>
                   <p class="text-sm font-medium text-gray-900">{key.name}</p>
-                  <p class="text-sm text-gray-500 font-mono">
+                  <p class="text-sm text-muted-foreground font-mono">
                     Key ID: {key.keyId}
                   </p>
-                  <p class="text-xs text-gray-400 mt-1">
+                  <p class="text-xs text-muted-foreground mt-1">
                     Added on {new Date(key.createdAt).toLocaleDateString()}
                   </p>
                 </div>
@@ -63,7 +63,7 @@ const keys = await db.query.gpgKeys.findMany({
             ))}
           </ul>
         ) : (
-          <p class="text-sm text-gray-500 italic">No GPG keys added yet.</p>
+          <p class="text-sm text-muted-foreground italic">No GPG keys added yet.</p>
         )
       }
     </div>
@@ -134,7 +134,7 @@ const keys = await db.query.gpgKeys.findMany({
             >
               <button
                 type="submit"
-                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-2 sm:text-sm"
+                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-foreground hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-2 sm:text-sm"
               >
                 Add Key
               </button>

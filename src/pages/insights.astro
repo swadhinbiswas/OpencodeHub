@@ -170,21 +170,21 @@ function formatDuration(hours: number): string {
             <BarChart3 className="h-6 w-6 text-purple-400" />
           </div>
           <div>
-            <h1 class="text-2xl font-bold text-white">Insights</h1>
-            <p class="text-sm text-gray-400">Track your productivity and team metrics</p>
+            <h1 class="text-2xl font-bold text-foreground">Insights</h1>
+            <p class="text-sm text-muted-foreground">Track your productivity and team metrics</p>
           </div>
         </div>
         
         <div class="flex items-center gap-3">
           <!-- View Toggle -->
-          <div class="flex bg-white/5 rounded-lg p-1 border border-white/10">
+          <div class="flex bg-secondary rounded-lg p-1 border border-border">
             <a
               href={`/insights?period=${period}&view=personal`}
               class:list={[
                 "px-3 py-1.5 text-sm rounded-md transition-colors",
                 view === "personal" 
                   ? "bg-purple-500/20 text-purple-300 border border-purple-500/30" 
-                  : "text-gray-400 hover:text-white"
+                  : "text-muted-foreground hover:text-foreground"
               ]}
             >
               Personal
@@ -195,7 +195,7 @@ function formatDuration(hours: number): string {
                 "px-3 py-1.5 text-sm rounded-md transition-colors",
                 view === "team" 
                   ? "bg-purple-500/20 text-purple-300 border border-purple-500/30" 
-                  : "text-gray-400 hover:text-white"
+                  : "text-muted-foreground hover:text-foreground"
               ]}
             >
               Team
@@ -206,18 +206,18 @@ function formatDuration(hours: number): string {
           <div class="relative">
             <select
               id="period-select"
-              class="appearance-none bg-white/5 border border-white/10 rounded-lg px-4 py-2 pr-8 text-sm text-gray-300 cursor-pointer hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+              class="appearance-none bg-secondary border border-border rounded-lg px-4 py-2 pr-8 text-sm text-muted-foreground cursor-pointer hover:bg-secondary/80 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
             >
               <option value="1w" selected={period === "1w"}>Last Week</option>
               <option value="4w" selected={period === "4w"}>Last 4 Weeks</option>
               <option value="3m" selected={period === "3m"}>Last 3 Months</option>
               <option value="1y" selected={period === "1y"}>Last Year</option>
             </select>
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           </div>
           
           <!-- Export -->
-          <button class="flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300 hover:bg-white/10 transition-colors">
+          <button class="flex items-center gap-2 px-3 py-2 bg-secondary border border-border rounded-lg text-sm text-muted-foreground hover:bg-secondary/80 transition-colors">
             <Download className="h-4 w-4" />
             Export
           </button>
@@ -228,7 +228,7 @@ function formatDuration(hours: number): string {
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="relative group">
           <div class="absolute -inset-[1px] bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <div class="relative p-6 rounded-xl border border-white/10 bg-[#0d1117]/80">
+          <div class="relative p-6 rounded-xl border border-border bg-card/80">
             <div class="flex items-center justify-between mb-4">
               <div class="p-2 rounded-lg bg-green-500/10">
                 <GitPullRequest className="h-5 w-5 text-green-400" />
@@ -238,48 +238,48 @@ function formatDuration(hours: number): string {
                 +12%
               </span>
             </div>
-            <div class="text-3xl font-bold text-white mb-1">{myMetrics.prsOpened}</div>
-            <div class="text-sm text-gray-400">PRs Opened</div>
+            <div class="text-3xl font-bold text-foreground mb-1">{myMetrics.prsOpened}</div>
+            <div class="text-sm text-muted-foreground">PRs Opened</div>
           </div>
         </div>
         
         <div class="relative group">
           <div class="absolute -inset-[1px] bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <div class="relative p-6 rounded-xl border border-white/10 bg-[#0d1117]/80">
+          <div class="relative p-6 rounded-xl border border-border bg-card/80">
             <div class="flex items-center justify-between mb-4">
               <div class="p-2 rounded-lg bg-purple-500/10">
                 <GitPullRequest className="h-5 w-5 text-purple-400" />
               </div>
               <span class="text-xs text-purple-400">{myMetrics.prsOpened > 0 ? Math.round(myMetrics.prsMerged / myMetrics.prsOpened * 100) : 0}%</span>
             </div>
-            <div class="text-3xl font-bold text-white mb-1">{myMetrics.prsMerged}</div>
-            <div class="text-sm text-gray-400">PRs Merged</div>
+            <div class="text-3xl font-bold text-foreground mb-1">{myMetrics.prsMerged}</div>
+            <div class="text-sm text-muted-foreground">PRs Merged</div>
           </div>
         </div>
         
         <div class="relative group">
           <div class="absolute -inset-[1px] bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <div class="relative p-6 rounded-xl border border-white/10 bg-[#0d1117]/80">
+          <div class="relative p-6 rounded-xl border border-border bg-card/80">
             <div class="flex items-center justify-between mb-4">
               <div class="p-2 rounded-lg bg-blue-500/10">
                 <Users className="h-5 w-5 text-blue-400" />
               </div>
             </div>
-            <div class="text-3xl font-bold text-white mb-1">{myMetrics.reviewsGiven}</div>
-            <div class="text-sm text-gray-400">Reviews Given</div>
+            <div class="text-3xl font-bold text-foreground mb-1">{myMetrics.reviewsGiven}</div>
+            <div class="text-sm text-muted-foreground">Reviews Given</div>
           </div>
         </div>
         
         <div class="relative group">
           <div class="absolute -inset-[1px] bg-gradient-to-r from-orange-500/20 to-yellow-500/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <div class="relative p-6 rounded-xl border border-white/10 bg-[#0d1117]/80">
+          <div class="relative p-6 rounded-xl border border-border bg-card/80">
             <div class="flex items-center justify-between mb-4">
               <div class="p-2 rounded-lg bg-orange-500/10">
                 <Clock className="h-5 w-5 text-orange-400" />
               </div>
             </div>
-            <div class="text-3xl font-bold text-white mb-1">{formatDuration(myMetrics.avgTimeToMerge)}</div>
-            <div class="text-sm text-gray-400">Avg Time to Merge</div>
+            <div class="text-3xl font-bold text-foreground mb-1">{formatDuration(myMetrics.avgTimeToMerge)}</div>
+            <div class="text-sm text-muted-foreground">Avg Time to Merge</div>
           </div>
         </div>
       </div>
@@ -289,8 +289,8 @@ function formatDuration(hours: number): string {
         <!-- Weekly Trend Chart -->
         <div class="relative">
           <div class="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/20 via-transparent to-purple-500/20 rounded-xl opacity-50"></div>
-          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 p-6">
-            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <div class="relative rounded-xl border border-border bg-card/80 p-6">
+            <h3 class="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-cyan-400" />
               Weekly Activity
             </h3>
@@ -302,7 +302,7 @@ function formatDuration(hours: number): string {
                 return (
                   <div class="space-y-2">
                     <div class="flex items-center justify-between text-sm">
-                      <span class="text-gray-400">{week.week}</span>
+                      <span class="text-muted-foreground">{week.week}</span>
                       <div class="flex items-center gap-4 text-xs">
                         <span class="text-green-400">{week.opened} opened</span>
                         <span class="text-purple-400">{week.merged} merged</span>
@@ -333,8 +333,8 @@ function formatDuration(hours: number): string {
         <!-- Review Breakdown -->
         <div class="relative">
           <div class="absolute -inset-[1px] bg-gradient-to-r from-green-500/20 via-transparent to-red-500/20 rounded-xl opacity-50"></div>
-          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 p-6">
-            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <div class="relative rounded-xl border border-border bg-card/80 p-6">
+            <h3 class="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
               <Users className="h-5 w-5 text-green-400" />
               Review Breakdown
             </h3>
@@ -344,19 +344,19 @@ function formatDuration(hours: number): string {
                 <div class="w-20 h-20 rounded-full border-4 border-green-500/50 flex items-center justify-center mb-2">
                   <span class="text-2xl font-bold text-green-400">{reviewStats.approvals}</span>
                 </div>
-                <span class="text-sm text-gray-400">Approvals</span>
+                <span class="text-sm text-muted-foreground">Approvals</span>
               </div>
               <div class="text-center">
                 <div class="w-20 h-20 rounded-full border-4 border-yellow-500/50 flex items-center justify-center mb-2">
                   <span class="text-2xl font-bold text-yellow-400">{reviewStats.changesRequested}</span>
                 </div>
-                <span class="text-sm text-gray-400">Changes</span>
+                <span class="text-sm text-muted-foreground">Changes</span>
               </div>
               <div class="text-center">
                 <div class="w-20 h-20 rounded-full border-4 border-blue-500/50 flex items-center justify-center mb-2">
                   <span class="text-2xl font-bold text-blue-400">{reviewStats.comments}</span>
                 </div>
-                <span class="text-sm text-gray-400">Comments</span>
+                <span class="text-sm text-muted-foreground">Comments</span>
               </div>
             </div>
           </div>
@@ -367,15 +367,15 @@ function formatDuration(hours: number): string {
       {view === "team" && topContributors.length > 0 && (
         <div class="relative">
           <div class="absolute -inset-[1px] bg-gradient-to-r from-yellow-500/20 via-transparent to-orange-500/20 rounded-xl opacity-50"></div>
-          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 p-6">
-            <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <div class="relative rounded-xl border border-border bg-card/80 p-6">
+            <h3 class="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
               <Users className="h-5 w-5 text-yellow-400" />
               Top Contributors
             </h3>
             
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               {topContributors.slice(0, 5).map((contributor, index) => (
-                <div class="flex flex-col items-center p-4 rounded-lg bg-white/5 border border-white/10">
+                <div class="flex flex-col items-center p-4 rounded-lg bg-secondary border border-border">
                   <div class="relative mb-2">
                     {contributor.avatarUrl ? (
                       <img 
@@ -384,7 +384,7 @@ function formatDuration(hours: number): string {
                         class="h-12 w-12 rounded-full"
                       />
                     ) : (
-                      <div class="h-12 w-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-lg font-bold text-white">
+                      <div class="h-12 w-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-lg font-bold text-foreground">
                         {contributor.username[0]?.toUpperCase()}
                       </div>
                     )}
@@ -393,14 +393,14 @@ function formatDuration(hours: number): string {
                         "absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold",
                         index === 0 ? "bg-yellow-500 text-black" : 
                         index === 1 ? "bg-gray-400 text-black" : 
-                        "bg-orange-600 text-white"
+                        "bg-orange-600 text-foreground"
                       ]}>
                         {index + 1}
                       </div>
                     )}
                   </div>
-                  <span class="font-medium text-white text-sm">{contributor.username}</span>
-                  <span class="text-xs text-gray-400">{contributor.prs} PRs</span>
+                  <span class="font-medium text-foreground text-sm">{contributor.username}</span>
+                  <span class="text-xs text-muted-foreground">{contributor.prs} PRs</span>
                 </div>
               ))}
             </div>

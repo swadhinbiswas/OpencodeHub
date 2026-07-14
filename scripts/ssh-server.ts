@@ -7,15 +7,17 @@ import { join } from "path";
 import { uploadRepoToStorage, getStorageRepoPath, isCloudStorage } from "@/lib/git-storage";
 
 const DATA_DIR = join(process.cwd(), "data");
-const REPOS_DIR = join(DATA_DIR, "repos");
+const REPOS_DIR = process.env.GIT_REPOS_PATH || join(DATA_DIR, "repositories");
 const SSH_DIR = join(DATA_DIR, "ssh");
-const HOST_KEY_PATH = join(SSH_DIR, "ssh_host_rsa_key");
+const HOST_KEY_PATH = process.env.GIT_SSH_HOST_KEY || join(SSH_DIR, "host_key");
+const SSH_PORT = parseInt(process.env.GIT_SSH_PORT || "2222", 10);
 
 async function main() {
-    console.log("Starting OpenCodeHub SSH Server...");
+    console.log(`Starting OpenCodeHub SSH Server on port ${SSH_PORT}...`);
+    console.log(`Repository path: ${REPOS_DIR}`);
 
     await startSSHServer({
-        port: 2222,
+        port: SSH_PORT,
         hostKeyPath: HOST_KEY_PATH,
         reposPath: REPOS_DIR,
         authenticateUser: async (_, key) => {
@@ -23,7 +25,6 @@ async function main() {
             const db = getDatabase();
 
             // Iterate over all keys to find a match
-            // In a production app, we would index by fingerprint or key type to optimize
             const allKeys = await db.query.sshKeys.findMany();
 
             for (const dbKey of allKeys) {
@@ -75,10 +76,16 @@ async function main() {
 
             if (!repo) return false;
 
+            // Check if user is admin
+            const user = await db.query.users.findFirst({
+                where: eq(schema.users.id, userId)
+            });
+            const isAdmin = user?.isAdmin === true;
+
             if (operation === "read") {
-                return canReadRepo(userId, repo);
+                return canReadRepo(userId, repo, { isAdmin });
             } else {
-                return canWriteRepo(userId, repo);
+                return canWriteRepo(userId, repo, { isAdmin });
             }
         },
         onPush: async (userId, repoPath, refs) => {
@@ -104,11 +111,12 @@ async function main() {
 
                 // 2. Trigger Workflows
                 import("@/lib/workflows").then(({ triggerRepoWorkflows }) => {
-                    refs.forEach(refLine => {
-                        const [, newSha, refName] = refLine.split(" ");
-                        // Only trigger on branch updates (not deletions or tags for now unless supported)
-                        if (newSha !== "0000000000000000000000000000000000000000" && refName.startsWith("refs/heads/")) {
-                            triggerRepoWorkflows(repo.id, newSha, refName, userId).catch(console.error);
+                    refs.forEach(refName => {
+                        // refs contains ref names like "refs/heads/main"
+                        if (refName.startsWith("refs/heads/")) {
+                            // We need to get the latest commit SHA for this ref
+                            // For now, trigger with a placeholder - the workflow engine will resolve it
+                            triggerRepoWorkflows(repo.id, "HEAD", refName, userId).catch(console.error);
                         }
                     });
                 });

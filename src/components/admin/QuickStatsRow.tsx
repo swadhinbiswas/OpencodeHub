@@ -94,7 +94,7 @@ export default function QuickStatsRow({ stats }: Props) {
                         {/* Glow effect */}
                         <div className={`absolute -inset-1 ${widget.bgGlow} rounded-xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
 
-                        <div className="relative glass-panel rounded-xl px-4 py-3 flex items-center gap-3 hover:border-white/10 transition-colors cursor-default">
+                        <div className="relative glass-panel rounded-xl px-4 py-3 flex items-center gap-3 hover:border-border transition-colors cursor-default">
                             {/* Icon with gradient background */}
                             <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${widget.color} p-[1px]`}>
                                 <div className="w-full h-full rounded-lg bg-[#0a0a15] flex items-center justify-center">
@@ -107,7 +107,7 @@ export default function QuickStatsRow({ stats }: Props) {
                                 <div className={`text-xl font-bold font-mono bg-gradient-to-r ${widget.color} bg-clip-text text-transparent`}>
                                     <AnimatedNumber value={value} />
                                 </div>
-                                <div className="text-[10px] uppercase tracking-wider text-gray-500">
+                                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                                     {widget.label}
                                 </div>
                             </div>

@@ -353,21 +353,27 @@ export function createSSEResponse(
     repositories: string[] = []
 ): Response {
     let connectionId: string;
+    let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
     const stream = new ReadableStream<Uint8Array>({
         start(controller) {
             connectionId = registerConnection(userId, controller, repositories);
 
             // Send heartbeat every 30 seconds to keep connection alive
-            const heartbeatInterval = setInterval(() => {
+            heartbeatInterval = setInterval(() => {
                 try {
                     controller.enqueue(new TextEncoder().encode(": heartbeat\n\n"));
                 } catch {
-                    clearInterval(heartbeatInterval);
+                    if (heartbeatInterval) clearInterval(heartbeatInterval);
                 }
             }, 30000);
         },
         cancel() {
+            // Clear heartbeat interval to prevent memory leak
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = null;
+            }
             if (connectionId) {
                 unregisterConnection(connectionId);
             }

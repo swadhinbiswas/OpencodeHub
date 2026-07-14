@@ -2,102 +2,136 @@
 title: "Contributing Guide"
 ---
 
-
 Thank you for your interest in contributing to OpenCodeHub! We welcome contributions from everyone.
 
-## 🛠 Local Development Setup
-
-To contribute code, you need to set up the project locally.
+## Local Development Setup
 
 ### Prerequisites
 
-- **Node.js**: v18 or v20 (LTS).
-- **Bun**: v1.0+ (Our package manager/runner).
-- **Docker**: For running the database locally.
+- **Node.js** 20+ (or Bun 1.0+)
+- **Docker** (for PostgreSQL and Redis)
+- **Git** 2.30+
 
 ### Step 1: Clone & Install
 
 ```bash
 git clone https://github.com/swadhinbiswas/OpencodeHub.git
 cd OpencodeHub
-
-# Install dependencies (fast!)
-bun install
+npm install
 ```
 
 ### Step 2: Database Setup
 
-Start a local Postgres and Redis instance using Docker:
+Start PostgreSQL and Redis:
 
 ```bash
 docker-compose up -d postgres redis
 ```
 
-Copy the environment config:
+Copy and configure environment:
+
 ```bash
 cp .env.example .env
-```
-*Note: The default `.env.example` is pre-configured to work with the docker-compose services.*
-
-Push the schema to the database:
-```bash
-bun db:push
+# The default .env.example works with docker-compose services
 ```
 
-### Step 3: Run the App
-
-Start the development server:
+Push schema to database:
 
 ```bash
-bun dev
+npm run db:push
 ```
 
-Visit `http://localhost:3000`.
+### Step 3: Seed & Run
 
----
+```bash
+# Create admin user
+bun run scripts/seed-admin.ts
 
-## 🧪 Running Tests
+# Start dev server
+npm run dev
+```
 
-We use **Vitest** for unit tests. Use TDD!
+Visit `http://localhost:4321`.
+
+## Running Tests
+
+We use **Vitest** for unit/integration tests and **Playwright** for E2E tests.
 
 ```bash
 # Run all tests
-bun test
+npm run test
+
+# Run with coverage
+npm run test:coverage
 
 # Run specific test file
-bun test user.test.ts
+npx vitest run tests/unit/auth.test.ts
 
 # Watch mode
-bun test --watch
+npx vitest --watch
 ```
 
----
+**Current status: 546 tests passing across 114 test files (100% pass rate)**
 
-## 🎨 Code Style
+## Code Quality
 
-We use **ESLint** and **Prettier** to enforce code style.
-
-- **Lint**: `bun lint`
-- **Format**: `bun format`
+```bash
+npm run lint          # Astro check
+npm run typecheck     # TypeScript check
+npm run test          # Test suite
+```
 
 ### Commit Messages
 
-We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification.
+We follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 - `feat: add new login page`
 - `fix: resolve crash on startup`
 - `docs: update troubleshooting guide`
+- `refactor: simplify permission check`
+- `test: add coverage for merge queue`
 
----
+## Submitting a Pull Request
 
-## 🚀 Submitting a Pull Request
+1. **Fork** the repository
+2. Create a **feature branch**: `git checkout -b feat/my-feature`
+3. Make your changes with tests
+4. Run `npm run test` and `npm run typecheck` to verify
+5. Commit with a conventional commit message
+6. Push to your fork
+7. Open a **Pull Request** against `main`
+8. Wait for CI checks to pass
 
-1. **Fork** the repository.
-2. Create a **feature branch**: `git checkout -b feat/my-feature`.
-3. Commit your changes.
-4. Push to your fork.
-5. Open a **Pull Request**.
-6. Wait for CI checks to pass.
-7. A team member will review your code!
+## Project Structure
 
-Thank you for helping build OpenCodeHub! ❤️
+```
+src/
+├── pages/          # Astro file-based routing
+│   ├── api/        # REST API routes (175+ endpoints)
+│   └── [owner]/[repo]/  # Repository pages
+├── lib/            # Core business logic (130+ modules)
+├── db/             # Database layer (Drizzle ORM)
+│   ├── schema/     # 38 schema table definitions
+│   └── index.ts    # DB connection factory
+├── components/     # React components
+├── runner/         # CI runner (Docker executor)
+└── middleware.ts    # Auth, rate limit, CSRF
+
+cli/
+├── src/commands/   # CLI command groups (20+)
+└── src/lib/        # CLI utilities
+
+docs-site/          # This documentation site (Starlight)
+```
+
+## Areas for Contribution
+
+- **CI/CD Features**: Matrix builds, caching, workflow templates
+- **Package Registry**: npm and Docker registry enhancements
+- **AI Review**: New provider integrations, review quality improvements
+- **CLI**: New commands, better error messages
+- **Tests**: Increase coverage, especially for edge cases
+- **Documentation**: Tutorials, guides, API examples
+- **Accessibility**: WCAG compliance, keyboard navigation
+
+Thank you for helping build OpenCodeHub!
