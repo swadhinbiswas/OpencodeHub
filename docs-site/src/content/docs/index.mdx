@@ -1,9 +1,9 @@
 ---
 title: OpenCodeHub Documentation
-description: The open-source, AI-native Git server with Stacked PRs and Smart Merge Queues.
+description: The open-source, self-hosted Git platform with Stacked PRs, AI Code Review, and Smart Merge Queues.
 hero:
   title: OpenCodeHub
-  tagline: The fully self-hosted GitHub alternative with SSH hosting, CI/CD pipelines, and a modern developer experience.
+  tagline: The fully self-hosted GitHub alternative with SSH hosting, CI/CD pipelines, AI code review, and a modern developer experience.
 ---
 
 import { Card, CardGrid } from "@astrojs/starlight/components";
@@ -11,110 +11,143 @@ import { Card, CardGrid } from "@astrojs/starlight/components";
 ## Why OpenCodeHub?
 
 <CardGrid stagger>
-  <Card title="🚀 Stacked PRs" icon="rocket">
-    Break large features into small, dependent steps. Ship faster without the
-    review bottleneck.
+  <Card title="Stacked PRs" icon="rocket">
+    Break large features into small, dependent steps. Graphite-style stacked branches with automatic rebase and merge readiness checks.
   </Card>
-  <Card title="🤖 AI Code Review" icon="star">
-    Built-in LLM agents (GPT-4/Claude) review your code for bugs and security
-    issues automatically.
+  <Card title="AI Code Review" icon="star">
+    Built-in LLM agents (GPT-4, Claude, Gemini, Groq, Ollama, and 10+ providers) review your code for bugs and security issues automatically.
   </Card>
-  <Card title="🔀 Smart Merge Queue" icon="random">
-    Automate your merging strategy. Ensure `main` never breaks with speculative
-    CI runs.
+  <Card title="Smart Merge Queue" icon="random">
+    Stack-aware merge queue with speculative CI builds, priority lanes, and conflict detection. Ensure `main` never breaks.
   </Card>
-  <Card title="🏠 Fully Self-Hosted" icon="laptop">
-    Keep your code on your servers. No "per-seat" pricing. No vendor lock-in.
+  <Card title="CI/CD Pipelines" icon="add-document">
+    GitHub Actions-compatible workflow engine with Docker-based runners, artifact storage, and secrets management.
+  </Card>
+  <Card title="Fully Self-Hosted" icon="laptop">
+    Keep your code on your servers. No per-seat pricing. No vendor lock-in. Deploy with Docker, Podman, or bare metal.
+  </Card>
+  <Card title="Package Registry" icon="seti:db">
+    Built-in npm and Docker container registry. Host private packages alongside your source code.
   </Card>
 </CardGrid>
 
-## Architecture Overview
+## Core Capabilities
 
-![OpenCodeHub Architecture](/architecture.svg)
-
-OpenCodeHub is built on a modern, scalable architecture designed for performance and flexibility.
+<CardGrid>
+  <Card title="Git Hosting" icon="seti:git">
+    Full Git support with HTTP smart protocol and SSH. Repository forking, mirroring, LFS, and CODEOWNERS enforcement.
+  </Card>
+  <Card title="Pull Requests" icon="seti:code">
+    Full PR lifecycle with inline comments, file-level approvals, review templates, reviewer routing rules, and auto-merge.
+  </Card>
+  <Card title="Issues & Projects" icon="seti:folder">
+    Issue tracking with custom fields and statuses. Drag-and-drop project boards with columns and cards.
+  </Card>
+  <Card title="Security" icon="seti:lock">
+    Secret scanning, vulnerability scanning, security policies, path-level permissions, and audit logging.
+  </Card>
+  <Card title="Webhooks & Automations" icon="seti:webhook">
+    Outbound webhooks with HMAC signing. Rule-based automations for PR workflows, reviews, and deployments.
+  </Card>
+  <Card title="Organizations & Teams" icon="seti:user">
+    Multi-tenant organizations with role-based access control, team management, and fine-grained permissions.
+  </Card>
+</CardGrid>
 
 ## Deploy Anywhere
 
 <CardGrid>
-  <Card title="🐳 Docker" icon="add-document">
-    The recommended way to deploy. Full Docker Compose setup with PostgreSQL and
-    Redis. [Deploy with Docker →](/administration/deploy-docker/)
+  <Card title="Docker" icon="add-document">
+    The recommended way to deploy. Full Docker Compose setup with PostgreSQL and Redis.
+    [Deploy with Docker →](/administration/deploy-docker/)
   </Card>
-  <Card title="🚀 Coolify" icon="rocket">
-    Self-hosted PaaS alternative to Heroku/Render. Auto-deploy with built-in SSL
-    and managed databases. [Deploy on Coolify →](/administration/deploy-coolify/)
+  <Card title="Podman" icon="add-document">
+    Rootless containers with native systemd integration. Ideal for security-focused deployments.
+    [Deploy with Podman →](/administration/deploy-podman/)
   </Card>
-  <Card title="🖥️ CyberPanel" icon="laptop">
-    Modern hosting panel with OpenLiteSpeed. Docker or native Node.js deployment.
-    [Deploy on CyberPanel →](/administration/deploy-cyberpanel/)
+  <Card title="Kubernetes" icon="add-document">
+    Deploy to Kubernetes using the bundled Helm chart with horizontal scaling.
+    [Deploy on Kubernetes →](/administration/kubernetes/)
   </Card>
-  <Card title="📁 cPanel" icon="seti:folder">
-    Deploy on shared hosting using Node.js or PM2. Best for budget hosting.
-    [Deploy on cPanel →](/administration/deploy-cpanel/)
+  <Card title="Coolify" icon="rocket">
+    Self-hosted PaaS alternative to Heroku/Render. Auto-deploy with built-in SSL.
+    [Deploy on Coolify →](/administration/deploy-coolify/)
   </Card>
-  <Card title="💾 NAS" icon="seti:db">
+  <Card title="NAS" icon="seti:db">
     Run on Synology, TrueNAS, or QNAP. Perfect for private home/team Git servers.
     [Deploy on NAS →](/administration/deploy-nas/)
   </Card>
-  <Card title="🦭 Podman" icon="add-document">
-    Rootless containers with native systemd integration. Ideal for
-    security-focused deployments. [Deploy with Podman
-    →](/administration/deploy-podman/)
-  </Card>
-  <Card title="☁️ Cloudflare" icon="add-document">
-    Use Cloudflare Tunnel + R2 for zero-port exposure and S3-compatible storage.
+  <Card title="Cloudflare" icon="add-document">
+    Cloudflare Tunnel + R2 for zero-port exposure and S3-compatible storage.
     [Deploy with Cloudflare →](/administration/deploy-cloudflare/)
   </Card>
-  <Card title="🌐 Nginx" icon="add-document">
-    Production-ready reverse proxy config with SSL and Git-specific
-    optimizations. [Configure Nginx →](/administration/deploy-nginx/)
+  <Card title="Nginx" icon="add-document">
+    Production-ready reverse proxy config with SSL and Git-specific optimizations.
+    [Configure Nginx →](/administration/deploy-nginx/)
+  </Card>
+  <Card title="cPanel / CyberPanel" icon="seti:folder">
+    Deploy on shared hosting or VPS panels using Node.js + PM2.
+    [cPanel →](/administration/deploy-cpanel/) | [CyberPanel →](/administration/deploy-cyberpanel/)
   </Card>
 </CardGrid>
 
 ## Tech Stack
 
-| Layer        | Technology                            |
-| ------------ | ------------------------------------- |
-| **Frontend** | Astro, React, Tailwind CSS, shadcn/ui |
-| **Backend**  | Node.js, Astro API Routes, simple-git |
-| **Database** | PostgreSQL, Turso (LibSQL), SQLite    |
-| **Storage**  | Local disk, S3, R2                    |
-| **Auth**     | JWT, 2FA, OAuth (GitHub, Google)      |
-| **CI/CD**    | GitHub Actions compatible runners     |
+| Layer | Technology |
+| --- | --- |
+| **Framework** | Astro 4.x (SSR, Node standalone adapter) |
+| **Frontend** | React 18, Tailwind CSS, Radix UI, Framer Motion |
+| **Backend** | Astro API Routes (175+ endpoints), GraphQL |
+| **Database** | PostgreSQL (prod), SQLite (dev), Turso/LibSQL (edge) |
+| **ORM** | Drizzle ORM (38 schema tables) |
+| **Auth** | JWT, bcryptjs, TOTP 2FA, OAuth (Google, GitHub), SSO/SAML, OIDC |
+| **Git** | simple-git, isomorphic-git, nodegit, ssh2 |
+| **Storage** | Local filesystem or S3-compatible (AWS, MinIO, R2, Garage, Wasabi) |
+| **CI/CD** | GitHub Actions-compatible engine, Docker-based runners |
+| **AI** | OpenAI, Anthropic, Google, Groq, Ollama, OpenRouter, Together, Bytez |
+| **Queue** | BullMQ + Redis |
+| **Observability** | OpenTelemetry, Prometheus metrics, Pino logging |
+
+## Quick Start
+
+```bash
+# Clone and start with Docker Compose
+git clone https://github.com/swadhinbiswas/OpencodeHub.git
+cd OpencodeHub
+cp .env.example .env  # Edit secrets!
+docker-compose up -d
+
+# Create admin user
+docker-compose exec app bun run scripts/seed-admin.ts
+
+# Open in browser
+open http://localhost:4321
+```
+
+:::tip[SSH Git Access]
+The SSH git server starts automatically on port 2222. Clone with:
+`git clone ssh://git@localhost:2222/owner/repo.git`
+:::
 
 ## Quick Links
 
 <CardGrid>
   <Card title="Installation" icon="add-document">
-    Get OpenCodeHub running in minutes using our 1-click install script. [Read the guide
-    →](/getting-started/installation/)
+    Get OpenCodeHub running in minutes. [Read the guide →](/getting-started/installation/)
   </Card>
-  <Card title="CircleCI Integration" icon="seti:check">
-    Connect CircleCI as your external CI provider. Trigger builds and report
-    PR checks automatically. [Set up CircleCI →](/guides/circleci-integration/)
+  <Card title="Configuration" icon="seti:config">
+    All environment variables and settings. [View config →](/administration/configuration/)
   </Card>
   <Card title="CLI Reference" icon="seti:shell">
-    Learn the `och` CLI commands for managing stacks and repositories. [View
-    commands →](/reference/cli-commands/)
+    The `och` CLI with 20+ command groups. [View commands →](/reference/cli-commands/)
   </Card>
   <Card title="API Reference" icon="open-book">
-    Integrate with OpenCodeHub using the REST API. [Explore the API
-    →](/api/rest-api/)
+    REST API with 175+ endpoints. [Explore the API →](/api/rest-api/)
+  </Card>
+  <Card title="Architecture" icon="seti:code">
+    System design, data flow, and component overview. [View architecture →](/development/architecture/)
   </Card>
   <Card title="Contributing" icon="github">
-    Help make OpenCodeHub better. Set up your local dev environment. [Start
-    contributing →](/development/contributing/)
+    Help make OpenCodeHub better. [Start contributing →](/development/contributing/)
   </Card>
 </CardGrid>
-
-## Storage Options
-
-:::tip[Performance Recommendation]
-For best performance, use **local SSD storage** via `DATA_DIR` in production. Object storage (S3/R2) introduces latency. See [Storage Adapters](/guides/storage-adapters/#️-performance-considerations) for details.
-:::
-
-| Storage Type     | Performance | Cost | Best For                |
-| ---------------- | ----------- | ---- | ----------------------- |
-| **Local SSD**    | ⚡ Fastest  | $$   | Production, self-hosted |
-| **S3/R2**        | 🐢 Slow     | $    | Backup, multi-node      |

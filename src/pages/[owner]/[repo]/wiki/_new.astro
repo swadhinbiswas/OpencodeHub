@@ -60,9 +60,9 @@ const repo = {
                 >
                 </div>
                 <div
-                    class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-8"
+                    class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm p-8"
                 >
-                    <h1 class="text-2xl font-bold text-white mb-6">
+                    <h1 class="text-2xl font-bold text-foreground mb-6">
                         Create new wiki page
                     </h1>
 
@@ -70,7 +70,7 @@ const repo = {
                         <div>
                             <label
                                 for="title"
-                                class="block text-sm font-medium text-gray-300 mb-2"
+                                class="block text-sm font-medium text-muted-foreground mb-2"
                                 >Title</label
                             >
                             <input
@@ -78,7 +78,7 @@ const repo = {
                                 id="title"
                                 name="title"
                                 required
-                                class="w-full px-4 py-2 rounded-lg bg-black/20 border border-white/10 text-white focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-gray-600"
+                                class="w-full px-4 py-2 rounded-lg bg-black/20 border border-border text-foreground focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-muted-foreground"
                                 placeholder="Page Title (e.g. Installation Guide)"
                             />
                         </div>
@@ -86,7 +86,7 @@ const repo = {
                         <div>
                             <label
                                 for="content"
-                                class="block text-sm font-medium text-gray-300 mb-2"
+                                class="block text-sm font-medium text-muted-foreground mb-2"
                                 >Content (Markdown)</label
                             >
                             <div class="relative">
@@ -95,13 +95,13 @@ const repo = {
                                     name="content"
                                     rows="15"
                                     required
-                                    class="w-full px-4 py-3 rounded-lg bg-black/20 border border-white/10 text-white font-mono text-sm focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-gray-600 resize-y"
+                                    class="w-full px-4 py-3 rounded-lg bg-black/20 border border-border text-foreground font-mono text-sm focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-muted-foreground resize-y"
                                     placeholder="# Header
 
 Write your content here..."
                                 ></textarea>
                                 <div
-                                    class="absolute bottom-3 right-3 text-xs text-gray-500"
+                                    class="absolute bottom-3 right-3 text-xs text-muted-foreground"
                                 >
                                     Markdown supported
                                 </div>
@@ -109,17 +109,17 @@ Write your content here..."
                         </div>
 
                         <div
-                            class="flex items-center justify-end gap-3 pt-4 border-t border-white/5"
+                            class="flex items-center justify-end gap-3 pt-4 border-t border-border/50"
                         >
                             <a
                                 href={`/${repo.owner}/${repo.name}/wiki`}
-                                class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                                class="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                             >
                                 Cancel
                             </a>
                             <button
                                 type="submit"
-                                class="px-6 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-sm font-medium text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                class="px-6 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-sm font-medium text-foreground shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all"
                             >
                                 Create Page
                             </button>

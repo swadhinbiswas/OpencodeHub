@@ -1,0 +1,44 @@
+FROM oven/bun:1 AS base
+WORKDIR /app
+
+# Install dependencies
+FROM base AS deps
+RUN apt-get update && apt-get install -y python3 make g++ gcc libc6-dev && rm -rf /var/lib/apt/lists/*
+COPY package.json bun.lock ./
+COPY cli/package.json ./cli/package.json
+RUN for i in 1 2 3; do \
+      bun install --frozen-lockfile && break || \
+      (echo "bun install attempt $i failed, retrying in 10s..." && sleep 10); \
+    done
+
+# Production image
+FROM oven/bun:1 AS runner
+WORKDIR /app
+
+# Install git (needed for git operations)
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+
+# Create data directories
+RUN mkdir -p /data/repositories /data/storage /data/cache && \
+    chown -R bun:bun /data
+
+# Copy node_modules and source
+COPY --from=deps --chown=bun:bun /app/node_modules ./node_modules
+COPY --from=deps --chown=bun:bun /app/package.json ./
+COPY --from=deps --chown=bun:bun /app/cli ./cli
+COPY --from=deps --chown=bun:bun /app/tsconfig.json ./
+
+# Copy source files needed for worker
+COPY --from=deps --chown=bun:bun /app/src/lib ./src/lib
+COPY --from=deps --chown=bun:bun /app/src/db ./src/db
+COPY --from=deps --chown=bun:bun /app/scripts/worker.ts ./scripts/worker.ts
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV DATA_DIR=/data
+
+# Switch to non-root user
+USER bun
+
+# Start the worker
+CMD ["bun", "scripts/worker.ts"]

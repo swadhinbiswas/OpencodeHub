@@ -94,24 +94,24 @@ export default function HeroSection() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.4 }}
-                    className="flex items-center justify-center gap-8 mt-16"
+                    className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 md:gap-8 mt-12 sm:mt-16"
                 >
                     <div className="flex items-center gap-2 text-muted-foreground">
                         <GitBranch className="h-5 w-5 text-primary" />
-                        <span className="text-2xl font-bold text-foreground">100%</span>
-                        <span className="text-sm">Open Source</span>
+                        <span className="text-xl sm:text-2xl font-bold text-foreground">100%</span>
+                        <span className="text-xs sm:text-sm">Open Source</span>
                     </div>
-                    <div className="w-px h-8 bg-border" />
+                    <div className="hidden sm:block w-px h-8 bg-border" />
                     <div className="flex items-center gap-2 text-muted-foreground">
                         <Zap className="h-5 w-5 text-yellow-500" />
-                        <span className="text-2xl font-bold text-foreground">Graphite</span>
-                        <span className="text-sm">Features</span>
+                        <span className="text-xl sm:text-2xl font-bold text-foreground">Graphite</span>
+                        <span className="text-xs sm:text-sm">Features</span>
                     </div>
-                    <div className="w-px h-8 bg-border" />
+                    <div className="hidden sm:block w-px h-8 bg-border" />
                     <div className="flex items-center gap-2 text-muted-foreground">
                         <Star className="h-5 w-5 text-orange-500" />
-                        <span className="text-2xl font-bold text-foreground">AI</span>
-                        <span className="text-sm">Powered Reviews</span>
+                        <span className="text-xl sm:text-2xl font-bold text-foreground">AI</span>
+                        <span className="text-xs sm:text-sm">Powered Reviews</span>
                     </div>
                 </motion.div>
             </div>

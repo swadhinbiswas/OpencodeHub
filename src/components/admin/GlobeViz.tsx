@@ -21,7 +21,7 @@ class GlobeErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
         if (this.state.hasError) {
             return (
                 <div className="w-full h-full flex items-center justify-center">
-                    <div className="text-center text-white/50">
+                    <div className="text-center text-foreground/50">
                         <div className="text-6xl mb-4">🌐</div>
                         <p className="text-sm">Globe unavailable</p>
                     </div>
@@ -178,7 +178,7 @@ export default function GlobeViz({ activities = [] }: Props) {
     if (!mounted || webglSupported === null) {
         return (
             <div className="w-full h-full flex items-center justify-center">
-                <div className="text-white/30 text-sm">Loading globe...</div>
+                <div className="text-foreground/30 text-sm">Loading globe...</div>
             </div>
         );
     }

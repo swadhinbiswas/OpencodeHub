@@ -48,7 +48,7 @@ const [users, totalResult] = await Promise.all([
     offset,
   }),
   db
-    .select({ count: sql`count` })
+    .select({ count: sql`count(*)` })
     .from(schema.users)
     .where(whereCondition)
     .limit(1),
@@ -60,16 +60,16 @@ const totalPages = Math.ceil(total / limit);
 // Stats
 const [totalUsersResult, activeUsersResult, adminUsersResult] = await Promise.all([
   db
-    .select({ count: sql`count` })
+    .select({ count: sql`count(*)` })
     .from(schema.users)
     .limit(1),
   db
-    .select({ count: sql`count` })
+    .select({ count: sql`count(*)` })
     .from(schema.users)
     .where(eq(schema.users.isActive, true))
     .limit(1),
   db
-    .select({ count: sql`count` })
+    .select({ count: sql`count(*)` })
     .from(schema.users)
     .where(eq(schema.users.isAdmin, true))
     .limit(1),

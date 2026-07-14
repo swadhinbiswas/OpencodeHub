@@ -87,6 +87,12 @@ export async function downloadRepoFromStorage(
         const relativePath = obj.key.replace(storagePath, "").replace(/^\//, "");
         if (!relativePath) continue;
 
+        // Security: reject path traversal attempts
+        if (relativePath.includes("..") || relativePath.startsWith("/")) {
+            logger.warn({ relativePath }, "Rejected path traversal in storage key");
+            continue;
+        }
+
         logger.info(`[downloadRepoFromStorage] storagePath="${storagePath}", obj.key="${obj.key}", relativePath="${relativePath}"`);
 
         const localFilePath = join(localPath, relativePath);
@@ -267,9 +273,9 @@ export async function acquireRepo(owner: string, repoName: string): Promise<stri
             }
             // Create target directory
             mkdirSync(localPath, { recursive: true });
-            const { execSync } = await import('child_process');
-            // Copy directory CONTENTS (using /. to copy contents, not the directory itself)
-            execSync(`cp -R "${fallbackPath}/." "${localPath}/"`, { stdio: 'inherit' });
+            const { execFileSync } = await import('child_process');
+            // Copy directory CONTENTS using execFileSync to prevent command injection
+            execFileSync("cp", ["-R", `${fallbackPath}/.`, `${localPath}/`], { stdio: 'inherit' });
             logger.info(`[acquireRepo] Successfully copied from fallback`);
         } else {
             logger.error(`[acquireRepo] No fallback found at: ${fallbackPath}`);

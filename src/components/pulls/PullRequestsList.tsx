@@ -88,7 +88,7 @@ function timeAgo(date: string): string {
 
 function getPRIcon(state: string, isDraft?: boolean) {
     if (isDraft) {
-        return { icon: GitPullRequest, color: "text-gray-400", bg: "bg-gray-500/10" };
+        return { icon: GitPullRequest, color: "text-muted-foreground", bg: "bg-gray-500/10" };
     }
     switch (state) {
         case "open":
@@ -98,7 +98,7 @@ function getPRIcon(state: string, isDraft?: boolean) {
         case "closed":
             return { icon: XCircle, color: "text-red-400", bg: "bg-red-500/10" };
         default:
-            return { icon: GitPullRequest, color: "text-gray-400", bg: "bg-gray-500/10" };
+            return { icon: GitPullRequest, color: "text-muted-foreground", bg: "bg-gray-500/10" };
     }
 }
 
@@ -270,13 +270,13 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                 <div className="relative flex-1 max-w-xl group">
                     <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500/20 via-purple-500/20 to-pink-500/20 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition-opacity" />
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <input
                             type="search"
                             placeholder="Search all pull requests..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-green-500/50 focus:ring-2 focus:ring-green-500/20 transition-all"
+                            className="w-full rounded-xl border border-border bg-secondary backdrop-blur-sm pl-10 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-green-500/50 focus:ring-2 focus:ring-green-500/20 transition-all"
                         />
                     </div>
                 </div>
@@ -287,7 +287,7 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                         href={`/${repoOwner}/${repoName}/labels`}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-300 hover:bg-white/10 hover:border-white/20 transition-all"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-secondary text-sm text-muted-foreground hover:bg-secondary/80 hover:border-border/80 transition-all"
                     >
                         <Tag className="h-4 w-4" />
                         Labels
@@ -296,7 +296,7 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                         href={`/${repoOwner}/${repoName}/milestones`}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-300 hover:bg-white/10 hover:border-white/20 transition-all"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-secondary text-sm text-muted-foreground hover:bg-secondary/80 hover:border-border/80 transition-all"
                     >
                         <Calendar className="h-4 w-4" />
                         Milestones
@@ -305,7 +305,7 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                         href={`/${repoOwner}/${repoName}/compare`}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-sm font-medium text-white shadow-lg shadow-green-500/25 hover:shadow-green-500/40 transition-all"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-sm font-medium text-foreground shadow-lg shadow-green-500/25 hover:shadow-green-500/40 transition-all"
                     >
                         <Plus className="h-4 w-4" />
                         New Pull Request
@@ -320,11 +320,11 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                 transition={{ delay: 0.1 }}
                 className="relative"
             >
-                <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="mb-4 rounded-xl border border-border bg-white/[0.03] p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                            <p className="text-sm font-medium text-white">Dependency Workflow</p>
-                            <p className="text-xs text-gray-400">
+                            <p className="text-sm font-medium text-foreground">Dependency Workflow</p>
+                            <p className="text-xs text-muted-foreground">
                                 Detect cross-PR dependencies, suggest stack order, and apply it directly.
                             </p>
                         </div>
@@ -358,7 +358,7 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                                 type="button"
                                 onClick={applySuggestedOrder}
                                 disabled={isApplying || !suggestion || suggestion.cycles.length > 0}
-                                className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+                                className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 px-3 py-1.5 text-xs font-medium text-foreground disabled:opacity-60"
                             >
                                 {isApplying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
                                 Apply As Stack
@@ -376,7 +376,7 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                                 type="button"
                                 onClick={bulkMergeSelected}
                                 disabled={isBulkMerging || selectedPrIds.length === 0}
-                                className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-emerald-600 to-green-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+                                className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-emerald-600 to-green-600 px-3 py-1.5 text-xs font-medium text-foreground disabled:opacity-60"
                             >
                                 {isBulkMerging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <GitMerge className="h-3.5 w-3.5" />}
                                 Bulk Merge Selected
@@ -384,13 +384,13 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                         </div>
                     </div>
                     {graph && (
-                        <div className="mt-3 text-xs text-gray-400">
+                        <div className="mt-3 text-xs text-muted-foreground">
                             Graph: {graph.nodes.length} PRs, {graph.edges.length} edges (
                             {graph.edges.filter((edge) => edge.type === "files").length} file conflicts)
                         </div>
                     )}
                     {suggestion && (
-                        <div className="mt-2 text-xs text-gray-300">
+                        <div className="mt-2 text-xs text-muted-foreground">
                             Suggested:{" "}
                             {suggestion.order.map((id) => {
                                 const pr = prById.get(id);
@@ -399,13 +399,13 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                         </div>
                     )}
                     {workflowMsg && (
-                        <div className="mt-2 text-xs text-gray-400">{workflowMsg}</div>
+                        <div className="mt-2 text-xs text-muted-foreground">{workflowMsg}</div>
                     )}
                 </div>
                 {/* Gradient border effect */}
                 <div className="absolute -inset-[1px] bg-gradient-to-r from-green-500/30 via-purple-500/20 to-pink-500/30 rounded-xl blur-sm opacity-50" />
 
-                <div className="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm overflow-hidden">
+                <div className="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden">
                     {/* Filter Header */}
                     <div className="flex items-center justify-between gap-4 border-b border-white/5 bg-white/[0.02] px-4 py-3">
                         <div className="flex items-center gap-1">
@@ -413,7 +413,7 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                                 onClick={() => setFilter("open")}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${filter === "open"
                                         ? "bg-green-500/10 text-green-400 border border-green-500/30"
-                                        : "text-gray-400 hover:text-white hover:bg-white/5"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
                                     }`}
                             >
                                 <GitPullRequest className="h-4 w-4" />
@@ -423,7 +423,7 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                                 onClick={() => setFilter("closed")}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${filter === "closed"
                                         ? "bg-purple-500/10 text-purple-400 border border-purple-500/30"
-                                        : "text-gray-400 hover:text-white hover:bg-white/5"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
                                     }`}
                             >
                                 <CheckCircle2 className="h-4 w-4" />
@@ -431,16 +431,16 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                             </button>
                         </div>
 
-                        <div className="flex items-center gap-3 text-sm text-gray-500">
-                            <button className="flex items-center gap-1 hover:text-white transition-colors">
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                            <button className="flex items-center gap-1 hover:text-foreground transition-colors">
                                 <User className="h-3.5 w-3.5" />
                                 Author
                             </button>
-                            <button className="flex items-center gap-1 hover:text-white transition-colors">
+                            <button className="flex items-center gap-1 hover:text-foreground transition-colors">
                                 <Tag className="h-3.5 w-3.5" />
                                 Label
                             </button>
-                            <button className="flex items-center gap-1 hover:text-white transition-colors">
+                            <button className="flex items-center gap-1 hover:text-foreground transition-colors">
                                 <ArrowUpDown className="h-3.5 w-3.5" />
                                 Sort
                             </button>
@@ -461,7 +461,7 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                                             animate={{ opacity: 1, x: 0 }}
                                             exit={{ opacity: 0, x: 20 }}
                                             transition={{ delay: index * 0.03 }}
-                                            className="flex items-start gap-3 p-4 hover:bg-white/[0.02] transition-colors group"
+                                            className="flex items-start gap-3 p-4 hover:bg-accent/50 transition-colors group"
                                         >
                                             {pr.state === "open" && (
                                                 <button
@@ -474,7 +474,7 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                                                     }}
                                                     className={`mt-1 h-4 w-4 rounded border ${selectedPrIds.includes(pr.id)
                                                         ? "border-green-400 bg-green-500/20"
-                                                        : "border-white/20 bg-transparent"
+                                                        : "border-border/80 bg-transparent"
                                                         }`}
                                                 />
                                             )}
@@ -489,11 +489,11 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                                             {/* Content */}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                                    <span className="font-semibold text-white group-hover:text-green-400 transition-colors">
+                                                    <span className="font-semibold text-foreground group-hover:text-green-400 transition-colors">
                                                         {pr.title}
                                                     </span>
                                                     {pr.isDraft && (
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-500/20 text-gray-400 border border-gray-500/30">
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-500/20 text-muted-foreground border border-gray-500/30">
                                                             Draft
                                                         </span>
                                                     )}
@@ -512,7 +512,7 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                                                         </span>
                                                     ))}
                                                 </div>
-                                                <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                                                     <span>#{pr.number}</span>
                                                     <span>•</span>
                                                     <span>opened {timeAgo(pr.createdAt)}</span>
@@ -525,7 +525,7 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                                                                 className="h-4 w-4 rounded-full"
                                                             />
                                                         ) : (
-                                                            <div className="h-4 w-4 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-[8px] text-white font-bold">
+                                                            <div className="h-4 w-4 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-[8px] text-foreground font-bold">
                                                                 {pr.author.username[0].toUpperCase()}
                                                             </div>
                                                         )}
@@ -536,7 +536,7 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                                                     {pr.sourceBranch && pr.targetBranch && (
                                                         <>
                                                             <span>•</span>
-                                                            <span className="flex items-center gap-1 text-gray-600">
+                                                            <span className="flex items-center gap-1 text-muted-foreground">
                                                                 <GitBranch className="h-3 w-3" />
                                                                 <code className="text-purple-400">{pr.sourceBranch}</code>
                                                                 <span>→</span>
@@ -549,7 +549,7 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
 
                                             {/* Comment Count */}
                                             {pr.commentCount > 0 && (
-                                                <div className="flex items-center gap-1 text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
+                                                <div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-muted-foreground transition-colors">
                                                     <MessageSquare className="h-4 w-4" />
                                                     {pr.commentCount}
                                                 </div>
@@ -567,10 +567,10 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                                         <GitPullRequest className="h-12 w-12 text-green-400" />
                                         <div className="absolute inset-0 bg-green-500 blur-xl opacity-30" />
                                     </div>
-                                    <h3 className="text-lg font-semibold text-white mb-2">
+                                    <h3 className="text-lg font-semibold text-foreground mb-2">
                                         {searchQuery ? "No matching pull requests" : "Welcome to pull requests!"}
                                     </h3>
-                                    <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                                    <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                                         {searchQuery
                                             ? "Try adjusting your search or filter to find what you're looking for."
                                             : "Pull requests help you collaborate on code with others. When you're ready, you can merge your code into the main branch."}
@@ -580,7 +580,7 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                                             href={`/${repoOwner}/${repoName}/compare`}
                                             whileHover={{ scale: 1.05 }}
                                             whileTap={{ scale: 0.95 }}
-                                            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-sm font-medium text-white shadow-lg shadow-green-500/25"
+                                            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-sm font-medium text-foreground shadow-lg shadow-green-500/25"
                                         >
                                             <Plus className="h-4 w-4" />
                                             Create the first pull request

@@ -87,16 +87,16 @@ function isLightColor(hex: string) {
           </svg>
         </div>
         <div>
-          <h1 class="text-2xl font-bold text-white">Labels</h1>
-          <p class="text-gray-500 text-sm">{labels.length} labels</p>
+          <h1 class="text-2xl font-bold text-foreground">Labels</h1>
+          <p class="text-muted-foreground text-sm">{labels.length} labels</p>
         </div>
       </div>
 
       <!-- Create Label Form -->
       <div class="relative">
         <div class="absolute -inset-[1px] bg-gradient-to-r from-purple-500/20 via-transparent to-pink-500/20 rounded-xl opacity-50"></div>
-        <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-6">
-          <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+        <div class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm p-6">
+          <h3 class="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
             <svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
             </svg>
@@ -104,24 +104,24 @@ function isLightColor(hex: string) {
           </h3>
           <form id="create-label-form" class="flex flex-wrap items-end gap-4">
             <div class="flex-1 min-w-[200px]">
-              <label class="block text-sm font-medium text-gray-300 mb-2">Label name</label>
+              <label class="block text-sm font-medium text-muted-foreground mb-2">Label name</label>
               <input 
                 id="name" 
                 name="name" 
                 placeholder="bug, feature, etc."
                 required
-                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                class="w-full rounded-lg border border-border bg-secondary px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">Color</label>
+              <label class="block text-sm font-medium text-muted-foreground mb-2">Color</label>
               <div class="flex gap-2 items-center">
                 <input 
                   type="color" 
                   id="color" 
                   name="color" 
                   value="#6366f1"
-                  class="h-10 w-14 rounded-lg border border-white/10 cursor-pointer bg-transparent"
+                  class="h-10 w-14 rounded-lg border border-border cursor-pointer bg-transparent"
                 />
                 <div id="color-preview" class="px-3 py-1 rounded-full text-sm font-medium" style="background-color: #6366f1; color: white;">
                   preview
@@ -129,17 +129,17 @@ function isLightColor(hex: string) {
               </div>
             </div>
             <div class="flex-1 min-w-[200px]">
-              <label class="block text-sm font-medium text-gray-300 mb-2">Description</label>
+              <label class="block text-sm font-medium text-muted-foreground mb-2">Description</label>
               <input 
                 id="description" 
                 name="description" 
                 placeholder="Brief description (optional)"
-                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                class="w-full rounded-lg border border-border bg-secondary px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all"
               />
             </div>
             <button 
               type="submit"
-              class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-600 text-sm font-medium text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all"
+              class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-600 text-sm font-medium text-foreground shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all"
             >
               <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -155,9 +155,9 @@ function isLightColor(hex: string) {
       {labels.length === 0 && (
         <div class="relative">
           <div class="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/20 via-transparent to-blue-500/20 rounded-xl opacity-50"></div>
-          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-6">
-            <h3 class="text-lg font-semibold text-white mb-2">Quick Start</h3>
-            <p class="text-gray-500 text-sm mb-4">Create common labels with one click</p>
+          <div class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm p-6">
+            <h3 class="text-lg font-semibold text-foreground mb-2">Quick Start</h3>
+            <p class="text-muted-foreground text-sm mb-4">Create common labels with one click</p>
             <div class="flex flex-wrap gap-2">
               {defaultLabels.map((label) => (
                 <button
@@ -178,9 +178,9 @@ function isLightColor(hex: string) {
       <!-- Labels List -->
       <div class="relative">
         <div class="absolute -inset-[1px] bg-gradient-to-r from-purple-500/20 via-transparent to-pink-500/20 rounded-xl opacity-50"></div>
-        <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm overflow-hidden">
-          <div class="px-5 py-4 border-b border-white/5 bg-white/[0.02]">
-            <h3 class="font-semibold text-white">All Labels</h3>
+        <div class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden">
+          <div class="px-5 py-4 border-b border-border/50 bg-muted/30">
+            <h3 class="font-semibold text-foreground">All Labels</h3>
           </div>
           {labels.length === 0 ? (
             <div class="text-center py-16">
@@ -190,13 +190,13 @@ function isLightColor(hex: string) {
                 </svg>
                 <div class="absolute inset-0 bg-purple-500 blur-2xl opacity-20"></div>
               </div>
-              <h3 class="text-lg font-semibold text-white mb-2">No labels yet</h3>
-              <p class="text-gray-500">Create labels to categorize issues and pull requests</p>
+              <h3 class="text-lg font-semibold text-foreground mb-2">No labels yet</h3>
+              <p class="text-muted-foreground">Create labels to categorize issues and pull requests</p>
             </div>
           ) : (
             <div class="divide-y divide-white/5">
               {labels.map((label: any) => (
-                <div class="flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors group" data-label-id={label.id}>
+                <div class="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors group" data-label-id={label.id}>
                   <div class="flex items-center gap-3">
                     <span 
                       class="px-3 py-1 rounded-full text-sm font-medium"
@@ -205,12 +205,12 @@ function isLightColor(hex: string) {
                       {label.name}
                     </span>
                     {label.description && (
-                      <span class="text-sm text-gray-500">{label.description}</span>
+                      <span class="text-sm text-muted-foreground">{label.description}</span>
                     )}
                   </div>
                   <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
-                      class="edit-label-btn p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"
+                      class="edit-label-btn p-2 hover:bg-secondary/80 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
                       data-label-id={label.id}
                       data-name={label.name}
                       data-color={label.color}
@@ -222,7 +222,7 @@ function isLightColor(hex: string) {
                       </svg>
                     </button>
                     <button
-                      class="delete-label-btn p-2 hover:bg-red-500/10 rounded-lg text-gray-400 hover:text-red-400 transition-colors"
+                      class="delete-label-btn p-2 hover:bg-red-500/10 rounded-lg text-muted-foreground hover:text-red-400 transition-colors"
                       data-label-id={label.id}
                       data-name={label.name}
                       title="Delete label"

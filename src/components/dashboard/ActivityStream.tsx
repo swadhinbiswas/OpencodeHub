@@ -28,7 +28,7 @@ export function ActivityStream({ activeCount, users, className }: ActivityStream
     ];
 
     return (
-        <div className={cn("w-full relative overflow-hidden rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl transition-all hover:bg-white/10 hover:border-white/20", className)}>
+        <div className={cn("w-full relative overflow-hidden rounded-xl border border-border bg-secondary p-6 backdrop-blur-xl transition-all hover:bg-secondary/80 hover:border-border/80", className)}>
             {/* Subtle background glow effect using CSS gradients */}
             <div className="absolute -top-24 -right-24 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -79,21 +79,21 @@ export function ActivityStream({ activeCount, users, className }: ActivityStream
                     <div className="flex items-center -space-x-4 pl-4">
                         {users.slice(0, 5).map((user, i) => (
                             <div key={user.id} className="relative group transition-transform hover:-translate-y-1 hover:z-20">
-                                <Avatar className="w-12 h-12 border-2 border-[#09090b] ring-1 ring-white/10 transition-shadow group-hover:ring-indigo-500/50">
+                                <Avatar className="w-12 h-12 border-2 border-[#09090b] ring-1 ring-border transition-shadow group-hover:ring-indigo-500/50">
                                     <AvatarImage src={user.avatarUrl} alt={user.username} className="object-cover" />
                                     <AvatarFallback className="text-xs bg-zinc-900 font-medium text-zinc-400">
                                         {user.username.slice(0, 2).toUpperCase()}
                                     </AvatarFallback>
                                 </Avatar>
                                 {/* Tooltip on hover */}
-                                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/90 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap pointer-events-none border border-white/10">
+                                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/90 text-foreground text-[10px] px-2 py-1 rounded whitespace-nowrap pointer-events-none border border-border">
                                     @{user.username}
                                 </div>
                             </div>
                         ))}
                         {users.length > 5 && (
                             <div className="relative z-0 group">
-                                <div className="w-12 h-12 rounded-full bg-[#09090b] border-2 border-[#09090b] ring-1 ring-white/10 flex items-center justify-center text-xs font-medium text-zinc-400 group-hover:border-indigo-500/50 transition-colors">
+                                <div className="w-12 h-12 rounded-full bg-[#09090b] border-2 border-[#09090b] ring-1 ring-border flex items-center justify-center text-xs font-medium text-zinc-400 group-hover:border-indigo-500/50 transition-colors">
                                     +{users.length - 5}
                                 </div>
                             </div>

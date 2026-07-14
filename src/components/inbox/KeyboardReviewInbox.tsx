@@ -35,7 +35,7 @@ export const KeyboardReviewInbox: React.FC<{ initialPr: PRProps }> = ({ initialP
   }, [handleKeyDown]);
 
   return (
-    <div className="flex flex-col h-full bg-slate-950 text-white font-mono">
+    <div className="flex flex-col h-full bg-slate-950 text-foreground font-mono">
       <div className="p-4 border-b border-slate-800">
         <h2 className="text-xl font-bold">Reviewing: {initialPr.title}</h2>
         <div className="text-xs text-slate-400 mt-2 flex gap-4">

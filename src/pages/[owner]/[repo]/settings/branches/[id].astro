@@ -47,13 +47,13 @@ const requiredChecksString = requiredChecks.map((c: any) => c.pathFilter ? `${c.
         class="space-y-6 rounded-lg border border-gray-700 bg-gray-800 p-6"
       >
         <div>
-          <label class="mb-2 block font-medium text-gray-300"
+          <label class="mb-2 block font-medium text-muted-foreground"
             >Branch Pattern</label
           >
           <input
             type="text"
             name="pattern"
-            class="w-full rounded border border-gray-600 bg-gray-900 px-4 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+            class="w-full rounded border border-gray-600 bg-gray-900 px-4 py-2 text-foreground placeholder-gray-500 focus:border-blue-500 focus:outline-none"
             placeholder="main, release/*, *"
             value={rule.pattern}
             required
@@ -70,10 +70,10 @@ const requiredChecksString = requiredChecks.map((c: any) => c.pathFilter ? `${c.
               checked={rule.requiresPr || false}
             />
             <div>
-              <label for="requiresPr" class="font-medium text-white"
+              <label for="requiresPr" class="font-medium text-foreground"
                 >Require a pull request before merging</label
               >
-              <p class="text-sm text-gray-500">
+              <p class="text-sm text-muted-foreground">
                 When enabled, all commits must be made to a non-protected branch
                 and submitted via a pull request.
               </p>
@@ -81,7 +81,7 @@ const requiredChecksString = requiredChecks.map((c: any) => c.pathFilter ? `${c.
           </div>
 
           <div class="ml-7 flex items-center gap-3">
-            <label class="text-sm font-medium text-gray-300"
+            <label class="text-sm font-medium text-muted-foreground"
               >Required number of approvals:</label
             >
             <input
@@ -89,7 +89,7 @@ const requiredChecksString = requiredChecks.map((c: any) => c.pathFilter ? `${c.
               name="requiredApprovals"
               min="0"
               max="10"
-              class="w-20 rounded border border-gray-600 bg-gray-900 px-3 py-1 text-white focus:border-blue-500 focus:outline-none"
+              class="w-20 rounded border border-gray-600 bg-gray-900 px-3 py-1 text-foreground focus:border-blue-500 focus:outline-none"
               value={rule.requiredApprovals}
             />
           </div>
@@ -103,7 +103,7 @@ const requiredChecksString = requiredChecks.map((c: any) => c.pathFilter ? `${c.
               checked={rule.dismissStaleReviews || false}
             />
             <div>
-              <label for="dismissStaleReviews" class="font-medium text-white"
+              <label for="dismissStaleReviews" class="font-medium text-foreground"
                 >Dismiss stale pull request approvals when new commits are pushed</label
               >
             </div>
@@ -120,7 +120,7 @@ const requiredChecksString = requiredChecks.map((c: any) => c.pathFilter ? `${c.
             <div>
               <label
                 for="requireCodeOwnerReviews"
-                class="font-medium text-white"
+                class="font-medium text-foreground"
                 >Require review from Code Owners</label
               >
             </div>
@@ -129,16 +129,16 @@ const requiredChecksString = requiredChecks.map((c: any) => c.pathFilter ? `${c.
           <hr class="border-gray-700 my-4" />
 
           <div>
-            <label class="mb-2 block font-medium text-gray-300"
+            <label class="mb-2 block font-medium text-muted-foreground"
               >Required Status Checks</label
             >
-            <p class="mb-2 text-sm text-gray-500">
+            <p class="mb-2 text-sm text-muted-foreground">
               Enter CI jobs that must pass (one per line). Monorepo path scoping is supported via colon syntax. Example: <code>build</code>, <code>test:packages/frontend/**</code>.
             </p>
             <textarea
               name="requiredChecks"
               rows="3"
-              class="w-full rounded border border-gray-600 bg-gray-900 px-4 py-2 text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+              class="w-full rounded border border-gray-600 bg-gray-900 px-4 py-2 text-foreground placeholder-gray-500 focus:border-blue-500 focus:outline-none"
               placeholder="build
 test:packages/backend/**
 lint">{requiredChecksString}</textarea
@@ -156,10 +156,10 @@ lint">{requiredChecksString}</textarea
               checked={rule.allowForcePushes || false}
             />
             <div>
-              <label for="allowForcePushes" class="font-medium text-white"
+              <label for="allowForcePushes" class="font-medium text-foreground"
                 >Allow force pushes</label
               >
-              <p class="text-sm text-gray-500">
+              <p class="text-sm text-muted-foreground">
                 Permit force pushes for all users with write access.
               </p>
             </div>
@@ -174,7 +174,7 @@ lint">{requiredChecksString}</textarea
               checked={rule.active || false}
             />
             <div>
-              <label for="active" class="font-medium text-white">Active</label>
+              <label for="active" class="font-medium text-foreground">Active</label>
             </div>
           </div>
         </div>
@@ -182,13 +182,13 @@ lint">{requiredChecksString}</textarea
         <div class="flex justify-end gap-3 pt-4">
           <a
             href={`/${owner}/${repo}/settings/branches`}
-            class="rounded px-4 py-2 text-gray-300 hover:bg-gray-700"
+            class="rounded px-4 py-2 text-muted-foreground hover:bg-gray-700"
           >
             Cancel
           </a>
           <button
             type="submit"
-            class="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+            class="rounded bg-blue-600 px-4 py-2 text-foreground hover:bg-blue-700"
           >
             Save Changes
           </button>

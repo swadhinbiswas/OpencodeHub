@@ -92,11 +92,11 @@ if (!currentPage) {
                     >
                     </div>
                     <div
-                        class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-4"
+                        class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm p-4"
                     >
                         <div class="flex items-center justify-between mb-4">
                             <h3
-                                class="font-semibold text-white flex items-center gap-2"
+                                class="font-semibold text-foreground flex items-center gap-2"
                             >
                                 <svg
                                     class="h-5 w-5 text-blue-400"
@@ -115,10 +115,10 @@ if (!currentPage) {
                             </h3>
                             <a
                                 href={`/${repo.owner}/${repo.name}/wiki/_new`}
-                                class="p-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+                                class="p-1.5 rounded-lg bg-secondary border border-border hover:bg-secondary/80 transition-colors"
                             >
                                 <svg
-                                    class="h-4 w-4 text-gray-400"
+                                    class="h-4 w-4 text-muted-foreground"
                                     fill="none"
                                     stroke="currentColor"
                                     viewBox="0 0 24 24"
@@ -142,14 +142,14 @@ if (!currentPage) {
                                                 "px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                                                 currentPage?.id === page.id
                                                     ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                                                    : "text-gray-400 hover:text-white hover:bg-white/5",
+                                                    : "text-muted-foreground hover:text-foreground hover:bg-accent",
                                             ]}
                                         >
                                             {page.title}
                                         </a>
                                     ))
                                 ) : (
-                                    <div class="text-sm text-gray-500 px-3">
+                                    <div class="text-sm text-muted-foreground px-3">
                                         No pages yet
                                     </div>
                                 )
@@ -169,18 +169,18 @@ if (!currentPage) {
                         >
                         </div>
                         <div
-                            class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm"
+                            class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm"
                         >
                             <div
-                                class="flex items-center justify-between px-6 py-4 border-b border-white/5"
+                                class="flex items-center justify-between px-6 py-4 border-b border-border/50"
                             >
-                                <h1 class="text-2xl font-bold text-white">
+                                <h1 class="text-2xl font-bold text-foreground">
                                     {currentPage.title}
                                 </h1>
                                 <div class="flex gap-2">
                                     <a
                                         href={`/${repo.owner}/${repo.name}/wiki/edit/${currentPage.slug}`}
-                                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-300 hover:bg-white/10 transition-colors"
+                                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-secondary text-sm text-muted-foreground hover:bg-secondary/80 transition-colors"
                                     >
                                         <svg
                                             class="h-4 w-4"
@@ -199,7 +199,7 @@ if (!currentPage) {
                                     </a>
                                     <a
                                         href={`/${repo.owner}/${repo.name}/wiki-history/${currentPage.slug}`}
-                                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-300 hover:bg-white/10 transition-colors"
+                                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-secondary text-sm text-muted-foreground hover:bg-secondary/80 transition-colors"
                                     >
                                         <svg
                                             class="h-4 w-4"
@@ -219,7 +219,7 @@ if (!currentPage) {
                                 </div>
                             </div>
                             <div
-                                class="p-6 prose prose-invert prose-sm max-w-none prose-p:text-gray-300 prose-headings:text-white prose-a:text-blue-400 prose-code:text-pink-400"
+                                class="p-6 prose prose-invert prose-sm max-w-none prose-p:text-muted-foreground prose-headings:text-foreground prose-a:text-blue-400 prose-code:text-pink-400"
                                 set:html={contentHtml}
                             />
                         </div>

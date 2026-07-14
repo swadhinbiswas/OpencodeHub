@@ -61,7 +61,7 @@ const langColors: Record<string, string> = {
   <div class="container py-8">
     <!-- Header -->
     <div class="mb-8">
-      <h1 class="text-3xl font-bold text-white flex items-center gap-3">
+      <h1 class="text-3xl font-bold text-foreground flex items-center gap-3">
         <div
           class="p-2 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30"
         >
@@ -80,7 +80,7 @@ const langColors: Record<string, string> = {
         </div>
         Explore
       </h1>
-      <p class="text-gray-500 mt-2">
+      <p class="text-muted-foreground mt-2">
         Discover interesting repositories from the community
       </p>
     </div>
@@ -92,12 +92,12 @@ const langColors: Record<string, string> = {
       >
       </div>
       <div
-        class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-4"
+        class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm p-4"
       >
         <div class="flex flex-col md:flex-row gap-4">
           <div class="flex-1 relative group">
             <svg
-              class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500"
+              class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -111,13 +111,13 @@ const langColors: Record<string, string> = {
             <input
               type="search"
               placeholder="Search repositories..."
-              class="w-full rounded-lg border border-white/10 bg-white/5 pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+              class="w-full rounded-lg border border-border bg-secondary pl-10 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
             />
           </div>
           <div class="flex gap-2">
             <select
               aria-label="Filter by language"
-              class="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-gray-300 focus:outline-none focus:border-cyan-500/50"
+              class="rounded-lg border border-border bg-secondary px-4 py-2 text-sm text-muted-foreground focus:outline-none focus:border-cyan-500/50"
             >
               <option>All languages</option>
               <option>JavaScript</option>
@@ -128,7 +128,7 @@ const langColors: Record<string, string> = {
             </select>
             <select
               aria-label="Sort by"
-              class="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-gray-300 focus:outline-none focus:border-cyan-500/50"
+              class="rounded-lg border border-border bg-secondary px-4 py-2 text-sm text-muted-foreground focus:outline-none focus:border-cyan-500/50"
             >
               <option>Recently updated</option>
               <option>Most stars</option>
@@ -143,7 +143,7 @@ const langColors: Record<string, string> = {
     <!-- Results count -->
     {
       totalCount > 0 && (
-        <div class="mb-4 text-sm text-gray-500">
+        <div class="mb-4 text-sm text-muted-foreground">
           Showing {offset + 1}-{Math.min(offset + perPage, totalCount)} of{" "}
           {totalCount} repositories
         </div>
@@ -155,7 +155,7 @@ const langColors: Record<string, string> = {
       repos.length === 0 ? (
         <div class="relative">
           <div class="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/20 via-purple-500/20 to-pink-500/20 rounded-xl opacity-50" />
-          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-16 text-center">
+          <div class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm p-16 text-center">
             <div class="relative inline-block mb-4">
               <svg
                 class="h-16 w-16 text-cyan-400"
@@ -172,15 +172,15 @@ const langColors: Record<string, string> = {
               </svg>
               <div class="absolute inset-0 bg-cyan-500 blur-2xl opacity-20" />
             </div>
-            <h2 class="text-xl font-bold text-white mb-2">
+            <h2 class="text-xl font-bold text-foreground mb-2">
               No repositories found
             </h2>
-            <p class="text-gray-500">
+            <p class="text-muted-foreground">
               Be the first to share your work with the community!
             </p>
             <a
               href="/new"
-              class="inline-flex items-center gap-2 px-6 py-2.5 mt-6 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-sm font-medium text-white shadow-lg shadow-cyan-500/25"
+              class="inline-flex items-center gap-2 px-6 py-2.5 mt-6 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-sm font-medium text-foreground shadow-lg shadow-cyan-500/25"
             >
               <svg
                 class="h-4 w-4"
@@ -207,36 +207,36 @@ const langColors: Record<string, string> = {
               class="group relative"
             >
               <div class="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/20 via-transparent to-purple-500/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div class="relative h-full rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-5 hover:bg-white/[0.02] transition-colors flex flex-col">
+              <div class="relative h-full rounded-xl border border-border bg-card/80 backdrop-blur-sm p-5 hover:bg-accent/50 transition-colors flex flex-col">
                 <div class="flex items-start gap-3 mb-3">
                   {repo.owner.avatarUrl ? (
                     <img
                       src={repo.owner.avatarUrl}
                       alt=""
-                      class="h-8 w-8 rounded-full ring-2 ring-white/10"
+                      class="h-8 w-8 rounded-full ring-2 ring-border"
                     />
                   ) : (
-                    <div class="h-8 w-8 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-sm font-bold text-white ring-2 ring-white/10">
+                    <div class="h-8 w-8 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-sm font-bold text-foreground ring-2 ring-border">
                       {repo.owner.username[0].toUpperCase()}
                     </div>
                   )}
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
-                      <span class="font-semibold text-white group-hover:text-cyan-400 transition-colors truncate">
+                      <span class="font-semibold text-foreground group-hover:text-cyan-400 transition-colors truncate">
                         {repo.owner.username}/{repo.name}
                       </span>
                     </div>
-                    <span class="text-xs text-gray-300">
+                    <span class="text-xs text-muted-foreground">
                       Updated {timeAgo(repo.updatedAt)}
                     </span>
                   </div>
                 </div>
 
-                <p class="text-sm text-gray-300 line-clamp-2 flex-1 mb-4">
+                <p class="text-sm text-muted-foreground line-clamp-2 flex-1 mb-4">
                   {repo.description || "No description provided."}
                 </p>
 
-                <div class="flex items-center gap-4 text-xs text-gray-500 pt-3 border-t border-white/5">
+                <div class="flex items-center gap-4 text-xs text-muted-foreground pt-3 border-t border-border/50">
                   {repo.language && (
                     <div class="flex items-center gap-1">
                       <span
@@ -286,7 +286,7 @@ const langColors: Record<string, string> = {
           {page > 1 && (
             <a
               href={`/explore?page=${page - 1}`}
-              class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-300 hover:bg-white/10 transition-colors"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-secondary text-sm text-muted-foreground hover:bg-secondary/80 transition-colors"
             >
               <svg
                 class="h-4 w-4"
@@ -306,7 +306,7 @@ const langColors: Record<string, string> = {
           )}
 
           <div class="flex items-center gap-1">
-            <span class="px-3 py-2 text-sm text-gray-400">
+            <span class="px-3 py-2 text-sm text-muted-foreground">
               Page {page} of {totalPages}
             </span>
           </div>
@@ -314,7 +314,7 @@ const langColors: Record<string, string> = {
           {page < totalPages && (
             <a
               href={`/explore?page=${page + 1}`}
-              class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-300 hover:bg-white/10 transition-colors"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-secondary text-sm text-muted-foreground hover:bg-secondary/80 transition-colors"
             >
               Next
               <svg

@@ -129,10 +129,15 @@ const tabs = [
 ];
 ---
 
-<div class="mb-6">
+<div class="mb-6 -mx-4 px-4 sm:mx-0 sm:px-0">
+  <div class="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-primary/5 via-background to-muted/20 shadow-sm backdrop-blur-xl">
+    <!-- Decorative glow -->
+    <div class="absolute -top-24 -right-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-50 pointer-events-none" />
+    <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl opacity-50 pointer-events-none" />
+
   <!-- Top Section: Repo Name & Action Buttons -->
   <div
-    class="flex flex-col lg:flex-row lg:items-start justify-between gap-4 py-8 border-b"
+    class="relative flex flex-col lg:flex-row lg:items-start justify-between gap-4 py-8 px-6 border-b border-border/50"
   >
     <!-- Repo Info -->
     <div class="space-y-4 max-w-3xl">
@@ -281,5 +286,6 @@ const tabs = [
         ))
       }
     </nav>
+  </div>
   </div>
 </div>

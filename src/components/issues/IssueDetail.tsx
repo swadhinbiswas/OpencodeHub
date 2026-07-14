@@ -216,14 +216,14 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-8 pb-6 border-b border-white/10"
+                className="mb-8 pb-6 border-b border-border"
             >
                 <div className="flex items-start justify-between gap-4 mb-4">
                     <div className="flex items-center gap-3">
-                        <h1 className="text-2xl md:text-3xl font-bold text-white">
+                        <h1 className="text-2xl md:text-3xl font-bold text-foreground">
                             {issue.title}
                         </h1>
-                        <span className="text-2xl md:text-3xl text-gray-500 font-light">
+                        <span className="text-2xl md:text-3xl text-muted-foreground font-light">
                             #{issue.number}
                         </span>
                     </div>
@@ -244,7 +244,7 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-300 hover:bg-white/10 transition-all"
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-secondary text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
                         >
                             <Edit3 className="h-4 w-4" />
                             Edit
@@ -258,7 +258,7 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
                         <motion.div
                             initial={{ scale: 0.9 }}
                             animate={{ scale: 1 }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-medium text-white border"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-medium text-foreground border"
                             style={{
                                 backgroundColor: `${issue.status.color}20`,
                                 borderColor: `${issue.status.color}40`,
@@ -290,7 +290,7 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
                         ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
                         : issue.type === 'task'
                             ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                            : "bg-gray-500/10 text-gray-400 border-gray-500/20"
+                            : "bg-gray-500/10 text-muted-foreground border-gray-500/20"
                         }`}>
                         {issue.type === 'epic' && <Layers className="h-3.5 w-3.5" />}
                         {issue.type === 'task' && <CheckSquare className="h-3.5 w-3.5" />}
@@ -299,8 +299,8 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
                     </div>
                 </div>
 
-                <span className="text-gray-400">
-                    <span className="font-medium text-white hover:text-cyan-400 cursor-pointer transition-colors">
+                <span className="text-muted-foreground">
+                    <span className="font-medium text-foreground hover:text-cyan-400 cursor-pointer transition-colors">
                         {issue.author.username}
                     </span>
                     {" "}opened this issue {timeAgo(issue.createdAt)}
@@ -323,27 +323,27 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
                 >
                     <div className="relative">
                         <div className="absolute -inset-[1px] bg-gradient-to-b from-emerald-500/10 to-transparent rounded-xl opacity-50" />
-                        <div className="relative rounded-xl border border-white/10 bg-[#0d1117]/60 p-4">
-                            <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
+                        <div className="relative rounded-xl border border-border bg-card/60 p-4">
+                            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
                                 <Link2 className="h-4 w-4 text-emerald-400" />
                                 Linked Issues
                             </h3>
                             {loadingCrossRepo ? (
-                                <div className="text-xs text-gray-500">Loading...</div>
+                                <div className="text-xs text-muted-foreground">Loading...</div>
                             ) : crossRepoLinks.length === 0 ? (
-                                <div className="text-xs text-gray-500">No linked issues</div>
+                                <div className="text-xs text-muted-foreground">No linked issues</div>
                             ) : (
                                 <div className="space-y-2">
                                     {crossRepoLinks.map((link) => (
                                         <a
                                             key={link.id}
                                             href={`/${link.repository.owner}/${link.repository.name}/issues/${link.issue.number}`}
-                                            className="flex items-start justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 text-xs text-gray-300 hover:bg-white/10"
+                                            className="flex items-start justify-between gap-3 rounded-lg border border-white/5 bg-secondary px-3 py-2 text-xs text-muted-foreground hover:bg-secondary/80"
                                         >
                                             <span>
                                                 {link.repository.owner}/{link.repository.name}#{link.issue.number} {link.issue.title}
                                             </span>
-                                            <span className="text-[10px] uppercase text-gray-500">
+                                            <span className="text-[10px] uppercase text-muted-foreground">
                                                 {link.linkType}
                                             </span>
                                         </a>
@@ -357,12 +357,12 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
                                             value={crossRepoTarget}
                                             onChange={(e) => setCrossRepoTarget(e.target.value)}
                                             placeholder="owner/repo#123"
-                                            className="flex-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white"
+                                            className="flex-1 rounded-md border border-border bg-secondary px-2 py-1 text-xs text-foreground"
                                         />
                                         <select
                                             value={crossRepoType}
                                             onChange={(e) => setCrossRepoType(e.target.value)}
-                                            className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white"
+                                            className="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-foreground"
                                         >
                                             <option value="relates">Relates</option>
                                             <option value="blocks">Blocks</option>
@@ -385,27 +385,27 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
                     </div>
                     <div className="relative">
                         <div className="absolute -inset-[1px] bg-gradient-to-b from-cyan-500/10 to-transparent rounded-xl opacity-50" />
-                        <div className="relative rounded-xl border border-white/10 bg-[#0d1117]/60 p-4">
-                            <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
+                        <div className="relative rounded-xl border border-border bg-card/60 p-4">
+                            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
                                 <GitBranch className="h-4 w-4 text-cyan-400" />
                                 Linked Pull Requests
                             </h3>
                             {loadingLinks ? (
-                                <div className="text-xs text-gray-500">Loading...</div>
+                                <div className="text-xs text-muted-foreground">Loading...</div>
                             ) : linkedPRs.length === 0 ? (
-                                <div className="text-xs text-gray-500">No linked pull requests</div>
+                                <div className="text-xs text-muted-foreground">No linked pull requests</div>
                             ) : (
                                 <div className="space-y-2">
                                     {linkedPRs.map((link) => (
                                         <a
                                             key={link.id}
                                             href={`/${repoOwner}/${repoName}/pulls/${link.pullRequest.number}`}
-                                            className="flex items-start justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-3 py-2 text-xs text-gray-300 hover:bg-white/10"
+                                            className="flex items-start justify-between gap-3 rounded-lg border border-white/5 bg-secondary px-3 py-2 text-xs text-muted-foreground hover:bg-secondary/80"
                                         >
                                             <span>
                                                 #{link.pullRequest.number} {link.pullRequest.title}
                                             </span>
-                                            <span className="text-[10px] uppercase text-gray-500">
+                                            <span className="text-[10px] uppercase text-muted-foreground">
                                                 {link.linkType}
                                             </span>
                                         </a>
@@ -418,14 +418,14 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
                     {(issue.type === 'epic' || (issue.children && issue.children.length > 0)) && (
                         <div className="relative">
                             <div className="absolute -inset-[1px] bg-gradient-to-b from-purple-500/10 to-transparent rounded-xl opacity-50" />
-                            <div className="relative rounded-xl border border-white/10 bg-[#0d1117]/60 p-4">
+                            <div className="relative rounded-xl border border-border bg-card/60 p-4">
                                 <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                                    <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                                         <ListTodo className="h-4 w-4 text-purple-400" />
                                         {issue.type === 'epic' ? 'Child Issues' : 'Sub-tasks'}
                                     </h3>
                                     {issue.children && issue.children.length > 0 && (
-                                        <span className="text-xs bg-white/10 px-2 py-0.5 rounded-full text-gray-300">
+                                        <span className="text-xs bg-secondary/80 px-2 py-0.5 rounded-full text-muted-foreground">
                                             {issue.children.filter(c => c.state === 'closed').length} / {issue.children.length}
                                         </span>
                                     )}
@@ -433,7 +433,7 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
 
                                 {/* Progress Bar */}
                                 {issue.children && issue.children.length > 0 && (
-                                    <div className="h-1.5 w-full bg-white/10 rounded-full mb-3 overflow-hidden">
+                                    <div className="h-1.5 w-full bg-secondary/80 rounded-full mb-3 overflow-hidden">
                                         <div
                                             className="h-full bg-purple-500 transition-all duration-500"
                                             style={{
@@ -448,7 +448,7 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
                                         <a
                                             key={child.number}
                                             href={`/${repoOwner}/${repoName}/issues/${child.number}`}
-                                            className="flex items-start gap-2 p-2 rounded-lg hover:bg-white/5 transition-colors group"
+                                            className="flex items-start gap-2 p-2 rounded-lg hover:bg-accent transition-colors group"
                                         >
                                             <div className="mt-0.5">
                                                 {child.state === "open" ? (
@@ -458,7 +458,7 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
                                                 )}
                                             </div>
                                             <div className="text-sm min-w-0">
-                                                <div className="text-gray-300 group-hover:text-cyan-400 truncate transition-colors">
+                                                <div className="text-muted-foreground group-hover:text-cyan-400 truncate transition-colors">
                                                     {child.title}
                                                 </div>
                                             </div>
@@ -468,7 +468,7 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
                                     {issue.type === 'epic' && (
                                         <a
                                             href={`/${repoOwner}/${repoName}/issues/new?parent=${issue.number}`}
-                                            className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 text-sm text-gray-400 hover:text-cyan-400 transition-colors mt-2 border border-dashed border-white/10 hover:border-cyan-500/30 justify-center"
+                                            className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent text-sm text-muted-foreground hover:text-cyan-400 transition-colors mt-2 border border-dashed border-border hover:border-cyan-500/30 justify-center"
                                         >
                                             <ListTodo className="h-3.5 w-3.5" />
                                             Add sub-task

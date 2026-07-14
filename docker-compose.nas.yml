@@ -1,7 +1,7 @@
 services:
   # Main OpenCodeHub application
   app:
-    image: swadhinbiswas/opencodehub:latest
+    image: opencodehub/opencodehub:latest
     container_name: opencodehub
     restart: unless-stopped
     ports:

@@ -162,13 +162,13 @@ const repo = {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div class="rounded-md border border-dashed border-white/10 bg-white/5 p-3 text-sm text-muted-foreground">
+            <div class="rounded-md border border-dashed border-border bg-secondary p-3 text-sm text-muted-foreground">
               <div class="text-xs uppercase tracking-wide text-muted-foreground">Endpoint</div>
               <div class="mt-1 font-mono text-xs break-all">{endpointUrl}</div>
             </div>
 
-            <div class="rounded-md border border-white/10 bg-white/5 p-3 text-sm text-muted-foreground">
-              <div class="flex items-center gap-2 text-sm text-white">
+            <div class="rounded-md border border-border bg-secondary p-3 text-sm text-muted-foreground">
+              <div class="flex items-center gap-2 text-sm text-foreground">
                 <ShieldCheck className="h-4 w-4" />
                 {integration ? "Token configured" : "No token generated"}
               </div>
@@ -248,7 +248,7 @@ const repo = {
               <Button id="save-gitlab" variant="outline">Save GitLab CI Config</Button>
               <span id="gitlab-save-msg" class="text-xs text-muted-foreground"></span>
             </div>
-            <div class="pt-2 border-t border-white/10">
+            <div class="pt-2 border-t border-border">
               <div class="text-xs font-medium text-muted-foreground mb-2">Recent GitLab Builds</div>
               <div id="gitlab-builds" class="space-y-1 text-xs text-muted-foreground">Loading builds...</div>
             </div>
@@ -286,7 +286,7 @@ const repo = {
               <Button id="save-circleci" variant="outline">Save CircleCI Config</Button>
               <span id="circleci-save-msg" class="text-xs text-muted-foreground"></span>
             </div>
-            <div class="pt-2 border-t border-white/10">
+            <div class="pt-2 border-t border-border">
               <div class="text-xs font-medium text-muted-foreground mb-2">Recent CircleCI Builds</div>
               <div id="circleci-builds" class="space-y-1 text-xs text-muted-foreground">Loading builds...</div>
             </div>
@@ -324,7 +324,7 @@ const repo = {
               <Button id="save-buildkite" variant="outline">Save Buildkite Config</Button>
               <span id="buildkite-save-msg" class="text-xs text-muted-foreground"></span>
             </div>
-            <div class="pt-2 border-t border-white/10">
+            <div class="pt-2 border-t border-border">
               <div class="text-xs font-medium text-muted-foreground mb-2">Recent Buildkite Builds</div>
               <div id="buildkite-builds" class="space-y-1 text-xs text-muted-foreground">Loading builds...</div>
             </div>
@@ -362,7 +362,7 @@ const repo = {
               <Button id="save-jenkins" variant="outline">Save Jenkins Config</Button>
               <span id="jenkins-save-msg" class="text-xs text-muted-foreground"></span>
             </div>
-            <div class="pt-2 border-t border-white/10">
+            <div class="pt-2 border-t border-border">
               <div class="text-xs font-medium text-muted-foreground mb-2">Recent Jenkins Builds</div>
               <div id="jenkins-builds" class="space-y-1 text-xs text-muted-foreground">Loading builds...</div>
             </div>
@@ -377,7 +377,7 @@ const repo = {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div class="rounded-md border border-dashed border-white/10 bg-white/5 p-3 text-sm text-muted-foreground">
+            <div class="rounded-md border border-dashed border-border bg-secondary p-3 text-sm text-muted-foreground">
               <div class="text-xs uppercase tracking-wide text-muted-foreground">Codecov Webhook Endpoint</div>
               <div class="mt-1 font-mono text-xs break-all">{codecovWebhookUrl}</div>
             </div>
@@ -440,7 +440,7 @@ const repo = {
               <span id="codecov-save-msg" class="text-xs text-muted-foreground"></span>
             </div>
 
-            <div class="pt-2 border-t border-white/10">
+            <div class="pt-2 border-t border-border">
               <div class="text-xs font-medium text-muted-foreground mb-2">Recent Codecov Reports</div>
               <div id="codecov-reports" class="space-y-1 text-xs text-muted-foreground">
                 Loading coverage reports...
@@ -457,7 +457,7 @@ const repo = {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div class="rounded-md border border-dashed border-white/10 bg-white/5 p-3 text-sm text-muted-foreground">
+            <div class="rounded-md border border-dashed border-border bg-secondary p-3 text-sm text-muted-foreground">
               <div class="text-xs uppercase tracking-wide text-muted-foreground">Coveralls Webhook Endpoint</div>
               <div class="mt-1 font-mono text-xs break-all">{coverallsWebhookUrl}</div>
             </div>
@@ -485,7 +485,7 @@ const repo = {
               <Button id="save-coveralls" variant="outline">Save Coveralls Config</Button>
               <span id="coveralls-save-msg" class="text-xs text-muted-foreground"></span>
             </div>
-            <div class="pt-2 border-t border-white/10">
+            <div class="pt-2 border-t border-border">
               <div class="text-xs font-medium text-muted-foreground mb-2">Recent Coveralls Reports</div>
               <div id="coveralls-reports" class="space-y-1 text-xs text-muted-foreground">Loading coverage reports...</div>
             </div>
@@ -500,7 +500,7 @@ const repo = {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div class="rounded-md border border-dashed border-white/10 bg-white/5 p-3 text-sm text-muted-foreground">
+            <div class="rounded-md border border-dashed border-border bg-secondary p-3 text-sm text-muted-foreground">
               <div class="text-xs uppercase tracking-wide text-muted-foreground">SonarQube Webhook Endpoint</div>
               <div class="mt-1 font-mono text-xs break-all">{sonarqubeWebhookUrl}</div>
             </div>
@@ -528,7 +528,7 @@ const repo = {
               <Button id="save-sonar" variant="outline">Save SonarQube Config</Button>
               <span id="sonar-save-msg" class="text-xs text-muted-foreground"></span>
             </div>
-            <div class="pt-2 border-t border-white/10">
+            <div class="pt-2 border-t border-border">
               <div class="text-xs font-medium text-muted-foreground mb-2">Recent SonarQube Issues</div>
               <div id="sonar-issues" class="space-y-1 text-xs text-muted-foreground">Loading quality issues...</div>
             </div>
@@ -543,7 +543,7 @@ const repo = {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div class="rounded-md border border-dashed border-white/10 bg-white/5 p-3 text-sm text-muted-foreground">
+            <div class="rounded-md border border-dashed border-border bg-secondary p-3 text-sm text-muted-foreground">
               <div class="text-xs uppercase tracking-wide text-muted-foreground">Snyk Webhook Endpoint</div>
               <div class="mt-1 font-mono text-xs break-all">{snykWebhookUrl}</div>
             </div>
@@ -567,7 +567,7 @@ const repo = {
               <Button id="save-snyk" variant="outline">Save Snyk Config</Button>
               <span id="snyk-save-msg" class="text-xs text-muted-foreground"></span>
             </div>
-            <div class="pt-2 border-t border-white/10">
+            <div class="pt-2 border-t border-border">
               <div class="text-xs font-medium text-muted-foreground mb-2">Recent Snyk Issues</div>
               <div id="snyk-issues" class="space-y-1 text-xs text-muted-foreground">Loading security issues...</div>
             </div>
@@ -770,7 +770,7 @@ const repo = {
     target.innerHTML = builds.length === 0
       ? emptyMessage
       : builds.map((build) => `
-      <div class="rounded border border-white/10 bg-white/5 px-2 py-1.5 flex items-center justify-between gap-2">
+      <div class="rounded border border-border bg-secondary px-2 py-1.5 flex items-center justify-between gap-2">
         <span>${build.status || "unknown"}</span>
         <span class="text-[11px] text-muted-foreground">${build.buildNumber ? `#${build.buildNumber}` : (build.externalBuildId || "").slice(0, 12)}</span>
       </div>
@@ -892,7 +892,7 @@ const repo = {
         codecovReports.innerHTML = reports.length === 0
           ? "No Codecov reports received yet."
           : reports.map((report) => `
-          <div class="rounded border border-white/10 bg-white/5 px-2 py-1.5 flex items-center justify-between gap-2">
+          <div class="rounded border border-border bg-secondary px-2 py-1.5 flex items-center justify-between gap-2">
             <span>Coverage ${Number(report.coverage || 0).toFixed(1)}%</span>
             <span class="text-[11px] text-muted-foreground font-mono">${(report.commitSha || "").slice(0, 7)}</span>
           </div>
@@ -903,7 +903,7 @@ const repo = {
         coverallsReports.innerHTML = reports.length === 0
           ? "No Coveralls reports received yet."
           : reports.map((report) => `
-          <div class="rounded border border-white/10 bg-white/5 px-2 py-1.5 flex items-center justify-between gap-2">
+          <div class="rounded border border-border bg-secondary px-2 py-1.5 flex items-center justify-between gap-2">
             <span>Coverage ${Number(report.coverage || 0).toFixed(1)}%</span>
             <span class="text-[11px] text-muted-foreground font-mono">${(report.commitSha || "").slice(0, 7)}</span>
           </div>
@@ -913,13 +913,13 @@ const repo = {
         const issues = (data?.issues || []).filter((issue) => issue.provider === "sonarqube").slice(0, 5);
         sonarIssues.innerHTML = issues.length === 0
           ? "No SonarQube issues reported yet."
-          : issues.map((issue) => `<div class="rounded border border-white/10 bg-white/5 px-2 py-1.5">${issue.severity || "unknown"} • ${issue.message}</div>`).join("");
+          : issues.map((issue) => `<div class="rounded border border-border bg-secondary px-2 py-1.5">${issue.severity || "unknown"} • ${issue.message}</div>`).join("");
       }
       if (snykIssues) {
         const issues = (data?.issues || []).filter((issue) => issue.provider === "snyk").slice(0, 5);
         snykIssues.innerHTML = issues.length === 0
           ? "No Snyk issues reported yet."
-          : issues.map((issue) => `<div class="rounded border border-white/10 bg-white/5 px-2 py-1.5">${issue.severity || "unknown"} • ${issue.message}</div>`).join("");
+          : issues.map((issue) => `<div class="rounded border border-border bg-secondary px-2 py-1.5">${issue.severity || "unknown"} • ${issue.message}</div>`).join("");
       }
     } catch (error) {
       if (codecovReports) codecovReports.textContent = error.message || "Failed to load coverage summary";

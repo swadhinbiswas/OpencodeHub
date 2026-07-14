@@ -1,0 +1,108 @@
+# OpenCodeHub Render Blueprint
+# Deploy with: New → Blueprint → Select this repo
+#
+# Prerequisites:
+#   1. Create a free Upstash Redis at https://upstash.com (region: Asia Pacific)
+#   2. Copy the Redis URL
+#
+# After deploy:
+#   1. Set REDIS_URL from Upstash in Environment tab
+#   2. Update SITE_URL with your actual Render URL
+#   3. Visit your URL → /setup to create admin account
+
+services:
+  # ── Web Service (App + API + Git HTTP) ──────────────────────
+  - type: web
+    name: opencodehub
+    runtime: image
+    image:
+      url: ghcr.io/swadhinbiswas/opencodehub:latest
+    plan: free
+    region: singapore
+    healthCheckPath: /api/health
+    envVars:
+      # ── Server ──
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4321"
+      - key: HOST
+        value: "0.0.0.0"
+      - key: SITE_URL
+        # TODO: Update after first deploy with your actual Render URL
+        # Example: https://opencodehub.onrender.com
+        sync: false
+
+      # ── Database (Render PostgreSQL) ──
+      - key: DATABASE_DRIVER
+        value: postgres
+      - key: DATABASE_URL
+        fromDatabase:
+          name: opencodehub-db
+          property: connectionString
+      - key: DATABASE_SSL
+        value: "true"
+
+      # ── Redis (Upstash - Free) ──
+      # TODO: Create free Redis at https://upstash.com (region: Singapore)
+      # Then paste the Redis URL here:
+      - key: REDIS_URL
+        sync: false
+
+      # ── Secrets (Auto-generated) ──
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: INTERNAL_HOOK_SECRET
+        generateValue: true
+      - key: CRON_SECRET
+        generateValue: true
+      - key: RUNNER_SECRET
+        generateValue: true
+      - key: AI_CONFIG_ENCRYPTION_KEY
+        generateValue: true
+      - key: WORKFLOW_SECRET_ENCRYPTION_KEY
+        generateValue: true
+
+      # ── Storage ──
+      - key: STORAGE_TYPE
+        value: local
+      - key: GIT_REPOS_PATH
+        value: /data/repositories
+      - key: STORAGE_PATH
+        value: /data/storage
+
+      # ── Features ──
+      - key: ENABLE_REGISTRATION
+        value: "true"
+      - key: ENABLE_WIKI
+        value: "true"
+      - key: ENABLE_ISSUES
+        value: "true"
+      - key: ENABLE_ACTIONS
+        value: "true"
+      - key: ENABLE_AI_ASSISTANT
+        value: "true"
+
+      # ── Rate Limiting ──
+      - key: RATE_LIMIT_ENABLED
+        value: "true"
+
+      # ── Logging ──
+      - key: LOG_LEVEL
+        value: info
+
+    # Persistent disk for git repos, storage, SSH keys
+    disk:
+      name: opencodehub-data
+      mountPath: /data
+      sizeGB: 1
+
+# ── PostgreSQL Database (Render Free) ────────────────────────
+databases:
+  - name: opencodehub-db
+    plan: free
+    databaseName: opencodehub
+    user: opencodehub
+    region: singapore

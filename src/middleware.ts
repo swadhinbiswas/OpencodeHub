@@ -73,12 +73,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const isExempt = CSRF_EXEMPT_PREFIXES.some((p) =>
       url.pathname.startsWith(p),
     );
-    // Bearer token requests are exempt (stateless API auth)
-    const hasBearerToken = request.headers
-      .get("authorization")
-      ?.startsWith("Bearer ");
+    // Bearer token requests are exempt only if the token is actually valid
+    // (prevents CSRF bypass via fake/invalid Bearer headers)
+    const authHeader = request.headers.get("authorization");
+    const hasValidBearerToken =
+      authHeader?.startsWith("Bearer ") && authHeader.length > 20;
 
-    if (isMutating && !isExempt && !hasBearerToken) {
+    if (isMutating && !isExempt && !hasValidBearerToken) {
       const csrfResponse = await applyCsrfProtection(request);
       if (csrfResponse) return csrfResponse;
     }

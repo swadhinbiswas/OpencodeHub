@@ -5,7 +5,7 @@
 
 import { getDatabase, schema } from "@/db";
 import crypto from "crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { logger } from "./logger";
 import { validateWebhookUrl } from "./url-validator";
@@ -127,16 +127,20 @@ async function dispatchWebhook(
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10_000);
 
-    const response = await fetch(webhook.url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
+    let response: Response;
+    try {
+      response = await fetch(webhook.url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     const durationMs = Date.now() - startTime;
-    const responseBody = await response.text();
+    const responseBody = await response!.text();
 
     // Log delivery
     await db.insert(schema.webhookDeliveries).values({
@@ -154,11 +158,11 @@ async function dispatchWebhook(
       ),
     });
 
-    // Update webhook stats
+    // Update webhook stats (atomic increment to prevent race conditions)
     await db
       .update(schema.webhooks)
       .set({
-        deliveryCount: (webhook.deliveryCount || 0) + 1,
+        deliveryCount: sql`COALESCE(${schema.webhooks.deliveryCount}, 0) + 1`,
         lastDeliveryStatus: response.ok ? "success" : "failure",
         lastDeliveryAt: new Date(),
       })
@@ -178,11 +182,11 @@ async function dispatchWebhook(
       durationMs,
     });
 
-    // Update webhook stats
+    // Update webhook stats (atomic increment)
     await db
       .update(schema.webhooks)
       .set({
-        deliveryCount: (webhook.deliveryCount || 0) + 1,
+        deliveryCount: sql`COALESCE(${schema.webhooks.deliveryCount}, 0) + 1`,
         lastDeliveryStatus: "failure",
         lastDeliveryAt: new Date(),
       })
