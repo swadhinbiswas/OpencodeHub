@@ -97,7 +97,18 @@ export const GET: APIRoute = withErrorHandler(async ({ locals }) => {
     const usedMem = totalMem - freeMem;
     const memUsage = Math.round((usedMem / totalMem) * 100);
 
-    const storageUsage = 45; // Would need platform-specific disk check
+    let storageUsage = 45;
+    try {
+        const { statfs } = await import('node:fs/promises');
+        const fsStats = await statfs(process.env.STORAGE_PATH || './');
+        const totalStorage = fsStats.blocks * fsStats.bsize;
+        const freeStorage = fsStats.bfree * fsStats.bsize;
+        if (totalStorage > 0) {
+            storageUsage = Math.round(((totalStorage - freeStorage) / totalStorage) * 100);
+        }
+    } catch (e) {
+        console.error("Failed to read disk stats:", e);
+    }
 
     const uptimeSeconds = os.uptime();
     const days = Math.floor(uptimeSeconds / (3600 * 24));
@@ -132,6 +143,13 @@ export const GET: APIRoute = withErrorHandler(async ({ locals }) => {
         .where(gte(schema.activities.createdAt, oneDayAgo)); // limit() not needed/appropriate for distinct list length check?
     // Wait, original used .all() (sqlite). Postgres `.select(...)` returns array.
     const activeUsersCount = activeUsers.length;
+
+    // Runners count
+    const activeRunnersResult = await db.select({ count: count() })
+        .from(schema.pipelineRunners)
+        .where(eq(schema.pipelineRunners.status, 'online'))
+        .limit(1);
+    const activeRunners = Number(activeRunnersResult[0]?.count) || 0;
 
     // 8. Recent Activity - for the timeline widget
     const recentActivity = activities.slice(0, 4).map(a => {
@@ -207,7 +225,7 @@ export const GET: APIRoute = withErrorHandler(async ({ locals }) => {
             memoryUsage: memUsage,
             memoryTotal: Math.round(totalMem / (1024 * 1024 * 1024)),
             storageUsage,
-            activeRunners: 0,
+            activeRunners,
             uptime: `${days}d ${hours}h ${minutes}m`
         },
         // New data for widgets

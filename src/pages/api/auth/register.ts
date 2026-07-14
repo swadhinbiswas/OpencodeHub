@@ -69,6 +69,13 @@ export const POST: APIRoute = withErrorHandler(async ({ request, cookies }) => {
       return badRequest("Invalid email format");
     }
 
+    // Enforce password strength requirements
+    const { validatePasswordStrength } = await import("@/lib/auth");
+    const passwordCheck = validatePasswordStrength(password);
+    if (!passwordCheck.valid) {
+      return badRequest(`Weak password: ${passwordCheck.errors.join(", ")}`);
+    }
+
     const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // Check if username or email already exists

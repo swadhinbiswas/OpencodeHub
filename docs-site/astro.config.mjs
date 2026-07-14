@@ -4,6 +4,7 @@ import { defineConfig } from "astro/config";
 
 // https://astro.build/config
 export default defineConfig({
+  site: "https://docs.opencodehub.space",
   integrations: [
     starlight({
       title: "OpenCodeHub Docs",
@@ -42,6 +43,7 @@ export default defineConfig({
             { label: "Branch Protection", slug: "guides/branch-protection" },
             { label: "Webhooks", slug: "guides/webhooks" },
             { label: "Storage Adapters", slug: "guides/storage-adapters" },
+            { label: "CircleCI Integration", slug: "guides/circleci-integration" },
           ],
         },
         {
@@ -65,11 +67,13 @@ export default defineConfig({
             { label: "Stacked PRs", slug: "features/stacked-prs" },
             { label: "AI Review", slug: "features/ai-review" },
             { label: "Merge Queue", slug: "features/merge-queue" },
+            { label: "CI/CD Actions", slug: "features/ci-actions" },
+            { label: "CI/CD Pipelines", slug: "features/ci-cd" },
             { label: "Automation Rules", slug: "features/automations" },
             { label: "PR Inbox", slug: "features/inbox" },
             { label: "Developer Metrics", slug: "features/developer-metrics" },
             { label: "Notifications", slug: "features/notifications" },
-            { label: "CI/CD Actions", slug: "features/ci-actions" },
+            { label: "Slack Integration", slug: "features/slack-integration" },
             { label: "CLI Workflows", slug: "features/cli" },
           ],
         },
@@ -86,6 +90,9 @@ export default defineConfig({
             { label: "cPanel", slug: "administration/deploy-cpanel" },
             { label: "CyberPanel", slug: "administration/deploy-cyberpanel" },
             { label: "Cloudflare", slug: "administration/deploy-cloudflare" },
+            { label: "Coolify", slug: "administration/deploy-coolify" },
+            { label: "NAS (Synology/TrueNAS)", slug: "administration/deploy-nas" },
+            { label: "Kubernetes (Helm)", slug: "administration/kubernetes" },
           ],
         },
         {
@@ -95,6 +102,19 @@ export default defineConfig({
             { label: "Configuration", slug: "administration/configuration" },
             { label: "Monitoring", slug: "administration/monitoring" },
             { label: "Security", slug: "administration/security" },
+            { label: "Deployment Matrix", slug: "administration/deployment-matrix" },
+            { label: "Secret Rotation", slug: "administration/secret-rotation" },
+            { label: "Expose NAS / Home Server", slug: "administration/expose-nas" },
+            { label: "CircleCI Cloud Workers", slug: "administration/circleci-cloud" },
+            { label: "CircleCI Self-Hosted", slug: "administration/circleci-worker" },
+          ],
+        },
+        {
+          label: "Operations",
+          items: [
+            { label: "Incident Runbook", slug: "administration/incident-runbook" },
+            { label: "Postmortem Template", slug: "administration/postmortem-template" },
+            { label: "Operations Drills", slug: "administration/operations-drills" },
           ],
         },
         {
@@ -103,11 +123,24 @@ export default defineConfig({
         },
         {
           label: "Development",
-          autogenerate: { directory: "development" },
+          items: [
+            { label: "Architecture", slug: "development/architecture" },
+            { label: "Local Dev Setup", slug: "development/local-dev-setup" },
+            { label: "Contributing", slug: "development/contributing" },
+            { label: "Database Schema", slug: "development/database-schema" },
+            { label: "Database Migrations", slug: "development/database-migrations" },
+            { label: "Testing", slug: "development/testing" },
+            { label: "Testing & CI", slug: "development/testing-pipelines" },
+            { label: "Security Hardening", slug: "development/security-hardening" },
+            { label: "Observability", slug: "development/observability" },
+            { label: "Publishing CLI", slug: "development/publishing-cli" },
+          ],
         },
         {
           label: "Reference",
-          autogenerate: { directory: "reference" },
+          items: [
+            { label: "Glossary", slug: "reference/glossary" },
+          ],
         },
       ],
     }),

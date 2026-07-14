@@ -147,7 +147,7 @@ const repoUrl = `/${repo.owner}/${repo.name}`;
           {base && head && comparison.commits.length > 0 && (
             <a
               href={`/${repo.owner}/${repo.name}/pulls/new?base=${base}&head=${head}`}
-              class="inline-flex items-center gap-2 rounded-md border bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 transition-colors ml-auto"
+              class="inline-flex items-center gap-2 rounded-md border bg-green-600 px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-green-700 transition-colors ml-auto"
             >
               <GitPullRequest className="h-4 w-4" />
               Create Pull Request

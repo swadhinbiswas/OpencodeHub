@@ -30,6 +30,7 @@ import RepoHeader from "@/components/repo/RepoHeader.astro";
 import FileExplorer from "@/components/repo/FileExplorer.astro";
 import { RepoControls } from "@/components/repo/RepoControls";
 import { Card } from "@/components/ui/card";
+import "highlight.js/styles/github-dark.css";
 
 const { owner: ownerName, repo: repoName } = Astro.params;
 const db = getDatabase();
@@ -330,13 +331,13 @@ const repo = {
           <!-- README -->
           {
             readme && (
-              <Card className="mt-8 overflow-hidden">
-                <div class="flex items-center gap-2 border-b px-4 py-3 bg-muted/30">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <span class="font-medium text-sm">README.md</span>
+              <Card className="mt-8 overflow-hidden rounded-xl border-border/60 shadow-md bg-gradient-to-b from-card to-card/50 backdrop-blur-sm">
+                <div class="flex items-center gap-2 border-b px-5 py-4 bg-muted/20">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <span class="font-semibold text-sm tracking-wide">README.md</span>
                 </div>
                 <div
-                  class="p-6 prose prose-sm dark:prose-invert max-w-none prose-headings:border-b prose-headings:pb-2 prose-img:rounded-lg"
+                  class="p-8 prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-h1:text-3xl prose-h2:text-2xl prose-a:text-primary hover:prose-a:text-primary/80 prose-img:rounded-xl prose-pre:border prose-pre:bg-muted/50"
                   set:html={readme}
                 />
               </Card>
@@ -348,9 +349,9 @@ const repo = {
       <!-- Sidebar -->
       <div class="space-y-6">
         <!-- About -->
-        <div class="border-b border-white/10 pb-6">
-          <h3 class="font-semibold text-white mb-3">About</h3>
-          <p class="text-gray-400 text-sm leading-relaxed mb-4">
+        <div class="border-b border-border pb-6">
+          <h3 class="font-semibold text-foreground mb-3">About</h3>
+          <p class="text-muted-foreground text-sm leading-relaxed mb-4">
             {repo.description || "No description provided."}
           </p>
 
@@ -380,7 +381,7 @@ const repo = {
             )
           }
 
-          <div class="space-y-2.5 text-sm text-gray-500">
+          <div class="space-y-2.5 text-sm text-muted-foreground">
             <div class="flex items-center gap-2">
               <svg
                 class="h-4 w-4 flex-shrink-0"
@@ -419,7 +420,7 @@ const repo = {
         <div class="flex flex-wrap gap-4 text-sm">
           <a
             href={`/${repo.owner}/${repo.name}/stargazers`}
-            class="flex items-center gap-1.5 text-gray-400 hover:text-cyan-400 transition-colors"
+            class="flex items-center gap-1.5 text-muted-foreground hover:text-cyan-400 transition-colors"
           >
             <svg
               class="h-4 w-4"
@@ -434,12 +435,12 @@ const repo = {
                 d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
               ></path>
             </svg>
-            <span class="font-medium text-white">{repo.stars || 0}</span>
+            <span class="font-medium text-foreground">{repo.stars || 0}</span>
             <span>stars</span>
           </a>
           <a
             href={`/${repo.owner}/${repo.name}/forks`}
-            class="flex items-center gap-1.5 text-gray-400 hover:text-cyan-400 transition-colors"
+            class="flex items-center gap-1.5 text-muted-foreground hover:text-cyan-400 transition-colors"
           >
             <svg
               class="h-4 w-4"
@@ -454,10 +455,10 @@ const repo = {
                 d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
               ></path>
             </svg>
-            <span class="font-medium text-white">{repo.forks || 0}</span>
+            <span class="font-medium text-foreground">{repo.forks || 0}</span>
             <span>forks</span>
           </a>
-          <div class="flex items-center gap-1.5 text-gray-400">
+          <div class="flex items-center gap-1.5 text-muted-foreground">
             <svg
               class="h-4 w-4"
               fill="none"
@@ -476,7 +477,7 @@ const repo = {
                 d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
               ></path>
             </svg>
-            <span class="font-medium text-white">{repo.watchers || 0}</span>
+            <span class="font-medium text-foreground">{repo.watchers || 0}</span>
             <span>watching</span>
           </div>
         </div>

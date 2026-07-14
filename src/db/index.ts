@@ -1,3 +1,5 @@
+import { config } from "dotenv";
+config({ override: true });
 import { logger } from "@/lib/logger";
 import { createClient } from "@libsql/client";
 import Database from "better-sqlite3";

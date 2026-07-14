@@ -85,7 +85,7 @@ export default function SetupWizard() {
   ];
 
   return (
-    <div className="w-full max-w-3xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_80px_-20px_rgba(139,92,246,0.3)] bg-[#0d1117]/80 backdrop-blur-xl border border-white/10 flex flex-col min-h-[600px]">
+    <div className="w-full max-w-3xl mx-auto rounded-3xl overflow-hidden shadow-[0_0_80px_-20px_rgba(139,92,246,0.3)] bg-card/80 backdrop-blur-xl border border-border flex flex-col min-h-[600px]">
       
       {/* Progress Header */}
       <div className="flex border-b border-white/5 bg-white/[0.02]">
@@ -96,12 +96,12 @@ export default function SetupWizard() {
           return (
             <div key={s.num} className={cn(
               "flex-1 p-4 flex items-center justify-center border-b-2 transition-all duration-300",
-              isActive ? "border-violet-500 text-white" : isPast ? "border-green-500 text-green-400" : "border-transparent text-gray-500"
+              isActive ? "border-violet-500 text-foreground" : isPast ? "border-green-500 text-green-400" : "border-transparent text-muted-foreground"
             )}>
               <div className="flex items-center gap-2">
                 <div className={cn(
                   "w-6 h-6 rounded-full flex items-center justify-center text-xs",
-                  isActive ? "bg-violet-500 text-white" : isPast ? "bg-green-500 text-black" : "bg-white/10"
+                  isActive ? "bg-violet-500 text-foreground" : isPast ? "bg-green-500 text-black" : "bg-secondary/80"
                 )}>
                   {isPast ? <Check className="w-4 h-4" /> : s.num}
                 </div>
@@ -125,8 +125,8 @@ export default function SetupWizard() {
           {step === 1 && (
             <motion.div key="step1" variants={stepVariants} initial="hidden" animate="visible" exit="exit" className="space-y-8">
               <div>
-                <h2 className="text-2xl font-bold mb-2 text-white">Configure Database</h2>
-                <p className="text-gray-400">Select the storage backend for OpenCodeHub.</p>
+                <h2 className="text-2xl font-bold mb-2 text-foreground">Configure Database</h2>
+                <p className="text-muted-foreground">Select the storage backend for OpenCodeHub.</p>
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
@@ -134,45 +134,45 @@ export default function SetupWizard() {
                   onClick={() => setDbType("sqlite")}
                   className={cn(
                     "relative p-6 rounded-2xl cursor-pointer transition-all duration-300 border-2 group hover:-translate-y-1",
-                    dbType === "sqlite" ? "border-violet-500 bg-violet-500/10" : "border-white/10 bg-white/5 hover:border-white/20"
+                    dbType === "sqlite" ? "border-violet-500 bg-violet-500/10" : "border-border bg-secondary hover:border-border/80"
                   )}
                 >
                   <div className="absolute top-4 right-4">
-                    <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", dbType === "sqlite" ? "border-violet-500" : "border-white/20 group-hover:border-white/40")}>
+                    <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", dbType === "sqlite" ? "border-violet-500" : "border-border/80 group-hover:border-white/40")}>
                       {dbType === "sqlite" && <div className="w-2.5 h-2.5 bg-violet-500 rounded-full" />}
                     </div>
                   </div>
-                  <Database className={cn("w-8 h-8 mb-4", dbType === "sqlite" ? "text-violet-400" : "text-gray-400")} />
-                  <h3 className="text-lg font-semibold text-white mb-1">Local (SQLite)</h3>
-                  <p className="text-sm text-gray-400 leading-relaxed">Zero-configuration standalone setup. Ideal for local dev, single VPS, or NAS deployments.</p>
+                  <Database className={cn("w-8 h-8 mb-4", dbType === "sqlite" ? "text-violet-400" : "text-muted-foreground")} />
+                  <h3 className="text-lg font-semibold text-foreground mb-1">Local (SQLite)</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">Zero-configuration standalone setup. Ideal for local dev, single VPS, or NAS deployments.</p>
                 </div>
 
                 <div 
                   onClick={() => setDbType("postgres")}
                   className={cn(
                     "relative p-6 rounded-2xl cursor-pointer transition-all duration-300 border-2 group hover:-translate-y-1",
-                    dbType === "postgres" ? "border-violet-500 bg-violet-500/10" : "border-white/10 bg-white/5 hover:border-white/20"
+                    dbType === "postgres" ? "border-violet-500 bg-violet-500/10" : "border-border bg-secondary hover:border-border/80"
                   )}
                 >
                   <div className="absolute top-4 right-4">
-                    <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", dbType === "postgres" ? "border-violet-500" : "border-white/20 group-hover:border-white/40")}>
+                    <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", dbType === "postgres" ? "border-violet-500" : "border-border/80 group-hover:border-white/40")}>
                       {dbType === "postgres" && <div className="w-2.5 h-2.5 bg-violet-500 rounded-full" />}
                     </div>
                   </div>
-                  <Server className={cn("w-8 h-8 mb-4", dbType === "postgres" ? "text-violet-400" : "text-gray-400")} />
-                  <h3 className="text-lg font-semibold text-white mb-1">PostgreSQL</h3>
-                  <p className="text-sm text-gray-400 leading-relaxed">High-performance production database. Required for multi-node setups and large teams.</p>
+                  <Server className={cn("w-8 h-8 mb-4", dbType === "postgres" ? "text-violet-400" : "text-muted-foreground")} />
+                  <h3 className="text-lg font-semibold text-foreground mb-1">PostgreSQL</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">High-performance production database. Required for multi-node setups and large teams.</p>
                 </div>
               </div>
 
               {dbType === "postgres" && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-3">
-                  <Label className="text-gray-300">Connection String</Label>
+                  <Label className="text-muted-foreground">Connection String</Label>
                   <Input 
                     placeholder="postgresql://user:password@localhost:5432/opencodehub" 
                     value={dbUrl}
                     onChange={(e) => setDbUrl(e.target.value)}
-                    className="bg-black/50 border-white/10 focus:border-violet-500 focus:ring-violet-500 h-12 text-base"
+                    className="bg-black/50 border-border focus:border-violet-500 focus:ring-violet-500 h-12 text-base"
                   />
                 </motion.div>
               )}
@@ -182,8 +182,8 @@ export default function SetupWizard() {
           {step === 2 && (
             <motion.div key="step2" variants={stepVariants} initial="hidden" animate="visible" exit="exit" className="space-y-8">
               <div>
-                <h2 className="text-2xl font-bold mb-2 text-white">Performance Layer</h2>
-                <p className="text-gray-400">Configure caching to accelerate repository indexing and API requests.</p>
+                <h2 className="text-2xl font-bold mb-2 text-foreground">Performance Layer</h2>
+                <p className="text-muted-foreground">Configure caching to accelerate repository indexing and API requests.</p>
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
@@ -191,45 +191,45 @@ export default function SetupWizard() {
                   onClick={() => setCacheType("local")}
                   className={cn(
                     "relative p-6 rounded-2xl cursor-pointer transition-all duration-300 border-2 group hover:-translate-y-1",
-                    cacheType === "local" ? "border-emerald-500 bg-emerald-500/10" : "border-white/10 bg-white/5 hover:border-white/20"
+                    cacheType === "local" ? "border-emerald-500 bg-emerald-500/10" : "border-border bg-secondary hover:border-border/80"
                   )}
                 >
                   <div className="absolute top-4 right-4">
-                    <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", cacheType === "local" ? "border-emerald-500" : "border-white/20 group-hover:border-white/40")}>
+                    <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", cacheType === "local" ? "border-emerald-500" : "border-border/80 group-hover:border-white/40")}>
                       {cacheType === "local" && <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full" />}
                     </div>
                   </div>
-                  <Database className={cn("w-8 h-8 mb-4", cacheType === "local" ? "text-emerald-400" : "text-gray-400")} />
-                  <h3 className="text-lg font-semibold text-white mb-1">Local Memory</h3>
-                  <p className="text-sm text-gray-400 leading-relaxed">Fast on-device caching. Recommended for single-instance deployments.</p>
+                  <Database className={cn("w-8 h-8 mb-4", cacheType === "local" ? "text-emerald-400" : "text-muted-foreground")} />
+                  <h3 className="text-lg font-semibold text-foreground mb-1">Local Memory</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">Fast on-device caching. Recommended for single-instance deployments.</p>
                 </div>
 
                 <div 
                   onClick={() => setCacheType("redis")}
                   className={cn(
                     "relative p-6 rounded-2xl cursor-pointer transition-all duration-300 border-2 group hover:-translate-y-1",
-                    cacheType === "redis" ? "border-emerald-500 bg-emerald-500/10" : "border-white/10 bg-white/5 hover:border-white/20"
+                    cacheType === "redis" ? "border-emerald-500 bg-emerald-500/10" : "border-border bg-secondary hover:border-border/80"
                   )}
                 >
                   <div className="absolute top-4 right-4">
-                    <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", cacheType === "redis" ? "border-emerald-500" : "border-white/20 group-hover:border-white/40")}>
+                    <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", cacheType === "redis" ? "border-emerald-500" : "border-border/80 group-hover:border-white/40")}>
                       {cacheType === "redis" && <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full" />}
                     </div>
                   </div>
-                  <Server className={cn("w-8 h-8 mb-4", cacheType === "redis" ? "text-emerald-400" : "text-gray-400")} />
-                  <h3 className="text-lg font-semibold text-white mb-1">External Redis</h3>
-                  <p className="text-sm text-gray-400 leading-relaxed">Distributed caching. Essential for High Availability and horizontal scaling.</p>
+                  <Server className={cn("w-8 h-8 mb-4", cacheType === "redis" ? "text-emerald-400" : "text-muted-foreground")} />
+                  <h3 className="text-lg font-semibold text-foreground mb-1">External Redis</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">Distributed caching. Essential for High Availability and horizontal scaling.</p>
                 </div>
               </div>
 
               {cacheType === "redis" && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-3">
-                  <Label className="text-gray-300">Redis URL</Label>
+                  <Label className="text-muted-foreground">Redis URL</Label>
                   <Input 
                     placeholder="redis://localhost:6379" 
                     value={redisUrl}
                     onChange={(e) => setRedisUrl(e.target.value)}
-                    className="bg-black/50 border-white/10 focus:border-emerald-500 focus:ring-emerald-500 h-12 text-base"
+                    className="bg-black/50 border-border focus:border-emerald-500 focus:ring-emerald-500 h-12 text-base"
                   />
                 </motion.div>
               )}
@@ -239,33 +239,33 @@ export default function SetupWizard() {
           {step === 3 && (
             <motion.div key="step3" variants={stepVariants} initial="hidden" animate="visible" exit="exit" className="space-y-8">
               <div>
-                <h2 className="text-2xl font-bold mb-2 text-white">Create Administrator</h2>
-                <p className="text-gray-400">Set up the initial master account for platform administration.</p>
+                <h2 className="text-2xl font-bold mb-2 text-foreground">Create Administrator</h2>
+                <p className="text-muted-foreground">Set up the initial master account for platform administration.</p>
               </div>
 
-              <div className="space-y-5 bg-white/5 p-6 rounded-2xl border border-white/10">
+              <div className="space-y-5 bg-secondary p-6 rounded-2xl border border-border">
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Username</Label>
+                  <Label className="text-muted-foreground">Username</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input 
                       value={adminUser.username}
                       onChange={(e) => setAdminUser({...adminUser, username: e.target.value})}
-                      className="pl-10 bg-black/50 border-white/10 focus:border-blue-500 h-11"
+                      className="pl-10 bg-black/50 border-border focus:border-blue-500 h-11"
                       placeholder="admin"
                     />
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Email Address</Label>
+                  <Label className="text-muted-foreground">Email Address</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input 
                       type="email"
                       value={adminUser.email}
                       onChange={(e) => setAdminUser({...adminUser, email: e.target.value})}
-                      className="pl-10 bg-black/50 border-white/10 focus:border-blue-500 h-11"
+                      className="pl-10 bg-black/50 border-border focus:border-blue-500 h-11"
                       placeholder="admin@example.com"
                     />
                   </div>
@@ -273,28 +273,28 @@ export default function SetupWizard() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-gray-300">Password</Label>
+                    <Label className="text-muted-foreground">Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input 
                         type="password"
                         value={adminUser.password}
                         onChange={(e) => setAdminUser({...adminUser, password: e.target.value})}
-                        className="pl-10 bg-black/50 border-white/10 focus:border-blue-500 h-11"
+                        className="pl-10 bg-black/50 border-border focus:border-blue-500 h-11"
                         placeholder="••••••••"
                       />
                     </div>
                   </div>
                   
                   <div className="space-y-2">
-                    <Label className="text-gray-300">Confirm Password</Label>
+                    <Label className="text-muted-foreground">Confirm Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input 
                         type="password"
                         value={adminUser.confirmPassword}
                         onChange={(e) => setAdminUser({...adminUser, confirmPassword: e.target.value})}
-                        className="pl-10 bg-black/50 border-white/10 focus:border-blue-500 h-11"
+                        className="pl-10 bg-black/50 border-border focus:border-blue-500 h-11"
                         placeholder="••••••••"
                       />
                     </div>
@@ -309,7 +309,7 @@ export default function SetupWizard() {
       {/* Footer Navigation */}
       <div className="p-6 bg-black/20 border-t border-white/5 flex items-center justify-between">
         {step > 1 ? (
-          <Button variant="ghost" onClick={handleBack} className="text-gray-400 hover:text-white hover:bg-white/5">
+          <Button variant="ghost" onClick={handleBack} className="text-muted-foreground hover:text-foreground hover:bg-accent">
             Back
           </Button>
         ) : (
@@ -321,10 +321,10 @@ export default function SetupWizard() {
             Continue <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
         ) : (
-          <Button onClick={handleSubmit} disabled={loading} className="bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white h-11 px-8 rounded-xl font-medium shadow-[0_0_30px_rgba(139,92,246,0.5)] border-0 transition-all">
+          <Button onClick={handleSubmit} disabled={loading} className="bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-foreground h-11 px-8 rounded-xl font-medium shadow-[0_0_30px_rgba(139,92,246,0.5)] border-0 transition-all">
             {loading ? (
               <span className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                 Initializing Platform...
               </span>
             ) : (

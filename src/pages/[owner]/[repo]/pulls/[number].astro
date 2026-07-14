@@ -347,11 +347,11 @@ try {
                 <div class="flex items-start gap-4">
                   <div class="mt-1">
                     {queueItem ? (
-                      <div class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                      <div class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-foreground">
                         <ListOrdered className="h-4 w-4 animate-pulse" />
                       </div>
                     ) : (
-                      <div class="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center text-white">
+                      <div class="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center text-foreground">
                         <GitMerge className="h-4 w-4" />
                       </div>
                     )}
@@ -372,7 +372,7 @@ try {
                       <div class="flex items-center gap-2">
                         <Button
                           id="merge-btn"
-                          className="bg-green-600 hover:bg-green-700 text-white"
+                          className="bg-green-600 hover:bg-green-700 text-foreground"
                         >
                           Merge pull request
                         </Button>
@@ -478,7 +478,7 @@ try {
                               <Sparkles className="h-4 w-4 text-violet-400" />
                               CI/CD Pipeline Execution
                             </h3>
-                            <div class="rounded-xl overflow-hidden border border-white/10">
+                            <div class="rounded-xl overflow-hidden border border-border">
                               <PipelineVisualizer client:idle jobs={visualizerJobs} />
                             </div>
                           </div>

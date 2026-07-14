@@ -4,7 +4,7 @@ import { compareBranches, getCommit } from "@/lib/git";
 import { canWriteRepo } from "@/lib/permissions";
 import { resolveRepoPath } from "@/lib/git-storage";
 import type { APIRoute } from "astro";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import { withErrorHandler } from "@/lib/errors";
@@ -52,7 +52,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
         return notFound("Repository not found");
     }
 
-    if (!(await canWriteRepo(user.id, repo))) {
+    if (!(await canWriteRepo(user.id, repo, { isAdmin: user.isAdmin }))) {
         return forbidden();
     }
 
@@ -63,6 +63,23 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
     if (!title || !base || !head) {
         return badRequest("Missing required fields");
     }
+
+    // Validate and sanitize PR title and body
+    const trimmedTitle = String(title).trim();
+    const trimmedBody = String(description || "").trim();
+
+    if (trimmedTitle.length === 0 || trimmedTitle.length > 500) {
+        return badRequest("Title must be between 1 and 500 characters");
+    }
+
+    if (trimmedBody.length > 65535) {
+        return badRequest("Body must be less than 65535 characters");
+    }
+
+    // Sanitize: strip HTML tags to prevent XSS
+    const sanitize = (s: string) => s.replace(/<[^>]*>/g, "");
+    const cleanTitle = sanitize(trimmedTitle);
+    const cleanBody = sanitize(trimmedBody);
 
     if (base === head) {
         return badRequest("Base and head branches must be different");
@@ -102,13 +119,13 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
         changedFiles++;
     });
 
-    // Determine PR number
-    const lastPr = await db.query.pullRequests.findFirst({
-        where: eq(schema.pullRequests.repositoryId, repo.id),
-        orderBy: [desc(schema.pullRequests.number)],
-    });
+    // Determine PR number — use atomic SQL to prevent race conditions
+    const [{ maxNumber }] = await db
+        .select({ maxNumber: sql<number>`coalesce(max(${schema.pullRequests.number}), 0)` })
+        .from(schema.pullRequests)
+        .where(eq(schema.pullRequests.repositoryId, repo.id));
 
-    const number = (lastPr?.number || 0) + 1;
+    const number = maxNumber + 1;
 
     const defaultCustomState = await db.query.prStateDefinitions.findFirst({
         where: and(
@@ -125,8 +142,8 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
         id: prId,
         repositoryId: repo.id,
         number,
-        title,
-        body: description || "",
+        title: cleanTitle,
+        body: cleanBody,
         state: "open",
         authorId: user.id,
         headBranch: head,

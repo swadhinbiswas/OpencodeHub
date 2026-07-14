@@ -196,7 +196,7 @@ const repo = {
     if (!target) return;
     target.innerHTML = deployments.length === 0
       ? emptyLabel
-      : deployments.map((item) => `<div class="rounded border border-white/10 bg-white/5 px-2 py-1.5 flex items-center justify-between"><span>${item.status}</span><span class="text-[11px] text-muted-foreground">${(item.commitSha || "").slice(0, 10)}</span></div>`).join("");
+      : deployments.map((item) => `<div class="rounded border border-border bg-secondary px-2 py-1.5 flex items-center justify-between"><span>${item.status}</span><span class="text-[11px] text-muted-foreground">${(item.commitSha || "").slice(0, 10)}</span></div>`).join("");
   }
 
   async function fetchSummary() {

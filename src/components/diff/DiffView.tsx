@@ -271,9 +271,9 @@ export function DiffView({
 
           {/* Diff lines */}
           {!collapsedFiles.has(fileIdx) && (
-            <div className="overflow-x-auto bg-[#0d1117] text-[#c9d1d9] text-sm font-mono">
+            <div className="overflow-x-auto bg-card text-[#c9d1d9] text-sm font-mono">
               {file.isBinary ? (
-                <div className="py-8 text-center text-gray-400">
+                <div className="py-8 text-center text-muted-foreground">
                   Binary file not shown.
                 </div>
               ) : (
@@ -305,7 +305,7 @@ export function DiffView({
                           ? "bg-[#0a3519] text-green-600"
                           : line.type === "del"
                             ? "bg-[#3d0f18] text-red-600"
-                            : "text-gray-600";
+                            : "text-muted-foreground";
 
                       const issueForLine =
                         line.newLine && codeQualityIssues

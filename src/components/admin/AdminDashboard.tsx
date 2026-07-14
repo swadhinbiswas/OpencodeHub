@@ -28,7 +28,7 @@ class GlobeErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
         if (this.state.hasError) {
             return (
                 <div className="w-full h-full flex items-center justify-center">
-                    <div className="text-center text-white/50">
+                    <div className="text-center text-foreground/50">
                         <div className="text-6xl mb-4">🌐</div>
                         <p className="text-sm">3D Globe unavailable</p>
                         <p className="text-xs mt-1 opacity-50">WebGL may not be supported</p>
@@ -43,7 +43,7 @@ class GlobeErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
 const GlobeViz = lazy(() => import("./GlobeViz").catch(() => ({
     default: () => (
         <div className="w-full h-full flex items-center justify-center">
-            <div className="text-center text-white/50">
+            <div className="text-center text-foreground/50">
                 <div className="text-6xl mb-4">🌐</div>
                 <p className="text-sm">Globe failed to load</p>
             </div>
@@ -88,7 +88,7 @@ export default function AdminDashboard() {
                 <GlobeErrorBoundary>
                     <Suspense fallback={
                         <div className="w-full h-full flex items-center justify-center">
-                            <div className="text-white/30 text-sm">Loading globe...</div>
+                            <div className="text-foreground/30 text-sm">Loading globe...</div>
                         </div>
                     }>
                         <GlobeViz activities={data.activityLog || []} />
@@ -139,7 +139,7 @@ export default function AdminDashboard() {
                     {/* Right Column: Log Stream */}
                     <div className="col-span-3 flex flex-col gap-4 pointer-events-auto overflow-hidden">
                         <div className="flex justify-end shrink-0">
-                            <GitGraph className="h-8 w-8 text-white opacity-30 hover:opacity-70 transition-opacity cursor-pointer" />
+                            <GitGraph className="h-8 w-8 text-foreground opacity-30 hover:opacity-70 transition-opacity cursor-pointer" />
                         </div>
 
                         <div className="glass-panel rounded-xl flex-1 overflow-hidden min-h-0 relative">

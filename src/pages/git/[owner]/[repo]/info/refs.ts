@@ -52,7 +52,9 @@ export const GET: APIRoute = async ({ params, request, url }) => {
 
         // For receive-pack (push), return minimal capabilities to allow first push
         logger.info("Returning empty refs for receive-pack");
-        const emptyRefs = `001e# service=${service}\n0000` +
+        const serviceLine = `# service=${service}\n`;
+        const pktLineLength = (serviceLine.length + 4).toString(16).padStart(4, '0');
+        const emptyRefs = `${pktLineLength}${serviceLine}0000` +
             `00000000000000000000000000000000000000000000 capabilities^{}\0report-status report-status-v2 side-band-64k object-format=sha1\n` +
             `0000`;
 

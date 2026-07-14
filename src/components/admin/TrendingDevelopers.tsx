@@ -17,7 +17,7 @@ export default function TrendingDevelopers({ developers }: Props) {
         if (rank === 1) return <Flame className="w-4 h-4 text-orange-400" />;
         if (rank === 2) return <Star className="w-4 h-4 text-yellow-400" />;
         if (rank === 3) return <TrendingUp className="w-4 h-4 text-green-400" />;
-        return <span className="text-xs font-mono text-gray-500 w-4 text-center">{rank}</span>;
+        return <span className="text-xs font-mono text-muted-foreground w-4 text-center">{rank}</span>;
     };
 
     const getGradient = (index: number) => {
@@ -56,7 +56,7 @@ export default function TrendingDevelopers({ developers }: Props) {
                         {/* Hover glow effect */}
                         <div className={`absolute -inset-1 bg-gradient-to-r ${getGradient(i)} rounded-lg opacity-0 group-hover:opacity-20 blur-md transition-opacity duration-300`} />
 
-                        <div className="relative flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors">
+                        <div className="relative flex items-center gap-3 p-2 rounded-lg hover:bg-accent transition-colors">
                             {/* Rank */}
                             <div className="w-6 flex justify-center">
                                 {getRankIcon(dev.rank)}
@@ -65,7 +65,7 @@ export default function TrendingDevelopers({ developers }: Props) {
                             {/* Avatar with gradient border */}
                             <div className={`relative h-10 w-10 rounded-full p-[2px] bg-gradient-to-br ${getGradient(i)}`}>
                                 <div className="h-full w-full rounded-full bg-[#0a0a15] flex items-center justify-center">
-                                    <span className="text-sm font-bold text-white">
+                                    <span className="text-sm font-bold text-foreground">
                                         {dev.name[0].toUpperCase()}
                                     </span>
                                 </div>
@@ -73,7 +73,7 @@ export default function TrendingDevelopers({ developers }: Props) {
 
                             {/* Info */}
                             <div className="flex-1 min-w-0">
-                                <div className="text-sm text-gray-200 font-medium group-hover:text-white transition-colors truncate">
+                                <div className="text-sm text-gray-200 font-medium group-hover:text-foreground transition-colors truncate">
                                     {dev.name}
                                 </div>
                                 <div className="flex items-center gap-2 mt-1">

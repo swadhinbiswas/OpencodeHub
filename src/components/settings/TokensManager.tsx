@@ -123,47 +123,47 @@ export default function TokensManager({ initialTokens }: TokensManagerProps) {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                    <h3 className="text-xl font-bold text-foreground flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border border-yellow-500/30">
                             <Key className="h-5 w-5 text-yellow-400" />
                         </div>
                         Access Tokens
                     </h3>
-                    <p className="text-gray-500 text-sm mt-2 ml-12">
+                    <p className="text-muted-foreground text-sm mt-2 ml-12">
                         Tokens for API and Git over HTTPS authentication.
                     </p>
                 </div>
                 <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                     <DialogTrigger asChild>
-                        <Button className="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-white shadow-lg shadow-yellow-500/25 border-0">
+                        <Button className="bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700 text-foreground shadow-lg shadow-yellow-500/25 border-0">
                             Generate Token
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="bg-[#0d1117] border-white/10 text-white sm:max-w-md">
+                    <DialogContent className="bg-card border-border text-foreground sm:max-w-md">
                         <DialogHeader>
                             <DialogTitle className="flex items-center gap-2">
                                 <Ticket className="h-5 w-5 text-yellow-400" />
                                 Generate New Token
                             </DialogTitle>
-                            <DialogDescription className="text-gray-400">
+                            <DialogDescription className="text-muted-foreground">
                                 Create a new personal access token.
                             </DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleCreate} className="space-y-4 py-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-300">Note</label>
+                                <label className="text-sm font-medium text-muted-foreground">Note</label>
                                 <Input
                                     placeholder="e.g. CI/CD Pipeline"
-                                    className="bg-white/5 border-white/10 text-white placeholder:text-gray-600 focus-visible:ring-yellow-500/50"
+                                    className="bg-secondary border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-yellow-500/50"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     required
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-gray-300">Expiration</label>
+                                <label className="text-sm font-medium text-muted-foreground">Expiration</label>
                                 <select
-                                    className="flex h-10 w-full rounded-md border border-white/10 bg-[#1a1f2e] px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="flex h-10 w-full rounded-md border border-border bg-[#1a1f2e] px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500/50 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                     value={expiresIn}
                                     onChange={(e) => setExpiresIn(e.target.value)}
                                 >
@@ -175,10 +175,10 @@ export default function TokensManager({ initialTokens }: TokensManagerProps) {
                                 </select>
                             </div>
                             <DialogFooter>
-                                <Button variant="ghost" type="button" onClick={() => setIsCreateOpen(false)} className="text-gray-400 hover:text-white hover:bg-white/10">
+                                <Button variant="ghost" type="button" onClick={() => setIsCreateOpen(false)} className="text-muted-foreground hover:text-foreground hover:bg-secondary/80">
                                     Cancel
                                 </Button>
-                                <Button type="submit" disabled={loading} className="bg-yellow-500 hover:bg-yellow-600 text-white">
+                                <Button type="submit" disabled={loading} className="bg-yellow-500 hover:bg-yellow-600 text-foreground">
                                     {loading ? <RotateCw className="h-4 w-4 animate-spin mr-2" /> : null}
                                     Generate
                                 </Button>
@@ -190,26 +190,26 @@ export default function TokensManager({ initialTokens }: TokensManagerProps) {
 
             {/* Success Modal */}
             <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}>
-                <DialogContent className="bg-[#0d1117] border-white/10 text-white sm:max-w-md text-center">
+                <DialogContent className="bg-card border-border text-foreground sm:max-w-md text-center">
                     <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-500/20 mb-2">
                         <Check className="h-6 w-6 text-green-400" />
                     </div>
                     <DialogHeader>
                         <DialogTitle className="text-center text-xl">Token Generated!</DialogTitle>
-                        <DialogDescription className="text-center text-gray-400">
+                        <DialogDescription className="text-center text-muted-foreground">
                             Copy your token now. You won't see it again!
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="flex items-center gap-2 bg-white/5 rounded-lg p-3 border border-white/10 mt-4">
-                        <code className="flex-1 bg-transparent text-sm text-white font-mono break-all text-left">
+                    <div className="flex items-center gap-2 bg-secondary rounded-lg p-3 border border-border mt-4">
+                        <code className="flex-1 bg-transparent text-sm text-foreground font-mono break-all text-left">
                             {newToken}
                         </code>
-                        <Button size="icon" variant="ghost" onClick={copyToken} className="hover:bg-white/10 shrink-0">
-                            {copied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4 text-gray-400" />}
+                        <Button size="icon" variant="ghost" onClick={copyToken} className="hover:bg-secondary/80 shrink-0">
+                            {copied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
                         </Button>
                     </div>
                     <DialogFooter className="sm:justify-center mt-6">
-                        <Button onClick={() => setIsSuccessOpen(false)} className="w-full bg-green-600 hover:bg-green-700 text-white">
+                        <Button onClick={() => setIsSuccessOpen(false)} className="w-full bg-green-600 hover:bg-green-700 text-foreground">
                             I have copied it
                         </Button>
                     </DialogFooter>
@@ -219,21 +219,21 @@ export default function TokensManager({ initialTokens }: TokensManagerProps) {
             {/* List */}
             <div className="relative group/list">
                 <div className="absolute -inset-[1px] bg-gradient-to-r from-yellow-500/20 via-transparent to-orange-500/20 rounded-xl opacity-50" />
-                <div className="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm overflow-hidden">
+                <div className="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden">
                     {tokens.length > 0 ? (
                         <div className="divide-y divide-white/5">
                             {tokens.map((token) => (
                                 <div
                                     key={token.id}
-                                    className="flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors group"
+                                    className="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors group"
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 rounded-lg bg-yellow-500/10">
                                             <Key className="h-5 w-5 text-yellow-400" />
                                         </div>
                                         <div>
-                                            <p className="font-medium text-white">{token.name}</p>
-                                            <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                                            <p className="font-medium text-foreground">{token.name}</p>
+                                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
                                                 <span>
                                                     Created {new Date(token.createdAt).toLocaleDateString()}
                                                 </span>
@@ -243,7 +243,7 @@ export default function TokensManager({ initialTokens }: TokensManagerProps) {
                                                             "px-2 py-0.5 rounded-full",
                                                             new Date(token.expiresAt) < new Date()
                                                                 ? "bg-red-500/10 text-red-400"
-                                                                : "bg-gray-500/10 text-gray-400"
+                                                                : "bg-gray-500/10 text-muted-foreground"
                                                         )}
                                                     >
                                                         {new Date(token.expiresAt) < new Date()
@@ -266,17 +266,17 @@ export default function TokensManager({ initialTokens }: TokensManagerProps) {
                                                 Delete
                                             </Button>
                                         </AlertDialogTrigger>
-                                        <AlertDialogContent className="bg-[#0d1117] border-white/10 text-white">
+                                        <AlertDialogContent className="bg-card border-border text-foreground">
                                             <AlertDialogHeader>
                                                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                <AlertDialogDescription className="text-gray-400">
+                                                <AlertDialogDescription className="text-muted-foreground">
                                                     This action cannot be undone. This will permanently delete the token
                                                     "{token.name}" and any applications using it will lose access.
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
-                                                <AlertDialogCancel className="bg-transparent border-white/10 text-white hover:bg-white/5 hover:text-white">Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={handleDelete} className="bg-red-600 text-white hover:bg-red-700 border-0">
+                                                <AlertDialogCancel className="bg-transparent border-border text-foreground hover:bg-accent hover:text-foreground">Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={handleDelete} className="bg-red-600 text-foreground hover:bg-red-700 border-0">
                                                     Delete Token
                                                 </AlertDialogAction>
                                             </AlertDialogFooter>
@@ -291,13 +291,13 @@ export default function TokensManager({ initialTokens }: TokensManagerProps) {
                                 <Ticket className="h-16 w-16 text-yellow-400" />
                                 <div className="absolute inset-0 bg-yellow-500 blur-2xl opacity-20" />
                             </div>
-                            <h3 className="text-lg font-semibold text-white mb-2">
+                            <h3 className="text-lg font-semibold text-foreground mb-2">
                                 No tokens yet
                             </h3>
-                            <p className="text-gray-500 mb-4">
+                            <p className="text-muted-foreground mb-4">
                                 Generate a token to access the API.
                             </p>
-                            <Button onClick={() => setIsCreateOpen(true)} className="bg-gradient-to-r from-yellow-500 to-orange-600 text-white">
+                            <Button onClick={() => setIsCreateOpen(true)} className="bg-gradient-to-r from-yellow-500 to-orange-600 text-foreground">
                                 Generate your first token
                             </Button>
                         </div>

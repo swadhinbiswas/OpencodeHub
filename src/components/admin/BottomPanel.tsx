@@ -100,7 +100,7 @@ export default function BottomPanel({ stats }: Props) {
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="text-xs text-gray-500 mt-3 flex items-center gap-1.5">
+                                    <div className="text-xs text-muted-foreground mt-3 flex items-center gap-1.5">
                                         <Globe className="h-3 w-3" />
                                         Global repository statistics (Last 24h)
                                     </div>
@@ -185,7 +185,7 @@ export default function BottomPanel({ stats }: Props) {
                                     <div className="text-5xl font-mono font-light bg-gradient-to-r from-purple-300 via-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
                                         <AnimatedNumber value={stats.reviewStats?.count || 156} />
                                     </div>
-                                    <div className="text-xs text-gray-500 mt-3 flex items-center gap-1.5">
+                                    <div className="text-xs text-muted-foreground mt-3 flex items-center gap-1.5">
                                         <Sparkles className="h-3 w-3 text-purple-400/60" />
                                         Active participants in code review
                                     </div>
@@ -234,7 +234,7 @@ export default function BottomPanel({ stats }: Props) {
                                         {u?.avatar ? (
                                             <img src={u.avatar} className="h-full w-full object-cover" />
                                         ) : (
-                                            <span className="text-sm font-bold text-white">{String.fromCharCode(65 + i)}</span>
+                                            <span className="text-sm font-bold text-foreground">{String.fromCharCode(65 + i)}</span>
                                         )}
                                     </motion.div>
                                 ))}
@@ -260,8 +260,8 @@ export default function BottomPanel({ stats }: Props) {
                             <div className="space-y-3 max-w-4xl w-full">
                                 {(stats.languages || []).map((lang: any, i: number) => (
                                     <div key={lang.name} className="flex items-center gap-4">
-                                        <div className="w-24 text-sm text-gray-300 font-mono">{lang.name}</div>
-                                        <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+                                        <div className="w-24 text-sm text-muted-foreground font-mono">{lang.name}</div>
+                                        <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
                                             <motion.div
                                                 initial={{ width: 0 }}
                                                 animate={{ width: `${lang.percentage}%` }}
@@ -273,7 +273,7 @@ export default function BottomPanel({ stats }: Props) {
                                                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
                                             </motion.div>
                                         </div>
-                                        <div className="w-12 text-sm text-gray-400 text-right font-mono">{lang.percentage}%</div>
+                                        <div className="w-12 text-sm text-muted-foreground text-right font-mono">{lang.percentage}%</div>
                                     </div>
                                 ))}
                             </div>

@@ -77,14 +77,14 @@ export const MFASetup = () => {
     if (step === "initial") {
         return (
             <div>
-                <p className="text-gray-400 text-sm mb-4">
+                <p className="text-muted-foreground text-sm mb-4">
                     Add an extra layer of security to your account by enabling two-factor authentication.
                 </p>
                 <button
                     type="button"
                     onClick={startSetup}
                     disabled={loading}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-orange-500 to-red-600 text-sm font-medium text-white shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-orange-500 to-red-600 text-sm font-medium text-foreground shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                     <Shield className="h-4 w-4" />
                     {loading ? "Initializing..." : "Enable 2FA"}
@@ -98,7 +98,7 @@ export const MFASetup = () => {
             <div className="bg-card/50 rounded-lg p-4 border border-border">
                 <ol className="list-decimal list-inside space-y-4 text-sm text-foreground">
                     <li className="pl-2">
-                        <span className="font-medium text-white">Scan QR Code</span>
+                        <span className="font-medium text-foreground">Scan QR Code</span>
                         <p className="text-muted-foreground mt-1 ml-4">
                             Open your authenticator app (Google Authenticator, Authy, etc.) and scan this code.
                         </p>
@@ -107,7 +107,7 @@ export const MFASetup = () => {
                         </div>
                     </li>
                     <li className="pl-2">
-                        <span className="font-medium text-white">Or enter code manually</span>
+                        <span className="font-medium text-foreground">Or enter code manually</span>
                         <p className="text-muted-foreground mt-1 ml-4 mb-2">
                             If you can't scan the code, enter this secret key into your app.
                         </p>
@@ -117,7 +117,7 @@ export const MFASetup = () => {
                             </code>
                             <button
                                 onClick={copySecret}
-                                className="p-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:text-white"
+                                className="p-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:text-foreground"
                                 title="Copy secret"
                             >
                                 {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
@@ -125,14 +125,14 @@ export const MFASetup = () => {
                         </div>
                     </li>
                     <li className="pl-2">
-                        <span className="font-medium text-white">Verify Code</span>
+                        <span className="font-medium text-foreground">Verify Code</span>
                         <div className="mt-2 ml-4 flex gap-3 max-w-sm">
                             <input
                                 type="text"
                                 value={token}
                                 onChange={(e) => setToken(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
                                 placeholder="000 000"
-                                className="flex-1 rounded-lg border border-input bg-background/50 px-4 py-2 text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 text-center font-mono tracking-widest text-lg"
+                                className="flex-1 rounded-lg border border-input bg-background/50 px-4 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 text-center font-mono tracking-widest text-lg"
                                 maxLength={6}
                             />
                             <button
@@ -149,7 +149,7 @@ export const MFASetup = () => {
 
             <button
                 onClick={() => setStep("initial")}
-                className="text-sm text-muted-foreground hover:text-white transition-colors"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
                 Cancel setup
             </button>

@@ -59,7 +59,7 @@ if (!hasAccess) {
 
 // Fetch issue count
 const issueCountResult = await db
-  .select({ count: sql`count` })
+  .select({ count: sql`count(*)` })
   .from(schema.issues)
   .where(
     and(

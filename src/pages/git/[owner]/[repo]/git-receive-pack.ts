@@ -3,6 +3,10 @@ import type { APIRoute } from "astro";
 import { handleReceivePack } from "@/lib/git-server";
 import { acquireRepo, releaseRepo, getStorageRepoPath } from "@/lib/git-storage";
 import { logger } from "@/lib/logger";
+import { getDatabase, schema } from "@/db";
+import { validateBasicAuth } from "@/lib/auth-basic";
+import { canWriteRepo } from "@/lib/permissions";
+import { and, eq } from "drizzle-orm";
 
 export const POST: APIRoute = async ({ params, request }) => {
     const { owner, repo } = params;
@@ -20,11 +24,52 @@ export const POST: APIRoute = async ({ params, request }) => {
         return new Response("Invalid Content-Type", { status: 415 });
     }
 
+    // Authenticate user
+    const authHeader = request.headers.get("Authorization");
+    let userId: string | null = null;
+    if (authHeader) {
+        userId = await validateBasicAuth(authHeader);
+    }
+
+    // Find repo and check permissions
+    const db = getDatabase();
+    const ownerUser = await db.query.users.findFirst({
+        where: eq(schema.users.username, owner),
+    });
+
+    if (!ownerUser) {
+        return new Response("Repository not found", { status: 404 });
+    }
+
+    const repoData = await db.query.repositories.findFirst({
+        where: and(
+            eq(schema.repositories.ownerId, ownerUser.id),
+            eq(schema.repositories.name, repoName)
+        ),
+    });
+
+    if (!repoData) {
+        return new Response("Repository not found", { status: 404 });
+    }
+
+    // Check write permission
+    const user = userId ? await db.query.users.findFirst({
+        where: eq(schema.users.id, userId),
+    }) : null;
+    const isAdmin = user?.isAdmin === true;
+    const hasAccess = await canWriteRepo(userId || undefined, repoData, { isAdmin });
+
+    if (!hasAccess) {
+        return new Response("Unauthorized", {
+            status: 401,
+            headers: { "WWW-Authenticate": 'Basic realm="OpenCodeHub"' },
+        });
+    }
+
     logger.info({ owner, repoName }, "Git receive-pack request");
 
     let repoPath: string;
     try {
-        // Repos are always initialized on creation now, just acquire
         repoPath = await acquireRepo(owner, repoName);
     } catch (err) {
         logger.error({ err }, "Failed to acquire repo");
@@ -34,7 +79,6 @@ export const POST: APIRoute = async ({ params, request }) => {
     const storagePath = getStorageRepoPath(owner, repoName);
 
     // Extract user from Basic Auth if present
-    const authHeader = request.headers.get("Authorization");
     let remoteUser = "git";
     if (authHeader && authHeader.startsWith("Basic ")) {
         try {
@@ -53,16 +97,21 @@ export const POST: APIRoute = async ({ params, request }) => {
             REMOTE_USER: remoteUser
         });
 
-        // Release repo with modification flag true
-        // Note: This might trigger re-upload of the packfile effectively checking consistency
-        await releaseRepo(owner, repoName, true);
-
-        return new Response(responseStream as any, {
+        // Return response first, then sync to cloud storage in background
+        // This prevents the S3 upload from blocking the git client response
+        const response = new Response(responseStream as any, {
             headers: {
                 "Content-Type": "application/x-git-receive-pack-result",
                 "Cache-Control": "no-cache",
             },
         });
+
+        // Sync to cloud storage in background (non-blocking)
+        releaseRepo(owner, repoName, true).catch(err => {
+            logger.error({ err }, "Failed to sync repo to storage after push");
+        });
+
+        return response;
     } catch (err) {
         logger.error({ err }, "Failed to handle receive-pack");
         // Release repo without saving changes (rollback attempt)

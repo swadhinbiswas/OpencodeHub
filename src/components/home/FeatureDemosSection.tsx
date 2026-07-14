@@ -394,12 +394,14 @@ export default function FeatureDemosSection() {
                         {/* Description */}
                         <div>
                             <div className={`inline-flex p-3 rounded-xl bg-gradient-to-br ${currentDemo.color} mb-4`}>
-                                <currentDemo.icon className="h-8 w-8 text-white" />
+                                <currentDemo.icon className="h-8 w-8 text-foreground" />
                             </div>
                             <h3 className="text-2xl font-bold mb-2">{currentDemo.title}</h3>
                             <p className="text-muted-foreground mb-6">{currentDemo.description}</p>
                             <a
-                                href="/docs"
+                                href="https://docs.opencodehub.space/"
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors">
                                 Learn more
                                 <ArrowRight className="h-4 w-4" />

@@ -60,15 +60,15 @@ try {
             <FileText className="h-6 w-6 text-amber-400" />
           </div>
           <div>
-            <h1 class="text-2xl font-bold text-white">Review Templates</h1>
-            <p class="text-sm text-gray-400">Create reusable checklists for code reviews</p>
+            <h1 class="text-2xl font-bold text-foreground">Review Templates</h1>
+            <p class="text-sm text-muted-foreground">Create reusable checklists for code reviews</p>
           </div>
         </div>
 
         <div class="flex items-center gap-3">
           <select
             id="repo-select"
-            class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300"
+            class="bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-muted-foreground"
           >
             <option value="">Select Repository</option>
             {repositories.map((repo) => (
@@ -91,20 +91,20 @@ try {
       </div>
 
       {!repoId ? (
-        <div class="text-center py-16 bg-white/5 rounded-xl border border-white/10">
+        <div class="text-center py-16 bg-secondary rounded-xl border border-border">
           <FileText className="h-16 w-16 text-amber-400 mx-auto mb-4" />
-          <h3 class="text-lg font-semibold text-white mb-2">Select a Repository</h3>
-          <p class="text-gray-500">Choose a repository to manage review templates</p>
+          <h3 class="text-lg font-semibold text-foreground mb-2">Select a Repository</h3>
+          <p class="text-muted-foreground">Choose a repository to manage review templates</p>
         </div>
       ) : (
         <div class="relative">
           <div class="absolute -inset-[1px] bg-gradient-to-r from-amber-500/20 via-transparent to-yellow-500/20 rounded-xl opacity-50"></div>
-          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm overflow-hidden">
+          <div class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden">
             {templates.length === 0 ? (
               <div class="text-center py-16">
                 <FileText className="h-12 w-12 text-amber-400 mx-auto mb-4" />
-                <h3 class="text-lg font-semibold text-white mb-2">No Templates Yet</h3>
-                <p class="text-gray-500 mb-4">Create your first reusable review checklist</p>
+                <h3 class="text-lg font-semibold text-foreground mb-2">No Templates Yet</h3>
+                <p class="text-muted-foreground mb-4">Create your first reusable review checklist</p>
                 <button
                   id="add-first-template-btn"
                   class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 text-amber-300 rounded-lg text-sm hover:bg-amber-500/20 transition-colors"
@@ -117,7 +117,7 @@ try {
               <div class="divide-y divide-white/5">
                 {templates.map((template) => (
                   <div
-                    class="group flex items-start gap-4 p-4 transition-all hover:bg-white/[0.02]"
+                    class="group flex items-start gap-4 p-4 transition-all hover:bg-accent/50"
                     data-template-id={template.id}
                     data-template-name={template.name}
                     data-template-description={template.description || ""}
@@ -131,7 +131,7 @@ try {
 
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2">
-                        <span class="font-medium text-white">{template.name}</span>
+                        <span class="font-medium text-foreground">{template.name}</span>
                         {template.isDefault && (
                           <span class="px-2 py-0.5 text-xs bg-amber-500/10 text-amber-300 rounded border border-amber-500/30 flex items-center gap-1">
                             <Star className="h-3 w-3" />
@@ -139,15 +139,15 @@ try {
                           </span>
                         )}
                         {template.category && (
-                          <span class="px-2 py-0.5 text-xs bg-white/5 text-gray-400 rounded">
+                          <span class="px-2 py-0.5 text-xs bg-secondary text-muted-foreground rounded">
                             {template.category}
                           </span>
                         )}
                       </div>
                       {template.description && (
-                        <p class="text-sm text-gray-500 mt-1">{template.description}</p>
+                        <p class="text-sm text-muted-foreground mt-1">{template.description}</p>
                       )}
-                      <p class="text-xs text-gray-600 mt-2 line-clamp-2">
+                      <p class="text-xs text-muted-foreground mt-2 line-clamp-2">
                         {template.content.slice(0, 200)}{template.content.length > 200 ? "..." : ""}
                       </p>
                     </div>
@@ -155,7 +155,7 @@ try {
                     <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         type="button"
-                        class="edit-template-btn px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-xs text-gray-300 hover:bg-white/10"
+                        class="edit-template-btn px-2 py-1 rounded-lg bg-secondary border border-border text-xs text-muted-foreground hover:bg-secondary/80"
                       >
                         <Edit2 className="h-3 w-3" />
                       </button>
@@ -178,57 +178,57 @@ try {
 </BaseLayout>
 
 <div id="template-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60">
-  <div class="w-full max-w-2xl rounded-xl border border-white/10 bg-[#0d1117] p-6">
+  <div class="w-full max-w-2xl rounded-xl border border-border bg-card p-6">
     <div class="flex items-start justify-between mb-4">
       <div>
-        <h3 id="template-modal-title" class="text-lg font-semibold text-white">New Template</h3>
-        <p class="text-sm text-gray-500">Define a reusable review checklist</p>
+        <h3 id="template-modal-title" class="text-lg font-semibold text-foreground">New Template</h3>
+        <p class="text-sm text-muted-foreground">Define a reusable review checklist</p>
       </div>
-      <button id="template-modal-close" class="text-gray-400 hover:text-white">×</button>
+      <button id="template-modal-close" class="text-muted-foreground hover:text-foreground">×</button>
     </div>
 
     <form id="template-form" class="space-y-4">
       <input type="hidden" id="template-id" />
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label class="text-xs text-gray-400">Name</label>
+          <label class="text-xs text-muted-foreground">Name</label>
           <input
             id="template-name"
-            class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            class="mt-1 w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-foreground"
             placeholder="Security checklist"
           />
         </div>
         <div>
-          <label class="text-xs text-gray-400">Category</label>
+          <label class="text-xs text-muted-foreground">Category</label>
           <input
             id="template-category"
-            class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            class="mt-1 w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-foreground"
             placeholder="security"
           />
         </div>
       </div>
       <div>
-        <label class="text-xs text-gray-400">Description</label>
+        <label class="text-xs text-muted-foreground">Description</label>
         <input
           id="template-description"
-          class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+          class="mt-1 w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-foreground"
           placeholder="Checklist for sensitive changes"
         />
       </div>
       <div>
-        <label class="text-xs text-gray-400">Template Content</label>
+        <label class="text-xs text-muted-foreground">Template Content</label>
         <textarea
           id="template-content"
-          class="mt-1 w-full min-h-[200px] rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+          class="mt-1 w-full min-h-[200px] rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-foreground"
           placeholder="## Review Checklist\n- [ ] ..."
         ></textarea>
       </div>
-      <label class="inline-flex items-center gap-2 text-sm text-gray-300">
-        <input id="template-default" type="checkbox" class="rounded border-white/20" />
+      <label class="inline-flex items-center gap-2 text-sm text-muted-foreground">
+        <input id="template-default" type="checkbox" class="rounded border-border/80" />
         Make this the default template
       </label>
       <div class="flex items-center justify-end gap-2">
-        <button type="button" id="template-cancel" class="px-3 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
+        <button type="button" id="template-cancel" class="px-3 py-2 text-sm text-muted-foreground hover:text-foreground">Cancel</button>
         <button type="submit" class="px-4 py-2 text-sm rounded-lg bg-amber-500/20 text-amber-200 border border-amber-500/40">
           Save Template
         </button>

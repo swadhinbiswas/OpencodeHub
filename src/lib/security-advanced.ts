@@ -4,6 +4,7 @@
  */
 
 import { getDatabase, schema } from "@/db";
+import * as nodeCrypto from "crypto";
 import {
   ipAllowLists,
   licenseScans,
@@ -577,8 +578,6 @@ function verifySAMLSignature(
   algorithm: string,
 ): boolean {
   try {
-    const crypto = require("crypto");
-
     // Extract the SignatureValue
     const sigValueMatch = xml.match(
       /<ds:SignatureValue[^>]*>([\s\S]*?)<\/ds:SignatureValue>/,
@@ -607,7 +606,7 @@ function verifySAMLSignature(
       "RSA-SHA512": "RSA-SHA512",
     };
 
-    const verifier = crypto.createVerify(algoMap[algorithm] || "RSA-SHA256");
+    const verifier = nodeCrypto.createVerify(algoMap[algorithm] || "RSA-SHA256");
     verifier.update(signedInfoMatch[0]);
 
     const signatureBytes = Buffer.from(
