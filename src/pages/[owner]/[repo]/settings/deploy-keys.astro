@@ -70,7 +70,7 @@ try {
       <div class="space-y-2">
         <a
           href={`/${repo.owner}/${repo.name}/settings`}
-          class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+          class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
         >
           <svg
             class="h-4 w-4"
@@ -94,7 +94,7 @@ try {
         </a>
         <a
           href={`/${repo.owner}/${repo.name}/settings/collaborators`}
-          class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+          class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
         >
           <svg
             class="h-4 w-4"
@@ -113,7 +113,7 @@ try {
         </a>
         <a
           href={`/${repo.owner}/${repo.name}/settings/webhooks`}
-          class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+          class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
         >
           <svg
             class="h-4 w-4"
@@ -132,7 +132,7 @@ try {
         </a>
         <a
           href={`/${repo.owner}/${repo.name}/settings/actions`}
-          class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+          class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
         >
           <svg
             class="h-4 w-4"
@@ -180,7 +180,7 @@ try {
         <!-- Page Header -->
         <div class="flex items-center justify-between">
           <div>
-            <h1 class="text-2xl font-bold text-white flex items-center gap-3">
+            <h1 class="text-2xl font-bold text-foreground flex items-center gap-3">
               <div
                 class="p-2 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30"
               >
@@ -200,14 +200,14 @@ try {
               </div>
               Deploy Keys
             </h1>
-            <p class="text-gray-500 text-sm mt-2">
+            <p class="text-muted-foreground text-sm mt-2">
               Deploy keys grant read-only or read/write access to a single
               repository.
             </p>
           </div>
           <button
             id="add-key-btn"
-            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-sm font-medium text-white shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all"
+            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-sm font-medium text-foreground shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all"
           >
             <svg
               class="h-4 w-4"
@@ -232,30 +232,30 @@ try {
           >
           </div>
           <div
-            class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-6"
+            class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm p-6"
           >
-            <h3 class="text-lg font-semibold text-white mb-4">
+            <h3 class="text-lg font-semibold text-foreground mb-4">
               Add a new deploy key
             </h3>
             <form class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-white mb-2"
+                <label class="block text-sm font-medium text-foreground mb-2"
                   >Title</label
                 >
                 <input
                   type="text"
                   placeholder="e.g., Production Server"
-                  class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                  class="w-full rounded-lg border border-border bg-secondary px-4 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-white mb-2"
+                <label class="block text-sm font-medium text-foreground mb-2"
                   >Key</label
                 >
                 <textarea
                   rows="4"
                   placeholder="Paste your public SSH key here..."
-                  class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all resize-none font-mono text-sm"
+                  class="w-full rounded-lg border border-border bg-secondary px-4 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all resize-none font-mono text-sm"
                 ></textarea>
               </div>
               <div class="flex items-center gap-3">
@@ -264,7 +264,7 @@ try {
                   id="allow-write"
                   class="accent-cyan-500"
                 />
-                <label for="allow-write" class="text-sm text-gray-300">
+                <label for="allow-write" class="text-sm text-muted-foreground">
                   Allow write access
                 </label>
               </div>
@@ -272,13 +272,13 @@ try {
                 <button
                   type="button"
                   id="cancel-add-key"
-                  class="px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-sm text-gray-300 hover:bg-white/10 transition-colors"
+                  class="px-4 py-2 rounded-lg border border-border bg-secondary text-sm text-muted-foreground hover:bg-secondary/80 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  class="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-sm font-medium text-white"
+                  class="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-sm font-medium text-foreground"
                 >
                   Add key
                 </button>
@@ -294,13 +294,13 @@ try {
           >
           </div>
           <div
-            class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm overflow-hidden"
+            class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden"
           >
             {
               deployKeys.length > 0 ? (
                 <div class="divide-y divide-white/5">
                   {deployKeys.map((key: any) => (
-                    <div class="flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors">
+                    <div class="flex items-center justify-between p-4 hover:bg-accent/50 transition-colors">
                       <div class="flex items-center gap-3">
                         <div class="p-2 rounded-lg bg-cyan-500/10">
                           <svg
@@ -318,8 +318,8 @@ try {
                           </svg>
                         </div>
                         <div>
-                          <div class="font-medium text-white">{key.title}</div>
-                          <div class="text-xs text-gray-500">
+                          <div class="font-medium text-foreground">{key.title}</div>
+                          <div class="text-xs text-muted-foreground">
                             Added {new Date(key.createdAt).toLocaleDateString()}{" "}
                             •{key.readOnly ? "Read-only" : "Read/Write"}
                           </div>
@@ -349,16 +349,16 @@ try {
                     </svg>
                     <div class="absolute inset-0 bg-cyan-500 blur-2xl opacity-20" />
                   </div>
-                  <h2 class="text-xl font-bold text-white mb-2">
+                  <h2 class="text-xl font-bold text-foreground mb-2">
                     No deploy keys yet
                   </h2>
-                  <p class="text-gray-500 mb-6 max-w-md mx-auto">
+                  <p class="text-muted-foreground mb-6 max-w-md mx-auto">
                     Deploy keys allow servers to access your repository without
                     requiring authentication from a user account.
                   </p>
                   <button
                     id="add-first-key-btn"
-                    class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-sm font-medium text-white shadow-lg shadow-cyan-500/25"
+                    class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-sm font-medium text-foreground shadow-lg shadow-cyan-500/25"
                   >
                     <svg
                       class="h-4 w-4"

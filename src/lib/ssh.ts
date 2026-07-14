@@ -19,6 +19,7 @@ const SSH_RATE_LIMIT: {
   maxFailures: number;
   windowMs: number;
   blockMs: number;
+  maxEntries: number;
   map: Map<
     string,
     { failures: number; firstFailure: number; blockedUntil: number }
@@ -27,6 +28,7 @@ const SSH_RATE_LIMIT: {
   maxFailures: 5,
   windowMs: 60_000, // 1-minute window
   blockMs: 5 * 60_000, // 5-minute block after threshold
+  maxEntries: 10_000, // Max tracked IPs to prevent memory leak
   map: new Map(),
 };
 
@@ -55,6 +57,19 @@ function recordSshFailure(ip: string): void {
   const entry = SSH_RATE_LIMIT.map.get(ip);
 
   if (!entry || now - entry.firstFailure > SSH_RATE_LIMIT.windowMs) {
+    // Evict oldest entries if map is full
+    if (SSH_RATE_LIMIT.map.size >= SSH_RATE_LIMIT.maxEntries) {
+      let oldestKey = "";
+      let oldestTime = Infinity;
+      for (const [key, val] of SSH_RATE_LIMIT.map) {
+        if (val.firstFailure < oldestTime) {
+          oldestTime = val.firstFailure;
+          oldestKey = key;
+        }
+      }
+      if (oldestKey) SSH_RATE_LIMIT.map.delete(oldestKey);
+    }
+
     SSH_RATE_LIMIT.map.set(ip, {
       failures: 1,
       firstFailure: now,
@@ -408,11 +423,11 @@ export function validateSSHPublicKey(key: string): boolean {
 /**
  * Parse SSH public key to get type and fingerprint
  */
-export function parseSSHPublicKey(key: string): {
+export async function parseSSHPublicKey(key: string): Promise<{
   type: string;
   fingerprint: string;
   comment?: string;
-} | null {
+} | null> {
   const parts = key.trim().split(" ");
   if (parts.length < 2) return null;
 
@@ -421,9 +436,9 @@ export function parseSSHPublicKey(key: string): {
   const comment = parts.slice(2).join(" ") || undefined;
 
   // Generate fingerprint
-  const crypto = require("crypto");
+  const nodeCrypto = await import("crypto");
   const buffer = Buffer.from(data, "base64");
-  const hash = crypto.createHash("sha256").update(buffer).digest("base64");
+  const hash = nodeCrypto.createHash("sha256").update(buffer).digest("base64");
   const fingerprint = `SHA256:${hash.replace(/=+$/, "")}`;
 
   return { type, fingerprint, comment };

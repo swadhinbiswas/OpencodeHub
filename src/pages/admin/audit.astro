@@ -70,7 +70,7 @@ const [logs, totalResult] = await Promise.all([
     },
   }),
   db
-    .select({ count: sql`count` })
+    .select({ count: sql`count(*)` })
     .from(schema.auditLogs)
     .where(whereClause)
     .limit(1),

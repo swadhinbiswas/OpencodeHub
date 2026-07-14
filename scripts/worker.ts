@@ -44,11 +44,11 @@ async function runQueueProcessor() {
   const db = getDatabase();
 
   try {
-    // 1. Reclaim stale jobs (stuck in "processing" too long)
+    // 1. Reclaim stale jobs (stuck in "running" too long)
     try {
       const staleThreshold = new Date(Date.now() - STALE_JOB_TIMEOUT_MS);
       const staleItems = await db.query.mergeQueueItems.findMany({
-        where: eq(schema.mergeQueueItems.status, "processing"),
+        where: eq(schema.mergeQueueItems.status, "running"),
         columns: { id: true, startedAt: true },
       });
       for (const item of staleItems) {
@@ -57,6 +57,7 @@ async function runQueueProcessor() {
             .update(schema.mergeQueueItems)
             .set({ status: "queued" })
             .where(eq(schema.mergeQueueItems.id, item.id));
+          logger.warn({ itemId: item.id }, "Reclaimed stale queue item");
         }
       }
     } catch {
@@ -169,8 +170,8 @@ function setupGracefulShutdown(healthServer: ReturnType<typeof createServer>) {
     logger.info({ signal }, "Worker shutting down gracefully...");
     healthServer.close();
 
-    // Give in-flight jobs up to 30s to complete
-    await sleep(2000);
+    // Give in-flight jobs up to 10s to complete
+    await sleep(10_000);
     logger.info("Worker shutdown complete.");
     process.exit(0);
   };

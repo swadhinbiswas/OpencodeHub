@@ -32,47 +32,130 @@
   }
 
   .dark {
-    /* Premium Design System - OpenCodeHub Landing */
+    /* Premium Design System - OpenCodeHub Landing (Default Dark) */
     --background: 227 45% 5%;
-    /* #0B1020 */
     --foreground: 228 33% 92%;
-    /* #E6E8F0 */
     --card: 229 40% 12%;
-    /* #12172A */
     --card-foreground: 228 33% 92%;
     --popover: 229 40% 12%;
     --popover-foreground: 228 33% 92%;
     --primary: 233 100% 74%;
-    /* #7C8CFF */
     --primary-foreground: 227 45% 5%;
     --secondary: 230 100% 82%;
-    /* #A3B3FF */
     --secondary-foreground: 227 45% 5%;
     --muted: 229 40% 12%;
     --muted-foreground: 216 11% 65%;
-    /* #9AA3B2 */
     --accent: 233 100% 74%;
     --accent-foreground: 227 45% 5%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
     --border: 0 0% 100% / 0.06;
-    /* borderSubtle */
     --input: 229 40% 12%;
     --ring: 233 100% 74%;
     --success: 142 70% 58%;
-    /* #4ADE80 */
-
-    /* Premium gradients and effects */
     --hero-gradient: radial-gradient(ellipse at top center, hsl(229 40% 18%) 0%, hsl(227 45% 5%) 60%);
     --glass-blur: 20px;
     --glass-bg: rgba(18, 23, 42, 0.6);
+  }
 
-    /* Chart colors */
-    --chart-1: 233 100% 74%;
-    --chart-2: 142 70% 58%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+  /* GitHub Dark Theme */
+  [data-theme="github-dark"] {
+    --background: 216 28% 7%;
+    --foreground: 210 17% 82%;
+    --card: 215 22% 10%;
+    --card-foreground: 210 17% 82%;
+    --popover: 215 22% 10%;
+    --popover-foreground: 210 17% 82%;
+    --primary: 212 92% 63%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 212 92% 63%;
+    --secondary-foreground: 216 28% 7%;
+    --muted: 215 22% 14%;
+    --muted-foreground: 212 9% 53%;
+    --accent: 215 22% 14%;
+    --accent-foreground: 210 17% 82%;
+    --destructive: 354 70% 54%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 215 14% 34%;
+    --input: 215 14% 34%;
+    --ring: 212 92% 63%;
+    --hero-gradient: radial-gradient(ellipse at top center, hsl(215 22% 14%) 0%, hsl(216 28% 7%) 60%);
+    --glass-bg: rgba(13, 17, 23, 0.6);
+  }
+
+  /* Dracula Theme */
+  [data-theme="dracula"] {
+    --background: 231 15% 18%;
+    --foreground: 60 30% 96%;
+    --card: 231 15% 20%;
+    --card-foreground: 60 30% 96%;
+    --popover: 231 15% 20%;
+    --popover-foreground: 60 30% 96%;
+    --primary: 326 100% 74%;
+    --primary-foreground: 231 15% 18%;
+    --secondary: 265 89% 78%;
+    --secondary-foreground: 231 15% 18%;
+    --muted: 231 15% 25%;
+    --muted-foreground: 225 27% 51%;
+    --accent: 231 15% 25%;
+    --accent-foreground: 60 30% 96%;
+    --destructive: 0 100% 67%;
+    --destructive-foreground: 60 30% 96%;
+    --border: 231 15% 25%;
+    --input: 231 15% 25%;
+    --ring: 326 100% 74%;
+    --hero-gradient: radial-gradient(ellipse at top center, hsl(231 15% 25%) 0%, hsl(231 15% 18%) 60%);
+    --glass-bg: rgba(40, 42, 54, 0.6);
+  }
+
+  /* Rose Pine Theme */
+  [data-theme="rose-pine"] {
+    --background: 249 22% 12%;
+    --foreground: 248 19% 89%;
+    --card: 247 23% 15%;
+    --card-foreground: 248 19% 89%;
+    --popover: 247 23% 15%;
+    --popover-foreground: 248 19% 89%;
+    --primary: 343 35% 65%;
+    --primary-foreground: 249 22% 12%;
+    --secondary: 261 43% 73%;
+    --secondary-foreground: 249 22% 12%;
+    --muted: 248 25% 18%;
+    --muted-foreground: 248 12% 52%;
+    --accent: 248 25% 18%;
+    --accent-foreground: 248 19% 89%;
+    --destructive: 343 35% 65%;
+    --destructive-foreground: 249 22% 12%;
+    --border: 248 25% 18%;
+    --input: 248 25% 18%;
+    --ring: 343 35% 65%;
+    --hero-gradient: radial-gradient(ellipse at top center, hsl(247 23% 15%) 0%, hsl(249 22% 12%) 60%);
+    --glass-bg: rgba(25, 23, 36, 0.6);
+  }
+
+  /* Tokyo Night Theme */
+  [data-theme="tokyo-night"] {
+    --background: 235 18% 14%;
+    --foreground: 227 70% 87%;
+    --card: 235 18% 16%;
+    --card-foreground: 227 70% 87%;
+    --popover: 235 18% 16%;
+    --popover-foreground: 227 70% 87%;
+    --primary: 263 70% 74%;
+    --primary-foreground: 235 18% 14%;
+    --secondary: 204 88% 70%;
+    --secondary-foreground: 235 18% 14%;
+    --muted: 235 18% 20%;
+    --muted-foreground: 228 17% 41%;
+    --accent: 235 18% 20%;
+    --accent-foreground: 227 70% 87%;
+    --destructive: 354 87% 68%;
+    --destructive-foreground: 235 18% 14%;
+    --border: 235 18% 20%;
+    --input: 235 18% 20%;
+    --ring: 263 70% 74%;
+    --hero-gradient: radial-gradient(ellipse at top center, hsl(235 18% 20%) 0%, hsl(235 18% 14%) 60%);
+    --glass-bg: rgba(26, 27, 38, 0.6);
   }
 }
 
@@ -496,4 +579,89 @@
 
 .animate-gradient-x {
   animation: gradient-x 3s ease infinite;
+}
+
+/* ====== Responsive Utilities ====== */
+
+/* Hide scrollbar on mobile */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Better mobile spacing */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  /* Stack grid items on mobile */
+  .grid-cols-2 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 640px) and (max-width: 1024px) {
+  .container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+/* Touch-friendly interactive elements */
+@media (hover: none) and (pointer: coarse) {
+  button, a, input, textarea, select {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Remove hover effects on touch devices */
+  .hover\:-translate-y-1:hover,
+  .hover\:scale-105:hover {
+    transform: none;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Focus visible for keyboard navigation */
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Prevent layout shift from lazy images */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Better overflow handling */
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
 }

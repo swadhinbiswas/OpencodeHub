@@ -27,6 +27,45 @@ export function RepoActions({
     isLoggedIn
 }: RepoActionsProps) {
     const [isForking, setIsForking] = React.useState(false);
+    const [isStarred, setIsStarred] = React.useState(false);
+    const [currentStarCount, setCurrentStarCount] = React.useState(stars);
+    const [isStarring, setIsStarring] = React.useState(false);
+
+    React.useEffect(() => {
+        const starred = localStorage.getItem(`starred_${owner}_${repo}`);
+        if (starred === "true") {
+            setIsStarred(true);
+        }
+    }, [owner, repo]);
+
+    const handleStar = async () => {
+        if (isStarring) return;
+        setIsStarring(true);
+
+        const newStarredState = !isStarred;
+        try {
+            const response = await fetch(`/api/repos/${owner}/${repo}/star`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: newStarredState ? "star" : "unstar" }),
+            });
+
+            if (response.ok) {
+                setIsStarred(newStarredState);
+                setCurrentStarCount(prev => newStarredState ? prev + 1 : prev - 1);
+                
+                if (newStarredState) {
+                    localStorage.setItem(`starred_${owner}_${repo}`, "true");
+                } else {
+                    localStorage.removeItem(`starred_${owner}_${repo}`);
+                }
+            }
+        } catch (error) {
+            console.error("Error starring repo:", error);
+        } finally {
+            setIsStarring(false);
+        }
+    };
 
     const handleFork = async () => {
         if (!isLoggedIn) {
@@ -108,12 +147,18 @@ export function RepoActions({
                 <Button
                     variant="ghost"
                     size="sm"
-                    className="rounded-none border-r px-3 hover:bg-muted"
+                    onClick={handleStar}
+                    disabled={isStarring}
+                    className={`rounded-none border-r px-3 hover:bg-muted ${isStarred ? 'text-amber-500' : ''}`}
                 >
-                    <Star className="mr-2 h-4 w-4 text-muted-foreground" />
-                    Star
-                    <span className="ml-2 rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-xs font-medium">
-                        {stars}
+                    {isStarring ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                        <Star className={`mr-2 h-4 w-4 ${isStarred ? 'fill-amber-500' : 'text-muted-foreground'}`} />
+                    )}
+                    {isStarred ? 'Starred' : 'Star'}
+                    <span className="ml-2 rounded-full bg-muted text-foreground px-2 py-0.5 text-xs font-medium">
+                        {currentStarCount}
                     </span>
                 </Button>
                 <Button

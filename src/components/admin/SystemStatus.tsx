@@ -73,14 +73,14 @@ function GlowingGauge({
             <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <Icon className={`w-4 h-4 mb-1`} style={{ color: gradientColors[0] }} />
                 <motion.span
-                    className="text-2xl font-bold font-mono text-white"
+                    className="text-2xl font-bold font-mono text-foreground"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
                 >
                     {value}%
                 </motion.span>
-                <span className="text-[10px] text-gray-400 uppercase tracking-wider mt-0.5">{label}</span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">{label}</span>
             </div>
         </motion.div>
     );
@@ -120,14 +120,14 @@ export default function SystemStatus({ status }: SystemStatusProps) {
                 <div className="relative glass-panel px-6 py-4 rounded-2xl flex items-center justify-between gap-6 text-xs">
                     {/* Storage Linear Bar */}
                     <div className="flex-1">
-                        <div className="flex justify-between mb-1.5 text-gray-400">
+                        <div className="flex justify-between mb-1.5 text-muted-foreground">
                             <span className="flex items-center gap-1.5">
                                 <HardDrive className="w-3 h-3 text-emerald-400" />
                                 <span className="text-emerald-400/80">Storage</span>
                             </span>
                             <span className="text-emerald-400 font-mono">{status.storageUsage}%</span>
                         </div>
-                        <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-2 bg-secondary rounded-full overflow-hidden">
                             <motion.div
                                 className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500"
                                 initial={{ width: 0 }}
@@ -141,10 +141,10 @@ export default function SystemStatus({ status }: SystemStatusProps) {
 
                     {/* Uptime */}
                     <div className="flex flex-col items-center">
-                        <span className="text-gray-500 uppercase tracking-widest text-[10px] mb-1">Uptime</span>
+                        <span className="text-muted-foreground uppercase tracking-widest text-[10px] mb-1">Uptime</span>
                         <div className="flex items-center gap-1.5">
                             <Activity className="w-3 h-3 text-blue-400" />
-                            <span className="font-mono text-white font-medium">{status.uptime}</span>
+                            <span className="font-mono text-foreground font-medium">{status.uptime}</span>
                         </div>
                     </div>
 
@@ -152,7 +152,7 @@ export default function SystemStatus({ status }: SystemStatusProps) {
 
                     {/* Runners */}
                     <div className="flex flex-col items-center">
-                        <span className="text-gray-500 uppercase tracking-widest text-[10px] mb-1">Runners</span>
+                        <span className="text-muted-foreground uppercase tracking-widest text-[10px] mb-1">Runners</span>
                         <div className="flex items-center gap-2">
                             <motion.span
                                 className="relative flex h-2.5 w-2.5"

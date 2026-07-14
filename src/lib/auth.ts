@@ -154,13 +154,13 @@ export async function createSession(
 /**
  * Generate SSH key fingerprint
  */
-export function generateSSHFingerprint(publicKey: string): string {
-  const crypto = require("crypto");
+export async function generateSSHFingerprint(publicKey: string): Promise<string> {
+  const nodeCrypto = await import("crypto");
   // Extract the key data (ignore type and comment)
   const parts = publicKey.trim().split(" ");
   const keyData = parts.length >= 2 ? parts[1] : parts[0];
   const buffer = Buffer.from(keyData, "base64");
-  const hash = crypto.createHash("sha256").update(buffer).digest("base64");
+  const hash = nodeCrypto.createHash("sha256").update(buffer).digest("base64");
   return `SHA256:${hash.replace(/=+$/, "")}`;
 }
 

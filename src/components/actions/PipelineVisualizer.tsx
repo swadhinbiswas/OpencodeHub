@@ -126,7 +126,7 @@ export function PipelineVisualizer({ jobs, onJobClick, activeJobId }: PipelineVi
     };
 
     const getNodeStyles = (status: string, conclusion: string | null, isActive: boolean) => {
-        let base = "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10";
+        let base = "bg-secondary border-border text-slate-300 hover:bg-secondary/80";
         let shadow = "";
         
         if (status === "queued") {
@@ -152,7 +152,7 @@ export function PipelineVisualizer({ jobs, onJobClick, activeJobId }: PipelineVi
     return (
         <div 
             ref={containerRef} 
-            className="relative w-full overflow-x-auto overflow-y-hidden p-8 flex gap-20 min-h-[300px] rounded-2xl border border-white/10 bg-[#06090e] shadow-2xl"
+            className="relative w-full overflow-x-auto overflow-y-hidden p-8 flex gap-20 min-h-[300px] rounded-2xl border border-border bg-[#06090e] shadow-2xl"
             style={{
                 backgroundImage: `
                     radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.05) 0%, transparent 70%),

@@ -113,7 +113,7 @@ export function RepoControls({
                 {/* Clone Button */}
                 <Popover open={openClone} onOpenChange={setOpenClone}>
                     <PopoverTrigger asChild>
-                        <Button className="gap-2 bg-green-600 hover:bg-green-700 text-white">
+                        <Button className="gap-2 bg-green-600 hover:bg-green-700 text-foreground">
                             <Code className="h-4 w-4" />
                             Code
                             <ChevronDown className="h-4 w-4" />

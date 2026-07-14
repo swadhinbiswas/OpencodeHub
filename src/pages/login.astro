@@ -20,7 +20,7 @@ Astro.response.headers.append("Set-Cookie", cookie);
             class="p-2 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600"
           >
             <svg
-              class="h-8 w-8 text-white"
+              class="h-8 w-8 text-foreground"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -32,7 +32,7 @@ Astro.response.headers.append("Set-Cookie", cookie);
                 d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
             </svg>
           </div>
-          <span class="text-2xl font-bold text-white">OpenCodeHub</span>
+          <span class="text-2xl font-bold text-foreground">OpenCodeHub</span>
         </a>
       </div>
 
@@ -43,11 +43,11 @@ Astro.response.headers.append("Set-Cookie", cookie);
         >
         </div>
         <div
-          class="relative rounded-2xl border border-white/10 bg-[#0d1117]/90 backdrop-blur-xl p-8"
+          class="relative rounded-2xl border border-border bg-card/90 backdrop-blur-xl p-8"
         >
           <div class="text-center mb-6">
-            <h1 class="text-2xl font-bold text-white mb-2">Welcome back</h1>
-            <p class="text-gray-500 text-sm">
+            <h1 class="text-2xl font-bold text-foreground mb-2">Welcome back</h1>
+            <p class="text-muted-foreground text-sm">
               Sign in to your account to continue
             </p>
           </div>
@@ -56,7 +56,7 @@ Astro.response.headers.append("Set-Cookie", cookie);
             <div class="space-y-2">
               <label
                 for="login"
-                class="block text-sm font-medium text-gray-300"
+                class="block text-sm font-medium text-muted-foreground"
               >
                 Username or Email
               </label>
@@ -66,7 +66,7 @@ Astro.response.headers.append("Set-Cookie", cookie);
                 type="text"
                 placeholder="Enter your username or email"
                 required
-                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                class="w-full rounded-lg border border-border bg-secondary px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
               />
             </div>
 
@@ -74,7 +74,7 @@ Astro.response.headers.append("Set-Cookie", cookie);
               <div class="flex items-center justify-between">
                 <label
                   for="password"
-                  class="block text-sm font-medium text-gray-300"
+                  class="block text-sm font-medium text-muted-foreground"
                 >
                   Password
                 </label>
@@ -91,14 +91,14 @@ Astro.response.headers.append("Set-Cookie", cookie);
                 type="password"
                 placeholder="Enter your password"
                 required
-                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                class="w-full rounded-lg border border-border bg-secondary px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all"
               />
             </div>
 
             <div id="totp-container" class="space-y-2 hidden">
               <label
                 for="totpCode"
-                class="block text-sm font-medium text-gray-300"
+                class="block text-sm font-medium text-muted-foreground"
               >
                 Two-Factor Code
               </label>
@@ -107,7 +107,7 @@ Astro.response.headers.append("Set-Cookie", cookie);
                 name="totpCode"
                 type="text"
                 placeholder="000 000"
-                class="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all font-mono tracking-widest text-center text-lg"
+                class="w-full rounded-lg border border-border bg-secondary px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all font-mono tracking-widest text-center text-lg"
                 maxlength="6"
               />
             </div>
@@ -124,7 +124,7 @@ Astro.response.headers.append("Set-Cookie", cookie);
             <button
               type="submit"
               id="submit-btn"
-              class="w-full py-3 px-4 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-medium shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              class="w-full py-3 px-4 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-foreground font-medium shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
             >
               Sign in
             </button>
@@ -133,7 +133,7 @@ Astro.response.headers.append("Set-Cookie", cookie);
 
 
           <!-- Footer -->
-          <p class="text-center text-sm text-gray-500 mt-6">
+          <p class="text-center text-sm text-muted-foreground mt-6">
             Don't have an account?{" "}
             <a
               href="/register"

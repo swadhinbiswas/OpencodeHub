@@ -145,10 +145,13 @@ export class LocalStorageAdapter extends StorageAdapter {
 
     if (options?.range) {
       const fd = await fs.open(fullPath, "r");
-      const buffer = Buffer.alloc(options.range.end - options.range.start + 1);
-      await fd.read(buffer, 0, buffer.length, options.range.start);
-      await fd.close();
-      return buffer;
+      try {
+        const buffer = Buffer.alloc(options.range.end - options.range.start + 1);
+        await fd.read(buffer, 0, buffer.length, options.range.start);
+        return buffer;
+      } finally {
+        await fd.close();
+      }
     }
 
     return fs.readFile(fullPath);

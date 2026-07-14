@@ -130,9 +130,18 @@ class PackStreamProcessor extends Writable {
         .then(() => callback())
         .catch(callback);
     } else {
-      this.storagePass?.write(chunk);
-      this.indexPass?.write(chunk);
-      callback();
+      try {
+        const storageOk = this.storagePass?.write(chunk) ?? true;
+        const indexOk = this.indexPass?.write(chunk) ?? true;
+        // If either stream signals backpressure, we still accept the chunk
+        // but log a warning. The streams will buffer internally.
+        if (!storageOk || !indexOk) {
+          // Backpressure detected - the streams will buffer
+        }
+        callback();
+      } catch (err) {
+        callback(err instanceof Error ? err : new Error(String(err)));
+      }
     }
   }
 

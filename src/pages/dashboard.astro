@@ -112,7 +112,7 @@ function getActivityIcon(type: string, action: string) {
     default:
       return {
         icon: "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-        color: "text-gray-400",
+        color: "text-muted-foreground",
         bg: "bg-gray-500/10",
       };
   }
@@ -150,14 +150,14 @@ function getActivityText(activity: any) {
       <div class="flex items-center gap-4">
         <UserAvatar
           user={user}
-          className="h-16 w-16 border-2 border-white/10"
+          className="h-16 w-16 border-2 border-border"
           client:load
         />
         <div>
-          <h1 class="text-3xl font-bold text-white tracking-tight">
+          <h1 class="text-3xl font-bold text-foreground tracking-tight">
             Welcome back, {user.displayName || user.username}
           </h1>
-          <p class="text-gray-400">
+          <p class="text-muted-foreground">
             Manage your repositories and development workflow.
           </p>
         </div>
@@ -166,7 +166,7 @@ function getActivityText(activity: any) {
         <a href="/stacks">
           <Button
             variant="outline"
-            className="border-white/10 text-gray-300 hover:text-white hover:bg-white/5"
+            className="border-border text-muted-foreground hover:text-foreground hover:bg-accent"
           >
             <svg
               class="mr-2 h-4 w-4"
@@ -185,7 +185,7 @@ function getActivityText(activity: any) {
         </a>
         <a href="/new">
           <Button
-            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white border-0 shadow-lg shadow-green-500/20"
+            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-foreground border-0 shadow-lg shadow-green-500/20"
           >
             <svg
               class="mr-2 h-4 w-4"
@@ -206,19 +206,19 @@ function getActivityText(activity: any) {
 
     <!-- Stats Grid -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <Card className="bg-[#0d1117]/50 border-white/10 backdrop-blur-sm">
+      <Card className="bg-card/50 border-border backdrop-blur-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-gray-400"
+          <CardTitle className="text-sm font-medium text-muted-foreground"
             >Total Repositories</CardTitle
           >
         </CardHeader>
         <CardContent>
-          <div class="text-3xl font-bold text-white">{repos.length}</div>
+          <div class="text-3xl font-bold text-foreground">{repos.length}</div>
         </CardContent>
       </Card>
-      <Card className="bg-[#0d1117]/50 border-white/10 backdrop-blur-sm">
+      <Card className="bg-card/50 border-border backdrop-blur-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-gray-400"
+          <CardTitle className="text-sm font-medium text-muted-foreground"
             >Total Stars</CardTitle
           >
         </CardHeader>
@@ -226,9 +226,9 @@ function getActivityText(activity: any) {
           <div class="text-3xl font-bold text-yellow-400">{totalStars}</div>
         </CardContent>
       </Card>
-      <Card className="bg-[#0d1117]/50 border-white/10 backdrop-blur-sm">
+      <Card className="bg-card/50 border-border backdrop-blur-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-gray-400"
+          <CardTitle className="text-sm font-medium text-muted-foreground"
             >Total Forks</CardTitle
           >
         </CardHeader>
@@ -243,7 +243,7 @@ function getActivityText(activity: any) {
       <!-- Left Sidebar: User Profile context & Repositories -->
       <div class="lg:col-span-4 xl:col-span-3 space-y-6">
         <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+          <h2 class="text-lg font-semibold text-foreground flex items-center gap-2">
             Repositories
           </h2>
           <a href="/new" class="text-sm bg-green-500/20 text-green-400 px-2 py-1 rounded hover:bg-green-500/30 transition-colors">
@@ -251,22 +251,22 @@ function getActivityText(activity: any) {
           </a>
         </div>
         
-        <div class="bg-[#0d1117]/80 border border-white/10 rounded-xl overflow-hidden">
-          <div class="p-3 border-b border-white/10 bg-white/5">
-            <input type="text" placeholder="Find a repository..." class="w-full bg-[#010409] border border-white/10 rounded-md px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500/50" />
+        <div class="bg-card/80 border border-border rounded-xl overflow-hidden">
+          <div class="p-3 border-b border-border bg-secondary">
+            <input type="text" placeholder="Find a repository..." class="w-full bg-background border border-border rounded-md px-3 py-1.5 text-sm text-foreground placeholder-gray-500 focus:outline-none focus:border-cyan-500/50" />
           </div>
           <div class="max-h-[600px] overflow-y-auto">
             {repos.length > 0 ? (
               <ul class="divide-y divide-white/5">
                 {repos.map((repo) => (
                   <li>
-                    <a href={`/${user.username}/${repo.name}`} class="block p-3 hover:bg-white/5 transition-colors group">
+                    <a href={`/${user.username}/${repo.name}`} class="block p-3 hover:bg-accent transition-colors group">
                       <div class="flex items-center gap-2 mb-1">
                         <div class="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center">
                           <img src={`https://api.dicebear.com/7.x/identicon/svg?seed=${repo.ownerId}`} class="rounded-full w-4 h-4" />
                         </div>
                         <span class="text-sm font-medium text-blue-400 group-hover:underline truncate">{user.username}/{repo.name}</span>
-                        <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0 h-4 bg-transparent border-white/20 text-gray-400">
+                        <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0 h-4 bg-transparent border-border/80 text-muted-foreground">
                           {repo.visibility}
                         </Badge>
                       </div>
@@ -275,7 +275,7 @@ function getActivityText(activity: any) {
                 ))}
               </ul>
             ) : (
-              <div class="p-4 text-center text-sm text-gray-500">No repositories yet.</div>
+              <div class="p-4 text-center text-sm text-muted-foreground">No repositories yet.</div>
             )}
           </div>
         </div>
@@ -289,7 +289,7 @@ function getActivityText(activity: any) {
           inboxItems.length > 0 && (
             <div class="space-y-4">
               <div class="flex items-center justify-between">
-                <h2 class="text-xl font-semibold text-white flex items-center gap-2">
+                <h2 class="text-xl font-semibold text-foreground flex items-center gap-2">
                   <svg
                     class="h-5 w-5 text-yellow-400"
                     fill="none"
@@ -318,7 +318,7 @@ function getActivityText(activity: any) {
                     href={`/${item.repository.owner}/${item.repository.name}/pulls/${item.number}`}
                     class="block group"
                   >
-                    <Card className="bg-[#0d1117]/80 border-white/10 hover:border-white/20 hover:bg-[#161b22] transition-all duration-200">
+                    <Card className="bg-card/80 border-border hover:border-border/80 hover:bg-accent transition-all duration-200">
                       <CardContent className="p-4 flex items-center justify-between gap-4">
                         <div class="flex items-center gap-4 min-w-0">
                           <div class="flex-shrink-0">
@@ -390,13 +390,13 @@ function getActivityText(activity: any) {
                             )}
                           </div>
                           <div class="min-w-0">
-                            <p class="text-sm font-medium text-white truncate group-hover:text-cyan-400 transition-colors">
+                            <p class="text-sm font-medium text-foreground truncate group-hover:text-cyan-400 transition-colors">
                               {item.title}
-                              <span class="text-gray-500 font-normal ml-2">
+                              <span class="text-muted-foreground font-normal ml-2">
                                 #{item.number}
                               </span>
                             </p>
-                            <div class="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
+                            <div class="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
                               <span>
                                 {item.repository.owner}/{item.repository.name}
                               </span>
@@ -405,7 +405,7 @@ function getActivityText(activity: any) {
                             </div>
                           </div>
                         </div>
-                        <div class="text-xs text-gray-500 whitespace-nowrap flex-shrink-0">
+                        <div class="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
                           {timeAgo(item.updatedAt)}
                         </div>
                       </CardContent>
@@ -419,10 +419,10 @@ function getActivityText(activity: any) {
 
         <!-- Recent Activity Feed -->
         <div class="space-y-4">
-          <h2 class="text-xl font-semibold text-white flex items-center gap-2">
+          <h2 class="text-xl font-semibold text-foreground flex items-center gap-2">
             Activity Feed
           </h2>
-          <Card className="bg-[#0d1117]/80 border-white/10 backdrop-blur-sm">
+          <Card className="bg-card/80 border-border backdrop-blur-sm">
             <CardContent className="p-0">
               {
                 activities.length > 0 ? (
@@ -436,17 +436,17 @@ function getActivityText(activity: any) {
                         ? JSON.parse(activity.payload)
                         : {};
                       return (
-                        <div class="flex gap-4 p-5 hover:bg-[#161b22]/50 transition-colors">
+                        <div class="flex gap-4 p-5 hover:bg-accent/50 transition-colors">
                           <UserAvatar user={activity.user} className="w-8 h-8" client:load />
                           <div class="min-w-0 flex-1">
-                            <p class="text-sm text-gray-300">
+                            <p class="text-sm text-muted-foreground">
                               <a
                                 href={`/${activity.user.username}`}
-                                class="font-medium text-white hover:text-blue-400 hover:underline transition-colors"
+                                class="font-medium text-foreground hover:text-blue-400 hover:underline transition-colors"
                               >
                                 {activity.user.username}
                               </a>{" "}
-                              <span class="text-gray-400">
+                              <span class="text-muted-foreground">
                                 {(() => {
                                   switch (activity.type) {
                                     case "create_repo":
@@ -469,7 +469,7 @@ function getActivityText(activity: any) {
                               {activity.repository && (
                                 <a
                                   href={`/${activity.repository.ownerId}/${activity.repository.name}`}
-                                  class="font-medium text-white hover:text-blue-400 hover:underline transition-colors"
+                                  class="font-medium text-foreground hover:text-blue-400 hover:underline transition-colors"
                                 >
                                   {activity.repository.name}
                                 </a>
@@ -478,13 +478,13 @@ function getActivityText(activity: any) {
                                 activity.type === "follow" && (
                                   <a
                                     href={`/${payload.targetUsername}`}
-                                    class="font-medium text-white hover:text-blue-400 hover:underline transition-colors"
+                                    class="font-medium text-foreground hover:text-blue-400 hover:underline transition-colors"
                                   >
                                     {payload.targetUsername}
                                   </a>
                                 )}
                             </p>
-                            <p class="text-xs text-gray-500 mt-1">
+                            <p class="text-xs text-muted-foreground mt-1">
                               {timeAgo(activity.createdAt)}
                             </p>
                           </div>
@@ -494,10 +494,10 @@ function getActivityText(activity: any) {
                   </div>
                 ) : (
                   <div class="text-center py-12">
-                    <h3 class="text-lg font-medium text-white mb-2">Discover interesting projects</h3>
-                    <p class="text-gray-500 mb-6 text-sm">Follow users and star repositories to see activity here.</p>
+                    <h3 class="text-lg font-medium text-foreground mb-2">Discover interesting projects</h3>
+                    <p class="text-muted-foreground mb-6 text-sm">Follow users and star repositories to see activity here.</p>
                     <a href="/explore">
-                      <Button variant="outline" className="border-white/10 text-gray-300">
+                      <Button variant="outline" className="border-border text-muted-foreground">
                         Explore OpenCodeHub
                       </Button>
                     </a>

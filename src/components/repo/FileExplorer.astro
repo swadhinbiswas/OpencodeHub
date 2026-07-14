@@ -1,5 +1,5 @@
 ---
-import { FileText, Folder } from "lucide-react";
+import { Icon } from "astro-icon/components";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 
 interface Props {
@@ -24,6 +24,42 @@ const getUrl = (file: any) => {
   const type = file.type === "directory" ? "tree" : "blob";
   const filePath = path ? `${path}/${file.name}` : file.name;
   return `/${owner}/${repo}/${type}/${branch}/${filePath}`;
+};
+
+const getIconName = (fileName: string) => {
+  const ext = fileName.split(".").pop()?.toLowerCase();
+  const lowerName = fileName.toLowerCase();
+  
+  if (lowerName === "package.json") return "vscode-icons:file-type-node";
+  if (lowerName === "tsconfig.json") return "vscode-icons:file-type-tsconfig";
+  if (lowerName === "dockerfile" || ext === "dockerignore") return "vscode-icons:file-type-docker";
+  if (lowerName === ".gitignore") return "vscode-icons:file-type-git";
+  
+  if (ext === "md") return "vscode-icons:file-type-markdown";
+  if (ext === "json") return "vscode-icons:file-type-json";
+  if (ext === "js" || ext === "cjs" || ext === "mjs") return "vscode-icons:file-type-js";
+  if (ext === "jsx") return "vscode-icons:file-type-reactjs";
+  if (ext === "ts") return "vscode-icons:file-type-typescript";
+  if (ext === "tsx") return "vscode-icons:file-type-reactts";
+  if (ext === "html" || ext === "htm") return "vscode-icons:file-type-html";
+  if (ext === "css") return "vscode-icons:file-type-css";
+  if (ext === "scss" || ext === "sass") return "vscode-icons:file-type-sass";
+  if (ext === "py") return "vscode-icons:file-type-python";
+  if (ext === "go") return "vscode-icons:file-type-go";
+  if (ext === "rs") return "vscode-icons:file-type-rust";
+  if (ext === "java") return "vscode-icons:file-type-java";
+  if (ext === "c") return "vscode-icons:file-type-c";
+  if (ext === "cpp" || ext === "cc" || ext === "cxx") return "vscode-icons:file-type-cpp";
+  if (ext === "h" || ext === "hpp") return "vscode-icons:file-type-cplusplus";
+  if (ext === "sh" || ext === "bash") return "vscode-icons:file-type-shell";
+  if (ext === "yaml" || ext === "yml") return "vscode-icons:file-type-yaml";
+  if (ext === "toml") return "vscode-icons:file-type-toml";
+  if (ext === "xml") return "vscode-icons:file-type-xml";
+  if (ext === "png" || ext === "jpg" || ext === "jpeg" || ext === "gif" || ext === "svg" || ext === "webp") return "vscode-icons:file-type-image";
+  if (ext === "astro") return "vscode-icons:file-type-astro";
+  if (ext === "vue") return "vscode-icons:file-type-vue";
+  
+  return "vscode-icons:default-file";
 };
 ---
 
@@ -55,56 +91,9 @@ const getUrl = (file: any) => {
             <tr class="hover:bg-muted/50 transition-colors group">
               <td class="p-4 py-2.5 w-10">
                 {file.type === "directory" ? (
-                  <svg
-                    class="h-4 w-4 text-blue-500 fill-blue-500"
-                    viewBox="0 0 16 16"
-                    fill="currentColor"
-                  >
-                    <path d="M1.75 1A1.75 1.75 0 0 0 0 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0 0 16 13.25v-8.5A1.75 1.75 0 0 0 14.25 3H7.5a.25.25 0 0 1-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1H1.75Z" />
-                  </svg>
+                  <Icon name="vscode-icons:default-folder" class="h-4 w-4" />
                 ) : (
-                  (() => {
-                    const ext = file.name.split(".").pop()?.toLowerCase();
-                    let iconClass = "text-muted-foreground";
-                    if (
-                      ["js", "jsx", "ts", "tsx", "cjs", "mjs"].includes(
-                        ext || "",
-                      )
-                    )
-                      iconClass = "text-yellow-500";
-                    else if (["html", "htm"].includes(ext || ""))
-                      iconClass = "text-orange-600";
-                    else if (
-                      ["css", "scss", "sass", "less"].includes(ext || "")
-                    )
-                      iconClass = "text-blue-600";
-                    else if (
-                      ["json", "yml", "yaml", "toml"].includes(ext || "")
-                    )
-                      iconClass = "text-yellow-600";
-                    else if (["md", "txt"].includes(ext || ""))
-                      iconClass = "text-gray-400";
-                    else if (
-                      ["png", "jpg", "jpeg", "gif", "svg", "webp"].includes(
-                        ext || "",
-                      )
-                    )
-                      iconClass = "text-purple-500";
-                    else if (["py"].includes(ext || ""))
-                      iconClass = "text-blue-500";
-                    else if (["go"].includes(ext || ""))
-                      iconClass = "text-cyan-500";
-                    else if (["rs"].includes(ext || ""))
-                      iconClass = "text-orange-500";
-                    else if (["java"].includes(ext || ""))
-                      iconClass = "text-red-500";
-                    else if (["c", "cpp", "h", "hpp"].includes(ext || ""))
-                      iconClass = "text-blue-700";
-                    else if (["sh", "bash", "zsh"].includes(ext || ""))
-                      iconClass = "text-green-500";
-
-                    return <FileText className={`h-4 w-4 ${iconClass}`} />;
-                  })()
+                  <Icon name={getIconName(file.name)} class="h-4 w-4" />
                 )}
               </td>
               <td class="p-4 py-2.5">

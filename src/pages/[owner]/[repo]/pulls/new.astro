@@ -94,7 +94,7 @@ if (baseBranch !== headBranch) {
 
 // Fetch open issue count (for header)
 const issueCountResult = await db
-  .select({ count: sql`count` })
+  .select({ count: sql`count(*)` })
   .from(schema.issues)
   .where(
     and(
