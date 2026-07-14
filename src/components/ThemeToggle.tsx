@@ -19,11 +19,7 @@ function getStoredTheme(): Theme {
 function applyTheme(theme: Theme) {
   const html = document.documentElement;
   const isSystemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-<<<<<<< HEAD
   const activeTheme: string = theme === "system" ? (isSystemDark ? "dark" : "light") : theme;
-=======
-  const activeTheme = theme === "system" ? (isSystemDark ? "dark" : "light") : theme;
->>>>>>> origin/main
 
   if (activeTheme === "light") {
     html.classList.remove("dark");
