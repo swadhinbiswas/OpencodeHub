@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
     issues: { state: "state" },
     activities: { userId: "userId", createdAt: "createdAt" },
     releases: {},
+    pipelineRunners: { status: "status" },
   },
 }));
 
