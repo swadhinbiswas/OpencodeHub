@@ -69,7 +69,7 @@ if (!user) {
 </SettingsLayout>
 
 <script>
-  const disableBtn = document.getElementById("disable-2fa-btn");
+  const disableBtn = document.getElementById("disable-2fa-btn") as HTMLButtonElement | null;
 
   disableBtn?.addEventListener("click", async () => {
     if (confirm("Are you sure you want to disable 2FA? This will make your account less secure.")) {

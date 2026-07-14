@@ -64,17 +64,17 @@ let contributionCount = 0;
 try {
   const [result] = await db
     .select({ count: sql`count(*)` })
-    .from(schema.activity)
-    .where(eq(schema.activity.userId, user.id));
+    .from(schema.activities)
+    .where(eq(schema.activities.userId, user.id));
   contributionCount = Number(result?.count) || 0;
 } catch {}
 
 // 7. Fetch recent activity
 let recentActivity: any[] = [];
 try {
-  recentActivity = await db.query.activity.findMany({
-    where: eq(schema.activity.userId, user.id),
-    orderBy: [desc(schema.activity.createdAt)],
+  recentActivity = await db.query.activities.findMany({
+    where: eq(schema.activities.userId, user.id),
+    orderBy: [desc(schema.activities.createdAt)],
     limit: 5,
   });
 } catch {}
