@@ -2,6 +2,7 @@
 import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { eq, count } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { BookOpen, Star } from "lucide-react";
 import HeroSection from "@/components/home/HeroSection";
 import FeaturesSection from "@/components/home/FeaturesSection";
@@ -29,10 +30,11 @@ try {
   });
 
   // Get basic stats
-  const [repoCountResult] = await db.select({ count: count() }).from(schema.repositories).limit(1);
+  const dbTyped = db as NodePgDatabase<typeof schema>;
+  const [repoCountResult] = await dbTyped.select({ count: count() }).from(schema.repositories).limit(1);
   const repoCount = Number(repoCountResult?.count) || 0;
 
-  const [userCountResult] = await db.select({ count: count() }).from(schema.users).limit(1);
+  const [userCountResult] = await dbTyped.select({ count: count() }).from(schema.users).limit(1);
   const userCount = Number(userCountResult?.count) || 0;
 
   stats.repos = repoCount;
