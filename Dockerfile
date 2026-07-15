@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y python3 make g++ gcc libc6-dev && rm -r
 COPY package.json bun.lock ./
 COPY cli/package.json ./cli/package.json
 RUN for i in 1 2 3; do \
-      bun install --frozen-lockfile && break || \
+      bun install --frozen-lockfile --production && break || \
       (echo "bun install attempt $i failed, retrying in 10s..." && sleep 10); \
     done
 
@@ -24,19 +24,20 @@ ENV SKIP_REDIS_CHECK=1
 RUN bun run build
 
 # Production image
-FROM oven/bun:1 AS runner
+FROM oven/bun:1-slim AS runner
 WORKDIR /app
 
 # Install git, ssh, and bash (needed for git operations and entrypoint)
-RUN apt-get update && apt-get install -y git openssh-client bash && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends git openssh-client bash && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create data directories
-RUN mkdir -p /data/repos /data/storage /data/cache /data/ssh && \
+RUN mkdir -p /data/repositories /data/storage /data/cache /data/ssh && \
     chown -R bun:bun /data
 
-# Copy built application
+# Copy only what's needed for runtime
 COPY --from=builder --chown=bun:bun /app/dist ./dist
-COPY --from=builder --chown=bun:bun /app/node_modules ./node_modules
+COPY --from=deps --chown=bun:bun /app/node_modules ./node_modules
 COPY --from=builder --chown=bun:bun /app/package.json ./
 
 # Copy drizzle config and schema for migrations
@@ -51,7 +52,7 @@ COPY --chown=bun:bun docker-entrypoint.sh ./
 ENV HOST=0.0.0.0
 ENV PORT=4321
 ENV DATA_DIR=/data
-ENV REPOS_PATH=/data/repos
+ENV GIT_REPOS_PATH=/data/repositories
 ENV STORAGE_PATH=/data/storage
 ENV CACHE_PATH=/data/cache
 ENV SSH_PATH=/data/ssh
