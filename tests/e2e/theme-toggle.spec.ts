@@ -18,20 +18,26 @@ test.describe("Theme Toggle", () => {
       .first();
 
     if (await themeBtn.isVisible()) {
-      const initialLabel = await themeBtn.getAttribute("aria-label");
       const initialStorage = await page.evaluate(() =>
         localStorage.getItem("theme"),
       );
+
+      // Click the theme toggle button to open dropdown
       await themeBtn.click();
-      await page.waitForTimeout(500);
-      const newLabel = await themeBtn.getAttribute("aria-label");
+      await page.waitForTimeout(300);
+
+      // Click on "Light" menu item to change theme
+      const lightOption = page.locator('text=Light').first();
+      if (await lightOption.isVisible()) {
+        await lightOption.click();
+        await page.waitForTimeout(500);
+      }
+
       const newStorage = await page.evaluate(() =>
         localStorage.getItem("theme"),
       );
-      // Either the aria-label or the persisted theme must change
-      expect(newLabel !== initialLabel || newStorage !== initialStorage).toBe(
-        true,
-      );
+      // The persisted theme must change
+      expect(newStorage).not.toBe(initialStorage);
     }
   });
 
@@ -44,8 +50,17 @@ test.describe("Theme Toggle", () => {
       .first();
 
     if (await themeBtn.isVisible()) {
+      // Click the theme toggle button to open dropdown
       await themeBtn.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(300);
+
+      // Click on "Light" menu item
+      const lightOption = page.locator('text=Light').first();
+      if (await lightOption.isVisible()) {
+        await lightOption.click();
+        await page.waitForTimeout(500);
+      }
+
       const storageAfterClick = await page.evaluate(() =>
         localStorage.getItem("theme"),
       );
