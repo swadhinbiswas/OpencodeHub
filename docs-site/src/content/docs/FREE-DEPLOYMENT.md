@@ -1,3 +1,7 @@
+---
+title: "Free Deployment Options"
+---
+
 # OpenCodeHub — Free Deployment Options
 
 > Deploy OpenCodeHub for free with persistent file storage for git repositories.

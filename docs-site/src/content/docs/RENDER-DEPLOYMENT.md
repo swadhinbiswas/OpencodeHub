@@ -1,3 +1,7 @@
+---
+title: "Render Deployment Guide"
+---
+
 # OpenCodeHub — Render Deployment Guide
 
 > Deploy to Render (Singapore) with free PostgreSQL + Upstash Redis. $0/month.
