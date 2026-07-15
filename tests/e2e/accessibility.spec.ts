@@ -26,7 +26,7 @@ const PUBLIC_PAGES = [
   { name: "Explore", path: "/explore" },
   { name: "Login", path: "/login" },
   { name: "Register", path: "/register" },
-  { name: "Documentation", path: "/docs/" },
+  // /docs/ redirects to external docs.opencodehub.space — skip in CI
 ];
 
 /**
