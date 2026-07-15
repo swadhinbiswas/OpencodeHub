@@ -45,6 +45,7 @@ vi.mock("@/lib/auth", () => ({
   hashPassword: mocks.hashPasswordMock,
   createSession: mocks.createSessionMock,
   createToken: mocks.createTokenMock,
+  validatePasswordStrength: vi.fn().mockReturnValue({ valid: true, errors: [] }),
 }));
 
 vi.mock("@/lib/utils", () => ({
