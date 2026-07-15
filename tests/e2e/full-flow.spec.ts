@@ -5,7 +5,7 @@ import os from "os";
 import path from "path";
 
 const USERNAME = `user${Date.now()}`;
-const PASSWORD = "password123";
+const PASSWORD = "Password123";
 const EMAIL = `${USERNAME}@example.com`;
 const REPO_NAME = `repo-${Date.now()}`;
 
@@ -16,7 +16,6 @@ test.describe("Full Flow", () => {
     await page.fill("#username", USERNAME);
     await page.fill("#email", EMAIL);
     await page.fill("#password", PASSWORD);
-    // Use the form's explicit id to scope the submit button
     await page.locator('#register-form button[type="submit"]').first().click();
 
     // Wait for navigation to dashboard

@@ -11,10 +11,10 @@
 }
 
 :root {
-  --och-accent-1: #2dd4bf;
-  --och-accent-2: #8be9fd;
-  --och-accent-3: #bd93f9;
-  --och-accent-4: #ff79c6;
+  --och-accent-1: #0d9488;
+  --och-accent-2: #38bdf8;
+  --och-accent-3: #a78bfa;
+  --och-accent-4: #f472b6;
 
   --och-hero-surface: color-mix(in srgb, var(--sl-color-bg) 92%, transparent);
 }
