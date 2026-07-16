@@ -13,19 +13,17 @@ if (!user?.isAdmin) return Astro.redirect("/");
 
   </div>
 
-  <style>
-    /* Glassmorphism utility for the HUD */
-    :global(.glass-panel) {
+  <style is:global>
+    .glass-panel {
         background: rgba(13, 17, 23, 0.3);
         backdrop-filter: blur(10px);
         border: 1px solid rgba(255, 255, 255, 0.05);
         box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
     }
-    
-    :global(.custom-scrollbar::-webkit-scrollbar) {
+    .custom-scrollbar::-webkit-scrollbar {
         width: 4px;
     }
-    :global(.custom-scrollbar::-webkit-scrollbar-thumb) {
+    .custom-scrollbar::-webkit-scrollbar-thumb {
         background: rgba(255,255,255,0.1);
         border-radius: 2px;
     }

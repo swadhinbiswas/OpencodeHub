@@ -18,9 +18,10 @@ const { title } = Astro.props;
     <ViewTransitions />
     <style is:global>
       body {
-        @apply bg-[#050510] text-gray-100 overflow-hidden;
+        background-color: #050510;
+        color: #f3f4f6;
+        overflow: hidden;
       }
-      /* Custom scrollbar for small areas */
       ::-webkit-scrollbar {
         width: 6px;
         height: 6px;
