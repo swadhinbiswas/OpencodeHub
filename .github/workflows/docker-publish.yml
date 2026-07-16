@@ -85,5 +85,5 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
           repository: ${{ env.IMAGE_NAME }}
-          readme-filepath: ./README.md
-          short-description: "A modern, self-hosted Git platform with stacked PRs, merge queue, CI/CD, and AI review."
+          readme-filepath: ./DOCKERHUB.md
+          short-description: "Self-hosted Git platform with stacked PRs, merge queue, CI/CD, and AI code review"
