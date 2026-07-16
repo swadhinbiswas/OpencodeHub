@@ -381,40 +381,6 @@ function formatSize(bytes: number) {
    </div>
 </BaseLayout>
 
-<style is:global>
-   /* Custom scrollbar for code block */
-   .custom-scrollbar::-webkit-scrollbar {
-      height: 10px;
-      width: 10px;
-   }
-   .custom-scrollbar::-webkit-scrollbar-track {
-      background: transparent;
-   }
-   .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #30363d;
-      border-radius: 5px;
-      border: 2px solid #0d1117;
-   }
-   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-      background: #424a53;
-   }
-
-   /* Shiki Overrides to match layout */
-   .shiki {
-      background-color: transparent !important;
-      margin: 0 !important;
-      padding: 0 !important;
-   }
-   .shiki code {
-      display: flex;
-      flex-direction: column;
-   }
-   .shiki .line {
-      height: 1.5rem; /* Matches h-6 logic */
-      display: block;
-   }
-</style>
-
 <script
    define:vars={{ initialContent: !fileData.isBinary ? fileData.content : "" }}
 >
