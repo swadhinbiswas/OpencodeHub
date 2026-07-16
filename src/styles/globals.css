@@ -714,3 +714,22 @@ img {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 2px;
 }
+
+/* Base layout styles */
+body {
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+code,
+pre,
+.font-mono {
+  font-family: "JetBrains Mono", monospace;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+html {
+  scroll-behavior: smooth;
+}
