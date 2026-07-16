@@ -16,27 +16,6 @@ const { title } = Astro.props;
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
     <ViewTransitions />
-    <style is:global>
-      body {
-        background-color: #050510;
-        color: #f3f4f6;
-        overflow: hidden;
-      }
-      ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #333;
-        border-radius: 3px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #555;
-      }
-    </style>
   </head>
   <body class="h-screen w-screen flex flex-col font-sans">
     <slot />
