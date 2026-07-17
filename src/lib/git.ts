@@ -1582,11 +1582,12 @@ export async function installHooks(repoPath: string) {
   // process.env wins when explicitly set (CI runners, scripts, systemd);
   // otherwise fall back to import.meta.env (loaded from .env).
   const metaEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
+  const port = process.env.PORT || metaEnv?.PORT || "4321";
   const siteUrl =
     process.env.SITE_URL ||
     metaEnv?.SITE_URL ||
     process.env.PUBLIC_URL ||
-    "http://localhost:3000";
+    `http://localhost:${port}`;
   const hookSecret = process.env.INTERNAL_HOOK_SECRET || metaEnv?.INTERNAL_HOOK_SECRET;
   if (!hookSecret) {
     throw new Error(
