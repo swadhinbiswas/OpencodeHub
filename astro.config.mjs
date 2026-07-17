@@ -21,6 +21,9 @@ export default defineConfig({
     host: true,
   },
   vite: {
+    css: {
+      transformer: 'postcss',
+    },
     server: {
       watch: {
         ignored: ['**/data/**', '**/repos/**', '**/storage/**', '**/.tmp/**', '**/postgres/**', '**/redis/**'],
