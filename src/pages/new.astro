@@ -11,15 +11,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getCsrfToken } from "@/middleware/csrf";
 
 const user = Astro.locals.user;
 if (!user) {
   return Astro.redirect("/login");
 }
-
-const { token, cookie } = getCsrfToken(Astro.request);
-Astro.response.headers.set("Set-Cookie", cookie);
 ---
 
 <BaseLayout title="Create a new repository">
@@ -63,7 +59,6 @@ Astro.response.headers.set("Set-Cookie", cookie);
     </div>
 
     <form id="create-repo-form" class="space-y-8">
-      <input type="hidden" id="csrf-token" value={token} />
       <Card>
         <CardHeader>
           <CardTitle>Repository details</CardTitle>
@@ -331,13 +326,10 @@ Astro.response.headers.set("Set-Cookie", cookie);
           includeAllBranches: formData.get("includeAllBranches") === "on",
         };
 
-        const csrfToken = (document.getElementById("csrf-token") as HTMLInputElement)?.value;
-
         const response = await fetch("/api/repos", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-CSRF-Token": csrfToken || "",
           },
           body: JSON.stringify(data),
         });
