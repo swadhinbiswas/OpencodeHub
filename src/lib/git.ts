@@ -1578,16 +1578,11 @@ export async function installHooks(repoPath: string) {
     await fs.mkdir(hooksDir, { recursive: true });
   }
 
-  // Use environment variable for site URL, fallback to localhost for development
-  // process.env wins when explicitly set (CI runners, scripts, systemd);
-  // otherwise fall back to import.meta.env (loaded from .env).
+  // Internal hooks should always call the local server instance, regardless of SITE_URL
+  // This prevents connection timeouts if SITE_URL is an external IP that the host cannot route to itself.
   const metaEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
   const port = process.env.PORT || metaEnv?.PORT || "4321";
-  const siteUrl =
-    process.env.SITE_URL ||
-    metaEnv?.SITE_URL ||
-    process.env.PUBLIC_URL ||
-    `http://localhost:${port}`;
+  const internalApiUrl = `http://127.0.0.1:${port}`;
   const hookSecret = process.env.INTERNAL_HOOK_SECRET || metaEnv?.INTERNAL_HOOK_SECRET;
   if (!hookSecret) {
     throw new Error(
@@ -1603,11 +1598,11 @@ if [ -z "$HOOK_SECRET" ]; then
 fi
 while read oldrev newrev refname
 do
-    curl -X POST \\
+    curl -sS -X POST \\
       -H "Content-Type: application/json" \\
       -H "X-Hook-Secret: $HOOK_SECRET" \\
       -d "{\\"oldrev\\":\\"$oldrev\\",\\"newrev\\":\\"$newrev\\",\\"refname\\":\\"$refname\\",\\"pusher\\":\\"$REMOTE_USER\\"}" \\
-      ${siteUrl}/api/internal/hooks/post-receive?repo=${encodeURIComponent(repoPath)}
+      ${internalApiUrl}/api/internal/hooks/post-receive?repo=${encodeURIComponent(repoPath)}
 done
 `;
 
@@ -1618,11 +1613,11 @@ if [ -z "$HOOK_SECRET" ]; then
 fi
 while read oldrev newrev refname
 do
-    RESPONSE=$(curl -s -w "%{http_code}" -X POST \\
+    RESPONSE=$(curl -sS -w "%{http_code}" -X POST \\
       -H "Content-Type: application/json" \\
       -H "X-Hook-Secret: $HOOK_SECRET" \\
       -d "{\\"oldrev\\":\\"$oldrev\\",\\"newrev\\":\\"$newrev\\",\\"refname\\":\\"$refname\\",\\"pusher\\":\\"$REMOTE_USER\\"}" \\
-      ${siteUrl}/api/internal/hooks/pre-receive?repo=${encodeURIComponent(repoPath)})
+      ${internalApiUrl}/api/internal/hooks/pre-receive?repo=${encodeURIComponent(repoPath)})
 
     HTTP_CODE=\${RESPONSE: -3}
     BODY=\${RESPONSE:0:\${#RESPONSE}-3}
