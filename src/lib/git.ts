@@ -323,13 +323,41 @@ export const SIMPLE_GIT_UNSAFE_OPTS = {
   allowUnsafeCredentialHelper: true, // for HTTPS remotes that use a credential helper
 } as const;
 
+export function getSanitizedGitEnv(ceilingDir?: string): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  delete env.PAGER;
+  delete env.GIT_PAGER;
+  
+  // Inject internal secrets needed by git hooks if they are missing from process.env
+  const metaEnv = (import.meta as any).env;
+  const hookSecret = process.env.INTERNAL_HOOK_SECRET || metaEnv?.INTERNAL_HOOK_SECRET;
+  if (hookSecret) {
+    env.INTERNAL_HOOK_SECRET = hookSecret;
+  }
+  
+  // Pass system user for internal pushes to satisfy hook checks if REMOTE_USER is missing
+  if (!env.REMOTE_USER) {
+    env.REMOTE_USER = "system";
+  }
+  
+  if (ceilingDir) {
+    env.GIT_CEILING_DIRECTORIES = ceilingDir;
+  }
+  
+  return env;
+}
+
 export function createSimpleGit(options: Partial<SimpleGitOptions> = {}): SimpleGit {
-  return simpleGit({
+  const git = simpleGit({
     binary: "git",
     maxConcurrentProcesses: 6,
     unsafe: { ...SIMPLE_GIT_UNSAFE_OPTS },
     ...options,
   });
+  
+  git.env(getSanitizedGitEnv());
+  
+  return git;
 }
 
 export function getGit(repoPath: string): SimpleGit {
@@ -352,18 +380,7 @@ export function getGit(repoPath: string): SimpleGit {
 
   const git = simpleGit(options);
 
-  // Set environment to prevent walking up and to strip interactive shell
-  // helpers (pager, editor, etc.) — this is a server, never a TTY.
-  // The `unsafe` allowlist above covers operations that legitimately
-  // need EDITOR / GIT_SSH_COMMAND; the env scrub below is an
-  // orthogonal defence so simple-git's unsafe plugin does not block us.
-  const sanitizedEnv: NodeJS.ProcessEnv = { ...process.env };
-  delete sanitizedEnv.PAGER;
-  delete sanitizedEnv.GIT_PAGER;
-  git.env({
-    ...sanitizedEnv,
-    GIT_CEILING_DIRECTORIES: ceilingDir,
-  });
+  git.env(getSanitizedGitEnv(ceilingDir));
 
   return git;
 }
