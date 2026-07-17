@@ -6,15 +6,22 @@ LABEL org.opencontainers.image.title="OpenCodeHub" \
       org.opencontainers.image.source="https://github.com/swadhinbiswas/OpencodeHub" \
       org.opencontainers.image.licenses="MIT"
 
-# Install dependencies
+# Install ALL dependencies (needed for build including CSS tooling)
 FROM base AS deps
 RUN apt-get update && apt-get install -y python3 make g++ gcc libc6-dev && rm -rf /var/lib/apt/lists/*
 COPY package.json bun.lock ./
 COPY cli/package.json ./cli/package.json
 RUN for i in 1 2 3; do \
-      bun install --frozen-lockfile --production && break || \
+      bun install --frozen-lockfile && break || \
       (echo "bun install attempt $i failed, retrying in 10s..." && sleep 10); \
     done
+
+# Install production dependencies only (for runtime image)
+FROM base AS prod-deps
+RUN apt-get update && apt-get install -y python3 make g++ gcc libc6-dev && rm -rf /var/lib/apt/lists/*
+COPY package.json bun.lock ./
+COPY cli/package.json ./cli/package.json
+RUN bun install --frozen-lockfile --production
 
 # Build the application
 FROM base AS builder
@@ -37,7 +44,7 @@ RUN mkdir -p /data/repositories /data/storage /data/cache /data/ssh && \
 
 # Copy only what's needed for runtime
 COPY --from=builder --chown=bun:bun /app/dist ./dist
-COPY --from=deps --chown=bun:bun /app/node_modules ./node_modules
+COPY --from=prod-deps --chown=bun:bun /app/node_modules ./node_modules
 COPY --from=builder --chown=bun:bun /app/package.json ./
 
 # Copy drizzle config and schema for migrations
