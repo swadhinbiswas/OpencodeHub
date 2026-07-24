@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDatabase, schema } from "@/db";
 import { badRequest, created, forbidden, notFound, parseBody, success, unauthorized } from "@/lib/api";
