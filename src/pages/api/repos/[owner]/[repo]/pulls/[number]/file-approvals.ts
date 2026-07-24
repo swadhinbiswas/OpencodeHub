@@ -6,7 +6,7 @@ import { withErrorHandler } from "@/lib/errors";
 import { approveFile } from "@/lib/partial-file-approvals";
 import { resolveRepoPath } from "@/lib/git-storage";
 import { getRepoPath, getChangedFiles } from "@/lib/git";
-import { canReadRepo } from "@/lib/permissions";
+import { canWriteRepo } from "@/lib/permissions";
 import { badRequest, forbidden, notFound, success, unauthorized } from "@/lib/api";
 import { checkPathPermissions } from "@/lib/path-scoping";
 
@@ -36,7 +36,7 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
 
     if (!repository) return notFound("Repository not found");
 
-    if (!(await canReadRepo(locals.user?.id, repository))) {
+    if (!(await canWriteRepo(locals.user?.id, repository))) {
         return notFound("Repository not found");
     }
 
@@ -107,7 +107,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals, request 
 
     if (!repository) return notFound("Repository not found");
 
-    if (!(await canReadRepo(user.id, repository))) {
+    if (!(await canWriteRepo(user.id, repository))) {
         return forbidden();
     }
 
@@ -139,4 +139,41 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals, request 
     });
 
     return success({ approval });
+});
+
+export const DELETE: APIRoute = withErrorHandler(async ({ params, locals, request }) => {
+    const { owner, repo, number } = params;
+    const user = locals.user;
+
+    if (!user) return unauthorized();
+    if (!owner || !repo || !number) return badRequest("Missing parameters");
+
+    const url = new URL(request.url);
+    const path = url.searchParams.get("path");
+    
+    if (!path) return badRequest("Missing file path");
+
+    const db = getDatabase() as NodePgDatabase<typeof schema>;
+    const repository = await getRepository(owner, repo);
+
+    if (!repository) return notFound("Repository not found");
+
+    const pr = await db.query.pullRequests.findFirst({
+        where: and(
+            eq(schema.pullRequests.repositoryId, repository.id),
+            eq(schema.pullRequests.number, parseInt(number))
+        ),
+    });
+
+    if (!pr) return notFound("Pull request not found");
+
+    await db.delete(schema.fileApprovals).where(
+        and(
+            eq(schema.fileApprovals.pullRequestId, pr.id),
+            eq(schema.fileApprovals.path, path),
+            eq(schema.fileApprovals.approvedById, user.id)
+        )
+    );
+
+    return success({ success: true });
 });
