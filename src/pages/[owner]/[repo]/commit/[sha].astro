@@ -3,18 +3,17 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 import { getDatabase, schema } from "@/db";
 import { eq, and } from "drizzle-orm";
 import { resolveRepoPath } from "@/lib/git-storage";
-import { getCommitDiff } from "@/lib/git";
+import { getCommit, getCommitDiff, getCommitPatchDiff } from "@/lib/git";
 import RepoHeader from "@/components/repo/RepoHeader.astro";
 import { canReadRepo } from "@/lib/permissions";
+import DiffView from "@/components/diff/DiffView";
 
-const { owner: ownerName, repo: repoName,sha } = Astro.params;
+const { owner: ownerName, repo: repoName, sha } = Astro.params;
 const db = getDatabase();
 
-// Fetch Repo & Owner
 const user = await db.query.users.findFirst({
   where: eq(schema.users.username, ownerName!),
 });
-
 if (!user) return Astro.redirect("/404");
 
 const repoData = await db.query.repositories.findFirst({
@@ -22,20 +21,13 @@ const repoData = await db.query.repositories.findFirst({
     eq(schema.repositories.ownerId, user.id),
     eq(schema.repositories.name, repoName!),
   ),
-  with: {
-    owner: true,
-  },
+  with: { owner: true },
 });
-
 if (!repoData) return Astro.redirect("/404");
 
-// Check permissions
 const currentUser = Astro.locals.user;
 const hasAccess = await canReadRepo(currentUser?.id, repoData);
-
-if (!hasAccess) {
-  return Astro.redirect("/404");
-}
+if (!hasAccess) return Astro.redirect("/404");
 
 const repo = {
   owner: repoData.owner.username,
@@ -57,38 +49,113 @@ const repo = {
   website: repoData.website,
 };
 
-// Get commit diff
 const resolvedLocalPath = await resolveRepoPath(repoData.diskPath);
-let commit: any = null;
+let commitInfo: any = null;
+let fileStats: any[] = [];
+let patchDiff = "";
 let error: string | null = null;
 
 try {
-  commit = await getCommitDiff(resolvedLocalPath, sha!);
+  commitInfo = await getCommit(resolvedLocalPath, sha!);
+  fileStats = await getCommitDiff(resolvedLocalPath, sha!);
+  patchDiff = await getCommitPatchDiff(resolvedLocalPath, sha!);
 } catch (e: any) {
-  console.error("Error fetching commit:", e);
   error = e.message || "Failed to fetch commit";
 }
 
-if (!commit && !error) {
-  return Astro.redirect("/404");
+if (!commitInfo && !error) return Astro.redirect("/404");
+
+let authorUser: any = null;
+if (commitInfo?.authorEmail) {
+  try {
+    authorUser = await db.query.users.findFirst({
+      where: eq(schema.users.email, commitInfo.authorEmail),
+    });
+  } catch {}
 }
+
+const totalAdditions = fileStats.reduce((sum: number, f: any) => sum + (f.additions || 0), 0);
+const totalDeletions = fileStats.reduce((sum: number, f: any) => sum + (f.deletions || 0), 0);
+
+// Build file tree structure for sidebar
+interface FileNode {
+  name: string;
+  path: string;
+  type: "file" | "dir";
+  status: string;
+  additions: number;
+  deletions: number;
+  children?: FileNode[];
+}
+
+const fileTree: FileNode[] = [];
+for (const file of fileStats) {
+  const parts = file.file.split("/");
+  let current = fileTree;
+  for (let i = 0; i < parts.length - 1; i++) {
+    let dir = current.find(n => n.name === parts[i] && n.type === "dir");
+    if (!dir) {
+      dir = { name: parts[i], path: parts.slice(0, i + 1).join("/"), type: "dir", status: "modified", additions: 0, deletions: 0, children: [] };
+      current.push(dir);
+    }
+    current = dir.children!;
+  }
+  current.push({
+    name: parts[parts.length - 1],
+    path: file.file,
+    type: "file",
+    status: file.status,
+    additions: file.additions,
+    deletions: file.deletions,
+  });
+}
+
+function formatDate(date: Date): string {
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function renderFileTree(nodes: FileNode[], depth: number = 0): string {
+  let html = "";
+  const sorted = [...nodes].sort((a, b) => {
+    if (a.type === "dir" && b.type !== "dir") return -1;
+    if (a.type !== "dir" && b.type === "dir") return 1;
+    return a.name.localeCompare(b.name);
+  });
+  for (const node of sorted) {
+    const indent = depth * 16;
+    if (node.type === "dir") {
+      html += `<div class="flex items-center gap-1.5 py-0.5 px-2 text-xs text-muted-foreground hover:bg-accent/50 cursor-pointer" style="padding-left:${indent}px">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <span>${node.name}</span>
+      </div>`;
+      if (node.children) html += renderFileTree(node.children, depth + 1);
+    } else {
+      const statusColor = node.status === "added" ? "text-green-500" : node.status === "deleted" ? "text-red-500" : "text-muted-foreground";
+      html += `<a href="#file-${node.path.replace(/[^a-zA-Z0-9]/g, '-')}" class="flex items-center gap-1.5 py-0.5 px-2 text-xs hover:bg-accent/50 group" style="padding-left:${indent}px">
+        <span class="w-2 h-2 rounded-full flex-shrink-0 ${node.status === 'added' ? 'bg-green-500' : node.status === 'deleted' ? 'bg-red-500' : node.status === 'renamed' ? 'bg-yellow-500' : 'bg-muted-foreground/30'}"></span>
+        <span class="text-foreground truncate group-hover:text-primary transition-colors">${node.name}</span>
+        <span class="ml-auto text-[10px] ${statusColor} flex-shrink-0">${node.additions > 0 ? `+${node.additions}` : ""} ${node.deletions > 0 ? `-${node.deletions}` : ""}</span>
+      </a>`;
+    }
+  }
+  return html;
+}
+
+const fileTreeHtml = renderFileTree(fileTree);
 
 function timeAgo(date: Date | string | number) {
   if (!date) return "";
-  const seconds = Math.floor(
-    (new Date().getTime() - new Date(date).getTime()) / 1000,
-  );
-  let interval = seconds / 31536000;
-  if (interval > 1) return Math.floor(interval) + " years ago";
-  interval = seconds / 2592000;
-  if (interval > 1) return Math.floor(interval) + " months ago";
-  interval = seconds / 86400;
-  if (interval > 1) return Math.floor(interval) + " days ago";
-  interval = seconds / 3600;
-  if (interval > 1) return Math.floor(interval) + " hours ago";
-  interval = seconds / 60;
-  if (interval > 1) return Math.floor(interval) + " minutes ago";
-  return Math.floor(seconds) + " seconds ago";
+  const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} minutes ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hours ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days} days ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} months ago`;
+  return `${Math.floor(months / 12)} years ago`;
 }
 ---
 
@@ -100,70 +167,128 @@ function timeAgo(date: Date | string | number) {
       <div class="p-6 text-center">
         <p class="text-destructive">{error}</p>
       </div>
-    ) : commit && (
-      <div class="space-y-6">
+    ) : commitInfo && (
+      <div class="space-y-4">
         <!-- Commit Header -->
-        <div class="rounded-lg border bg-card p-6">
-          <div class="mb-4">
-            <h1 class="text-2xl font-bold mb-2">{commit.message}</h1>
-            {commit.body && (
-              <pre class="text-sm text-muted-foreground whitespace-pre-wrap font-sans">{commit.body}</pre>
-            )}
-          </div>
-          
-          <div class="flex items-center gap-4 text-sm text-muted-foreground border-t pt-4">
-            <div class="flex items-center gap-2">
-              <div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                <span class="text-sm font-medium">
-                  {commit.authorName?.[0]?.toUpperCase() || "?"}
-                </span>
-              </div>
-              <div>
-                <div class="font-medium text-foreground">{commit.authorName}</div>
-                <div>{commit.authorEmail}</div>
+        <div class="border border-border bg-card rounded-lg p-4">
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex-1 min-w-0">
+              <h1 class="text-xl font-semibold text-foreground mb-2">{commitInfo.message}</h1>
+              {commitInfo.body && (
+                <pre class="text-sm text-muted-foreground whitespace-pre-wrap font-sans mb-3">{commitInfo.body}</pre>
+              )}
+              <div class="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
+                <div class="flex items-center gap-2">
+                  {authorUser ? (
+                    <a href={`/${authorUser.username}`} class="flex items-center gap-1.5 hover:opacity-80">
+                      {authorUser.avatarUrl ? (
+                        <img src={authorUser.avatarUrl} alt="" class="h-5 w-5 rounded-full" />
+                      ) : (
+                        <div class="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] text-primary font-bold">{commitInfo.authorName?.[0]?.toUpperCase()}</div>
+                      )}
+                      <span class="font-medium text-foreground">{commitInfo.authorName}</span>
+                    </a>
+                  ) : (
+                    <span class="font-medium text-foreground">{commitInfo.authorName}</span>
+                  )}
+                  <span>committed {timeAgo(commitInfo.authorDate)}</span>
+                </div>
               </div>
             </div>
-            <div class="flex-1"></div>
-            <div>
-              committed {timeAgo(commit.authorDate)}
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <div class="font-mono text-xs bg-muted px-2 py-1 rounded border border-border">{(commitInfo.sha || sha)?.substring(0, 7)}</div>
+              <button class="p-1.5 rounded hover:bg-accent text-muted-foreground" title="Copy SHA" onclick="navigator.clipboard.writeText('{commitInfo.sha || sha}')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              </button>
             </div>
           </div>
 
-          <div class="mt-4 flex items-center gap-4 text-sm">
-            <div class="font-mono bg-muted px-3 py-1 rounded">
-              {(commit.sha || sha)?.substring(0, 7)}
-            </div>
-            <div class="text-muted-foreground">
-              {commit.stats?.additions || 0} additions, {commit.stats?.deletions || 0} deletions
+          <!-- Parent commit & branch info -->
+          <div class="flex items-center gap-4 mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
+            {commitInfo.parentShas && commitInfo.parentShas.length > 0 && (
+              <div class="flex items-center gap-1.5">
+                <span>{commitInfo.parentShas.length} parent{commitInfo.parentShas.length > 1 ? 's' : ''}</span>
+                {commitInfo.parentShas.map((parentSha: string) => (
+                  <a href={`/${repo.owner}/${repo.name}/commit/${parentSha}`} class="font-mono text-blue-400 hover:underline">{parentSha.substring(0, 7)}</a>
+                ))}
+              </div>
+            )}
+            <div class="flex items-center gap-1.5">
+              <span>commit</span>
+              <span class="font-mono text-foreground">{(commitInfo.sha || sha)?.substring(0, 7)}</span>
             </div>
           </div>
         </div>
 
-        <!-- Changed Files -->
-        <div class="space-y-4">
-          <h2 class="text-lg font-semibold">Changed files</h2>
-          
-          {commit.files && commit.files.length > 0 ? (
-            commit.files.map((file: any) => (
-              <div class="rounded-lg border overflow-hidden">
-                <div class="flex items-center justify-between bg-muted/30 px-4 py-2 border-b">
-                  <span class="font-mono text-sm">{file.path}</span>
-                  <span class="text-sm text-muted-foreground">
-                    +{file.additions || 0} -{file.deletions || 0}
-                  </span>
-                </div>
-                {file.diff && (
-                  <div class="overflow-x-auto">
-                    <pre class="text-xs p-4 bg-background font-mono"><code>{file.diff}</code></pre>
-                  </div>
-                )}
-              </div>
-            ))
-          ) : (
-            <div class="text-center text-muted-foreground py-8">
-              No files changed
+        <!-- Files Changed Stats Bar -->
+        <div class="border border-border bg-card rounded-lg px-4 py-2 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-semibold text-foreground">{fileStats.length} file{fileStats.length !== 1 ? 's' : ''} changed</span>
+          </div>
+          <div class="flex items-center gap-3 text-xs">
+            <span class="text-green-500 font-medium">+{totalAdditions}</span>
+            <span class="text-red-500 font-medium">-{totalDeletions}</span>
+            <div class="flex gap-0.5">
+              {fileStats.slice(0, 20).map((f: any) => (
+                <div class:list={[
+                  "w-2 h-2 rounded-sm",
+                  f.status === "added" ? "bg-green-500" :
+                  f.status === "deleted" ? "bg-red-500" :
+                  "bg-muted-foreground/30"
+                ]} />
+              ))}
             </div>
-          )}
+          </div>
+        </div>
+
+        <!-- Main Content: File Tree + Diff -->
+        <div class="flex gap-4">
+          <!-- File Tree Sidebar -->
+          <div class="hidden lg:block w-64 flex-shrink-0">
+            <div class="border border-border bg-card rounded-lg p-2 sticky top-20 max-h-[calc(100vh-100px)] overflow-y-auto custom-scrollbar">
+              <div class="px-2 py-1 text-xs font-semibold text-muted-foreground border-b border-border mb-1">Files</div>
+              <div set:html={fileTreeHtml} />
+            </div>
+          </div>
+
+          <!-- Diff Content -->
+          <div class="flex-1 min-w-0">
+            {patchDiff ? (
+              <div class="border border-border bg-card rounded-lg overflow-hidden">
+                <DiffView client:load rawDiff={patchDiff} />
+              </div>
+            ) : fileStats.length > 0 ? (
+              <div class="border border-border bg-card rounded-lg">
+                {fileStats.map((file: any) => (
+                  <div id={`file-${file.file.replace(/[^a-zA-Z0-9]/g, '-')}`} class="border-b border-border last:border-0">
+                    <div class="flex items-center justify-between px-4 py-2 bg-muted/30 border-b border-border">
+                      <div class="flex items-center gap-2">
+                        <span class:list={[
+                          "inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold",
+                          file.status === "added" ? "bg-green-500/10 text-green-500" :
+                          file.status === "deleted" ? "bg-red-500/10 text-red-500" :
+                          file.status === "renamed" ? "bg-yellow-500/10 text-yellow-500" :
+                          "bg-muted text-muted-foreground"
+                        ]}>
+                          {file.status === "added" ? "A" : file.status === "deleted" ? "D" : file.status === "renamed" ? "R" : "M"}
+                        </span>
+                        <span class="font-mono text-sm text-foreground">{file.file}</span>
+                        {file.oldPath && <span class="text-xs text-muted-foreground">← {file.oldPath}</span>}
+                      </div>
+                      <div class="flex items-center gap-2 text-xs">
+                        {file.additions > 0 && <span class="text-green-500">+{file.additions}</span>}
+                        {file.deletions > 0 && <span class="text-red-500">-{file.deletions}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div class="text-center text-muted-foreground py-8 border border-border bg-card rounded-lg">
+                No file changes in this commit.
+              </div>
+            )}
+          </div>
         </div>
       </div>
     )}
