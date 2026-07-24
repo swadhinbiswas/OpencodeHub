@@ -13,7 +13,7 @@ import { generateId } from "@/lib/utils";
 
 import { withErrorHandler } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { unauthorized, badRequest, notFound, serverError, success, created } from "@/lib/api";
+import { unauthorized, badRequest, notFound, success, created } from "@/lib/api";
 
 // ... existing imports ...
 
