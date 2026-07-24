@@ -18,7 +18,7 @@ import type { APIRoute } from "astro";
 import { and, asc, eq } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
-export const GET: APIRoute = async ({ request, params }) => {
+export const GET: APIRoute = async ({ params }) => {
   try {
     const { owner, repo, number } = params;
     if (!owner || !repo || !number) return badRequest("Missing parameters");
