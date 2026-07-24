@@ -5,7 +5,7 @@
 
 import type { APIRoute } from "astro";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { eq, and, desc, isNull } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { getDatabase, schema } from "@/db";
 import { getUserFromRequest } from "@/lib/auth";
 import { parseBody, unauthorized, badRequest, notFound, success, forbidden } from "@/lib/api";
@@ -22,7 +22,8 @@ const createCommentSchema = z.object({
     startLine: z.number().int().positive().optional(),
     commitSha: z.string().optional(),
     inReplyToId: z.string().optional(), // For threading
-    suggestedChange: z.string().optional(), // Code suggestion
+    suggestedChange: z.string().optional(), // Code suggestion (legacy or alternative)
+    suggestionContent: z.string().optional(),
 });
 
 const updateCommentSchema = z.object({
@@ -180,8 +181,10 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
 
     // Check for code suggestion
     let body = parsed.data.body;
-    if (parsed.data.suggestedChange) {
-        // Format as GitHub-style suggestion
+    let suggestionContent = parsed.data.suggestionContent || parsed.data.suggestedChange;
+    
+    if (parsed.data.suggestedChange && !body.includes("```suggestion")) {
+        // Format as GitHub-style suggestion if not already in body
         body += `\n\n\`\`\`suggestion\n${parsed.data.suggestedChange}\n\`\`\``;
     }
 
@@ -197,7 +200,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
         startLine: parsed.data.startLine,
         commitSha: parsed.data.commitSha,
         inReplyToId: parsed.data.inReplyToId,
-        suggestionContent: parsed.data.suggestedChange,
+        suggestionContent: suggestionContent,
         createdAt: now,
         updatedAt: now,
     });
@@ -222,7 +225,7 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request }) => {
     const parsed = await parseBody(request, updateCommentSchema);
     if ("error" in parsed) return parsed.error;
 
-    const { owner, repo, number, commentId: commentIdFromParams } = params;
+    const { owner, repo, commentId: commentIdFromParams } = params;
     const requestUrl = new URL(request.url);
     const commentId = (commentIdFromParams as string | undefined) || requestUrl.searchParams.get("commentId");
     if (!commentId) return badRequest("commentId is required");
@@ -286,7 +289,7 @@ export const DELETE: APIRoute = withErrorHandler(async ({ params, request }) => 
         return unauthorized();
     }
 
-    const { owner, repo, number, commentId: commentIdFromParams } = params;
+    const { owner, repo, commentId: commentIdFromParams } = params;
     const requestUrl = new URL(request.url);
     const commentId = (commentIdFromParams as string | undefined) || requestUrl.searchParams.get("commentId");
     if (!commentId) return badRequest("commentId is required");
