@@ -51,6 +51,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
       if (user) {
         context.locals.user = user;
       }
+      // Populate session for logout and other session-aware handlers
+      if (tokenPayload.sessionId) {
+        const session = await db.query.sessions?.findFirst({
+          where: eq(schema.sessions.id, tokenPayload.sessionId),
+        });
+        if (session) {
+          context.locals.session = session;
+        }
+      }
     }
   } catch {
     // Auth failures are non-fatal — user stays null (anonymous)
@@ -123,7 +132,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (!response.headers.has("Content-Security-Policy")) {
     response.headers.set(
       "Content-Security-Policy",
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'",
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https:;",
     );
   }
 
