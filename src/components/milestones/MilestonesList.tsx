@@ -16,6 +16,7 @@ import {
     Archive
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 interface MilestoneItem {
     id: string;
@@ -188,15 +189,47 @@ export default function MilestonesList({ milestones, repoOwner, repoName }: Prop
                                                     className="absolute right-0 top-full mt-1 w-40 rounded-lg border border-border bg-accent shadow-xl z-10"
                                                 >
                                                     <div className="p-1">
-                                                        <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-accent rounded-md">
+                                                        <button 
+                                                            onClick={() => { setShowMenu(null); window.location.href = `/${repoOwner}/${repoName}/milestones/${milestone.id}/edit`; }}
+                                                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-accent rounded-md"
+                                                        >
                                                             <Edit3 className="h-4 w-4" />
                                                             Edit
                                                         </button>
-                                                        <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-accent rounded-md">
+                                                        <button 
+                                                            onClick={async () => {
+                                                                setShowMenu(null);
+                                                                try {
+                                                                    const res = await fetch(`/api/repos/${repoOwner}/${repoName}/milestones/${milestone.id}`, {
+                                                                        method: 'PATCH',
+                                                                        headers: { 'Content-Type': 'application/json' },
+                                                                        body: JSON.stringify({ state: 'closed' }),
+                                                                    });
+                                                                    if (!res.ok) throw new Error('Failed');
+                                                                    toast.success('Milestone closed');
+                                                                    window.location.reload();
+                                                                } catch { toast.error('Failed to close milestone'); }
+                                                            }}
+                                                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-accent rounded-md"
+                                                        >
                                                             <Archive className="h-4 w-4" />
                                                             Close
                                                         </button>
-                                                        <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-md">
+                                                        <button 
+                                                            onClick={async () => {
+                                                                setShowMenu(null);
+                                                                if (!confirm('Delete this milestone?')) return;
+                                                                try {
+                                                                    const res = await fetch(`/api/repos/${repoOwner}/${repoName}/milestones/${milestone.id}`, {
+                                                                        method: 'DELETE',
+                                                                    });
+                                                                    if (!res.ok) throw new Error('Failed');
+                                                                    toast.success('Milestone deleted');
+                                                                    window.location.reload();
+                                                                } catch { toast.error('Failed to delete milestone'); }
+                                                            }}
+                                                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-md"
+                                                        >
                                                             <Trash2 className="h-4 w-4" />
                                                             Delete
                                                         </button>
