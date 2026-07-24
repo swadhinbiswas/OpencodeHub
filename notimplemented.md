@@ -50,10 +50,8 @@ Ship OpenCodeHub to a production-grade state by closing all partial (`⚠️`) a
 - Kubernetes deployment packaging
 - Horizontal scaling hardening
 
-## Missing (46)
+## Missing (44)
 - File-level permissions
-- Custom PR states
-- Required reviewers per PR state
 - PR checks completion
 - Suggested changes
 - Custom issue fields
@@ -203,7 +201,6 @@ Acceptance criteria:
 - Integration contract tests per provider.
 
 ## WS3 Security + Compliance
-- Complete CODEOWNERS policy enforcement.
 - Harden secret scanning and compliance scanning.
 - Complete RBAC admin and audit flows.
 Acceptance criteria:
@@ -340,13 +337,7 @@ Mitigation:
 
 1. Finish Phase 0 baseline stabilization.
 2. Convert every `⚠️`/`❌` item into tracked issue with owner and estimate.
-3. Start Phase 1 with this order:
-   - Custom PR states
-   - Required reviewers per state
-   - CODEOWNERS enforcement
-   - Suggested changes
-   - Partial file approvals
-4. Enable docs parity workflow in CI for both docs trees.
+3. Enable docs parity workflow in CI for both docs trees.
 
 ## 10. Definition Of Done Per Feature
 - Code complete + migrations + backfill scripts
@@ -357,3 +348,10 @@ Mitigation:
 - Changelog updated
 - Rollback plan documented
 
+## 11. Recently Implemented
+- ✅ Fix baseline TS errors (Phase 0)
+- ✅ Custom PR States (Phase 1)
+- ✅ PR Reviewers assigned by Custom State
+- ✅ CODEOWNERS Enforcement (Phase 1)
+- ✅ Suggested changes (Phase 1)
+- ✅ Partial file approvals (Phase 1)
