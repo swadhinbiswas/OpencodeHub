@@ -145,18 +145,6 @@ export async function initRepository(
     throw err;
   }
 
-  // Install hooks
-  if (!options.skipHooks) {
-    try {
-      logger.info(`[initRepository] Installing hooks`);
-      await installHooks(localRepoPath);
-      logger.info(`[initRepository] Hooks installed`);
-    } catch (err) {
-      logger.error(`[initRepository] Hook installation failed:`, err);
-      throw err;
-    }
-  }
-
   // If we need initial content, create a temporary working copy
   if (readme || gitignoreTemplate || licenseType) {
     const tempPath = `${localRepoPath}.tmp`;
@@ -211,8 +199,10 @@ export async function initRepository(
       }
 
       // Push to bare repository
+      // Use --no-verify to skip hooks: either they aren't installed yet (normal case)
+      // or they're leftover from a previous failed init (repo dir already existed)
       await workingGit.addRemote("origin", localRepoPath);
-      await workingGit.push("origin", defaultBranch);
+      await workingGit.push(["origin", defaultBranch, "--no-verify"]);
       logger.info(`[initRepository] Pushed to bare repo`);
 
       // Clean up temp directory
@@ -224,6 +214,19 @@ export async function initRepository(
       if (existsSync(tempPath)) {
         rmSync(tempPath, { recursive: true, force: true });
       }
+      throw err;
+    }
+  }
+
+  // Install hooks AFTER the initial push to avoid pre-receive hook callback
+  // during initialization (which would fail if server isn't reachable yet)
+  if (!options.skipHooks) {
+    try {
+      logger.info(`[initRepository] Installing hooks`);
+      await installHooks(localRepoPath);
+      logger.info(`[initRepository] Hooks installed`);
+    } catch (err) {
+      logger.error(`[initRepository] Hook installation failed:`, err);
       throw err;
     }
   }
@@ -991,6 +994,31 @@ export async function getCommitDiff(
   }
 }
 
+/**
+ * Get the raw unified diff (patch) for a single commit
+ */
+export async function getCommitPatchDiff(
+  repoPath: string,
+  sha: string,
+): Promise<string> {
+  const git = getGit(repoPath);
+  try {
+    const output = await git.raw([
+      "diff-tree",
+      "-p",
+      "--no-commit-id",
+      "-r",
+      "-M",
+      sha,
+    ]);
+    return output;
+  } catch (error) {
+    if (!isExpectedGitError(error)) {
+      logger.error({ err: error }, "Error getting commit patch diff");
+    }
+    return "";
+  }
+}
 /**
  * Get blame for a file
  */
