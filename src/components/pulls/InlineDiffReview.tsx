@@ -55,7 +55,7 @@ export function InlineDiffReview({
         const data = await res.json();
         const approvalMap: Record<string, boolean> = {};
         for (const approval of data.approvals || []) {
-          if (approval.approvedById === currentUser.id) {
+          if (approval.approvers?.includes(currentUser.username) || approval.approvedById === currentUser.id) {
             approvalMap[approval.path] = true;
           }
         }
@@ -90,18 +90,9 @@ export function InlineDiffReview({
         });
         setFileApprovals(prev => ({ ...prev, [filePath]: true }));
       } else {
-        // Delete approval by path (this would need an endpoint to delete by path, 
-        // or we can fetch the approval ID and delete it. 
-        // The file-approvals.ts POST might handle upsert, but we should hit DELETE if unapproving.
-        // Let's assume there's an API, or we just rely on POST for now to overwrite.
-        const res = await fetch(`/api/repos/${owner}/${repo}/pulls/${pullNumber}/file-approvals`);
-        const data = await res.json();
-        const approval = data.approvals?.find((a: any) => a.path === filePath && a.approvedById === currentUser.id);
-        if (approval) {
-           await fetch(`/api/repos/${owner}/${repo}/pulls/${pullNumber}/file-approvals/${approval.id}`, {
-             method: "DELETE"
-           });
-        }
+        await fetch(`/api/repos/${owner}/${repo}/pulls/${pullNumber}/file-approvals?path=${encodeURIComponent(filePath)}`, {
+          method: "DELETE"
+        });
         setFileApprovals(prev => ({ ...prev, [filePath]: false }));
       }
     } catch {
