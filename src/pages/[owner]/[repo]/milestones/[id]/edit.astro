@@ -1,0 +1,115 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, and } from "drizzle-orm";
+
+const { owner: ownerName, repo: repoName, id } = Astro.params;
+const db = getDatabase();
+
+const user = await db.query.users.findFirst({
+  where: eq(schema.users.username, ownerName!),
+});
+if (!user) return Astro.redirect("/404");
+
+const repoData = await db.query.repositories.findFirst({
+  where: and(
+    eq(schema.repositories.ownerId, user.id),
+    eq(schema.repositories.name, repoName!),
+  ),
+  with: { owner: true },
+});
+if (!repoData) return Astro.redirect("/404");
+
+const milestone = await db.query.milestones.findFirst({
+  where: and(
+    eq(schema.milestones.id, id!),
+    eq(schema.milestones.repositoryId, repoData.id),
+  ),
+});
+if (!milestone) return Astro.redirect(`/${ownerName}/${repoName}/milestones`);
+
+const dueDateStr = milestone.dueDate ? new Date(milestone.dueDate).toISOString().split('T')[0] : '';
+---
+
+<BaseLayout title={`Edit Milestone · ${ownerName}/${repoName}`}>
+  <div class="container max-w-4xl py-8">
+    <div class="mb-6">
+      <a href={`/${ownerName}/${repoName}/milestones`} class="text-sm text-muted-foreground hover:text-foreground">
+        ← Back to milestones
+      </a>
+    </div>
+
+    <h1 class="text-2xl font-semibold mb-6">Edit Milestone</h1>
+
+    <form id="edit-milestone-form" class="space-y-6">
+      <div class="space-y-2">
+        <label class="text-sm font-medium">Title</label>
+        <input
+          type="text"
+          name="title"
+          value={milestone.title}
+          required
+          class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-sm font-medium">Description</label>
+        <textarea
+          name="description"
+          rows={4}
+          class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        >{milestone.description || ''}</textarea>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-sm font-medium">Due Date</label>
+        <input
+          type="date"
+          name="dueDate"
+          value={dueDateStr}
+          class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+      </div>
+
+      <div class="flex justify-end gap-3">
+        <a
+          href={`/${ownerName}/${repoName}/milestones`}
+          class="px-4 py-2 rounded-lg border border-border bg-background text-sm text-muted-foreground hover:bg-accent"
+        >
+          Cancel
+        </a>
+        <button
+          type="submit"
+          class="px-4 py-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:opacity-90"
+        >
+          Save Changes
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <script define:vars={{ owner: ownerName, repo: repoName, milestoneId: id }}>
+    document.getElementById('edit-milestone-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const data = {
+        title: formData.get('title'),
+        description: formData.get('description'),
+        dueDate: formData.get('dueDate') || null,
+      };
+
+      try {
+        const res = await fetch(`/api/repos/${owner}/${repo}/milestones/${milestoneId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error('Failed');
+        window.location.href = `/${owner}/${repo}/milestones`;
+      } catch (err) {
+        alert('Failed to update milestone');
+      }
+    });
+  </script>
+</BaseLayout>
