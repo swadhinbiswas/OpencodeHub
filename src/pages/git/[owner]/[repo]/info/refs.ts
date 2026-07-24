@@ -4,7 +4,7 @@ import { getAdvertisedRefs } from "@/lib/git-server";
 import { acquireRepo, releaseRepo } from "@/lib/git-storage";
 import { logger } from "@/lib/logger";
 
-export const GET: APIRoute = async ({ params, request, url }) => {
+export const GET: APIRoute = async ({ params, url }) => {
     const { owner, repo } = params;
 
     if (!owner || !repo) {
