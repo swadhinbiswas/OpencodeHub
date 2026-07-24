@@ -57,6 +57,7 @@ describe("openapi pulls parity", () => {
       "/repos/{}/{}/pulls/{}/code-quality",
       "/repos/{}/{}/pulls/{}/comments/apply-suggestion",
       "/repos/{}/{}/pulls/{}/ai-suggestions/{}/apply",
+      "/repos/{}/{}/pulls/{}/analysis",
     ]);
 
     const missing = expectedPaths.filter(
