@@ -18,6 +18,49 @@ interface CodeOwnerCheck {
     }[];
 }
 
+export function branchRuleMatches(pattern: string, branch: string): boolean {
+    if (pattern === branch) return true;
+    if (pattern.endsWith("*")) return branch.startsWith(pattern.slice(0, -1));
+    return false;
+}
+
+export async function isCodeOwnerEnforced(
+    repositoryId: string,
+    baseBranch: string,
+    prStateId?: string | null
+): Promise<boolean> {
+    const db = getDatabase();
+
+    // 1. Check Custom PR State
+    if (prStateId) {
+        const stateDef = await db.query.prStateDefinitions?.findFirst({
+            where: eq(schema.prStateDefinitions.id, prStateId)
+        });
+        if (stateDef?.requireCodeOwner) return true;
+    }
+
+    // 2. Check Global Review Policy
+    const reviewRequirements = await db.query.reviewRequirements?.findFirst({
+        where: eq(schema.reviewRequirements.repositoryId, repositoryId)
+    });
+    if (reviewRequirements?.requireCodeOwner) return true;
+
+    // 3. Check Branch Protection Rules
+    const protectionRules = await db.query.branchProtection?.findMany({
+        where: and(
+            eq(schema.branchProtection.repositoryId, repositoryId),
+            eq(schema.branchProtection.active, true)
+        )
+    });
+    
+    if (protectionRules) {
+        const matchingRule = protectionRules.find(rule => branchRuleMatches(rule.pattern, baseBranch));
+        if (matchingRule?.requireCodeOwnerReviews) return true;
+    }
+
+    return false;
+}
+
 /**
  * Check if all required code owners have approved a PR
  */
