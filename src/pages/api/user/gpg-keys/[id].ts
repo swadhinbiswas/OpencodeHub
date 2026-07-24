@@ -4,7 +4,6 @@ import { gpgKeys } from "@/db/schema";
 import {
     badRequest,
     notFound,
-    serverError,
     success,
     unauthorized,
 } from "@/lib/api";
