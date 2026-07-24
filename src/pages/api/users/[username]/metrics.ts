@@ -22,8 +22,6 @@ export const GET: APIRoute = withErrorHandler(async ({ params, request }) => {
   if (!user) return notFound("User not found");
 
   const url = new URL(request.url);
-  const weeks = parseInt(url.searchParams.get("weeks") || "4");
-  const since = new Date(Date.now() - weeks * 7 * 24 * 60 * 60 * 1000);
 
   // PRs authored
   const totalAuthored = await (db as any)
