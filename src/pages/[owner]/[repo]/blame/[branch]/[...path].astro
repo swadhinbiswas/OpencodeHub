@@ -7,12 +7,10 @@ import { canReadRepo } from "@/lib/permissions";
 import { getBlame, getLastCommit } from "@/lib/git";
 import { resolveRepoPath } from "@/lib/git-storage";
 import { GitBranch, ChevronDown, FileCode } from "lucide-react";
-import { createHighlighter } from "shiki";
 
 const { owner: ownerName, repo: repoName, branch, path } = Astro.params;
 const db = getDatabase();
 
-// Fetch Owner
 const user = await db.query.users.findFirst({
   where: eq(schema.users.username, ownerName!),
 });
@@ -27,24 +25,19 @@ const repoData = await db.query.repositories.findFirst({
 });
 if (!repoData) return Astro.redirect("/404");
 
-// Check permissions
 const currentUser = Astro.locals.user;
 const hasAccess = await canReadRepo(currentUser?.id, repoData);
 if (!hasAccess) return Astro.redirect("/404");
 
 const currentBranch = branch || repoData.defaultBranch;
 const currentPath = path || "";
-
 const resolvedLocalPath = await resolveRepoPath(repoData.diskPath);
 
-// Fetch blame data
 const blameLines = await getBlame(resolvedLocalPath, currentPath, currentBranch);
-
 if (!blameLines || blameLines.length === 0) {
   return Astro.redirect("/404");
 }
 
-// Syntax highlighting
 const extension = currentPath.split(".").pop()?.toLowerCase() || "";
 const commonLangs: Record<string, string> = {
   ts: "typescript", tsx: "tsx", js: "javascript", jsx: "jsx",
@@ -56,9 +49,9 @@ const commonLangs: Record<string, string> = {
 };
 const lang = commonLangs[extension] || "text";
 
-// Highlight each line individually for blame row alignment
 let highlightedLines: string[] = [];
 try {
+  const { createHighlighter } = await import("shiki");
   const highlighter = await createHighlighter({
     themes: ["github-dark"],
     langs: [lang, "text"],
@@ -68,7 +61,6 @@ try {
     lang: Object.values(commonLangs).includes(lang) ? lang : "text",
     theme: "github-dark",
   });
-  // Extract individual lines from the shiki output
   const lineMatches = html.match(/<span class="line">.*?<\/span>/gs);
   highlightedLines = lineMatches || blameLines.map((b) => `<span class="line">${escapeHtml(b.content)}</span>`);
 } catch {
@@ -76,24 +68,30 @@ try {
 }
 
 function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-// Group consecutive lines by same commit SHA to show commit info only once per block
 interface BlameBlock {
   sha: string;
   author: string;
   email: string;
   date: Date;
+  message: string;
   lines: { lineNum: number; content: string; highlighted: string }[];
 }
 
 const blameBlocks: BlameBlock[] = [];
 let currentBlock: BlameBlock | null = null;
+
+// Fetch commit messages for unique SHAs
+const uniqueShas = [...new Set(blameLines.map(b => b.sha))];
+const commitMessages = new Map<string, string>();
+for (const sha of uniqueShas.slice(0, 50)) {
+  try {
+    const commit = await getLastCommit(resolvedLocalPath, sha, "");
+    if (commit) commitMessages.set(sha, commit.message.split('\n')[0]);
+  } catch {}
+}
 
 for (let i = 0; i < blameLines.length; i++) {
   const bl = blameLines[i];
@@ -103,6 +101,7 @@ for (let i = 0; i < blameLines.length; i++) {
       author: bl.author,
       email: bl.email,
       date: bl.date,
+      message: commitMessages.get(bl.sha) || "",
       lines: [],
     };
     blameBlocks.push(currentBlock);
@@ -129,6 +128,10 @@ function timeAgo(date: Date | string | number): string {
   return `${Math.floor(months / 12)}y ago`;
 }
 
+function formatDate(date: Date): string {
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 const repo = {
   owner: repoData.owner.username,
   name: repoData.name,
@@ -149,7 +152,7 @@ const repo = {
     <RepoHeader repo={repo} activeTab="code" />
 
     <div class="space-y-4">
-      <!-- Breadcrumbs -->
+      <!-- Breadcrumbs & Actions -->
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex items-center gap-2">
           <div class="relative">
@@ -184,7 +187,7 @@ const repo = {
         </div>
       </div>
 
-      <!-- Header -->
+      <!-- Blame Header -->
       <div class="rounded-t-lg border bg-muted/30 p-3 border-b-0 flex items-center gap-2 text-sm text-muted-foreground">
         <FileCode className="h-4 w-4" />
         <span class="font-medium text-foreground">{blameLines.length} lines</span>
@@ -199,34 +202,60 @@ const repo = {
             {blameBlocks.map((block, blockIdx) => (
               block.lines.map((line, lineIdx) => (
                 <tr class:list={[
-                  "hover:bg-accent transition-colors",
-                  lineIdx === 0 && blockIdx > 0 ? "border-t border-gray-700" : "",
+                  "group/line hover:bg-accent/50 transition-colors relative",
+                  lineIdx === 0 && blockIdx > 0 ? "border-t border-border" : "",
                 ]}>
                   {/* Blame info column — show only on first line of block */}
                   <td class:list={[
-                    "align-top whitespace-nowrap px-3 py-0 text-xs text-muted-foreground select-none border-r border-gray-800 min-w-[220px] max-w-[280px]",
+                    "align-top whitespace-nowrap px-3 py-0 text-xs select-none border-r border-border min-w-[220px] max-w-[280px] relative",
                     lineIdx === 0 ? "pt-1" : "",
                   ]}>
-                    {lineIdx === 0 && (
+                    {lineIdx === 0 ? (
                       <div class="flex items-center gap-2 leading-6">
                         <a
                           href={`/${repo.owner}/${repo.name}/commit/${block.sha}`}
                           class="text-blue-400 hover:text-blue-300 hover:underline font-mono"
                           title={block.sha}
                         >
-                          {block.sha.substring(0, 8)}
+                          {block.sha.substring(0, 7)}
                         </a>
-                        <span class="truncate max-w-[100px] text-muted-foreground" title={block.author}>
+                        <span class="truncate max-w-[80px] text-muted-foreground" title={block.author}>
                           {block.author}
                         </span>
-                        <span class="text-muted-foreground shrink-0">
+                        <span class="text-muted-foreground shrink-0 text-[10px]">
                           {timeAgo(block.date)}
                         </span>
+                        {/* Hover Popup */}
+                        <div class="hidden group-hover/line:block absolute left-0 top-full z-50 mt-1 w-80 rounded-lg border border-border bg-card shadow-xl p-3">
+                          <div class="flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-bold flex-shrink-0">
+                              {block.author[0]?.toUpperCase() || "?"}
+                            </div>
+                            <div class="min-w-0">
+                              <p class="text-sm font-semibold text-foreground truncate">{block.author}</p>
+                              <p class="text-xs text-muted-foreground">{formatDate(block.date)}</p>
+                            </div>
+                          </div>
+                          {block.message && (
+                            <p class="mt-2 text-xs text-foreground font-mono bg-muted/50 rounded p-2 line-clamp-2">
+                              {block.message}
+                            </p>
+                          )}
+                          <div class="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground">
+                            <a href={`/${repo.owner}/${repo.name}/commit/${block.sha}`} class="text-blue-400 hover:underline font-mono">
+                              {block.sha.substring(0, 7)}
+                            </a>
+                            <span>·</span>
+                            <span>{block.lines.length} line(s)</span>
+                          </div>
+                        </div>
                       </div>
+                    ) : (
+                      <div class="leading-6 text-muted-foreground/30">·</div>
                     )}
                   </td>
                   {/* Line number */}
-                  <td class="text-right px-3 py-0 text-xs text-muted-foreground select-none border-r border-gray-800 w-[1%]">
+                  <td class="text-right px-3 py-0 text-xs text-muted-foreground select-none border-r border-border w-[1%]">
                     <div class="leading-6">
                       <a
                         id={`L${line.lineNum}`}
