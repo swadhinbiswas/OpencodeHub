@@ -9,6 +9,7 @@ import {
     X
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 interface Props {
     repoOwner: string;
@@ -34,18 +35,18 @@ export default function NewMilestoneForm({ repoOwner, repoName }: Props) {
                 body: JSON.stringify({
                     title: title.trim(),
                     description: description.trim() || null,
-                    dueOn: dueDate || null,
+                    dueDate: dueDate || null,
                 }),
             });
 
             if (res.ok) {
                 window.location.href = `/${repoOwner}/${repoName}/milestones`;
             } else {
-                alert("Failed to create milestone");
+                toast.error("Failed to create milestone");
             }
         } catch (error) {
             console.error("Error creating milestone:", error);
-            alert("Failed to create milestone");
+            toast.error("Failed to create milestone");
         } finally {
             setIsSubmitting(false);
         }
