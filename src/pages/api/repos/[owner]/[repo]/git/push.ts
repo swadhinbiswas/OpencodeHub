@@ -9,19 +9,16 @@ import { eq, and } from "drizzle-orm";
 import { getDatabase, schema } from "@/db";
 import { repositories, users } from "@/db/schema";
 import { getUserFromRequest } from "@/lib/auth";
-import { unauthorized, notFound, badRequest, serverError, success } from "@/lib/api";
+import { unauthorized, notFound, badRequest, success } from "@/lib/api";
 import { canWriteRepo } from "@/lib/permissions";
-import { getRepoPath } from "@/lib/utils";
 import {
     isCloudStorage,
-    acquireRepo,
     releaseRepo,
-    getDiskPath,
     parseStoragePath,
     ensureRepoInitialized
 } from "@/lib/git-storage";
 import { spawn, execSync } from "child_process";
-import { existsSync, mkdirSync, writeFileSync, unlinkSync } from "fs";
+import { existsSync, writeFileSync, unlinkSync } from "fs";
 import { join } from "path";
 
 import { withErrorHandler } from "@/lib/errors";
@@ -165,7 +162,7 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
             });
 
         // Fetch each ref from bundle
-        for (const { sha, ref } of bundleRefs) {
+        for (const { ref } of bundleRefs) {
             try {
                 // Fetch the ref
                 execSync(`git fetch "${tempBundlePath}" "${ref}:${ref}"`, {
