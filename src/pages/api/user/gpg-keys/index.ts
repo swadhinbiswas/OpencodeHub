@@ -6,13 +6,12 @@ import { gpgKeys } from "@/db/schema";
 import {
     badRequest,
     parseBody,
-    serverError,
     success,
     unauthorized,
 } from "@/lib/api";
 import { getUserFromRequest } from "@/lib/auth";
 import { logger } from "@/lib/logger";
-import { generateId, now } from "@/lib/utils";
+import { generateId } from "@/lib/utils";
 import type { APIRoute } from "astro";
 import { eq } from "drizzle-orm";
 import * as openpgp from "openpgp";
