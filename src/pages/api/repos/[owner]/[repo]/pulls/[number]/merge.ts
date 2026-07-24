@@ -8,7 +8,7 @@ import { and, eq } from "drizzle-orm";
 
 import { withErrorHandler } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { unauthorized, badRequest, notFound, serverError, forbidden, success, conflict } from "@/lib/api";
+import { unauthorized, badRequest, notFound, forbidden, success, conflict } from "@/lib/api";
 import { evaluateGates } from "@/lib/ci-gates";
 import { closeLinkedIssuesOnMerge } from "@/lib/pr-issue-linking";
 import { checkPathPermissions } from "@/lib/path-scoping";
@@ -69,6 +69,15 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals }) => {
         return badRequest("Pull request is not open");
     }
 
+    if (pr.stateId) {
+        const customState = await db.query.prStateDefinitions.findFirst({
+            where: eq(schema.prStateDefinitions.id, pr.stateId)
+        });
+        if (customState && !customState.allowMerge) {
+            return conflict(`Merge blocked: PR is in state '${customState.displayName}', which does not allow merging.`);
+        }
+    }
+
     const repoPath = await resolveRepoPath(repo.diskPath);
     const { diffs } = await compareBranches(repoPath, pr.baseBranch, pr.headBranch);
     const changedFiles = diffs.map((diff) => diff.file).filter(Boolean);
@@ -81,10 +90,14 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals }) => {
     }
 
     // CodeOwner validation
-    const { checkCodeOwnerApprovals } = await import("@/lib/codeowners-enforcement");
-    const codeOwnerResult = await checkCodeOwnerApprovals(repo.id, pr.id, changedFiles);
-    if (!codeOwnerResult.canMerge) {
-        return conflict(`Merge blocked: Missing CodeOwner approvals for ${codeOwnerResult.missingApprovals.length} files.`);
+    const { checkCodeOwnerApprovals, isCodeOwnerEnforced } = await import("@/lib/codeowners-enforcement");
+    const enforced = await isCodeOwnerEnforced(repo.id, pr.baseBranch, pr.stateId);
+    
+    if (enforced) {
+        const codeOwnerResult = await checkCodeOwnerApprovals(repo.id, pr.id, changedFiles);
+        if (!codeOwnerResult.canMerge) {
+            return conflict(`Merge blocked: Missing CodeOwner approvals for ${codeOwnerResult.missingApprovals.length} files.`);
+        }
     }
 
     // Verify CI Gates (Strict Merge Checks)
