@@ -1,81 +1,207 @@
 # OpenCodeHub
 
-![OpenCodeHub](https://raw.githubusercontent.com/swadhinbiswas/OpencodeHub/main/public/logo-light.png)
+[![Docker Image Size](https://img.shields.io/docker/image-size/opencodehub/opencodehub/latest?style=flat-square&color=blue)](https://hub.docker.com/r/opencodehub/opencodehub)
+[![Docker Pulls](https://img.shields.io/docker/pulls/opencodehub/opencodehub?style=flat-square&color=emerald)](https://hub.docker.com/r/opencodehub/opencodehub)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[![Documentation](https://img.shields.io/badge/Docs-docs.opencodehub.space-indigo?style=flat-square)](https://docs.opencodehub.space)
 
-**The self-hosted Git platform that doesn't compromise.**
+**The self-hosted Git platform built for speed, control, and modern software engineering workflows.**
 
-OpenCodeHub is a self-hosted Git platform with stacked PRs, merge queue, CI/CD pipelines, and AI code review. One platform for everything your team needs — no vendor lock-in, no per-seat pricing.
+OpenCodeHub is an open-source alternative to GitHub/GitLab featuring native Graphite-style **Stacked PRs**, a **Merge Queue with speculative builds**, a **GitHub Actions-compatible CI/CD engine**, and multi-provider **AI Code Review**.
 
 ---
 
-## Features
+## Key Features
 
-- **Stacked PRs** — Graphite-style stacked branches for incremental review
-- **Merge Queue** — Stack-aware merge ordering with speculative CI builds
-- **CI/CD Pipelines** — GitHub Actions-compatible workflows with Docker runners
-- **AI Code Review** — 10+ providers: GPT-4, Claude, Gemini, Groq, Ollama
-- **Git Hosting** — HTTP smart protocol + SSH push/pull, forks, mirroring, LFS
-- **Issues & Projects** — Labels, milestones, custom fields, kanban boards
-- **175+ API Endpoints** — REST + GraphQL for full programmatic access
-- **CLI** — `och` command line tool for stack workflows and repository management
+- 🥞 **Stacked PRs** — Native stacked branch workflows in Web UI & CLI (`och stack create/submit/sync`)
+- 🚦 **Merge Queue** — Priority lanes, speculatively tested builds, and auto-merge controls
+- ⚡ **CI/CD Pipeline Engine** — GitHub Actions workflow runner using Docker-in-Docker execution
+- 🤖 **AI Code Review** — Multi-provider support (OpenAI, Anthropic, Gemini, Groq, local Ollama)
+- 🔒 **Enterprise Security** — Secret scanning, Trivy vulnerability scans, license compliance, OIDC SSO, 2FA/TOTP, and path permissions
+- 📦 **Pluggable Storage** — Local filesystem, AWS S3, Cloudflare R2, MinIO, Ceph, Garage, and any S3-compatible backend
+- 🗄️ **Multi-Database Support** — PostgreSQL (recommended for production), SQLite, and Turso/LibSQL
+- 🧰 **Developer CLI** — `opencodehub-cli` (`och`) with interactive terminal cockpit (`och focus`) and stack visualization
+
+---
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        CLIENTS                              │
+│  Browser  │  Git CLI (HTTP/SSH)  │  OpenCodeHub CLI (och)   │
+└─────────────────────────────────────────────────────────────┘
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│                    OPENCODEHUB PLATFORM                     │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │  Web UI     │  │  REST API   │  │  GraphQL Endpoint   │  │
+│  │  (Astro+React)││  (140+ routes)││  (src/pages/api/)   │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │  Git Server │  │  SSH Server │  │  Pipeline Runner    │  │
+│  │  (HTTP RPC) │  │  (ssh2)     │  │  (Docker executor)  │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│              PERSISTENCE & INFRASTRUCTURE                   │
+│  PostgreSQL / SQLite  │  Redis  │  S3 / MinIO / Local       │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## Quick Start
 
+### 1. Single Container (Quick Test)
+
 ```bash
-# Pull and run
 docker run -d \
   --name opencodehub \
   -p 4321:4321 \
+  -p 2222:2222 \
   -v opencodehub-data:/data \
   -e JWT_SECRET=$(openssl rand -hex 32) \
   -e SESSION_SECRET=$(openssl rand -hex 32) \
-  -e DATABASE_URL=postgresql://user:pass@db:5432/opencodehub \
+  -e INTERNAL_HOOK_SECRET=$(openssl rand -hex 32) \
+  -e SITE_URL=http://localhost:4321 \
   opencodehub/opencodehub:latest
 ```
 
-Or with Docker Compose:
+Open **http://localhost:4321** in your browser to get started.
 
+---
+
+### 2. Production Docker Compose Stack (Recommended)
+
+```yaml
+version: "3.8"
+
+services:
+  app:
+    image: opencodehub/opencodehub:latest
+    container_name: opencodehub-app
+    restart: always
+    ports:
+      - "4321:4321"   # Web UI & API
+      - "2222:2222"   # Git SSH Server
+    environment:
+      - NODE_ENV=production
+      - SITE_URL=https://git.yourdomain.com
+      - DATABASE_DRIVER=postgres
+      - DATABASE_URL=postgresql://opencodehub:secretpass@postgres:5432/opencodehub?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - INTERNAL_HOOK_SECRET=${INTERNAL_HOOK_SECRET}
+      - RUNNER_SECRET=${RUNNER_SECRET}
+      - WORKFLOW_SECRET_ENCRYPTION_KEY=${WORKFLOW_SECRET_ENCRYPTION_KEY}
+    volumes:
+      - app-data:/data
+    depends_on:
+      - postgres
+      - redis
+
+  worker:
+    image: opencodehub/opencodehub-worker:latest
+    container_name: opencodehub-worker
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - DATABASE_DRIVER=postgres
+      - DATABASE_URL=postgresql://opencodehub:secretpass@postgres:5432/opencodehub?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - app-data:/data
+    depends_on:
+      - postgres
+      - redis
+
+  runner:
+    image: opencodehub/opencodehub-runner:latest
+    container_name: opencodehub-runner
+    restart: always
+    privileged: true
+    environment:
+      - OPENCODEHUB_URL=http://app:4321
+      - RUNNER_SECRET=${RUNNER_SECRET}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - app
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: opencodehub-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: opencodehub
+      POSTGRES_PASSWORD: secretpass
+      POSTGRES_DB: opencodehub
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: opencodehub-redis
+    restart: always
+    volumes:
+      - redis-data:/data
+
+volumes:
+  app-data:
+  pg-data:
+  redis-data:
+```
+
+Start the stack:
 ```bash
-git clone https://github.com/swadhinbiswas/OpencodeHub.git
-cd OpenCodeHub
-cp .env.example .env
 docker compose up -d
 docker compose exec app bun run scripts/seed-admin.ts
 ```
 
-Open **http://localhost:4321** and create your admin account.
+---
+
+## Environment Variables Reference
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `SITE_URL` | Yes | `http://localhost:4321` | Base URL of your platform (e.g. `https://git.company.com`) |
+| `DATABASE_DRIVER` | No | `postgres` | Database driver (`postgres`, `sqlite`, `turso`) |
+| `DATABASE_URL` | Yes | — | Connection string (PostgreSQL/SQLite) |
+| `REDIS_URL` | Yes | — | Redis connection URI for sessions & locks |
+| `JWT_SECRET` | Yes | — | 32+ char secret for JWT token signing |
+| `SESSION_SECRET` | Yes | — | 32+ char secret for cookie encryption |
+| `INTERNAL_HOOK_SECRET` | Yes | — | Shared secret for Git hook callbacks |
+| `STORAGE_TYPE` | No | `local` | Storage backend (`local` or `s3`) |
+| `S3_BUCKET` | If `STORAGE_TYPE=s3` | — | S3 bucket name |
+| `S3_ENDPOINT` | Optional | — | S3-compatible custom endpoint (MinIO / R2) |
+| `S3_ACCESS_KEY` | If `STORAGE_TYPE=s3` | — | Access Key ID |
+| `S3_SECRET_KEY` | If `STORAGE_TYPE=s3` | — | Secret Access Key |
 
 ---
 
-## Environment Variables
+## OpenCodeHub CLI (`och`)
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | Yes | PostgreSQL connection string |
-| `JWT_SECRET` | Yes | Random 32+ char string for JWT signing |
-| `SESSION_SECRET` | Yes | Random 32+ char string for session encryption |
-| `REDIS_URL` | Yes | Redis connection string |
-| `SITE_URL` | Yes | Your public URL (e.g., `https://git.example.com`) |
-| `STORAGE_TYPE` | No | `local` (default) or `s3` |
+Install the official CLI to manage stacks, merge queues, and reviews:
 
----
+```bash
+npm install -g opencodehub-cli
 
-## Documentation
+# Authenticate with your self-hosted instance
+och auth login --url https://git.yourdomain.com
 
-Full documentation: **[docs.opencodehub.space](https://docs.opencodehub.space)**
-
-- [Installation Guide](https://docs.opencodehub.space/getting-started/installation/)
-- [Configuration Reference](https://docs.opencodehub.space/administration/configuration/)
-- [Deployment Options](https://docs.opencodehub.space/administration/deployment/)
-- [CLI Reference](https://docs.opencodehub.space/reference/cli-commands/)
-- [API Reference](https://docs.opencodehub.space/api/rest-api/)
+# Create stacked PR branches
+och stack create feature/part-1
+och stack submit
+```
 
 ---
 
-## Links
+## Useful Links & Community
 
-- **GitHub**: [github.com/swadhinbiswas/OpencodeHub](https://github.com/swadhinbiswas/OpencodeHub)
+- **Official Repository**: [github.com/swadhinbiswas/OpencodeHub](https://github.com/swadhinbiswas/OpencodeHub)
 - **Documentation**: [docs.opencodehub.space](https://docs.opencodehub.space)
+- **Bug Tracker**: [github.com/swadhinbiswas/OpencodeHub/issues](https://github.com/swadhinbiswas/OpencodeHub/issues)
 - **License**: MIT

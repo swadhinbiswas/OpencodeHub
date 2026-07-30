@@ -122,16 +122,16 @@ export function getDatabase():
     return db;
   }
 
-  // Currently only SQLite, LibSQL and Postgres are fully supported
+  // Currently only SQLite, LibSQL and Postgres are supported
   if (driver === "mysql") {
-    logger.warn(
-      { driver, url },
-      "MySQL driver validation pending. Falling back to SQLite.",
+    throw new Error(
+      `MySQL driver is not yet implemented. Use PostgreSQL, SQLite, or LibSQL/Turso instead. ` +
+      `Driver requested: "${driver}", URL: "${url}"`,
     );
   }
 
   const dbPath =
-    driver === "sqlite" || driver === "mysql" ? url : "./data/opencodehub.db";
+    driver === "sqlite" && !url.includes("://") ? url : "./data/opencodehub.db";
 
   // Ensure directory exists for local SQLite
   if (!url.includes("://")) {
