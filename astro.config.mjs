@@ -2,10 +2,9 @@ import node from "@astrojs/node";
 import react from "@astrojs/react";
 import { defineConfig } from "astro/config";
 import icon from "astro-icon";
-import { loadEnv } from "vite";
 
-// Load .env before config reads PORT
-const env = loadEnv("development", process.cwd(), "");
+// Load environment variables safely
+const port = parseInt(process.env.PORT || "4321");
 
 export default defineConfig({
   integrations: [
@@ -17,7 +16,7 @@ export default defineConfig({
     mode: "standalone",
   }),
   server: {
-    port: parseInt(env.PORT || process.env.PORT || "4321"),
+    port,
     host: true,
   },
   vite: {
