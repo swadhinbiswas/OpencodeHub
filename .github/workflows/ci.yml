@@ -488,7 +488,6 @@ jobs:
           done
           echo "::error::bun install failed after 3 attempts"
           exit 1
-        working-directory: cli
 
       - name: Build CLI
         run: bun run build
