@@ -6,6 +6,7 @@
     "@opentelemetry/sdk-node",
     "@vercel/nft",
     "astro",
+    "brace-expansion",
     "cacache",
     "gaxios",
     "gcp-metadata",

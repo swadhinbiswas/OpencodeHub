@@ -30,30 +30,10 @@ const log = (level, msg) => console.log(`[${new Date().toISOString()}] [${level}
 
 function regenerateLockfile() {
   log("info", "Regenerating package-lock.json from package.json (--package-lock-only)…");
-  // Some npm versions crash with `Cannot read properties of null (reading 'matches')`
-  // when the existing node_modules is bun-hoisted (paths contain `+`) or when
-  // hoisted packages reference the yarn/bun `workspace:` protocol in nested
-  // `node_modules/<pkg>/package.json` (e.g. crossws in docs-site/node_modules).
-  // We try three strategies in order:
-  //   1. Plain `npm install --package-lock-only` in the project root.
-  //   2. Same with `--ignore-scripts --legacy-peer-deps` to skip workspaces.
-  //   3. Run `npm install --package-lock-only` from a clean temp directory
-  //      containing only package.json, so npm never sees bun's hoisted
-  //      `node_modules/.bun/*` paths or the docs-site nested packages.
-  // If all three fail AND no lockfile exists on disk, exit 2; otherwise fall
-  // back to auditing the existing lockfile (may be stale but better than 0).
   const root = ROOT;
   const attempts = [
     {
-      label: "root (default)",
-      run: () => spawnSync("npm", ["install", "--package-lock-only", "--no-audit", "--no-fund", `--registry=${AUDIT_REGISTRY}`], { cwd: root, stdio: "inherit" }),
-    },
-    {
-      label: "root (--ignore-scripts --legacy-peer-deps)",
-      run: () => spawnSync("npm", ["install", "--package-lock-only", "--no-audit", "--no-fund", "--ignore-scripts", "--legacy-peer-deps", `--registry=${AUDIT_REGISTRY}`], { cwd: root, stdio: "inherit" }),
-    },
-    {
-      label: "clean temp directory (no hoisted node_modules)",
+      label: "clean temp directory (isolated package.json)",
       run: () => {
         const tmp = mkdtempSync(join(tmpdir(), "och-audit-"));
         copyFileSync(join(root, "package.json"), join(tmp, "package.json"));
@@ -68,14 +48,20 @@ function regenerateLockfile() {
         }
       },
     },
+    {
+      label: "root (--ignore-scripts --legacy-peer-deps)",
+      run: () => spawnSync("npm", ["install", "--package-lock-only", "--no-audit", "--no-fund", "--ignore-scripts", "--legacy-peer-deps", `--registry=${AUDIT_REGISTRY}`], { cwd: root, stdio: "inherit" }),
+    },
+    {
+      label: "root (default)",
+      run: () => spawnSync("npm", ["install", "--package-lock-only", "--no-audit", "--no-fund", `--registry=${AUDIT_REGISTRY}`], { cwd: root, stdio: "inherit" }),
+    },
   ];
   for (let i = 0; i < attempts.length; i++) {
     const a = attempts[i];
     log("info", `Lockfile regen attempt ${i + 1}: ${a.label}`);
     const r = a.run();
     if (r.status === 0) {
-      // The clean-tmp attempt copies the lockfile before returning, so a
-      // subsequent `existsSync(LOCKFILE)` check at the caller will pass.
       return;
     }
     log("warn", `Lockfile regen attempt ${i + 1} failed (exit ${r.status})`);
@@ -117,8 +103,6 @@ function runAudit() {
     { encoding: "utf8" }
   );
 
-  // npm may exit non-zero when vulnerabilities are found AND when the lockfile
-  // is malformed. We rely on the JSON report regardless of exit code.
   let report = {};
   try {
     report = JSON.parse(r.stdout || "{}");
