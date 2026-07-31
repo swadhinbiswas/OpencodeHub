@@ -1795,7 +1795,7 @@ try {
   }
   loadAutoMergeStatus();
   loadPrChecks();
-  loadCodeOwnerEnforcement();
+  // loadCodeOwnerEnforcement handled by CodeOwnersEnforcement component
   loadMergeReadiness();
 
   mergeBtn?.addEventListener("click", async () => {

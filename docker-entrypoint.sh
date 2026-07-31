@@ -26,7 +26,13 @@ if [ -n "$DATABASE_URL" ]; then
   # Run database migrations
   echo "🔄 Running database migrations..."
   cd /app
-  bunx drizzle-kit push --force 2>/dev/null || echo "⚠️  Migration push skipped (may already be up to date)"
+  # Generate migration files if they don't exist yet (safe — only creates new ones)
+  if [ ! -d "/app/drizzle" ]; then
+    echo "📝 Generating initial migration files..."
+    bunx drizzle-kit generate 2>/dev/null || echo "⚠️  Migration generation skipped"
+  fi
+  # Apply pending migrations (safe — never drops columns/tables like push --force)
+  bunx drizzle-kit migrate 2>/dev/null || echo "⚠️  Migration apply skipped (may already be up to date)"
   echo "✅ Migrations complete"
 fi
 

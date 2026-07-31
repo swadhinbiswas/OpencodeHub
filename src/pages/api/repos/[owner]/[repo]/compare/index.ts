@@ -7,7 +7,7 @@ import type { APIRoute } from "astro";
 import { and, eq } from "drizzle-orm";
 
 import { withErrorHandler } from "@/lib/errors";
-import { unauthorized, badRequest, notFound, serverError, success } from "@/lib/api";
+import { unauthorized, badRequest, notFound, success } from "@/lib/api";
 
 // ... existing imports ...
 

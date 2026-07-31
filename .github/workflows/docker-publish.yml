@@ -9,6 +9,7 @@ on:
 env:
   REGISTRY: docker.io
   IMAGE_NAME: opencodehub/opencodehub
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
 
 jobs:
   build-and-push:
@@ -21,6 +22,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -30,8 +34,8 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Extract metadata
-        id: meta
+      - name: Extract Metadata (App)
+        id: meta-app
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
@@ -42,41 +46,83 @@ jobs:
             type=sha,prefix=
             type=raw,value=latest,enable={{is_default_branch}}
           labels: |
-            org.opencontainers.image.title=OpenCodeHub
-            org.opencontainers.image.description=A modern, self-hosted Git platform for teams that want speed, control, and clean workflows.
+            org.opencontainers.image.title=OpenCodeHub Platform
+            org.opencontainers.image.description=A modern, self-hosted Git platform with stacked PRs, merge queue, CI/CD, and AI review.
             org.opencontainers.image.url=https://github.com/swadhinbiswas/OpencodeHub
             org.opencontainers.image.source=https://github.com/swadhinbiswas/OpencodeHub
             org.opencontainers.image.licenses=MIT
 
-      - name: Build and push app image
+      - name: Extract Metadata (Worker)
+        id: meta-worker
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-worker
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=OpenCodeHub Worker
+            org.opencontainers.image.description=Background task worker for OpenCodeHub (queues, webhooks, notifications).
+            org.opencontainers.image.url=https://github.com/swadhinbiswas/OpencodeHub
+            org.opencontainers.image.source=https://github.com/swadhinbiswas/OpencodeHub
+            org.opencontainers.image.licenses=MIT
+
+      - name: Extract Metadata (Runner)
+        id: meta-runner
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-runner
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=OpenCodeHub Runner
+            org.opencontainers.image.description=Docker-in-Docker CI/CD runner for OpenCodeHub pipelines.
+            org.opencontainers.image.url=https://github.com/swadhinbiswas/OpencodeHub
+            org.opencontainers.image.source=https://github.com/swadhinbiswas/OpencodeHub
+            org.opencontainers.image.licenses=MIT
+
+      - name: Build and Push App Image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta-app.outputs.tags }}
+          labels: ${{ steps.meta-app.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
 
-      - name: Build and push runner image
+      - name: Build and Push Worker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.worker
+          push: true
+          tags: ${{ steps.meta-worker.outputs.tags }}
+          labels: ${{ steps.meta-worker.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Build and Push Runner Image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile.runner
           push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-runner:latest
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-runner:${{ github.sha }}
-          labels: |
-            org.opencontainers.image.title=OpenCodeHub Runner
-            org.opencontainers.image.description=CI/CD runner for OpenCodeHub
-            org.opencontainers.image.url=https://github.com/swadhinbiswas/OpencodeHub
-            org.opencontainers.image.source=https://github.com/swadhinbiswas/OpencodeHub
-            org.opencontainers.image.licenses=MIT
+          tags: ${{ steps.meta-runner.outputs.tags }}
+          labels: ${{ steps.meta-runner.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
 
       - name: Update Docker Hub Repository Description
         uses: peter-evans/dockerhub-description@v4
@@ -84,5 +130,5 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
           repository: ${{ env.IMAGE_NAME }}
-          readme-filepath: ./README.md
-          short-description: "A modern, self-hosted Git platform with stacked PRs, merge queue, CI/CD, and AI review."
+          readme-filepath: ./DOCKERHUB.md
+          short-description: "Self-hosted Git platform with stacked PRs, merge queue, CI/CD, and AI code review"

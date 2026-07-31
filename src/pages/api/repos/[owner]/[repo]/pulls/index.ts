@@ -4,12 +4,12 @@ import { compareBranches, getCommit } from "@/lib/git";
 import { canWriteRepo } from "@/lib/permissions";
 import { resolveRepoPath } from "@/lib/git-storage";
 import type { APIRoute } from "astro";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import { withErrorHandler } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { unauthorized, badRequest, notFound, serverError, forbidden, created } from "@/lib/api";
+import { unauthorized, badRequest, notFound, forbidden, created } from "@/lib/api";
 import { logActivity } from "@/lib/activity";
 import { autoLinkPR } from "@/lib/pr-issue-linking";
 import { autoAssignReviewers } from "@/lib/multi-reviewer";

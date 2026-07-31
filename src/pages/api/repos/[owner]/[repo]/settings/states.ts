@@ -6,11 +6,11 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 
 const reviewerSchema = z.object({
-    userId: z.string().optional(),
-    teamId: z.string().optional(),
+    username: z.string().optional(),
+    teamName: z.string().optional(),
     requiredCount: z.number().int().positive().optional(),
-}).refine((value) => Boolean(value.userId) !== Boolean(value.teamId), {
-    message: "Each reviewer rule requires exactly one of userId or teamId",
+}).refine((value) => Boolean(value.username) !== Boolean(value.teamName), {
+    message: "Each reviewer rule requires exactly one of username or teamName",
 });
 
 const createStateSchema = z.object({
@@ -25,7 +25,7 @@ const createStateSchema = z.object({
     reviewers: z.array(reviewerSchema).optional(),
 });
 
-export const GET: APIRoute = withErrorHandler(async ({ params, locals }: APIContext) => {
+export const GET: APIRoute = withErrorHandler(async ({ locals }: APIContext) => {
     const { repo } = locals as any;
     const db = getDatabase();
 
@@ -40,7 +40,7 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }: APICont
     return success(states);
 });
 
-export const POST: APIRoute = withErrorHandler(async ({ params, request, locals }: APIContext) => {
+export const POST: APIRoute = withErrorHandler(async ({ request, locals }: APIContext) => {
     const { repo, user } = locals as any;
     const db = getDatabase();
 
@@ -93,15 +93,29 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
     }).returning();
 
     if (reviewers && reviewers.length > 0) {
-        await (db as any).insert(schema.prStateReviewers).values(
-            reviewers.map((reviewer) => ({
+        const resolvedReviewers = [];
+        for (const reviewer of reviewers) {
+            let userId = null;
+            let teamId = null;
+            if (reviewer.username) {
+                const foundUser = await db.query.users.findFirst({
+                    where: eq(schema.users.username, reviewer.username),
+                    columns: { id: true }
+                });
+                if (!foundUser) {
+                    return badRequest(`User '${reviewer.username}' not found`);
+                }
+                userId = foundUser.id;
+            }
+            resolvedReviewers.push({
                 id: nanoid(),
                 stateDefinitionId: id,
-                userId: reviewer.userId || null,
-                teamId: reviewer.teamId || null,
+                userId,
+                teamId,
                 requiredCount: reviewer.requiredCount || 1,
-            }))
-        );
+            });
+        }
+        await (db as any).insert(schema.prStateReviewers).values(resolvedReviewers);
     }
 
     const created = await db.query.prStateDefinitions.findFirst({

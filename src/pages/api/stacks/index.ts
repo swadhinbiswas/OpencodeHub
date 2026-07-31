@@ -33,7 +33,6 @@ const createStackSchema = z.object({
     message: "Either repositoryId or owner and repo must be provided",
 });
 
-type CreateStackInput = z.infer<typeof createStackSchema>;
 
 // GET /api/stacks - List user's stacks
 export const GET: APIRoute = withErrorHandler(async ({ request }) => {

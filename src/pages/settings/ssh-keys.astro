@@ -5,6 +5,9 @@ import { sshKeys } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 
 const user = Astro.locals.user;
+const rawUrl = process.env.SITE_URL || "your-server.com";
+// Extract hostname for SSH commands
+const sshHost = rawUrl.replace(/^https?:\/\//, "").split(":")[0].split("/")[0];
 
 if (!user) {
   return Astro.redirect("/login");
@@ -47,6 +50,46 @@ try {
         </svg>
         New SSH Key
       </button>
+    </div>
+
+    <!-- Documentation -->
+    <div class="rounded-lg border border-border bg-card/80 p-5">
+      <h4 class="text-sm font-semibold text-foreground mb-3">How to add an SSH key</h4>
+      <div class="space-y-3 text-sm text-muted-foreground">
+        <div class="flex items-start gap-3">
+          <span class="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">1</span>
+          <div>
+            <p class="font-medium text-foreground">Generate an SSH key pair</p>
+            <p class="mt-1">Run this command in your terminal:</p>
+            <pre class="mt-2 p-3 rounded-lg bg-muted font-mono text-xs text-foreground overflow-x-auto">ssh-keygen -t ed25519 -C "your_email@example.com"</pre>
+            <p class="mt-1">Or for RSA:</p>
+            <pre class="mt-2 p-3 rounded-lg bg-muted font-mono text-xs text-foreground overflow-x-auto">ssh-keygen -t rsa -b 4096 -C "your_email@example.com"</pre>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">2</span>
+          <div>
+            <p class="font-medium text-foreground">Copy your public key</p>
+            <pre class="mt-2 p-3 rounded-lg bg-muted font-mono text-xs text-foreground overflow-x-auto">cat ~/.ssh/id_ed25519.pub</pre>
+            <p class="mt-1">Copy the entire output (starts with <code class="px-1 py-0.5 rounded bg-muted text-foreground">ssh-ed25519</code> or <code class="px-1 py-0.5 rounded bg-muted text-foreground">ssh-rsa</code>).</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">3</span>
+          <div>
+            <p class="font-medium text-foreground">Add the key to OpenCodeHub</p>
+            <p class="mt-1">Click "New SSH Key" above, paste your public key, and give it a descriptive title.</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="flex-shrink-0 w-5 h-5 rounded-full bg-primary/20 text-primary text-xs flex items-center justify-center font-bold">4</span>
+          <div>
+            <p class="font-medium text-foreground">Test your SSH connection</p>
+            <pre class="mt-2 p-3 rounded-lg bg-muted font-mono text-xs text-foreground overflow-x-auto">ssh -T git@{sshHost}</pre>
+            <p class="mt-1">You should see: <code class="px-1 py-0.5 rounded bg-muted text-foreground">Hi username! You've successfully authenticated</code></p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Keys List -->
@@ -161,6 +204,7 @@ try {
 </SettingsLayout>
 
 <script>
+  import { toast } from "sonner";
   const addBtn = document.getElementById("add-key-btn");
   const addFirstBtn = document.getElementById("add-first-key-btn");
   const modal = document.getElementById("add-key-modal");
@@ -195,11 +239,11 @@ try {
         window.location.reload();
       } else {
         const error = await response.json();
-        alert(error.message || "Failed to add SSH key");
+        toast.error(error.message || "Failed to add SSH key");
       }
     } catch (error) {
       console.error("Error adding SSH key:", error);
-      alert("An error occurred");
+      toast.error("An error occurred");
     }
   });
 
@@ -212,7 +256,7 @@ try {
           if (response.ok) {
             window.location.reload();
           } else {
-            alert("Failed to delete SSH key");
+            toast.error("Failed to delete SSH key");
           }
         } catch (error) {
           console.error("Error deleting SSH key:", error);

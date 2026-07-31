@@ -2,6 +2,7 @@
 import "@/styles/globals.css";
 import Header from "@/components/layout/Header.astro";
 import { Toaster } from "@/components/ui/sonner";
+import { getCsrfToken } from "@/middleware/csrf";
 
 interface Props {
   title?: string;
@@ -10,8 +11,11 @@ interface Props {
 
 const {
   title = "OpenCodeHub - Self-hosted Git Platform",
-  description = "A powerful, self-hosted Git platform with CI/CD, code review, and collaboration features",
+  description = "A powerful, self-hosted Git Platform with CI/CD, code review, and collaboration features",
 } = Astro.props;
+
+const { token, cookie } = getCsrfToken(Astro.request);
+Astro.response.headers.set("Set-Cookie", cookie);
 ---
 
 <!doctype html>
@@ -23,6 +27,34 @@ const {
     <meta name="generator" content={Astro.generator} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title}</title>
+    <meta name="csrf-token" content={token} />
+    <!-- Global CSRF Fetch Interceptor -->
+    <script is:inline>
+      (function() {
+        const originalFetch = window.fetch;
+        window.fetch = async function () {
+          let [resource, config] = arguments;
+          if (!config) config = {};
+          
+          const method = (config.method || 'GET').toUpperCase();
+          if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (token) {
+              // Handle Headers object or plain object
+              if (config.headers instanceof Headers) {
+                config.headers.set('x-csrf-token', token);
+              } else {
+                config.headers = {
+                  ...config.headers,
+                  'x-csrf-token': token
+                };
+              }
+            }
+          }
+          return originalFetch(resource, config);
+        };
+      })();
+    </script>
     <!-- Theme: apply before paint to prevent FOUC -->
     <script is:inline>
       (function() {
@@ -126,36 +158,3 @@ const {
     </script>
   </body>
 </html>
-
-<style is:global>
-  body {
-    font-family: "Inter", system-ui, sans-serif;
-  }
-
-  code,
-  pre,
-  .font-mono {
-    font-family: "JetBrains Mono", monospace;
-  }
-
-  .container {
-    @apply mx-auto w-full max-w-7xl px-4 sm:px-5 lg:px-6;
-  }
-
-  /* Responsive text utilities */
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  /* Smooth scroll */
-  html {
-    scroll-behavior: smooth;
-  }
-
-  /* Better mobile tap targets */
-  @media (max-width: 640px) {
-    button, a, input, textarea, select {
-      min-height: 44px;
-    }
-  }
-</style>

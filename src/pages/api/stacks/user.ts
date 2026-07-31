@@ -1,8 +1,7 @@
 import { getDatabase, schema } from "@/db";
 import { type APIContext } from "astro";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { success, unauthorized } from "@/lib/api";
-import { logger } from "@/lib/logger";
 import { withErrorHandler } from "@/lib/errors";
 
 export const GET = withErrorHandler(async ({ locals }: APIContext) => {

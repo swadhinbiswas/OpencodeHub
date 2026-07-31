@@ -225,6 +225,32 @@ try {
           </button>
         </div>
 
+        <!-- Documentation -->
+        <div class="rounded-lg border border-border bg-card/80 p-5">
+          <h4 class="text-sm font-semibold text-foreground mb-3">About Deploy Keys</h4>
+          <div class="space-y-3 text-sm text-muted-foreground">
+            <p>Deploy keys are SSH keys that grant access to a <strong class="text-foreground">single repository</strong>. They're used for:</p>
+            <ul class="list-disc list-inside space-y-1 ml-2">
+              <li>CI/CD pipelines to pull code during builds</li>
+              <li>Deployment servers to pull code for deployment</li>
+              <li>Automation scripts that need repository access</li>
+            </ul>
+            <div class="mt-3 p-3 rounded-lg bg-muted/50 border border-border">
+              <p class="font-medium text-foreground mb-1">Key differences from SSH keys:</p>
+              <ul class="list-disc list-inside space-y-1 ml-2 text-xs">
+                <li>Deploy keys are tied to a <strong class="text-foreground">single repository</strong></li>
+                <li>SSH keys (in Settings) give access to <strong class="text-foreground">all your repositories</strong></li>
+                <li>Deploy keys can be read-only or read/write</li>
+              </ul>
+            </div>
+            <div class="mt-3">
+              <p class="font-medium text-foreground mb-1">To add a deploy key:</p>
+              <pre class="p-3 rounded-lg bg-muted font-mono text-xs text-foreground">ssh-keygen -t ed25519 -C "deploy@production-server"</pre>
+              <p class="mt-1">Then copy the public key and paste it in the form above.</p>
+            </div>
+          </div>
+        </div>
+
         <!-- Add Key Form (hidden by default) -->
         <div id="add-key-form" class="hidden relative">
           <div

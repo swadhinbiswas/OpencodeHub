@@ -2295,5 +2295,62 @@ export const openApiSpec = {
                 },
             },
         },
+        "/scim/v2/Users": {
+            get: {
+                tags: ["Enterprise Identity"],
+                summary: "Search & List SCIM 2.0 Users",
+                security: [{ bearerAuth: [] }],
+                responses: { 200: { description: "SCIM 2.0 User list response" } }
+            },
+            post: {
+                tags: ["Enterprise Identity"],
+                summary: "Provision SCIM 2.0 User",
+                security: [{ bearerAuth: [] }],
+                responses: { 201: { description: "SCIM 2.0 User provisioned" } }
+            }
+        },
+        "/scim/v2/Groups": {
+            get: {
+                tags: ["Enterprise Identity"],
+                summary: "Search & List SCIM 2.0 Groups",
+                security: [{ bearerAuth: [] }],
+                responses: { 200: { description: "SCIM 2.0 Group list response" } }
+            },
+            post: {
+                tags: ["Enterprise Identity"],
+                summary: "Create SCIM 2.0 Group/Team",
+                security: [{ bearerAuth: [] }],
+                responses: { 201: { description: "SCIM 2.0 Group created" } }
+            }
+        },
+        "/auth/saml/metadata": {
+            get: {
+                tags: ["Enterprise Identity"],
+                summary: "SAML 2.0 Service Provider Metadata XML",
+                responses: { 200: { description: "SAML Metadata XML" } }
+            }
+        },
+        "/admin/backup": {
+            get: {
+                tags: ["Admin Operations"],
+                summary: "Backup Health & Status",
+                security: [{ bearerAuth: [] }],
+                responses: { 200: { description: "Backup status response" } }
+            },
+            post: {
+                tags: ["Admin Operations"],
+                summary: "Trigger Backup Snapshot",
+                security: [{ bearerAuth: [] }],
+                responses: { 200: { description: "Backup snapshot initiated" } }
+            }
+        },
+        "/v2/": {
+            get: {
+                tags: ["Package Registry"],
+                summary: "OCI Container Registry Docker v2 Ping",
+                responses: { 200: { description: "OCI Docker v2 API headers" } }
+            }
+        }
     },
 };
+

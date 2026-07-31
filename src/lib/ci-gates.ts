@@ -210,18 +210,35 @@ export async function evaluateGates(prId: string): Promise<{
     const approvals = pr.reviews?.filter(r => r.state === "approved") || [];
     const changesRequested = pr.reviews?.some(r => r.state === "changes_requested");
 
-    if (approvals.length === 0) {
-        results.push({
-            passed: false,
-            gateName: "Review",
-            message: "At least one approval required",
-            details: { gateType: "review" },
-        });
-    } else if (changesRequested) {
+    const requiredReviewers = await db.query.pullRequestReviewers?.findMany({
+        where: and(
+            eq(schema.pullRequestReviewers.pullRequestId, prId),
+            eq(schema.pullRequestReviewers.isRequired, true)
+        )
+    }) || [];
+
+    const missingRequired = requiredReviewers.filter(rr => !approvals.some(a => a.reviewerId === rr.userId));
+
+    if (changesRequested) {
         results.push({
             passed: false,
             gateName: "Review",
             message: "Changes requested by reviewer",
+            details: { gateType: "review" },
+        });
+    } else if (missingRequired.length > 0) {
+        results.push({
+            passed: false,
+            gateName: "Review",
+            message: `Missing ${missingRequired.length} required approval(s)`,
+            details: { gateType: "review", missingCount: missingRequired.length },
+        });
+    } else if (approvals.length === 0 && requiredReviewers.length === 0) {
+        // Fallback: if no specific reviewers are required, still require at least 1 approval
+        results.push({
+            passed: false,
+            gateName: "Review",
+            message: "At least one approval required",
             details: { gateType: "review" },
         });
     } else {

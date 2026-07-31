@@ -61,7 +61,7 @@ export function CustomPRState({ initialStateId, customStates, repoOwner, repoNam
       const res = await fetch(`/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}/state`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ state: selectedState }),
+        body: JSON.stringify(selectedState.startsWith('custom:') ? { stateId: selectedState.replace('custom:', '') } : { state: selectedState.replace('builtin:', '') }),
       });
       const data = await res.json();
       if (!res.ok) {

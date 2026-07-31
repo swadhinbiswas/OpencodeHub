@@ -1,7 +1,7 @@
 
 import type { APIRoute } from "astro";
 import { getDatabase, schema } from "@/db";
-import { eq, and, sql, desc, gte } from "drizzle-orm";
+import { eq, and, gte } from "drizzle-orm";
 import { withErrorHandler } from "@/lib/errors";
 import { success, unauthorized } from "@/lib/api";
 

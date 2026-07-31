@@ -300,9 +300,10 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
 
     // Initialize git repository immediately (fast, ~100ms)
     // Upload to S3 happens asynchronously to not block response
+    let localGitPath: string | null = null;
     try {
       // Get local path for git operations (temp path for cloud storage, direct path for local)
-      const localGitPath = await initRepoInStorage(user.username, slug);
+      localGitPath = await initRepoInStorage(user.username, slug);
 
       await initRepository(localGitPath, {
         defaultBranch,
@@ -328,6 +329,18 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
     } catch (error) {
       // Rollback database entry if git init fails
       await db.delete(repositories).where(eq(repositories.id, repoId));
+      // Clean up the git repo directory from disk
+      if (localGitPath) {
+        try {
+          const { rmSync, existsSync } = await import('fs');
+          if (existsSync(localGitPath)) {
+            rmSync(localGitPath, { recursive: true, force: true });
+            logger.info({ localGitPath }, 'Cleaned up failed repo directory');
+          }
+        } catch (cleanupErr) {
+          logger.warn({ err: cleanupErr, localGitPath }, 'Failed to clean up repo directory');
+        }
+      }
       logger.error({ err: error, repoId, diskPath }, 'Git init error');
       return serverError('Failed to initialize repository');
     }

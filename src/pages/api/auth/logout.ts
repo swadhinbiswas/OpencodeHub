@@ -9,13 +9,13 @@ export const POST: APIRoute = withErrorHandler(async ({ cookies, locals, redirec
   const session = locals.session;
 
   // Delete session from database if it exists
-  if (session) {
+  if (session?.id) {
     try {
       const db = getDatabase() as NodePgDatabase<typeof schema>;
       await db.delete(schema.sessions).where(eq(schema.sessions.id, session.id));
       logger.info({ sessionId: session.id }, "Session deleted");
     } catch (e) {
-      logger.error({ err: e }, "Failed to delete session");
+      logger.error({ err: e }, "Failed to delete session from database");
     }
   }
 
