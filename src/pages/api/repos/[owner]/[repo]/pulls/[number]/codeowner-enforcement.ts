@@ -49,7 +49,7 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
       eq(schema.pullRequests.repositoryId, repository.id),
       eq(schema.pullRequests.number, number)
     ),
-    columns: { id: true, number: true, baseBranch: true, headBranch: true },
+    columns: { id: true, number: true, baseBranch: true, headBranch: true, stateId: true },
   });
   if (!pr) return notFound("Pull request not found");
 
@@ -71,11 +71,20 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
     }),
   ]);
 
+  let requiredByPRState = false;
+  if (pr.stateId) {
+    const prState = await db.query.prStateDefinitions.findFirst({
+        where: eq(schema.prStateDefinitions.id, pr.stateId),
+        columns: { requireCodeOwner: true }
+    });
+    requiredByPRState = !!prState?.requireCodeOwner;
+  }
+
   const matchingRule =
     protectionRules.find((rule) => branchRuleMatches(rule.pattern, pr.baseBranch)) || null;
   const requiredByReviewPolicy = !!reviewRequirements?.requireCodeOwner;
   const requiredByBranchRule = !!matchingRule?.requireCodeOwnerReviews;
-  const enforced = requiredByReviewPolicy || requiredByBranchRule;
+  const enforced = requiredByReviewPolicy || requiredByBranchRule || requiredByPRState;
 
   const repoPath = await resolveRepoPath(repository.diskPath);
   const comparison = await compareBranches(repoPath, pr.baseBranch, pr.headBranch);
@@ -93,6 +102,7 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
       requiredBy: {
         reviewPolicy: false,
         branchRule: false,
+        prState: false,
       },
       activeRule: matchingRule
         ? {
@@ -127,6 +137,7 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
     requiredBy: {
       reviewPolicy: requiredByReviewPolicy,
       branchRule: requiredByBranchRule,
+      prState: requiredByPRState,
     },
     activeRule: matchingRule
       ? {

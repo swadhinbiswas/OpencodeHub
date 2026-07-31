@@ -3,29 +3,11 @@
  * Track and manage issues across repositories
  */
 
-import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { getDatabase, schema } from "@/db";
-import { eq, and, or, inArray } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 import { logger } from "./logger";
-import { issues } from "@/db/schema/issues";
 
-/**
- * Cross-repo issue references
- */
-export const crossRepoIssueLinks = pgTable("cross_repo_issue_links", {
-    id: text("id").primaryKey(),
-    sourceIssueId: text("source_issue_id")
-        .notNull()
-        .references(() => issues.id, { onDelete: "cascade" }),
-    targetIssueId: text("target_issue_id")
-        .notNull()
-        .references(() => issues.id, { onDelete: "cascade" }),
-    linkType: text("link_type").notNull(), // relates, blocks, blocked_by, duplicates
-    createdById: text("created_by_id").notNull(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-});
-
-export type CrossRepoIssueLink = typeof crossRepoIssueLinks.$inferSelect;
+export type CrossRepoIssueLink = typeof schema.crossRepoIssueLinks.$inferSelect;
 
 /**
  * Parse cross-repo issue references

@@ -107,6 +107,10 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
     const [crossRepoTarget, setCrossRepoTarget] = useState("");
     const [crossRepoType, setCrossRepoType] = useState("relates");
     const [crossRepoError, setCrossRepoError] = useState<string | null>(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editTitle, setEditTitle] = useState(issue.title);
+    const [editBody, setEditBody] = useState(issue.body);
+    const [saving, setSaving] = useState(false);
 
     async function convertToEpic() {
         if (!confirm("Are you sure you want to convert this issue to an Epic?")) return;
@@ -210,6 +214,24 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
         }
     }
 
+    async function handleSave() {
+        setSaving(true);
+        try {
+            const res = await fetch(`/api/repos/${repoOwner}/${repoName}/issues/${issue.number}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title: editTitle, description: editBody }),
+            });
+            if (!res.ok) throw new Error("Failed to update issue");
+            setIsEditing(false);
+            window.location.reload();
+        } catch (e) {
+            alert("Failed to save changes");
+        } finally {
+            setSaving(false);
+        }
+    }
+
     return (
         <div className="max-w-6xl mx-auto">
             {/* Title Section */}
@@ -219,10 +241,19 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
                 className="mb-8 pb-6 border-b border-border"
             >
                 <div className="flex items-start justify-between gap-4 mb-4">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                            {issue.title}
-                        </h1>
+                    <div className="flex items-center gap-3 flex-1">
+                        {isEditing ? (
+                            <input
+                                type="text"
+                                value={editTitle}
+                                onChange={(e) => setEditTitle(e.target.value)}
+                                className="flex-1 text-2xl md:text-3xl font-bold text-foreground bg-background border border-border rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-ring"
+                            />
+                        ) : (
+                            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+                                {issue.title}
+                            </h1>
+                        )}
                         <span className="text-2xl md:text-3xl text-muted-foreground font-light">
                             #{issue.number}
                         </span>
@@ -241,14 +272,33 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
                         )}
 
                         {/* Edit Button */}
-                        <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-secondary text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
-                        >
-                            <Edit3 className="h-4 w-4" />
-                            Edit
-                        </motion.button>
+                        {isEditing ? (
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => { setIsEditing(false); setEditTitle(issue.title); setEditBody(issue.body); }}
+                                    className="px-4 py-2 rounded-lg border border-border bg-secondary text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSave}
+                                    disabled={saving}
+                                    className="px-4 py-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-all"
+                                >
+                                    {saving ? "Saving..." : "Save"}
+                                </button>
+                            </div>
+                        ) : (
+                            <motion.button
+                                onClick={() => setIsEditing(true)}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-secondary text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
+                            >
+                                <Edit3 className="h-4 w-4" />
+                                Edit
+                            </motion.button>
+                        )}
                     </div>
                 </div>
 
@@ -311,7 +361,19 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8">
                 {/* Left Column - Issue Body & Comments */}
                 <div className="space-y-6">
-                    <div className="prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+                    {isEditing ? (
+                        <div>
+                            <textarea
+                                value={editBody}
+                                onChange={(e) => setEditBody(e.target.value)}
+                                className="w-full min-h-[300px] p-4 rounded-lg border border-border bg-background text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                                placeholder="Write your issue body in Markdown..."
+                            />
+                            <p className="text-xs text-muted-foreground mt-2">Markdown is supported.</p>
+                        </div>
+                    ) : (
+                        <div className="prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+                    )}
                 </div>
 
                 {/* Right Sidebar */}
@@ -414,6 +476,34 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
                             )}
                         </div>
                     </div>
+                    {/* Labels */}
+                    {issue.labels && issue.labels.length > 0 && (
+                        <div className="relative">
+                            <div className="absolute -inset-[1px] bg-gradient-to-b from-purple-500/10 to-transparent rounded-xl opacity-50" />
+                            <div className="relative rounded-xl border border-border bg-card/60 p-4">
+                                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
+                                    <Tag className="h-4 w-4 text-purple-400" />
+                                    Labels
+                                </h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {issue.labels.map((label, i) => (
+                                        <span
+                                            key={i}
+                                            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
+                                            style={{
+                                                backgroundColor: `${label.color}20`,
+                                                color: label.color,
+                                                border: `1px solid ${label.color}40`
+                                            }}
+                                        >
+                                            {label.name}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Sub-tasks / Child Issues */}
                     {(issue.type === 'epic' || (issue.children && issue.children.length > 0)) && (
                         <div className="relative">

@@ -7,286 +7,259 @@ import {
     Share2,
     Layers,
     CheckCircle2,
+    GitPullRequest,
+    Bug,
+    Shield,
+    Zap,
+    Search,
+    Settings,
 } from "lucide-react";
 
-const commands = [
+const commandGroups = [
     {
-        cmd: "och init",
-        desc: "Initialize OpenCodeHub in your repository",
+        title: "Authentication",
+        icon: Shield,
+        color: "text-green-500",
+        bg: "bg-green-500/10",
+        commands: [
+            { cmd: "och auth login --url <server>", desc: "Login to OpenCodeHub" },
+            { cmd: "och auth status", desc: "Check authentication status" },
+            { cmd: "och auth logout", desc: "Logout from server" },
+        ],
     },
     {
-        cmd: "och auth login",
-        desc: "Authenticate with your OpenCodeHub instance",
+        title: "Repositories",
+        icon: GitBranch,
+        color: "text-blue-500",
+        bg: "bg-blue-500/10",
+        commands: [
+            { cmd: "och repo create <name>", desc: "Create a new repository" },
+            { cmd: "och repo clone <owner/repo>", desc: "Clone a repository" },
+            { cmd: "och repo push --branch main", desc: "Push to OpenCodeHub" },
+            { cmd: "och repo list", desc: "List your repositories" },
+        ],
     },
     {
-        cmd: "och stack create <name>",
-        desc: "Create a new stacked branch",
+        title: "Pull Requests",
+        icon: GitPullRequest,
+        color: "text-purple-500",
+        bg: "bg-purple-500/10",
+        commands: [
+            { cmd: "och pr create --title \"feat: X\"", desc: "Create a pull request" },
+            { cmd: "och pr list --state open", desc: "List pull requests" },
+            { cmd: "och pr checkout <number>", desc: "Checkout a PR locally" },
+            { cmd: "och pr merge <number>", desc: "Merge a pull request" },
+        ],
     },
     {
-        cmd: "och stack submit",
-        desc: "Push changes and create/update PRs",
+        title: "Stacked PRs",
+        icon: Layers,
+        color: "text-primary",
+        bg: "bg-primary/10",
+        commands: [
+            { cmd: "och stack create <branch>", desc: "Create stacked branch" },
+            { cmd: "och stack submit", desc: "Push & create/update PRs" },
+            { cmd: "och stack sync", desc: "Rebase stack on main" },
+            { cmd: "och stack log", desc: "Visualize stack tree" },
+        ],
     },
     {
-        cmd: "och stack sync",
-        desc: "Rebase stack on latest main",
+        title: "Issues",
+        icon: Bug,
+        color: "text-yellow-500",
+        bg: "bg-yellow-500/10",
+        commands: [
+            { cmd: "och issue create --title \"Bug: X\"", desc: "Create an issue" },
+            { cmd: "och issue list --state open", desc: "List issues" },
+            { cmd: "och issue close <number>", desc: "Close an issue" },
+        ],
     },
     {
-        cmd: "och status",
-        desc: "View current stack visualization",
+        title: "CI/CD & Merge Queue",
+        icon: Zap,
+        color: "text-cyan-500",
+        bg: "bg-cyan-500/10",
+        commands: [
+            { cmd: "och ci list", desc: "List pipeline runs" },
+            { cmd: "och queue add <pr-number>", desc: "Add PR to merge queue" },
+            { cmd: "och queue list", desc: "View merge queue" },
+        ],
     },
+    {
+        title: "Search & Config",
+        icon: Search,
+        color: "text-orange-500",
+        bg: "bg-orange-500/10",
+        commands: [
+            { cmd: "och search repos \"query\"", desc: "Search repositories" },
+            { cmd: "och config list", desc: "Show CLI configuration" },
+            { cmd: "och config set serverUrl <url>", desc: "Set server URL" },
+        ],
+    },
+];
+
+const quickStart = [
+    { step: 1, title: "Install", code: "npm install -g opencodehub-cli" },
+    { step: 2, title: "Login", code: "och auth login --url http://your-server:3000" },
+    { step: 3, title: "Create Repo", code: "och repo create my-project --description \"My project\"" },
+    { step: 4, title: "Push Code", code: "och repo push --branch main" },
 ];
 ---
 
-<BaseLayout title="OpenCodeHub CLI - Stack-First Workflows">
+<BaseLayout title="OpenCodeHub CLI - Command Line Interface">
     <div class="relative overflow-hidden">
         <!-- Hero Section -->
-        <section class="container pt-24 pb-20 text-center relative z-10">
-            <div
-                class="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-medium text-primary mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500"
-            >
+        <section class="container pt-24 pb-16 text-center relative z-10">
+            <div class="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-medium text-primary mb-8">
                 <Terminal className="mr-2 h-4 w-4" />
-                Now Available v1.0
+                CLI v1.0
             </div>
 
-            <h1
-                class="mx-auto max-w-4xl text-5xl font-bold tracking-tight text-foreground sm:text-7xl mb-8 animate-in fade-in slide-in-from-bottom-5 duration-700 delay-100"
-            >
-                Master your workflow with <span
-                    class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-400"
-                    >OCH CLI</span
-                >
+            <h1 class="mx-auto max-w-4xl text-4xl font-bold tracking-tight text-foreground sm:text-5xl mb-6">
+                OpenCodeHub <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-400">CLI</span>
             </h1>
 
-            <p
-                class="mx-auto max-w-2xl text-lg text-muted-foreground mb-12 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-200"
-            >
-                The command-line interface for OpenCodeHub. Manage stacked PRs,
-                sync branches, and streamline your code review process directly
-                from your terminal.
+            <p class="mx-auto max-w-2xl text-lg text-muted-foreground mb-8">
+                Manage repositories, pull requests, stacked PRs, and more from your terminal.
+                A GitHub CLI-like experience for OpenCodeHub.
             </p>
 
-            <div
-                class="flex flex-col sm:flex-row items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-300"
-            >
-                <div
-                    class="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 font-mono text-sm text-foreground shadow-sm"
-                >
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <div class="flex items-center gap-3 rounded-lg border bg-card px-4 py-3 font-mono text-sm text-foreground shadow-sm">
                     <span class="text-primary">$</span>
-                    npm install -g opencodehub-cli
+                    <span id="install-cmd">npm install -g opencodehub-cli</span>
                     <button
-                        class="ml-4 rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                        class="ml-2 rounded-md p-1.5 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                         onclick="navigator.clipboard.writeText('npm install -g opencodehub-cli')"
-                        title="Copy to clipboard"
+                        title="Copy"
                     >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            ><rect
-                                width="14"
-                                height="14"
-                                x="8"
-                                y="8"
-                                rx="2"
-                                ry="2"></rect><path
-                                d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
-                            ></path></svg
-                        >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
                     </button>
                 </div>
-                <a
-                    href="#docs"
-                    class="text-sm font-medium text-primary hover:underline underline-offset-4"
-                >
-                    Read the docs →
-                </a>
             </div>
         </section>
-
-        <!-- Background Gradients -->
-        <div class="absolute top-0 -z-10 h-full w-full bg-background">
-            <div
-                class="absolute top-[-10%] right-[-5%] h-[500px] w-[500px] rounded-full bg-primary/5 blur-[100px]"
-            >
-            </div>
-            <div
-                class="absolute bottom-[-10%] left-[-5%] h-[500px] w-[500px] rounded-full bg-purple-500/5 blur-[100px]"
-            >
-            </div>
-        </div>
     </div>
 
-    <!-- Features Grid -->
-    <section class="container py-20 border-t border-border/40">
-        <div class="grid md:grid-cols-3 gap-8">
-            <div class="bg-card/50 border rounded-xl p-6 backdrop-blur-sm">
-                <div
-                    class="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-4"
-                >
-                    <Layers className="h-6 w-6" />
+    <!-- Quick Start -->
+    <section class="container py-12 border-t border-border/40">
+        <h2 class="text-2xl font-bold mb-8 text-center">Quick Start</h2>
+        <div class="grid md:grid-cols-4 gap-6">
+            {quickStart.map((item) => (
+                <div class="relative bg-card border rounded-xl p-5">
+                    <div class="absolute -top-3 -left-1 h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+                        {item.step}
+                    </div>
+                    <h3 class="font-semibold text-foreground mb-2 mt-1">{item.title}</h3>
+                    <code class="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded block break-all">
+                        {item.code}
+                    </code>
                 </div>
-                <h3 class="text-xl font-semibold mb-2">Stacked PRs</h3>
-                <p class="text-muted-foreground">
-                    Create and manage dependent branches easily. `och stack
-                    create` handles parent linking automatically.
-                </p>
+            ))}
+        </div>
+    </section>
+
+    <!-- Command Groups -->
+    <section class="container py-12">
+        <h2 class="text-2xl font-bold mb-8 text-center">Commands</h2>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {commandGroups.map((group) => (
+                <div class="bg-card border rounded-xl p-5 hover:border-primary/30 transition-colors">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class={`h-10 w-10 rounded-lg ${group.bg} flex items-center justify-center ${group.color}`}>
+                            <group.icon className="h-5 w-5" />
+                        </div>
+                        <h3 class="font-semibold text-foreground">{group.title}</h3>
+                    </div>
+                    <div class="space-y-2">
+                        {group.commands.map((cmd) => (
+                            <div class="flex items-start gap-2 text-sm">
+                                <code class="font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded text-xs whitespace-nowrap">
+                                    {cmd.cmd}
+                                </code>
+                                <span class="text-muted-foreground text-xs mt-0.5">{cmd.desc}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ))}
+        </div>
+    </section>
+
+    <!-- Common Workflows -->
+    <section class="container py-12 border-t border-border/40">
+        <h2 class="text-2xl font-bold mb-8 text-center">Common Workflows</h2>
+        <div class="grid md:grid-cols-2 gap-8">
+            <!-- New Repository -->
+            <div class="bg-card border rounded-xl p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <GitBranch className="h-5 w-5 text-primary" />
+                    New Repository
+                </h3>
+                <div class="rounded-lg bg-muted p-4 font-mono text-sm space-y-1">
+                    <div><span class="text-green-500">$</span> och auth login --url http://your-server:3000</div>
+                    <div><span class="text-green-500">$</span> mkdir my-project && cd my-project</div>
+                    <div><span class="text-green-500">$</span> git init</div>
+                    <div><span class="text-green-500">$</span> och repo create my-project</div>
+                    <div><span class="text-green-500">$</span> # Add files, commit, then:</div>
+                    <div><span class="text-green-500">$</span> och repo push --branch main</div>
+                </div>
             </div>
-            <div class="bg-card/50 border rounded-xl p-6 backdrop-blur-sm">
-                <div
-                    class="h-12 w-12 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 mb-4"
-                >
-                    <Share2 className="h-6 w-6" />
+
+            <!-- Stacked PRs -->
+            <div class="bg-card border rounded-xl p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Layers className="h-5 w-5 text-purple-500" />
+                    Stacked PRs
+                </h3>
+                <div class="rounded-lg bg-muted p-4 font-mono text-sm space-y-1">
+                    <div><span class="text-green-500">$</span> och stack create feature/part-1</div>
+                    <div><span class="text-green-500">$</span> # Work on part 1...</div>
+                    <div><span class="text-green-500">$</span> och stack submit</div>
+                    <div><span class="text-green-500">$</span> och stack create feature/part-2</div>
+                    <div><span class="text-green-500">$</span> # Work on part 2...</div>
+                    <div><span class="text-green-500">$</span> och stack submit</div>
+                    <div><span class="text-green-500">$</span> och stack log</div>
                 </div>
-                <h3 class="text-xl font-semibold mb-2">One-Command Sync</h3>
-                <p class="text-muted-foreground">
-                    `och stack submit` pushes your entire stack and updates all
-                    PRs in the chain at once.
-                </p>
             </div>
-            <div class="bg-card/50 border rounded-xl p-6 backdrop-blur-sm">
-                <div
-                    class="h-12 w-12 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 mb-4"
-                >
-                    <GitBranch className="h-6 w-6" />
+
+            <!-- Daily Development -->
+            <div class="bg-card border rounded-xl p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-yellow-500" />
+                    Daily Development
+                </h3>
+                <div class="rounded-lg bg-muted p-4 font-mono text-sm space-y-1">
+                    <div><span class="text-green-500">$</span> och git sync</div>
+                    <div><span class="text-green-500">$</span> och branch checkout feature-x</div>
+                    <div><span class="text-green-500">$</span> # Make changes, commit...</div>
+                    <div><span class="text-green-500">$</span> och git push</div>
+                    <div><span class="text-green-500">$</span> och pr create --title "feat: X"</div>
                 </div>
-                <h3 class="text-xl font-semibold mb-2">Smart Rebase</h3>
-                <p class="text-muted-foreground">
-                    Rebase your whole stack onto main with `och stack sync`.
-                    Conflicts are detected and handled gracefully.
-                </p>
+            </div>
+
+            <!-- Code Review -->
+            <div class="bg-card border rounded-xl p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    Code Review
+                </h3>
+                <div class="rounded-lg bg-muted p-4 font-mono text-sm space-y-1">
+                    <div><span class="text-green-500">$</span> och pr list</div>
+                    <div><span class="text-green-500">$</span> och pr checkout 42</div>
+                    <div><span class="text-green-500">$</span> # Review code locally...</div>
+                    <div><span class="text-green-500">$</span> och pr merge 42</div>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- Commands Section -->
-    <section id="docs" class="container py-20">
-        <div class="grid lg:grid-cols-2 gap-16 items-start">
-            <div>
-                <h2 class="text-3xl font-bold mb-6">Quick Start Guide</h2>
-                <div
-                    class="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent"
-                >
-                    <div class="relative flex items-start group">
-                        <div
-                            class="absolute left-0 ml-5 -translate-x-1/2 rounded-full border border-border bg-background p-1"
-                        >
-                            <div class="h-2 w-2 rounded-full bg-primary"></div>
-                        </div>
-                        <div class="ml-12">
-                            <h3 class="text-lg font-semibold mb-2">
-                                1. Installation
-                            </h3>
-                            <div
-                                class="rounded-md bg-muted px-4 py-2 font-mono text-sm border border-border"
-                            >
-                                npm install -g opencodehub-cli
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="relative flex items-start group">
-                        <div
-                            class="absolute left-0 ml-5 -translate-x-1/2 rounded-full border border-border bg-background p-1"
-                        >
-                            <div class="h-2 w-2 rounded-full bg-primary"></div>
-                        </div>
-                        <div class="ml-12">
-                            <h3 class="text-lg font-semibold mb-2">
-                                2. Authentication
-                            </h3>
-                            <p class="text-muted-foreground mb-2 text-sm">
-                                Login with your credentials or a token.
-                            </p>
-                            <div
-                                class="rounded-md bg-muted px-4 py-2 font-mono text-sm border border-border"
-                            >
-                                och auth login
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="relative flex items-start group">
-                        <div
-                            class="absolute left-0 ml-5 -translate-x-1/2 rounded-full border border-border bg-background p-1"
-                        >
-                            <div class="h-2 w-2 rounded-full bg-primary"></div>
-                        </div>
-                        <div class="ml-12">
-                            <h3 class="text-lg font-semibold mb-2">
-                                3. Initialization
-                            </h3>
-                            <p class="text-muted-foreground mb-2 text-sm">
-                                Run this once in your repository.
-                            </p>
-                            <div
-                                class="rounded-md bg-muted px-4 py-2 font-mono text-sm border border-border"
-                            >
-                                och init
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="relative flex items-start group">
-                        <div
-                            class="absolute left-0 ml-5 -translate-x-1/2 rounded-full border border-border bg-background p-1"
-                        >
-                            <div class="h-2 w-2 rounded-full bg-primary"></div>
-                        </div>
-                        <div class="ml-12">
-                            <h3 class="text-lg font-semibold mb-2">
-                                4. Start Stacking
-                            </h3>
-                            <p class="text-muted-foreground mb-2 text-sm">
-                                Create specific feature branches.
-                            </p>
-                            <div
-                                class="rounded-md bg-muted px-4 py-2 font-mono text-sm border border-border"
-                            >
-                                och stack create feature-a
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div>
-                <h2 class="text-3xl font-bold mb-6">Command Reference</h2>
-                <div class="rounded-xl border bg-card overflow-hidden">
-                    {
-                        commands.map((item, i) => (
-                            <div
-                                class={`flex flex-col sm:flex-row sm:items-center justify-between p-4 ${i !== commands.length - 1 ? "border-b border-border/50" : ""} hover:bg-muted/50 transition-colors`}
-                            >
-                                <code class="text-sm font-mono text-primary bg-primary/10 px-2 py-1 rounded w-fit mb-2 sm:mb-0">
-                                    {item.cmd}
-                                </code>
-                                <span class="text-sm text-muted-foreground text-right">
-                                    {item.desc}
-                                </span>
-                            </div>
-                        ))
-                    }
-                </div>
-
-                <div
-                    class="mt-8 p-4 rounded-lg bg-secondary/50 border border-secondary text-sm text-muted-foreground"
-                >
-                    <p class="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        <span
-                            >Pro Tip: Use <code class="text-foreground"
-                                >och status</code
-                            > frequently to visualize your stack.</span
-                        >
-                    </p>
-                </div>
-            </div>
-        </div>
+    <!-- Footer -->
+    <section class="container py-12 text-center border-t border-border/40">
+        <p class="text-muted-foreground mb-4">
+            Run <code class="text-foreground bg-muted px-2 py-1 rounded">och --help</code> for the full command reference.
+        </p>
+        <p class="text-sm text-muted-foreground">
+            <a href="/docs/reference/cli-overview" class="text-primary hover:underline">Full Documentation →</a>
+        </p>
     </section>
 </BaseLayout>

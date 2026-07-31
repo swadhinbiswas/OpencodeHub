@@ -273,7 +273,7 @@ const customFields = await db.query.customFieldDefinitions.findMany({
         }
 
         // Redirect to the new issue
-        window.location.href = `/${owner}/${repo}/issues/${result.data.number}`;
+        window.location.href = `/${owner}/${repo}/issues/${result.number}`;
       } catch (error) {
         console.error("Error creating issue:", error);
         alert(error instanceof Error ? error.message : "An error occurred");

@@ -19,12 +19,19 @@ export interface LockOptions {
 export interface Lock {
     key: string;
     token: string;
+    fencingToken: number;
     release: () => Promise<boolean>;
 }
 
 export interface LockManager {
     acquire(key: string, options?: LockOptions): Promise<Lock | null>;
     destroy(): void;
+}
+
+let globalFencingToken = 0;
+
+function nextFencingToken(): number {
+  return ++globalFencingToken;
 }
 
 class InMemoryLockManager implements LockManager {
@@ -47,6 +54,7 @@ class InMemoryLockManager implements LockManager {
     async acquire(key: string, options: LockOptions = {}): Promise<Lock | null> {
         const { ttlSeconds = 30, retryCount = 10, retryDelayMs = 100 } = options;
         const token = crypto.randomUUID();
+        const fencingToken = nextFencingToken();
         const expiresAt = Date.now() + ttlSeconds * 1000;
 
         for (let attempt = 0; attempt <= retryCount; attempt++) {
@@ -56,6 +64,7 @@ class InMemoryLockManager implements LockManager {
                 return {
                     key,
                     token,
+                    fencingToken,
                     release: async () => {
                         const current = this.locks.get(key);
                         if (current?.token === token) {
@@ -86,22 +95,39 @@ else
 end
 `;
 
+const FENCING_SCRIPT = `
+local current = redis.call("get", KEYS[1])
+if current then
+    local curToken = tonumber(current)
+    local reqToken = tonumber(ARGV[2])
+    if curToken and reqToken and reqToken >= curToken then
+        redis.call("set", KEYS[1], ARGV[2], "EX", ARGV[3], "NX")
+        return 1
+    end
+    return 0
+else
+    redis.call("set", KEYS[1], ARGV[2], "EX", ARGV[3])
+    return 1
+end
+`;
+
 class RedisLockManager implements LockManager {
     constructor(private readonly redis: Redis) {}
 
     async acquire(key: string, options: LockOptions = {}): Promise<Lock | null> {
         const { ttlSeconds = 30, retryCount = 10, retryDelayMs = 100 } = options;
         const lockKey = `lock:${key}`;
-        const token = crypto.randomUUID();
+        const token = String(nextFencingToken());
 
         for (let attempt = 0; attempt <= retryCount; attempt++) {
             try {
                 const result = await this.redis.set(lockKey, token, "EX", ttlSeconds, "NX");
                 if (result === "OK") {
-                    logger.debug({ key, token, ttl: ttlSeconds }, "Lock acquired");
+                    logger.debug({ key, fencingToken: token, ttl: ttlSeconds }, "Lock acquired");
                     return {
                         key,
                         token,
+                        fencingToken: Number(token),
                         release: async () => this.release(lockKey, token),
                     };
                 }
@@ -113,6 +139,7 @@ class RedisLockManager implements LockManager {
                 return {
                     key,
                     token: "fallback",
+                    fencingToken: 0,
                     release: async () => true,
                 };
             }

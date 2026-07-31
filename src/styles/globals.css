@@ -4,26 +4,44 @@
 
 @layer base {
   :root {
+    /* Premium Design System - OpenCodeHub Light Theme */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 210 11% 15%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 210 11% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --popover-foreground: 210 11% 15%;
+    --primary: 212 100% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 14% 95%;
+    --secondary-foreground: 210 11% 15%;
+    --muted: 210 20% 98%;
+    --muted-foreground: 210 11% 40%;
+    --accent: 210 20% 96%;
+    --accent-foreground: 210 11% 15%;
+    --destructive: 354 70% 54%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 18% 87%;
+    --input: 210 18% 87%;
+    --ring: 212 100% 48%;
     --radius: 0.5rem;
+    
+    --success: 142 70% 45%;
+    --hero-gradient: radial-gradient(ellipse at top center, hsl(210 20% 98%) 0%, hsl(0 0% 100%) 60%);
+    --glass-blur: 20px;
+    --glass-bg: rgba(255, 255, 255, 0.7);
+
+    /* Sidebar Tokens */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Chart Tokens */
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
@@ -41,12 +59,12 @@
     --popover-foreground: 228 33% 92%;
     --primary: 233 100% 74%;
     --primary-foreground: 227 45% 5%;
-    --secondary: 230 100% 82%;
-    --secondary-foreground: 227 45% 5%;
+    --secondary: 229 30% 18%;
+    --secondary-foreground: 228 33% 92%;
     --muted: 229 40% 12%;
     --muted-foreground: 216 11% 65%;
-    --accent: 233 100% 74%;
-    --accent-foreground: 227 45% 5%;
+    --accent: 229 30% 18%;
+    --accent-foreground: 228 33% 92%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
     --border: 0 0% 100% / 0.06;
@@ -56,6 +74,16 @@
     --hero-gradient: radial-gradient(ellipse at top center, hsl(229 40% 18%) 0%, hsl(227 45% 5%) 60%);
     --glass-blur: 20px;
     --glass-bg: rgba(18, 23, 42, 0.6);
+
+    /* Sidebar Tokens */
+    --sidebar-background: 229 40% 12%;
+    --sidebar-foreground: 228 33% 92%;
+    --sidebar-primary: 233 100% 74%;
+    --sidebar-primary-foreground: 227 45% 5%;
+    --sidebar-accent: 229 40% 16%;
+    --sidebar-accent-foreground: 228 33% 92%;
+    --sidebar-border: 0 0% 100% / 0.06;
+    --sidebar-ring: 233 100% 74%;
   }
 
   /* GitHub Dark Theme */
@@ -68,11 +96,11 @@
     --popover-foreground: 210 17% 82%;
     --primary: 212 92% 63%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 212 92% 63%;
-    --secondary-foreground: 216 28% 7%;
+    --secondary: 215 16% 18%;
+    --secondary-foreground: 210 17% 82%;
     --muted: 215 22% 14%;
     --muted-foreground: 212 9% 53%;
-    --accent: 215 22% 14%;
+    --accent: 215 16% 18%;
     --accent-foreground: 210 17% 82%;
     --destructive: 354 70% 54%;
     --destructive-foreground: 0 0% 100%;
@@ -81,6 +109,16 @@
     --ring: 212 92% 63%;
     --hero-gradient: radial-gradient(ellipse at top center, hsl(215 22% 14%) 0%, hsl(216 28% 7%) 60%);
     --glass-bg: rgba(13, 17, 23, 0.6);
+
+    /* Sidebar Tokens */
+    --sidebar-background: 215 22% 10%;
+    --sidebar-foreground: 210 17% 82%;
+    --sidebar-primary: 212 92% 63%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 22% 14%;
+    --sidebar-accent-foreground: 210 17% 82%;
+    --sidebar-border: 215 14% 34%;
+    --sidebar-ring: 212 92% 63%;
   }
 
   /* Dracula Theme */
@@ -93,8 +131,8 @@
     --popover-foreground: 60 30% 96%;
     --primary: 326 100% 74%;
     --primary-foreground: 231 15% 18%;
-    --secondary: 265 89% 78%;
-    --secondary-foreground: 231 15% 18%;
+    --secondary: 231 15% 25%;
+    --secondary-foreground: 60 30% 96%;
     --muted: 231 15% 25%;
     --muted-foreground: 225 27% 51%;
     --accent: 231 15% 25%;
@@ -106,6 +144,16 @@
     --ring: 326 100% 74%;
     --hero-gradient: radial-gradient(ellipse at top center, hsl(231 15% 25%) 0%, hsl(231 15% 18%) 60%);
     --glass-bg: rgba(40, 42, 54, 0.6);
+
+    /* Sidebar Tokens */
+    --sidebar-background: 231 15% 20%;
+    --sidebar-foreground: 60 30% 96%;
+    --sidebar-primary: 326 100% 74%;
+    --sidebar-primary-foreground: 231 15% 18%;
+    --sidebar-accent: 231 15% 25%;
+    --sidebar-accent-foreground: 60 30% 96%;
+    --sidebar-border: 231 15% 25%;
+    --sidebar-ring: 326 100% 74%;
   }
 
   /* Rose Pine Theme */
@@ -118,8 +166,8 @@
     --popover-foreground: 248 19% 89%;
     --primary: 343 35% 65%;
     --primary-foreground: 249 22% 12%;
-    --secondary: 261 43% 73%;
-    --secondary-foreground: 249 22% 12%;
+    --secondary: 248 20% 20%;
+    --secondary-foreground: 248 19% 89%;
     --muted: 248 25% 18%;
     --muted-foreground: 248 12% 52%;
     --accent: 248 25% 18%;
@@ -131,6 +179,16 @@
     --ring: 343 35% 65%;
     --hero-gradient: radial-gradient(ellipse at top center, hsl(247 23% 15%) 0%, hsl(249 22% 12%) 60%);
     --glass-bg: rgba(25, 23, 36, 0.6);
+
+    /* Sidebar Tokens */
+    --sidebar-background: 247 23% 15%;
+    --sidebar-foreground: 248 19% 89%;
+    --sidebar-primary: 343 35% 65%;
+    --sidebar-primary-foreground: 249 22% 12%;
+    --sidebar-accent: 248 25% 18%;
+    --sidebar-accent-foreground: 248 19% 89%;
+    --sidebar-border: 248 25% 18%;
+    --sidebar-ring: 343 35% 65%;
   }
 
   /* Tokyo Night Theme */
@@ -143,8 +201,8 @@
     --popover-foreground: 227 70% 87%;
     --primary: 263 70% 74%;
     --primary-foreground: 235 18% 14%;
-    --secondary: 204 88% 70%;
-    --secondary-foreground: 235 18% 14%;
+    --secondary: 235 15% 22%;
+    --secondary-foreground: 227 70% 87%;
     --muted: 235 18% 20%;
     --muted-foreground: 228 17% 41%;
     --accent: 235 18% 20%;
@@ -156,6 +214,16 @@
     --ring: 263 70% 74%;
     --hero-gradient: radial-gradient(ellipse at top center, hsl(235 18% 20%) 0%, hsl(235 18% 14%) 60%);
     --glass-bg: rgba(26, 27, 38, 0.6);
+
+    /* Sidebar Tokens */
+    --sidebar-background: 235 18% 16%;
+    --sidebar-foreground: 227 70% 87%;
+    --sidebar-primary: 263 70% 74%;
+    --sidebar-primary-foreground: 235 18% 14%;
+    --sidebar-accent: 235 18% 20%;
+    --sidebar-accent-foreground: 227 70% 87%;
+    --sidebar-border: 235 18% 20%;
+    --sidebar-ring: 263 70% 74%;
   }
 }
 
@@ -165,18 +233,38 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground transition-colors duration-300;
+    font-family: "Inter", system-ui, sans-serif;
+  }
+
+  code,
+  pre,
+  .font-mono {
+    font-family: "JetBrains Mono", monospace;
+  }
+
+  html {
+    scroll-behavior: smooth;
   }
 }
 
-/* Custom scrollbar */
+/* ==========================================================================
+   Base Elements & Globals
+   ========================================================================== */
+
+/* Modern Custom scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
+  background: transparent;
   border-radius: 4px;
 }
 
@@ -213,11 +301,11 @@
 }
 
 .diff-add-line {
-  @apply bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500;
+  @apply bg-green-50/50 dark:bg-green-900/20 border-l-4 border-green-500;
 }
 
 .diff-remove-line {
-  @apply bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500;
+  @apply bg-red-50/50 dark:bg-red-900/20 border-l-4 border-red-500;
 }
 
 .diff-context-line {
@@ -226,11 +314,11 @@
 
 /* File tree styles */
 .file-tree-item {
-  @apply flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-accent transition-colors;
+  @apply flex items-center gap-2 px-2 py-1 rounded cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors;
 }
 
 .file-tree-item.selected {
-  @apply bg-accent text-accent-foreground;
+  @apply bg-accent text-accent-foreground font-medium;
 }
 
 /* Commit graph styles */
@@ -260,17 +348,13 @@
   @apply text-blue-600 dark:text-blue-400;
 }
 
-/* Animation keyframes */
+/* ==========================================================================
+   Animations
+   ========================================================================== */
+
 @keyframes pulse-slow {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.5;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .animate-pulse-slow {
@@ -278,20 +362,18 @@
 }
 
 @keyframes spin-slow {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .animate-spin-slow {
   animation: spin-slow 3s linear infinite;
 }
 
-/* Markdown preview styles */
+/* ==========================================================================
+   Markdown Elements
+   ========================================================================== */
+
 .markdown-body {
   @apply text-foreground;
 }
@@ -321,19 +403,19 @@
 }
 
 .markdown-body code {
-  @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono;
+  @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono border border-border;
 }
 
 .markdown-body pre {
-  @apply bg-muted p-4 rounded-lg overflow-x-auto mb-4;
+  @apply bg-muted p-4 rounded-lg overflow-x-auto mb-4 border border-border;
 }
 
 .markdown-body pre code {
-  @apply bg-transparent p-0;
+  @apply bg-transparent p-0 border-none;
 }
 
 .markdown-body blockquote {
-  @apply border-l-4 border-muted-foreground pl-4 italic my-4;
+  @apply border-l-4 border-muted-foreground pl-4 italic my-4 text-muted-foreground;
 }
 
 .markdown-body table {
@@ -350,14 +432,17 @@
 }
 
 .markdown-body a {
-  @apply text-primary hover:underline;
+  @apply text-primary hover:underline font-medium;
 }
 
 .markdown-body img {
-  @apply max-w-full rounded-lg;
+  @apply max-w-full rounded-lg border border-border;
 }
 
-/* Loading skeleton */
+/* ==========================================================================
+   Utilities
+   ========================================================================== */
+
 .skeleton {
   @apply animate-pulse bg-muted rounded;
 }
@@ -367,16 +452,20 @@
   @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background;
 }
 
-/* ====== Premium Landing Page Animations ====== */
+.text-balance {
+  text-wrap: balance;
+}
 
-/* Text reveal animation - staggered word appearance */
+/* ==========================================================================
+   Premium Landing Page Animations
+   ========================================================================== */
+
 @keyframes text-reveal {
   0% {
     opacity: 0;
     transform: translateY(20px);
     filter: blur(4px);
   }
-
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -389,28 +478,20 @@
   opacity: 0;
 }
 
-/* Shimmer effect for timeline */
 @keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-
-  100% {
-    transform: translateX(200%);
-  }
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
 }
 
 .animate-shimmer {
   animation: shimmer 3s infinite linear;
 }
 
-/* Slide up + fade */
 @keyframes slide-fade-up {
   0% {
     opacity: 0;
     transform: translateY(30px);
   }
-
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -421,15 +502,11 @@
   animation: slide-fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-/* Soft pulse for dots */
 @keyframes soft-pulse {
-
-  0%,
-  100% {
+  0%, 100% {
     opacity: 0.6;
     transform: scale(1);
   }
-
   50% {
     opacity: 1;
     transform: scale(1.3);
@@ -440,62 +517,74 @@
   animation: soft-pulse 2s ease-in-out infinite;
 }
 
-/* Glass card hover effect */
+/* CTA Button Styles */
+.btn-primary-glow {
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, color-mix(in srgb, hsl(var(--primary)) 80%, white) 100%);
+  color: hsl(var(--primary-foreground));
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 4px 20px color-mix(in srgb, hsl(var(--primary)) 30%, transparent);
+}
+
+.btn-primary-glow:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px color-mix(in srgb, hsl(var(--primary)) 50%, transparent);
+}
+
+.hero-gradient {
+  background: var(--hero-gradient);
+}
+
+/* ==========================================================================
+   Glass & Dashboard HUD
+   ========================================================================== */
+
 .glass-card {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid color-mix(in srgb, currentColor 10%, transparent);
   border-radius: 16px;
   transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .glass-card:hover {
-  background: rgba(18, 23, 42, 0.8);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, var(--glass-bg) 90%, black);
+  border-color: color-mix(in srgb, currentColor 20%, transparent);
   transform: translateY(-2px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
 }
 
-/* CTA Button Styles */
-.btn-primary-glow {
-  background: linear-gradient(135deg, hsl(233 100% 74%) 0%, hsl(230 100% 82%) 100%);
-  color: hsl(227 45% 5%);
-  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-  box-shadow: 0 4px 20px rgba(124, 140, 255, 0.3);
+/* Glass panel for admin dashboard / HUD */
+.glass-panel {
+  background: color-mix(in srgb, var(--glass-bg) 80%, transparent);
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
 }
 
-.btn-primary-glow:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(124, 140, 255, 0.5);
+/* Custom thin scrollbar for panels */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, currentColor 15%, transparent);
+  border-radius: 2px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, currentColor 25%, transparent);
 }
 
-/* Hero gradient background */
-.hero-gradient {
-  background: var(--hero-gradient);
-}
+/* ==========================================================================
+   Aceternity UI Styles
+   ========================================================================== */
 
-/* Motion preference support */
-@media (prefers-reduced-motion: reduce) {
-
-  .animate-text-reveal,
-  .animate-shimmer,
-  .animate-slide-up,
-  .animate-soft-pulse {
-    animation: none;
-    opacity: 1;
-    transform: none;
-  }
-}
-
-/* ====== Aceternity UI Styles ====== */
-
-/* Spotlight animation */
 @keyframes spotlight {
   0% {
     opacity: 0;
     transform: translate(-72%, -62%) scale(0.5);
   }
-
   100% {
     opacity: 1;
     transform: translate(-50%, -40%) scale(1);
@@ -506,7 +595,6 @@
   animation: spotlight 2s ease 0.75s 1 forwards;
 }
 
-/* Dot backgrounds for Hero Highlight */
 .bg-dot-thick-neutral-800 {
   background-image: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
   background-size: 16px 16px;
@@ -517,73 +605,37 @@
   background-size: 16px 16px;
 }
 
-/* Grid background */
 .bg-grid-white\/\[0\.02\] {
   background-image: linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 
-/* Gradient text */
 .bg-clip-text {
   -webkit-background-clip: text;
   background-clip: text;
 }
 
-/* Glass panel for admin dashboard */
-.glass-panel {
-  background: rgba(18, 23, 42, 0.6);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-/* Custom scrollbar for panels */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-/* Smooth transitions for all interactive elements */
 @layer utilities {
   .transition-smooth {
     transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
   }
 }
 
-/* Gradient text animation */
 @keyframes gradient-x {
-  0% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-
-  100% {
-    background-position: 0% 50%;
-  }
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 .animate-gradient-x {
   animation: gradient-x 3s ease infinite;
 }
 
-/* ====== Responsive Utilities ====== */
+/* ==========================================================================
+   Responsive & Accessibility Utilities
+   ========================================================================== */
 
-/* Hide scrollbar on mobile */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -592,20 +644,16 @@
   scrollbar-width: none;
 }
 
-/* Better mobile spacing */
 @media (max-width: 640px) {
   .container {
     padding-left: 1rem;
     padding-right: 1rem;
   }
-
-  /* Stack grid items on mobile */
   .grid-cols-2 {
     grid-template-columns: repeat(1, minmax(0, 1fr));
   }
 }
 
-/* Tablet adjustments */
 @media (min-width: 640px) and (max-width: 1024px) {
   .container {
     padding-left: 1.5rem;
@@ -613,33 +661,25 @@
   }
 }
 
-/* Touch-friendly interactive elements */
 @media (hover: none) and (pointer: coarse) {
   button, a, input, textarea, select {
     min-height: 44px;
     min-width: 44px;
   }
-
-  /* Remove hover effects on touch devices */
   .hover\:-translate-y-1:hover,
   .hover\:scale-105:hover {
     transform: none;
   }
 }
 
-/* Print styles */
 @media print {
-  .no-print {
-    display: none !important;
-  }
-
+  .no-print { display: none !important; }
   body {
     background: white !important;
     color: black !important;
   }
 }
 
-/* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -647,21 +687,60 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  
+  .animate-text-reveal,
+  .animate-shimmer,
+  .animate-slide-up,
+  .animate-soft-pulse {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
 
-/* Focus visible for keyboard navigation */
 :focus-visible {
   outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
+  border-radius: calc(var(--radius) - 2px);
 }
 
-/* Prevent layout shift from lazy images */
 img {
   max-width: 100%;
   height: auto;
 }
 
-/* Better overflow handling */
 .overflow-x-auto {
   -webkit-overflow-scrolling: touch;
+}
+
+/* Code block scrollbar */
+.blob-scrollbar::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+.blob-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.blob-scrollbar::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, currentColor 15%, transparent);
+  border-radius: 5px;
+  border: 2px solid var(--background);
+}
+.blob-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, currentColor 25%, transparent);
+}
+
+/* Shiki code highlighting overrides */
+.shiki {
+  background-color: transparent !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.shiki code {
+  display: flex;
+  flex-direction: column;
+}
+.shiki .line {
+  height: 1.5rem;
+  display: block;
 }

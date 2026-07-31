@@ -8,7 +8,7 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { eq, and } from "drizzle-orm";
 import { getDatabase, schema } from "@/db";
 import { getUserFromRequest } from "@/lib/auth";
-import { parseBody, unauthorized, badRequest, notFound, success, serverError } from "@/lib/api";
+import { parseBody, unauthorized, notFound, success } from "@/lib/api";
 import { z } from "zod";
 import crypto from "crypto";
 

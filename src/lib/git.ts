@@ -145,18 +145,6 @@ export async function initRepository(
     throw err;
   }
 
-  // Install hooks
-  if (!options.skipHooks) {
-    try {
-      logger.info(`[initRepository] Installing hooks`);
-      await installHooks(localRepoPath);
-      logger.info(`[initRepository] Hooks installed`);
-    } catch (err) {
-      logger.error(`[initRepository] Hook installation failed:`, err);
-      throw err;
-    }
-  }
-
   // If we need initial content, create a temporary working copy
   if (readme || gitignoreTemplate || licenseType) {
     const tempPath = `${localRepoPath}.tmp`;
@@ -211,8 +199,10 @@ export async function initRepository(
       }
 
       // Push to bare repository
+      // Use --no-verify to skip hooks: either they aren't installed yet (normal case)
+      // or they're leftover from a previous failed init (repo dir already existed)
       await workingGit.addRemote("origin", localRepoPath);
-      await workingGit.push("origin", defaultBranch);
+      await workingGit.push(["origin", defaultBranch, "--no-verify"]);
       logger.info(`[initRepository] Pushed to bare repo`);
 
       // Clean up temp directory
@@ -224,6 +214,19 @@ export async function initRepository(
       if (existsSync(tempPath)) {
         rmSync(tempPath, { recursive: true, force: true });
       }
+      throw err;
+    }
+  }
+
+  // Install hooks AFTER the initial push to avoid pre-receive hook callback
+  // during initialization (which would fail if server isn't reachable yet)
+  if (!options.skipHooks) {
+    try {
+      logger.info(`[initRepository] Installing hooks`);
+      await installHooks(localRepoPath);
+      logger.info(`[initRepository] Hooks installed`);
+    } catch (err) {
+      logger.error(`[initRepository] Hook installation failed:`, err);
       throw err;
     }
   }
@@ -323,13 +326,41 @@ export const SIMPLE_GIT_UNSAFE_OPTS = {
   allowUnsafeCredentialHelper: true, // for HTTPS remotes that use a credential helper
 } as const;
 
+export function getSanitizedGitEnv(ceilingDir?: string): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  delete env.PAGER;
+  delete env.GIT_PAGER;
+  
+  // Inject internal secrets needed by git hooks if they are missing from process.env
+  const metaEnv = (import.meta as any).env;
+  const hookSecret = process.env.INTERNAL_HOOK_SECRET || metaEnv?.INTERNAL_HOOK_SECRET;
+  if (hookSecret) {
+    env.INTERNAL_HOOK_SECRET = hookSecret;
+  }
+  
+  // Pass system user for internal pushes to satisfy hook checks if REMOTE_USER is missing
+  if (!env.REMOTE_USER) {
+    env.REMOTE_USER = "system";
+  }
+  
+  if (ceilingDir) {
+    env.GIT_CEILING_DIRECTORIES = ceilingDir;
+  }
+  
+  return env;
+}
+
 export function createSimpleGit(options: Partial<SimpleGitOptions> = {}): SimpleGit {
-  return simpleGit({
+  const git = simpleGit({
     binary: "git",
     maxConcurrentProcesses: 6,
     unsafe: { ...SIMPLE_GIT_UNSAFE_OPTS },
     ...options,
   });
+  
+  git.env(getSanitizedGitEnv());
+  
+  return git;
 }
 
 export function getGit(repoPath: string): SimpleGit {
@@ -352,18 +383,7 @@ export function getGit(repoPath: string): SimpleGit {
 
   const git = simpleGit(options);
 
-  // Set environment to prevent walking up and to strip interactive shell
-  // helpers (pager, editor, etc.) — this is a server, never a TTY.
-  // The `unsafe` allowlist above covers operations that legitimately
-  // need EDITOR / GIT_SSH_COMMAND; the env scrub below is an
-  // orthogonal defence so simple-git's unsafe plugin does not block us.
-  const sanitizedEnv: NodeJS.ProcessEnv = { ...process.env };
-  delete sanitizedEnv.PAGER;
-  delete sanitizedEnv.GIT_PAGER;
-  git.env({
-    ...sanitizedEnv,
-    GIT_CEILING_DIRECTORIES: ceilingDir,
-  });
+  git.env(getSanitizedGitEnv(ceilingDir));
 
   return git;
 }
@@ -975,6 +995,31 @@ export async function getCommitDiff(
 }
 
 /**
+ * Get the raw unified diff (patch) for a single commit
+ */
+export async function getCommitPatchDiff(
+  repoPath: string,
+  sha: string,
+): Promise<string> {
+  const git = getGit(repoPath);
+  try {
+    const output = await git.raw([
+      "diff-tree",
+      "-p",
+      "--no-commit-id",
+      "-r",
+      "-M",
+      sha,
+    ]);
+    return output;
+  } catch (error) {
+    if (!isExpectedGitError(error)) {
+      logger.error({ err: error }, "Error getting commit patch diff");
+    }
+    return "";
+  }
+}
+/**
  * Get blame for a file
  */
 export async function getBlame(
@@ -1561,15 +1606,11 @@ export async function installHooks(repoPath: string) {
     await fs.mkdir(hooksDir, { recursive: true });
   }
 
-  // Use environment variable for site URL, fallback to localhost for development
-  // process.env wins when explicitly set (CI runners, scripts, systemd);
-  // otherwise fall back to import.meta.env (loaded from .env).
+  // Internal hooks should always call the local server instance, regardless of SITE_URL
+  // This prevents connection timeouts if SITE_URL is an external IP that the host cannot route to itself.
   const metaEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
-  const siteUrl =
-    process.env.SITE_URL ||
-    metaEnv?.SITE_URL ||
-    process.env.PUBLIC_URL ||
-    "http://localhost:3000";
+  const port = process.env.PORT || metaEnv?.PORT || "4321";
+  const internalApiUrl = `http://127.0.0.1:${port}`;
   const hookSecret = process.env.INTERNAL_HOOK_SECRET || metaEnv?.INTERNAL_HOOK_SECRET;
   if (!hookSecret) {
     throw new Error(
@@ -1585,11 +1626,11 @@ if [ -z "$HOOK_SECRET" ]; then
 fi
 while read oldrev newrev refname
 do
-    curl -X POST \\
+    curl -sS -X POST \\
       -H "Content-Type: application/json" \\
       -H "X-Hook-Secret: $HOOK_SECRET" \\
       -d "{\\"oldrev\\":\\"$oldrev\\",\\"newrev\\":\\"$newrev\\",\\"refname\\":\\"$refname\\",\\"pusher\\":\\"$REMOTE_USER\\"}" \\
-      ${siteUrl}/api/internal/hooks/post-receive?repo=${encodeURIComponent(repoPath)}
+      ${internalApiUrl}/api/internal/hooks/post-receive?repo=${encodeURIComponent(repoPath)}
 done
 `;
 
@@ -1600,11 +1641,11 @@ if [ -z "$HOOK_SECRET" ]; then
 fi
 while read oldrev newrev refname
 do
-    RESPONSE=$(curl -s -w "%{http_code}" -X POST \\
+    RESPONSE=$(curl -sS -w "%{http_code}" -X POST \\
       -H "Content-Type: application/json" \\
       -H "X-Hook-Secret: $HOOK_SECRET" \\
       -d "{\\"oldrev\\":\\"$oldrev\\",\\"newrev\\":\\"$newrev\\",\\"refname\\":\\"$refname\\",\\"pusher\\":\\"$REMOTE_USER\\"}" \\
-      ${siteUrl}/api/internal/hooks/pre-receive?repo=${encodeURIComponent(repoPath)})
+      ${internalApiUrl}/api/internal/hooks/pre-receive?repo=${encodeURIComponent(repoPath)})
 
     HTTP_CODE=\${RESPONSE: -3}
     BODY=\${RESPONSE:0:\${#RESPONSE}-3}

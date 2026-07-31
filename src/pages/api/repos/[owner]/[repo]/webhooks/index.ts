@@ -8,8 +8,8 @@ import { getDatabase, schema } from "@/db";
 import { webhooks, repositories, users } from '@/db/schema';
 import { getUserFromRequest } from '@/lib/auth';
 import { canAdminRepo } from '@/lib/permissions';
-import { success, created, badRequest, unauthorized, notFound, serverError, forbidden } from '@/lib/api';
-import { generateId, now } from '@/lib/utils';
+import { success, created, badRequest, unauthorized, notFound, forbidden } from '@/lib/api';
+import { generateId } from '@/lib/utils';
 import crypto from 'crypto';
 
 import { withErrorHandler } from "@/lib/errors";

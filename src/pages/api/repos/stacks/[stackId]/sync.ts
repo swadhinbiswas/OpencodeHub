@@ -16,7 +16,7 @@ import {
 
 import { withErrorHandler } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { unauthorized, badRequest, notFound, serverError, success } from "@/lib/api";
+import { unauthorized, badRequest, notFound, success } from "@/lib/api";
 
 // ... existing imports ...
 

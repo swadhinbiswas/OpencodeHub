@@ -1,5 +1,7 @@
 {
   "missingInSite": [
+    "cli",
+    "getting-started/ssh-keys",
     "support/troubleshooting"
   ],
   "missingInDocs": [

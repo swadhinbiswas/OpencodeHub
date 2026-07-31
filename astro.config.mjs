@@ -1,26 +1,28 @@
 import node from "@astrojs/node";
 import react from "@astrojs/react";
-import tailwind from "@astrojs/tailwind";
 import { defineConfig } from "astro/config";
 import icon from "astro-icon";
+
+// Load environment variables safely
+const port = parseInt(process.env.PORT || "4321");
 
 export default defineConfig({
   integrations: [
     react(),
     icon(),
-    tailwind({
-      applyBaseStyles: false,
-    }),
   ],
   output: "server",
   adapter: node({
     mode: "standalone",
   }),
   server: {
-    port: parseInt(process.env.PORT || "4321"),
+    port,
     host: true,
   },
   vite: {
+    css: {
+      transformer: 'postcss',
+    },
     server: {
       watch: {
         ignored: ['**/data/**', '**/repos/**', '**/storage/**', '**/.tmp/**', '**/postgres/**', '**/redis/**'],

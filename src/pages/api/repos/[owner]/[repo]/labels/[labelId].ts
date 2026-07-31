@@ -8,7 +8,7 @@ import { getDatabase, schema } from "@/db";
 import { labels, repositories, users } from '@/db/schema';
 import { getUserFromRequest } from '@/lib/auth';
 import { canWriteRepo } from '@/lib/permissions';
-import { success, badRequest, unauthorized, notFound, serverError, forbidden } from '@/lib/api';
+import { success, badRequest, unauthorized, notFound, forbidden } from '@/lib/api';
 
 import { withErrorHandler } from "@/lib/errors";
 import { logger } from "@/lib/logger";

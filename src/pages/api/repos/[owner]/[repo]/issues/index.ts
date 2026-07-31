@@ -1,6 +1,6 @@
 import { getDatabase, schema } from "@/db";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { badRequest, notFound, serverError, unauthorized } from "@/lib/api";
+import { badRequest, notFound, unauthorized } from "@/lib/api";
 import { getUserFromRequest } from "@/lib/auth";
 import { canReadRepo } from "@/lib/permissions";
 import { generateId } from "@/lib/utils";

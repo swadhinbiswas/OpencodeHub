@@ -3,13 +3,12 @@ import { getDatabase, schema } from "@/db";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { canWriteRepo, canReadRepo } from "@/lib/permissions";
 import type { APIRoute } from "astro";
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { withErrorHandler } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { unauthorized, badRequest, notFound, success, forbidden } from "@/lib/api";
 import { autoLinkPR } from "@/lib/pr-issue-linking";
 import { canMerge } from "@/lib/merge-queue";
-import { checkCodeOwnerApprovalsForPR } from "@/lib/pr-codeowner";
 
 // GET: Get PR details
 export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
