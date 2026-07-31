@@ -21,7 +21,13 @@ FROM base AS prod-deps
 RUN apt-get update && apt-get install -y python3 make g++ gcc libc6-dev && rm -rf /var/lib/apt/lists/*
 COPY package.json bun.lock ./
 COPY cli/package.json ./cli/package.json
-RUN bun install --frozen-lockfile --production
+# Clear Bun install cache to avoid stale/corrupt node-gyp entries across layers
+RUN rm -rf /root/.bun/install/cache || true
+RUN for i in 1 2 3; do \
+      bun install --frozen-lockfile --production && break || \
+      (echo "prod bun install attempt $i failed, clearing cache and retrying in 10s..." && \
+       rm -rf /root/.bun/install/cache && sleep 10); \
+    done
 
 # Build the application
 FROM base AS builder
