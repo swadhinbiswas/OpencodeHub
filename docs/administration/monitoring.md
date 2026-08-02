@@ -8,6 +8,8 @@ The minimum production observability stack should include:
 
 - `GET /api/health` for liveness/readiness
 - `GET /api/metrics` for Prometheus scraping
+  (protected by `METRICS_TOKEN` when set — pass it as a Bearer token in the
+  scrape config; see `deploy/prometheus.yml`)
 - Grafana dashboards for request latency, queue health, and storage/DB timing
 - Alerting for p95 regressions and service degradation
 

@@ -175,10 +175,12 @@ docker compose exec app bun run scripts/seed-admin.ts
 | `SESSION_SECRET` | Yes | — | 32+ char secret for cookie encryption |
 | `INTERNAL_HOOK_SECRET` | Yes | — | Shared secret for Git hook callbacks |
 | `STORAGE_TYPE` | No | `local` | Storage backend (`local` or `s3`) |
-| `S3_BUCKET` | If `STORAGE_TYPE=s3` | — | S3 bucket name |
-| `S3_ENDPOINT` | Optional | — | S3-compatible custom endpoint (MinIO / R2) |
-| `S3_ACCESS_KEY` | If `STORAGE_TYPE=s3` | — | Access Key ID |
-| `S3_SECRET_KEY` | If `STORAGE_TYPE=s3` | — | Secret Access Key |
+| `STORAGE_BUCKET` | If `STORAGE_TYPE=s3` | — | S3 bucket name |
+| `STORAGE_REGION` | If `STORAGE_TYPE=s3` | `us-east-1` | S3 region |
+| `STORAGE_ENDPOINT` | Optional | — | S3-compatible custom endpoint (MinIO / R2 / Garage) |
+| `STORAGE_ACCESS_KEY_ID` | If `STORAGE_TYPE=s3` | — | Access Key ID |
+| `STORAGE_SECRET_ACCESS_KEY` | If `STORAGE_TYPE=s3` | — | Secret Access Key |
+| `METRICS_TOKEN` | Optional | — | Bearer token for `GET /api/metrics` |
 
 ---
 

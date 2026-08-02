@@ -16,8 +16,11 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "start": "astro dev",
     "build": "astro build",
+    "start": "node ./dist/server/entry.mjs",
+    "start:ssh": "bun scripts/ssh-server.ts",
+    "start:worker": "bun scripts/worker.ts",
+    "migrate": "bun scripts/migrate.ts",
     "preview": "astro preview",
     "astro": "astro",
     "db:generate": "drizzle-kit generate",

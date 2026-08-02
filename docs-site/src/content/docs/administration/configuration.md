@@ -56,6 +56,7 @@ All secrets below must be unique. Generate each with `openssl rand -hex 32`.
 | `AI_CONFIG_ENCRYPTION_KEY` | Encrypts AI provider API keys at rest |
 | `WORKFLOW_SECRET_ENCRYPTION_KEY` | Encrypts CI/CD workflow secrets at rest |
 | `RUNNER_SECRET` | Shared secret between server and CI runners |
+| `METRICS_TOKEN` | Bearer token for `GET /api/metrics` (Prometheus). Empty = public |
 
 ## OAuth Providers
 

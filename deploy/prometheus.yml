@@ -6,6 +6,12 @@ scrape_configs:
     metrics_path: "/api/metrics"
     scrape_interval: 15s
     scrape_timeout: 10s
+    # /api/metrics is protected by METRICS_TOKEN when set. Provide the token
+    # via environment expansion, e.g. start prometheus with:
+    #   METRICS_TOKEN=<value> prometheus --config.file=prometheus.yml
+    # or mount a file containing the token at /etc/prometheus/och-metrics-token
+    authorization:
+      credentials_file: /etc/prometheus/och-metrics-token
     static_configs:
       - targets: ["opencodehub-app:4321"]
         labels:

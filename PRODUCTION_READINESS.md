@@ -1,6 +1,6 @@
 # OpenCodeHub Production Readiness Report
 
-**Date:** 2026-04-30
+**Date:** 2026-08-02
 **Auditor:** Agent Code Review
 **Status:** Production-ready
 
@@ -11,11 +11,25 @@
 OpenCodeHub is a self-hosted Git platform with enterprise-grade features including Git hosting (HTTP/SSH), PRs, issues, stacked PRs, merge queue with speculative builds, CI/CD pipeline engine, and a comprehensive CLI.
 
 **Current State:**
-- Lint: 0 errors, 0 warnings, 491 hints
+- Lint: 0 errors, 0 warnings
 - Typecheck: 0 errors
-- Tests: 546 passing, 0 failing (114 test files, 100% pass rate)
-- Security: Rate limiting, CSRF, JWT, env validation, secret encryption all implemented
-- Docker: Full docker-compose setup with PostgreSQL, Redis, and CI runner
+- Tests: 546 passing, 0 failing (100% pass rate)
+- Security: Rate limiting, CSRF, JWT, env validation, secret encryption, authenticated metrics all implemented
+- Docker: Production-safe compose stacks (no default secrets, migrations applied at boot, worker + SSH services included)
+- Storage: `local` (filesystem/NAS) and `s3` (any S3-compatible store) only
+- Migrations: Versioned `drizzle/` folder committed and applied deterministically at container boot
+
+## Recent Production Hardening
+
+| Area | Change |
+|------|--------|
+| Secrets | `.env.backup-*` removed from git tracking; docker-compose no longer ships default secrets |
+| Migrations | Committed `drizzle/0000_*.sql`; applied at boot via `scripts/migrate.ts` (no runtime `generate`) |
+| `npm start` | Now runs the built server (`node ./dist/server/entry.mjs`) instead of `astro dev` |
+| Docker | `ssh-git` and `worker` services now run the correct process (`PROCESS_TYPE`); image copies `scripts/` + `drizzle/` |
+| Metrics | `GET /api/metrics` protected by optional `METRICS_TOKEN` bearer auth |
+| Env vars | Standardized on `DATABASE_DRIVER`, `GIT_REPOS_PATH`, `GIT_SSH_HOST_KEY`, `STORAGE_PATH` across all compose files |
+| Storage docs | Removed all references to removed backends (GDrive/Azure/GCS/etc.); only `local` + `s3` documented |
 
 ---
 
@@ -90,14 +104,18 @@ DATABASE_DRIVER=postgres
 DATABASE_URL=postgresql://user:pass@localhost:5432/opencodehub
 
 # Redis (required for distributed rate limiting, sessions, and queues)
-REDIS_URL=redis://localhost:6379
+REDIS_URL=redis://:password@localhost:6379
 
-# Storage (use S3/GCS/Azure in production, not local)
-STORAGE_DRIVER=s3
-S3_BUCKET=your-bucket
-S3_REGION=us-east-1
-S3_ACCESS_KEY=
-S3_SECRET_KEY=
+# Storage — only local and s3 are supported (local is ideal for a NAS/dedicated disk)
+STORAGE_TYPE=local
+STORAGE_PATH=/mnt/nas/opencodehub/storage
+
+# S3-compatible (AWS S3, MinIO, R2, Garage, ...) when STORAGE_TYPE=s3:
+STORAGE_BUCKET=your-bucket
+STORAGE_REGION=us-east-1
+STORAGE_ENDPOINT=
+STORAGE_ACCESS_KEY_ID=
+STORAGE_SECRET_ACCESS_KEY=
 ```
 
 ### Docker Compose (Recommended)
@@ -128,7 +146,7 @@ Exposes:
 
 1. **Modular Monolith** — Easy to deploy as single container or scale individual workers
 2. **Database Flexibility** — PostgreSQL for production, SQLite/Turso for dev/edge
-3. **Storage Abstraction** — 8+ backends via adapter pattern (S3, GCS, Azure, Google Drive, OneDrive, Dropbox, FTP, rclone)
+3. **Storage Abstraction** — two backends via adapter pattern: `local` (filesystem; ideal for a dedicated disk or NAS mount) and `s3` (any S3-compatible store)
 4. **Git Protocol Integration** — Native HTTP + SSH via `git` CLI and `ssh2`
 5. **CI/CD Engine** — GitHub Actions-compatible with Docker-based execution
 6. **Stacked PRs** — Graphite-style workflows in web + CLI

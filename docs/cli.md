@@ -12,7 +12,7 @@ npm install -g opencodehub-cli
 
 ```bash
 # 1. Login to your server
-och auth login --url http://your-server:3000
+och auth login --url http://your-server:4321
 
 # 2. Create a repository
 och repo create my-project --description "My new project"
@@ -29,7 +29,7 @@ och repo push --branch main
 Login to OpenCodeHub.
 
 ```bash
-och auth login --url http://your-server:3000
+och auth login --url http://your-server:4321
 ```
 
 **Options:**
@@ -44,10 +44,10 @@ och auth login --url http://your-server:3000
 **Examples:**
 ```bash
 # Interactive login
-och auth login --url http://localhost:3000
+och auth login --url http://localhost:4321
 
 # Non-interactive with token
-och auth login --url http://localhost:3000 -t och_xxxxx
+och auth login --url http://localhost:4321 -t och_xxxxx
 
 # Self-signed TLS
 och auth login --url https://git.example.com --ca-file /path/to/ca.pem
@@ -130,7 +130,7 @@ Initialize a repository for OpenCodeHub.
 
 ```bash
 och git init
-och git init --url http://your-server:3000
+och git init --url http://your-server:4321
 ```
 
 **Options:**
@@ -544,7 +544,7 @@ och config get serverUrl
 Set a configuration value.
 
 ```bash
-och config set serverUrl http://localhost:3000
+och config set serverUrl http://localhost:4321
 ```
 
 ---
@@ -643,7 +643,7 @@ The CLI stores configuration in `~/.config/opencodehub-cli/config.json`:
 
 ```json
 {
-  "serverUrl": "http://localhost:3000",
+  "serverUrl": "http://localhost:4321",
   "token": "och_xxxxx",
   "username": "your-username"
 }
@@ -655,7 +655,7 @@ The CLI stores configuration in `~/.config/opencodehub-cli/config.json`:
 
 ### New Repository
 ```bash
-och auth login --url http://your-server:3000
+och auth login --url http://your-server:4321
 mkdir my-project && cd my-project
 git init
 och repo create my-project --description "My project"

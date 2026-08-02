@@ -105,19 +105,9 @@ STORAGE_SECRET_ACCESS_KEY=<your-secret-key>
 > removed; use the `s3` driver with a vendor-specific `STORAGE_ENDPOINT`
 > for object storage.  See `docs/guides/storage-adapters.md` for the
 > full list of compatible object stores.
-```bash
-STORAGE_TYPE=gdrive
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-GOOGLE_REFRESH_TOKEN=...
-GOOGLE_FOLDER_ID=...
-```
 
 **Optional but Recommended:**
 ```bash
-# Error Monitoring
-SENTRY_DSN=https://your-sentry-dsn
-
 # Email
 SMTP_HOST=smtp.example.com
 SMTP_PORT=587
@@ -126,7 +116,7 @@ SMTP_PASSWORD=<smtp-password>
 SMTP_FROM=noreply@yourcompany.com
 
 # Redis (for session management)
-REDIS_URL=redis://localhost:6379
+REDIS_URL=redis://:your-password@localhost:6379
 ```
 
 ### Deployment Steps
@@ -147,11 +137,9 @@ nano .env  # Configure all production values
 bun run src/lib/env-validation.ts
 # Should output: ✅ Environment validation passed
 
-# 5. Run database migrations
-npm run db:push
-# or generate versioned migrations:
-npm run db:generate
-npm run db:migrate
+# 5. Run database migrations (applies committed drizzle/ migrations)
+bun run migrate
+# or for dev: npm run db:push
 
 # 6. Create admin user
 bun run scripts/seed-admin.ts
@@ -160,58 +148,67 @@ bun run scripts/seed-admin.ts
 # 7. Build for production
 npm run build
 
-# 8. Start production server
-npm start
+# 8. Start the production server (built in step 7)
+npm start   # → node ./dist/server/entry.mjs
 ```
+
+> **Docker** is the recommended path for production. Use the repository's
+> `docker-compose.yml` (quickstart) or `docker-compose.production.yml`
+> (Caddy TLS + isolated networks) — do not hand-roll a compose file.
 
 ### Docker Deployment (Recommended)
 
-```yaml
-# docker-compose.prod.yml
-version: '3.8'
+Use the repository's own compose files — they are kept in sync with the
+codebase and are production-safe (no default secrets, migrations applied
+at boot, worker + SSH services included):
 
+```bash
+# Quickstart (app + SSH + worker + PostgreSQL + Redis)
+cp .env.example .env   # then set ALL secrets
+docker compose up -d
+
+# Production profile (adds Caddy TLS termination + isolated networks)
+docker compose -f docker-compose.production.yml --profile production up -d
+
+# NAS / dedicated-disk deployments
+OCH_DATA_DIR=/mnt/nas/opencodehub docker compose -f docker-compose.nas.yml up -d
+```
+
+Minimal reference compose (for illustration only):
+
+```yaml
 services:
   app:
     build: .
     restart: always
     ports:
-      - "3000:3000"
-    env_file: .env.production
+      - "4321:4321"
+    env_file: .env
+    environment:
+      NODE_ENV: production
     depends_on:
       - postgres
       - redis
-    volumes:
-      - ./data:/app/data
-    environment:
-      NODE_ENV: production
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     restart: always
     environment:
       POSTGRES_DB: opencodehub
       POSTGRES_USER: opencodehub
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
 
   redis:
     image: redis:7-alpine
     restart: always
     command: redis-server --requirepass ${REDIS_PASSWORD}
-    ports:
-      - "6379:6379"
 
 volumes:
   postgres_data:
 ```
+
+> Exposed ports: **4321** (web/API/Git HTTP) and **2222** (SSH Git).
+> PostgreSQL (5432) and Redis (6379) stay on an internal network.
 
 ```bash
 # Deploy with Docker
@@ -243,7 +240,7 @@ server {
 
     # Proxy configuration
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:4321;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -257,7 +254,7 @@ server {
 
     # Git operations (larger timeouts)
     location ~ ^/[^/]+/[^/]+\.git/ {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:4321;
         proxy_read_timeout 600s;
         proxy_send_timeout 600s;
         proxy_buffer_size 128k;

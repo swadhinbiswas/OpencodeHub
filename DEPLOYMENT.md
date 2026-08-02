@@ -87,31 +87,28 @@ DATABASE_DRIVER=postgres
 DATABASE_URL=postgresql://user:password@host:5432/opencodehub
 ```
 
-**Storage (Use cloud storage, not local):**
+**Storage (local or S3-compatible — only two backends supported):**
 ```bash
+# local (default): filesystem, ideal for a dedicated disk or NAS mount
+STORAGE_TYPE=local
+STORAGE_PATH=/mnt/nas/opencodehub/storage   # point at your NAS mount / dedicated disk
+
+# or S3-compatible (AWS S3, MinIO, Cloudflare R2, Garage, SeaweedFS, Ceph RGW, ...)
 STORAGE_TYPE=s3
 STORAGE_BUCKET=opencodehub-production
 STORAGE_REGION=us-east-1
-S3_ACCESS_KEY=<your-access-key>
-S3_ACCESS_KEY=<your-access-key>
-S3_SECRET_KEY=<your-secret-key>
+STORAGE_ENDPOINT=                            # leave empty for AWS S3; set for other vendors
+STORAGE_ACCESS_KEY_ID=<your-access-key>
+STORAGE_SECRET_ACCESS_KEY=<your-secret-key>
 ```
 
-**Google Drive + Turso Stack:**
-See [docs/GDRIVE_STACK.md](docs/GDRIVE_STACK.md) for detailed setup.
-```bash
-STORAGE_TYPE=gdrive
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-GOOGLE_REFRESH_TOKEN=...
-GOOGLE_FOLDER_ID=...
-```
+> Only `local` and `s3` storage backends are supported. Google Drive,
+> OneDrive, Dropbox, FTP, GCS, Azure, and rclone-as-adapter have been
+> removed; use the `s3` driver with a vendor-specific `STORAGE_ENDPOINT`.
+> See `docs/guides/storage-adapters.md`.
 
 **Optional but Recommended:**
 ```bash
-# Error Monitoring
-SENTRY_DSN=https://your-sentry-dsn
-
 # Email
 SMTP_HOST=smtp.example.com
 SMTP_PORT=587
@@ -120,7 +117,7 @@ SMTP_PASSWORD=<smtp-password>
 SMTP_FROM=noreply@yourcompany.com
 
 # Redis (for session management)
-REDIS_URL=redis://localhost:6379
+REDIS_URL=redis://:your-password@localhost:6379
 ```
 
 ### Deployment Steps
@@ -169,7 +166,7 @@ services:
     build: .
     restart: always
     ports:
-      - "3000:3000"
+      - "4321:4321"
     env_file: .env.production
     depends_on:
       - postgres
@@ -179,7 +176,7 @@ services:
     environment:
       NODE_ENV: production
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:4321/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -208,14 +205,15 @@ volumes:
 ```
 
 ```bash
-# Deploy with Docker
-docker-compose -f docker-compose.prod.yml up -d
+# Deploy with the repository's compose files (kept in sync with the codebase)
+docker compose up -d                                            # quickstart
+docker compose -f docker-compose.production.yml --profile production up -d   # Caddy TLS
 
 # View logs
-docker-compose -f docker-compose.prod.yml logs -f app
+docker compose logs -f app
 
 # Create admin user in container
-docker-compose exec app bun run scripts/seed-admin.ts
+docker compose exec app bun run scripts/seed-admin.ts
 ```
 
 ### Reverse Proxy (Nginx)
@@ -237,7 +235,7 @@ server {
 
     # Proxy configuration
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:4321;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -251,7 +249,7 @@ server {
 
     # Git operations (larger timeouts)
     location ~ ^/[^/]+/[^/]+\.git/ {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:4321;
         proxy_read_timeout 600s;
         proxy_send_timeout 600s;
         proxy_buffer_size 128k;
@@ -481,7 +479,7 @@ curl -X POST https://git.yourcompany.com/api/admin/test-email \
 - **API Documentation:** https://git.yourcompany.com/api/docs
 - **Admin Panel:** https://git.yourcompany.com/admin
 - **User Guide:** See README.md
-- **Security Best Practices:** See production_analysis.md
+- **Security Best Practices:** See docs/administration/security.md
 
 ---
 

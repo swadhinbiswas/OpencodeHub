@@ -3,6 +3,8 @@ import react from "@astrojs/react";
 import { defineConfig } from "astro/config";
 import icon from "astro-icon";
 
+import { config } from "dotenv";
+config();
 // Load environment variables safely
 const port = parseInt(process.env.PORT || "4321");
 
