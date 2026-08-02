@@ -34,7 +34,7 @@ bun run scripts/seed-admin.ts
 npm run dev
 ```
 
-Open the app at `http://localhost:3000` and log in.
+Open the app at `http://localhost:4321` and log in.
 
 ## 5) Production deployment
 

@@ -92,13 +92,13 @@ function duration(start: Date | null, end: Date | null) {
 }
 
 const statusColors = {
-    queued: "text-gray-400 bg-gray-500/10 border-gray-500/20",
+    queued: "text-muted-foreground bg-gray-500/10 border-gray-500/20",
     in_progress:
         "text-yellow-400 bg-yellow-500/10 border-yellow-500/20 animate-pulse",
     completed: {
         success: "text-green-400 bg-green-500/10 border-green-500/20",
         failure: "text-red-400 bg-red-500/10 border-red-500/20",
-        cancelled: "text-gray-400 bg-gray-500/10 border-gray-500/20",
+        cancelled: "text-muted-foreground bg-gray-500/10 border-gray-500/20",
     },
 };
 
@@ -139,9 +139,9 @@ const visualizerJobs = run.jobs.map(job => ({
         <div class="mt-6 mb-6">
             <div class="flex items-center justify-between mb-2">
                 <h1
-                    class="text-xl font-semibold text-white flex items-center gap-3"
+                    class="text-xl font-semibold text-foreground flex items-center gap-3"
                 >
-                    <span class="text-gray-500">#{run.runNumber}</span>
+                    <span class="text-muted-foreground">#{run.runNumber}</span>
                     {run.name}
                     <span
                         class={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(run.status, run.conclusion)}`}
@@ -155,26 +155,26 @@ const visualizerJobs = run.jobs.map(job => ({
                 </h1>
                 <div class="flex gap-2">
                     <button
-                        class="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 text-sm text-gray-300 hover:bg-white/10 transition-colors flex items-center gap-2"
+                        class="px-3 py-1.5 rounded-md bg-secondary border border-border text-sm text-muted-foreground hover:bg-secondary/80 transition-colors flex items-center gap-2"
                     >
                         <RotateCw className="h-4 w-4" />
                         Re-run jobs
                     </button>
                 </div>
             </div>
-            <div class="flex items-center gap-4 text-sm text-gray-400">
+            <div class="flex items-center gap-4 text-sm text-muted-foreground">
                 <div class="flex items-center gap-1.5">
                     <div
-                        class="h-5 w-5 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-[10px] text-white font-bold"
+                        class="h-5 w-5 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-[10px] text-foreground font-bold"
                     >
                         {run.triggeredBy?.username[0]?.toUpperCase()}
                     </div>
-                    <span class="text-gray-300"
+                    <span class="text-muted-foreground"
                         >{run.triggeredBy?.username}</span
                     >
                     pushed to
                     <code
-                        class="px-1.5 py-0.5 rounded bg-white/5 text-gray-300 font-mono text-xs"
+                        class="px-1.5 py-0.5 rounded bg-secondary text-muted-foreground font-mono text-xs"
                         >{run.headBranch || "HEAD"}</code
                     >
                 </div>
@@ -204,12 +204,12 @@ const visualizerJobs = run.jobs.map(job => ({
 
         <!-- Layout -->
         <div
-            class="flex-1 grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 min-h-0 border rounded-xl overflow-hidden bg-[#0d1117]/80 border-white/10"
+            class="flex-1 grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 min-h-0 border rounded-xl overflow-hidden bg-card/80 border-border"
         >
             <!-- Sidebar: Jobs -->
-            <div class="border-r border-white/10 bg-black/20 flex flex-col">
+            <div class="border-r border-border bg-black/20 flex flex-col">
                 <div
-                    class="p-4 border-b border-white/10 font-medium text-sm text-gray-400"
+                    class="p-4 border-b border-border font-medium text-sm text-muted-foreground"
                 >
                     Jobs
                 </div>
@@ -218,7 +218,7 @@ const visualizerJobs = run.jobs.map(job => ({
                         run.jobs.map((job) => (
                             <button
                                 data-job-id={job.id}
-                                class={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between group transition-colors ${job.id === activeJob?.id ? "bg-blue-500/10 text-blue-400" : "text-gray-400 hover:bg-white/5 hover:text-gray-200"}`}
+                                class={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between group transition-colors ${job.id === activeJob?.id ? "bg-blue-500/10 text-blue-400" : "text-muted-foreground hover:bg-accent hover:text-gray-200"}`}
                             >
                                 <div class="flex items-center gap-2">
                                     {job.status === "completed" &&
@@ -238,7 +238,7 @@ const visualizerJobs = run.jobs.map(job => ({
 
                                     <span>{job.name}</span>
                                 </div>
-                                <span class="text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span class="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                                     {duration(job.startedAt, job.completedAt)}
                                 </span>
                             </button>
@@ -248,7 +248,7 @@ const visualizerJobs = run.jobs.map(job => ({
             </div>
 
             <!-- Main: Logs -->
-        <div class="flex flex-col min-h-0 bg-[#0d1117] relative" x-data="{ autoScroll: true }">
+        <div class="flex flex-col min-h-0 bg-card relative" x-data="{ autoScroll: true }">
             {run.jobs.map((job, idx) => {
                 const isActive = idx === 0; // Default first active
                 
@@ -258,22 +258,22 @@ const visualizerJobs = run.jobs.map(job => ({
                         class={`job-logs flex-1 flex flex-col min-h-0 ${!isActive ? 'hidden' : ''}`}
                         x-effect="if(autoScroll && $el.classList.contains('hidden') === false) { $nextTick(() => $refs.logContainer.scrollTop = $refs.logContainer.scrollHeight) }"
                     >
-                         <div class="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#0d1117]/50 backdrop-blur sticky top-0 z-10">
+                         <div class="flex items-center justify-between px-4 py-3 border-b border-border bg-card/50 backdrop-blur sticky top-0 z-10">
                             <h3 class="font-medium text-sm text-gray-200 flex items-center gap-2">
-                                <Terminal className="h-4 w-4 text-gray-500" />
+                                <Terminal className="h-4 w-4 text-muted-foreground" />
                                 <span class="text-orange-400 font-mono">{job.name}</span>
                             </h3>
                             <div class="flex items-center gap-2">
                                 <button 
                                     @click="autoScroll = !autoScroll"
-                                    :class="autoScroll ? 'text-green-400 bg-green-400/10 border-green-400/20' : 'text-gray-500 hover:text-gray-300 border-transparent'"
+                                    :class="autoScroll ? 'text-green-400 bg-green-400/10 border-green-400/20' : 'text-muted-foreground hover:text-muted-foreground border-transparent'"
                                     class="px-2 py-1 rounded text-xs border transition-colors flex items-center gap-1.5"
                                 >
                                     <div class={`h-1.5 w-1.5 rounded-full bg-gray-500`}></div>
                                     Follow
                                 </button>
-                                <div class="h-4 w-px bg-white/10 mx-1"></div>
-                                <button class="text-xs text-gray-500 hover:text-white transition-colors flex items-center gap-1">
+                                <div class="h-4 w-px bg-secondary/80 mx-1"></div>
+                                <button class="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
                                     <Download className="h-3 w-3" />
                                     Raw
                                 </button>
@@ -285,14 +285,14 @@ const visualizerJobs = run.jobs.map(job => ({
                             class="flex-1 overflow-y-auto p-4 font-mono text-xs leading-relaxed scroll-smooth"
                         >
                             <div id={`log-lines-${job.id}`} class="space-y-0.5"></div>
-                            <div id={`log-state-${job.id}`} class="h-full flex flex-col items-center justify-center text-gray-500 space-y-4">
+                            <div id={`log-state-${job.id}`} class="h-full flex flex-col items-center justify-center text-muted-foreground space-y-4">
                                 <div class="text-center opacity-50">
                                     <Terminal className="h-8 w-8 mx-auto mb-2" />
                                     <p>Loading logs...</p>
                                 </div>
                             </div>
                             <div class="pt-3">
-                                <button id={`load-more-${job.id}`} data-job-id={job.id} class="hidden px-3 py-1.5 rounded-md bg-white/5 border border-white/10 text-xs text-gray-300 hover:bg-white/10 transition-colors">
+                                <button id={`load-more-${job.id}`} data-job-id={job.id} class="hidden px-3 py-1.5 rounded-md bg-secondary border border-border text-xs text-muted-foreground hover:bg-secondary/80 transition-colors">
                                     Load more
                                 </button>
                             </div>
@@ -326,10 +326,10 @@ const visualizerJobs = run.jobs.map(job => ({
             if (el.closest(".border-r")) {
                 if (el.getAttribute("data-job-id") === jobId) {
                     el.classList.add("bg-blue-500/10", "text-blue-400");
-                    el.classList.remove("text-gray-400", "hover:bg-white/5", "hover:text-gray-200");
+                    el.classList.remove("text-muted-foreground", "hover:bg-accent", "hover:text-gray-200");
                 } else {
                     el.classList.remove("bg-blue-500/10", "text-blue-400");
-                    el.classList.add("text-gray-400", "hover:bg-white/5", "hover:text-gray-200");
+                    el.classList.add("text-muted-foreground", "hover:bg-accent", "hover:text-gray-200");
                 }
             }
         });
@@ -351,9 +351,9 @@ const visualizerJobs = run.jobs.map(job => ({
             const line = log.lineNumber ?? "";
             const message = (log.message || "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
             return `
-                <div class="flex gap-3 group hover:bg-white/5 -mx-4 px-4 py-0.5 transition-colors">
-                    <span class="text-gray-600 select-none w-8 text-right shrink-0 opacity-50">${line}</span>
-                    <span class="text-gray-300 group-hover:text-white break-all whitespace-pre-wrap">${message}</span>
+                <div class="flex gap-3 group hover:bg-accent -mx-4 px-4 py-0.5 transition-colors">
+                    <span class="text-muted-foreground select-none w-8 text-right shrink-0 opacity-50">${line}</span>
+                    <span class="text-muted-foreground group-hover:text-foreground break-all whitespace-pre-wrap">${message}</span>
                 </div>
             `;
         }).join("");

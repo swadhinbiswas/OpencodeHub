@@ -16,6 +16,7 @@ import {
     Archive
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 interface MilestoneItem {
     id: string;
@@ -70,13 +71,13 @@ export default function MilestonesList({ milestones, repoOwner, repoName }: Prop
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
             >
                 <div>
-                    <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+                    <h1 className="text-2xl font-bold text-foreground flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30">
                             <Target className="h-6 w-6 text-purple-400" />
                         </div>
                         Milestones
                     </h1>
-                    <p className="text-gray-500 text-sm mt-1">
+                    <p className="text-muted-foreground text-sm mt-1">
                         Track progress and manage project goals
                     </p>
                 </div>
@@ -85,7 +86,7 @@ export default function MilestonesList({ milestones, repoOwner, repoName }: Prop
                     href={`/${repoOwner}/${repoName}/milestones/new`}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-600 text-sm font-medium text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-600 text-sm font-medium text-foreground shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all"
                 >
                     <Plus className="h-4 w-4" />
                     New Milestone
@@ -103,7 +104,7 @@ export default function MilestonesList({ milestones, repoOwner, repoName }: Prop
                     onClick={() => setFilter("open")}
                     className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === "open"
                             ? "bg-green-500/10 text-green-400 border border-green-500/30"
-                            : "text-gray-400 hover:text-white hover:bg-white/5"
+                            : "text-muted-foreground hover:text-foreground hover:bg-accent"
                         }`}
                 >
                     <AlertCircle className="h-4 w-4" />
@@ -113,7 +114,7 @@ export default function MilestonesList({ milestones, repoOwner, repoName }: Prop
                     onClick={() => setFilter("closed")}
                     className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${filter === "closed"
                             ? "bg-purple-500/10 text-purple-400 border border-purple-500/30"
-                            : "text-gray-400 hover:text-white hover:bg-white/5"
+                            : "text-muted-foreground hover:text-foreground hover:bg-accent"
                         }`}
                 >
                     <CheckCircle2 className="h-4 w-4" />
@@ -137,26 +138,26 @@ export default function MilestonesList({ milestones, repoOwner, repoName }: Prop
                                 {/* Gradient border */}
                                 <div className="absolute -inset-[1px] bg-gradient-to-r from-purple-500/20 via-transparent to-pink-500/20 rounded-xl opacity-50 group-hover:opacity-100 transition-opacity" />
 
-                                <div className="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-5">
+                                <div className="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm p-5">
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="flex-1">
                                             {/* Title */}
                                             <a
                                                 href={`/${repoOwner}/${repoName}/milestones/${milestone.id}`}
-                                                className="text-lg font-semibold text-white hover:text-purple-400 transition-colors"
+                                                className="text-lg font-semibold text-foreground hover:text-purple-400 transition-colors"
                                             >
                                                 {milestone.title}
                                             </a>
 
                                             {/* Description */}
                                             {milestone.description && (
-                                                <p className="text-sm text-gray-400 mt-1 line-clamp-2">
+                                                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                                                     {milestone.description}
                                                 </p>
                                             )}
 
                                             {/* Meta Info */}
-                                            <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                                            <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
                                                 {milestone.dueDate && (
                                                     <span className="flex items-center gap-1">
                                                         <Calendar className="h-3.5 w-3.5" />
@@ -176,27 +177,59 @@ export default function MilestonesList({ milestones, repoOwner, repoName }: Prop
                                         <div className="relative">
                                             <button
                                                 onClick={() => setShowMenu(showMenu === milestone.id ? null : milestone.id)}
-                                                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                                                className="p-2 rounded-lg hover:bg-secondary/80 transition-colors"
                                             >
-                                                <MoreHorizontal className="h-4 w-4 text-gray-500" />
+                                                <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
                                             </button>
 
                                             {showMenu === milestone.id && (
                                                 <motion.div
                                                     initial={{ opacity: 0, scale: 0.95 }}
                                                     animate={{ opacity: 1, scale: 1 }}
-                                                    className="absolute right-0 top-full mt-1 w-40 rounded-lg border border-white/10 bg-[#161b22] shadow-xl z-10"
+                                                    className="absolute right-0 top-full mt-1 w-40 rounded-lg border border-border bg-accent shadow-xl z-10"
                                                 >
                                                     <div className="p-1">
-                                                        <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 rounded-md">
+                                                        <button 
+                                                            onClick={() => { setShowMenu(null); window.location.href = `/${repoOwner}/${repoName}/milestones/${milestone.id}/edit`; }}
+                                                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-accent rounded-md"
+                                                        >
                                                             <Edit3 className="h-4 w-4" />
                                                             Edit
                                                         </button>
-                                                        <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-white/5 rounded-md">
+                                                        <button 
+                                                            onClick={async () => {
+                                                                setShowMenu(null);
+                                                                try {
+                                                                    const res = await fetch(`/api/repos/${repoOwner}/${repoName}/milestones/${milestone.id}`, {
+                                                                        method: 'PATCH',
+                                                                        headers: { 'Content-Type': 'application/json' },
+                                                                        body: JSON.stringify({ state: 'closed' }),
+                                                                    });
+                                                                    if (!res.ok) throw new Error('Failed');
+                                                                    toast.success('Milestone closed');
+                                                                    window.location.reload();
+                                                                } catch { toast.error('Failed to close milestone'); }
+                                                            }}
+                                                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-accent rounded-md"
+                                                        >
                                                             <Archive className="h-4 w-4" />
                                                             Close
                                                         </button>
-                                                        <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-md">
+                                                        <button 
+                                                            onClick={async () => {
+                                                                setShowMenu(null);
+                                                                if (!confirm('Delete this milestone?')) return;
+                                                                try {
+                                                                    const res = await fetch(`/api/repos/${repoOwner}/${repoName}/milestones/${milestone.id}`, {
+                                                                        method: 'DELETE',
+                                                                    });
+                                                                    if (!res.ok) throw new Error('Failed');
+                                                                    toast.success('Milestone deleted');
+                                                                    window.location.reload();
+                                                                } catch { toast.error('Failed to delete milestone'); }
+                                                            }}
+                                                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-md"
+                                                        >
                                                             <Trash2 className="h-4 w-4" />
                                                             Delete
                                                         </button>
@@ -208,7 +241,7 @@ export default function MilestonesList({ milestones, repoOwner, repoName }: Prop
 
                                     {/* Progress Section */}
                                     <div className="mt-4">
-                                        <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
                                             <span className="flex items-center gap-3">
                                                 <span className="flex items-center gap-1 text-green-400">
                                                     <CheckCircle2 className="h-3.5 w-3.5" />
@@ -226,7 +259,7 @@ export default function MilestonesList({ milestones, repoOwner, repoName }: Prop
                                         </div>
 
                                         {/* Progress Bar */}
-                                        <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                                        <div className="h-2 bg-secondary rounded-full overflow-hidden">
                                             <motion.div
                                                 initial={{ width: 0 }}
                                                 animate={{ width: `${milestone.progress}%` }}
@@ -248,10 +281,10 @@ export default function MilestonesList({ milestones, repoOwner, repoName }: Prop
                                 <Milestone className="h-16 w-16 text-purple-400" />
                                 <div className="absolute inset-0 bg-purple-500 blur-xl opacity-30" />
                             </div>
-                            <h3 className="text-xl font-semibold text-white mb-2">
+                            <h3 className="text-xl font-semibold text-foreground mb-2">
                                 {filter === "closed" ? "No closed milestones" : "No milestones yet"}
                             </h3>
-                            <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                                 {filter === "closed"
                                     ? "Closed milestones will appear here."
                                     : "Milestones help you track progress on groups of issues and pull requests."}
@@ -261,7 +294,7 @@ export default function MilestonesList({ milestones, repoOwner, repoName }: Prop
                                     href={`/${repoOwner}/${repoName}/milestones/new`}
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
-                                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-600 text-sm font-medium text-white shadow-lg shadow-purple-500/25"
+                                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-600 text-sm font-medium text-foreground shadow-lg shadow-purple-500/25"
                                 >
                                     <Plus className="h-4 w-4" />
                                     Create a milestone

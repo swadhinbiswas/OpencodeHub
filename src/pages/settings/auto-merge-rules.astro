@@ -75,15 +75,15 @@ try {
             <GitMerge className="h-6 w-6 text-emerald-400" />
           </div>
           <div>
-            <h1 class="text-2xl font-bold text-white">Auto-Merge Rules</h1>
-            <p class="text-sm text-gray-400">Control when auto-merge can proceed</p>
+            <h1 class="text-2xl font-bold text-foreground">Auto-Merge Rules</h1>
+            <p class="text-sm text-muted-foreground">Control when auto-merge can proceed</p>
           </div>
         </div>
 
         <div class="flex items-center gap-3">
           <select
             id="repo-select"
-            class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300"
+            class="bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-muted-foreground"
           >
             <option value="">Select Repository</option>
             {repositories.map((repo) => (
@@ -106,20 +106,20 @@ try {
       </div>
 
       {!repoId ? (
-        <div class="text-center py-16 bg-white/5 rounded-xl border border-white/10">
+        <div class="text-center py-16 bg-secondary rounded-xl border border-border">
           <GitMerge className="h-16 w-16 text-emerald-400 mx-auto mb-4" />
-          <h3 class="text-lg font-semibold text-white mb-2">Select a Repository</h3>
-          <p class="text-gray-500">Choose a repository to manage auto-merge rules</p>
+          <h3 class="text-lg font-semibold text-foreground mb-2">Select a Repository</h3>
+          <p class="text-muted-foreground">Choose a repository to manage auto-merge rules</p>
         </div>
       ) : (
         <div class="relative">
           <div class="absolute -inset-[1px] bg-gradient-to-r from-emerald-500/20 via-transparent to-cyan-500/20 rounded-xl opacity-50"></div>
-          <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm overflow-hidden">
+          <div class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden">
             {rules.length === 0 ? (
               <div class="text-center py-16">
                 <GitMerge className="h-12 w-12 text-emerald-400 mx-auto mb-4" />
-                <h3 class="text-lg font-semibold text-white mb-2">No Rules Yet</h3>
-                <p class="text-gray-500 mb-4">Create your first auto-merge policy</p>
+                <h3 class="text-lg font-semibold text-foreground mb-2">No Rules Yet</h3>
+                <p class="text-muted-foreground mb-4">Create your first auto-merge policy</p>
                 <button
                   id="add-first-rule-btn"
                   class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 rounded-lg text-sm hover:bg-emerald-500/20 transition-colors"
@@ -132,7 +132,7 @@ try {
               <div class="divide-y divide-white/5">
                 {rules.map((rule) => (
                   <div
-                    class="group flex items-start gap-4 p-4 transition-all hover:bg-white/[0.02]"
+                    class="group flex items-start gap-4 p-4 transition-all hover:bg-accent/50"
                     data-rule-id={rule.id}
                     data-rule-name={rule.name}
                     data-rule-description={rule.description || ""}
@@ -152,22 +152,22 @@ try {
 
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2">
-                        <span class="font-medium text-white">{rule.name}</span>
+                        <span class="font-medium text-foreground">{rule.name}</span>
                         {rule.isEnabled === false && (
-                          <span class="px-2 py-0.5 text-xs bg-gray-500/10 text-gray-400 rounded border border-gray-500/30">
+                          <span class="px-2 py-0.5 text-xs bg-gray-500/10 text-muted-foreground rounded border border-gray-500/30">
                             Disabled
                           </span>
                         )}
                         {rule.mergeMethod && (
-                          <span class="px-2 py-0.5 text-xs bg-white/5 text-gray-400 rounded">
+                          <span class="px-2 py-0.5 text-xs bg-secondary text-muted-foreground rounded">
                             {rule.mergeMethod}
                           </span>
                         )}
                       </div>
                       {rule.description && (
-                        <p class="text-sm text-gray-500 mt-1">{rule.description}</p>
+                        <p class="text-sm text-muted-foreground mt-1">{rule.description}</p>
                       )}
-                      <div class="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-500">
+                      <div class="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
                         {parseList(rule.requiredLabels).length > 0 && (
                           <span class="flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Labels: {parseList(rule.requiredLabels).join(", ")}</span>
                         )}
@@ -186,7 +186,7 @@ try {
                     <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         type="button"
-                        class="edit-rule-btn px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-xs text-gray-300 hover:bg-white/10"
+                        class="edit-rule-btn px-2 py-1 rounded-lg bg-secondary border border-border text-xs text-muted-foreground hover:bg-secondary/80"
                       >
                         <Edit2 className="h-3 w-3" />
                       </button>
@@ -209,31 +209,31 @@ try {
 </BaseLayout>
 
 <div id="rule-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60">
-  <div class="w-full max-w-2xl rounded-xl border border-white/10 bg-[#0d1117] p-6">
+  <div class="w-full max-w-2xl rounded-xl border border-border bg-card p-6">
     <div class="flex items-start justify-between mb-4">
       <div>
-        <h3 id="rule-modal-title" class="text-lg font-semibold text-white">New Rule</h3>
-        <p class="text-sm text-gray-500">Define auto-merge eligibility</p>
+        <h3 id="rule-modal-title" class="text-lg font-semibold text-foreground">New Rule</h3>
+        <p class="text-sm text-muted-foreground">Define auto-merge eligibility</p>
       </div>
-      <button id="rule-modal-close" class="text-gray-400 hover:text-white">×</button>
+      <button id="rule-modal-close" class="text-muted-foreground hover:text-foreground">×</button>
     </div>
 
     <form id="rule-form" class="space-y-4">
       <input type="hidden" id="rule-id" />
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label class="text-xs text-gray-400">Name</label>
+          <label class="text-xs text-muted-foreground">Name</label>
           <input
             id="rule-name"
-            class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            class="mt-1 w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-foreground"
             placeholder="Standard auto-merge"
           />
         </div>
         <div>
-          <label class="text-xs text-gray-400">Merge Method</label>
+          <label class="text-xs text-muted-foreground">Merge Method</label>
           <select
             id="rule-merge-method"
-            class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            class="mt-1 w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-foreground"
           >
             <option value="">Use PR setting</option>
             <option value="merge">Merge</option>
@@ -243,79 +243,79 @@ try {
         </div>
       </div>
       <div>
-        <label class="text-xs text-gray-400">Description</label>
+        <label class="text-xs text-muted-foreground">Description</label>
         <input
           id="rule-description"
-          class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+          class="mt-1 w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-foreground"
           placeholder="Applies to core services"
         />
       </div>
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label class="text-xs text-gray-400">Match Labels (comma-separated)</label>
+          <label class="text-xs text-muted-foreground">Match Labels (comma-separated)</label>
           <input
             id="rule-match-labels"
-            class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            class="mt-1 w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-foreground"
             placeholder="auto-merge,backend"
           />
         </div>
         <div>
-          <label class="text-xs text-gray-400">Required Labels</label>
+          <label class="text-xs text-muted-foreground">Required Labels</label>
           <input
             id="rule-required-labels"
-            class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            class="mt-1 w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-foreground"
             placeholder="approved"
           />
         </div>
       </div>
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label class="text-xs text-gray-400">Required Checks</label>
+          <label class="text-xs text-muted-foreground">Required Checks</label>
           <input
             id="rule-required-checks"
-            class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            class="mt-1 w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-foreground"
             placeholder="ci/test,ci/lint"
           />
         </div>
         <div>
-          <label class="text-xs text-gray-400">Minimum Approvals</label>
+          <label class="text-xs text-muted-foreground">Minimum Approvals</label>
           <input
             id="rule-min-approvals"
             type="number"
             min="0"
-            class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            class="mt-1 w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-foreground"
             value="0"
           />
         </div>
       </div>
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label class="text-xs text-gray-400">Minimum Auto-Merge Delay (minutes)</label>
+          <label class="text-xs text-muted-foreground">Minimum Auto-Merge Delay (minutes)</label>
           <input
             id="rule-min-delay"
             type="number"
             min="0"
-            class="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+            class="mt-1 w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-foreground"
             value="0"
           />
         </div>
         <div class="flex flex-col gap-2 mt-6">
-          <label class="inline-flex items-center gap-2 text-sm text-gray-300">
-            <input id="rule-require-code-owner" type="checkbox" class="rounded border-white/20" />
+          <label class="inline-flex items-center gap-2 text-sm text-muted-foreground">
+            <input id="rule-require-code-owner" type="checkbox" class="rounded border-border/80" />
             Require code owner approval
           </label>
-          <label class="inline-flex items-center gap-2 text-sm text-gray-300">
-            <input id="rule-allow-draft" type="checkbox" class="rounded border-white/20" />
+          <label class="inline-flex items-center gap-2 text-sm text-muted-foreground">
+            <input id="rule-allow-draft" type="checkbox" class="rounded border-border/80" />
             Allow drafts
           </label>
         </div>
       </div>
-      <label class="inline-flex items-center gap-2 text-sm text-gray-300">
-        <input id="rule-enabled" type="checkbox" class="rounded border-white/20" checked />
+      <label class="inline-flex items-center gap-2 text-sm text-muted-foreground">
+        <input id="rule-enabled" type="checkbox" class="rounded border-border/80" checked />
         Enable rule
       </label>
       <div class="flex items-center justify-end gap-2">
-        <button type="button" id="rule-cancel" class="px-3 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
+        <button type="button" id="rule-cancel" class="px-3 py-2 text-sm text-muted-foreground hover:text-foreground">Cancel</button>
         <button type="submit" class="px-4 py-2 text-sm rounded-lg bg-emerald-500/20 text-emerald-200 border border-emerald-500/40">
           Save Rule
         </button>

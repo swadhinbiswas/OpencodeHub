@@ -105,7 +105,7 @@ const repo = {
             <CardDescription>Configure Jira project sync and webhook processing.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div class="rounded-md border border-dashed border-white/10 bg-white/5 p-3 text-sm text-muted-foreground">
+            <div class="rounded-md border border-dashed border-border bg-secondary p-3 text-sm text-muted-foreground">
               <div class="text-xs uppercase tracking-wide text-muted-foreground">Jira Webhook Endpoint</div>
               <div class="mt-1 font-mono text-xs break-all">{jiraWebhookUrl}</div>
             </div>
@@ -133,7 +133,7 @@ const repo = {
               <Button id="save-jira" variant="outline">Save Jira Config</Button>
               <span id="jira-save-msg" class="text-xs text-muted-foreground"></span>
             </div>
-            <div class="pt-2 border-t border-white/10">
+            <div class="pt-2 border-t border-border">
               <div class="text-xs font-medium text-muted-foreground mb-2">Recent Jira Links</div>
               <div id="jira-links" class="space-y-1 text-xs text-muted-foreground">Loading links...</div>
             </div>
@@ -146,7 +146,7 @@ const repo = {
             <CardDescription>Configure Linear team sync and webhook processing.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div class="rounded-md border border-dashed border-white/10 bg-white/5 p-3 text-sm text-muted-foreground">
+            <div class="rounded-md border border-dashed border-border bg-secondary p-3 text-sm text-muted-foreground">
               <div class="text-xs uppercase tracking-wide text-muted-foreground">Linear Webhook Endpoint</div>
               <div class="mt-1 font-mono text-xs break-all">{linearWebhookUrl}</div>
             </div>
@@ -167,7 +167,7 @@ const repo = {
             </div>
             <div class="text-xs text-muted-foreground">Webhook secret: <span id="linear-webhook-secret" class="font-mono">{linearConfig?.webhookSecret || "Not configured yet"}</span></div>
             <div class="flex items-center gap-2"><Button id="save-linear" variant="outline">Save Linear Config</Button><span id="linear-save-msg" class="text-xs text-muted-foreground"></span></div>
-            <div class="pt-2 border-t border-white/10"><div class="text-xs font-medium text-muted-foreground mb-2">Recent Linear Links</div><div id="linear-links" class="space-y-1 text-xs text-muted-foreground">Loading links...</div></div>
+            <div class="pt-2 border-t border-border"><div class="text-xs font-medium text-muted-foreground mb-2">Recent Linear Links</div><div id="linear-links" class="space-y-1 text-xs text-muted-foreground">Loading links...</div></div>
           </CardContent>
         </Card>
 
@@ -177,7 +177,7 @@ const repo = {
             <CardDescription>Configure Trello board/list sync and webhook processing.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div class="rounded-md border border-dashed border-white/10 bg-white/5 p-3 text-sm text-muted-foreground"><div class="text-xs uppercase tracking-wide text-muted-foreground">Trello Webhook Endpoint</div><div class="mt-1 font-mono text-xs break-all">{trelloWebhookUrl}</div></div>
+            <div class="rounded-md border border-dashed border-border bg-secondary p-3 text-sm text-muted-foreground"><div class="text-xs uppercase tracking-wide text-muted-foreground">Trello Webhook Endpoint</div><div class="mt-1 font-mono text-xs break-all">{trelloWebhookUrl}</div></div>
             <div class="grid gap-3 md:grid-cols-2">
               <div><label for="trello-project-key" class="block text-xs text-muted-foreground mb-1">Board/List ID</label><input id="trello-project-key" class="h-8 w-full rounded-md border bg-background px-2 text-xs" value={trelloConfig?.projectKey || ""} placeholder="list-id" /></div>
               <div><label for="trello-api-token" class="block text-xs text-muted-foreground mb-1">API Token (`key:token`)</label><input id="trello-api-token" type="password" class="h-8 w-full rounded-md border bg-background px-2 text-xs" placeholder={trelloConfig ? "•••••••• (leave empty to keep)" : "key:token"} /></div>
@@ -189,7 +189,7 @@ const repo = {
             </div>
             <div class="text-xs text-muted-foreground">Webhook secret: <span id="trello-webhook-secret" class="font-mono">{trelloConfig?.webhookSecret || "Not configured yet"}</span></div>
             <div class="flex items-center gap-2"><Button id="save-trello" variant="outline">Save Trello Config</Button><span id="trello-save-msg" class="text-xs text-muted-foreground"></span></div>
-            <div class="pt-2 border-t border-white/10"><div class="text-xs font-medium text-muted-foreground mb-2">Recent Trello Links</div><div id="trello-links" class="space-y-1 text-xs text-muted-foreground">Loading links...</div></div>
+            <div class="pt-2 border-t border-border"><div class="text-xs font-medium text-muted-foreground mb-2">Recent Trello Links</div><div id="trello-links" class="space-y-1 text-xs text-muted-foreground">Loading links...</div></div>
           </CardContent>
         </Card>
 
@@ -199,7 +199,7 @@ const repo = {
             <CardDescription>Configure ClickUp list sync and webhook processing.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div class="rounded-md border border-dashed border-white/10 bg-white/5 p-3 text-sm text-muted-foreground"><div class="text-xs uppercase tracking-wide text-muted-foreground">ClickUp Webhook Endpoint</div><div class="mt-1 font-mono text-xs break-all">{clickupWebhookUrl}</div></div>
+            <div class="rounded-md border border-dashed border-border bg-secondary p-3 text-sm text-muted-foreground"><div class="text-xs uppercase tracking-wide text-muted-foreground">ClickUp Webhook Endpoint</div><div class="mt-1 font-mono text-xs break-all">{clickupWebhookUrl}</div></div>
             <div class="grid gap-3 md:grid-cols-2">
               <div><label for="clickup-project-key" class="block text-xs text-muted-foreground mb-1">List ID</label><input id="clickup-project-key" class="h-8 w-full rounded-md border bg-background px-2 text-xs" value={clickupConfig?.projectKey || ""} placeholder="list-id" /></div>
               <div><label for="clickup-api-token" class="block text-xs text-muted-foreground mb-1">API Token</label><input id="clickup-api-token" type="password" class="h-8 w-full rounded-md border bg-background px-2 text-xs" placeholder={clickupConfig ? "•••••••• (leave empty to keep)" : "ClickUp token"} /></div>
@@ -211,7 +211,7 @@ const repo = {
             </div>
             <div class="text-xs text-muted-foreground">Webhook secret: <span id="clickup-webhook-secret" class="font-mono">{clickupConfig?.webhookSecret || "Not configured yet"}</span></div>
             <div class="flex items-center gap-2"><Button id="save-clickup" variant="outline">Save ClickUp Config</Button><span id="clickup-save-msg" class="text-xs text-muted-foreground"></span></div>
-            <div class="pt-2 border-t border-white/10"><div class="text-xs font-medium text-muted-foreground mb-2">Recent ClickUp Links</div><div id="clickup-links" class="space-y-1 text-xs text-muted-foreground">Loading links...</div></div>
+            <div class="pt-2 border-t border-border"><div class="text-xs font-medium text-muted-foreground mb-2">Recent ClickUp Links</div><div id="clickup-links" class="space-y-1 text-xs text-muted-foreground">Loading links...</div></div>
           </CardContent>
         </Card>
       </div>
@@ -275,7 +275,7 @@ const repo = {
     target.innerHTML = links.length === 0
       ? emptyMessage
       : links.map((item) => `
-      <div class="rounded border border-white/10 bg-white/5 px-2 py-1.5 flex items-center justify-between gap-2">
+      <div class="rounded border border-border bg-secondary px-2 py-1.5 flex items-center justify-between gap-2">
         <span>${item.externalKey || item.externalId || "linked issue"}</span>
         <span class="text-[11px] text-muted-foreground">${item.lastSyncAt ? new Date(item.lastSyncAt).toLocaleString() : "pending"}</span>
       </div>

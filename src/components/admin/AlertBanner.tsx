@@ -90,16 +90,16 @@ export default function AlertBanner({ alerts = defaultAlerts }: Props) {
                     </span>
 
                     {/* Timestamp */}
-                    <span className="text-xs text-gray-500 font-mono">
+                    <span className="text-xs text-muted-foreground font-mono">
                         {alert.timestamp}
                     </span>
 
                     {/* Dismiss button */}
                     <button
                         onClick={() => setDismissedIds(prev => new Set([...prev, alert.id]))}
-                        className="p-1 rounded hover:bg-white/10 transition-colors"
+                        className="p-1 rounded hover:bg-secondary/80 transition-colors"
                     >
-                        <X className="w-3 h-3 text-gray-500 hover:text-gray-300" />
+                        <X className="w-3 h-3 text-muted-foreground hover:text-muted-foreground" />
                     </button>
                 </div>
             </div>

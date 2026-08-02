@@ -26,9 +26,16 @@ function getCsrfTokenFromCookie(request: Request): string | null {
 
     const cookies = cookieHeader.split(";").map((c) => c.trim());
     for (const cookie of cookies) {
-        const [name, value] = cookie.split("=");
+        const eqIndex = cookie.indexOf("=");
+        if (eqIndex === -1) continue;
+        const name = cookie.substring(0, eqIndex).trim();
+        const value = cookie.substring(eqIndex + 1).trim();
         if (name === CSRF_COOKIE_NAME) {
-            return decodeURIComponent(value);
+            try {
+                return decodeURIComponent(value);
+            } catch {
+                return value;
+            }
         }
     }
     return null;
@@ -36,20 +43,35 @@ function getCsrfTokenFromCookie(request: Request): string | null {
 
 /**
  * Extract CSRF token from request headers or body
+ * Uses request.clone() to avoid consuming the body stream
  */
-function getCsrfTokenFromRequest(request: Request): string | null {
+async function getCsrfTokenFromRequest(request: Request): Promise<string | null> {
     // Check header first
     const headerToken = request.headers.get(CSRF_HEADER_NAME);
     if (headerToken) return headerToken;
 
-    // For form submissions, check _csrf form field (handled by consumer)
+    // For form submissions, check _csrf form field
+    // Clone the request so we don't consume the body stream
+    const contentType = request.headers.get("content-type") || "";
+    if (contentType.includes("application/x-www-form-urlencoded")) {
+        try {
+            const cloned = request.clone();
+            const body = await cloned.text();
+            const params = new URLSearchParams(body);
+            const formToken = params.get("_csrf");
+            if (formToken) return formToken;
+        } catch {
+            // Ignore errors parsing body
+        }
+    }
+
     return null;
 }
 
 /**
  * Validate CSRF token
  */
-export function validateCsrfToken(request: Request): boolean {
+export async function validateCsrfToken(request: Request): Promise<boolean> {
     // GET, HEAD, OPTIONS are safe methods - no CSRF protection needed
     if (["GET", "HEAD", "OPTIONS"].includes(request.method)) {
         return true;
@@ -70,7 +92,7 @@ export function validateCsrfToken(request: Request): boolean {
     }
 
     const cookieToken = getCsrfTokenFromCookie(request);
-    const requestToken = getCsrfTokenFromRequest(request);
+    const requestToken = await getCsrfTokenFromRequest(request);
 
     // Both must exist and match
     if (!cookieToken || !requestToken) {
@@ -102,7 +124,9 @@ function timingSafeEqual(a: string, b: string): boolean {
  */
 export function createCsrfCookie(token: string, secure: boolean = false): string {
     const maxAge = 86400; // 24 hours
-    const sameSite = "Strict";
+    // Use Lax instead of Strict — Strict cookies are not sent on same-site
+    // form POSTs in some browser configurations, causing CSRF failures
+    const sameSite = "Lax";
 
     return [
         `${CSRF_COOKIE_NAME}=${encodeURIComponent(token)}`,
@@ -122,7 +146,8 @@ export function createCsrfCookie(token: string, secure: boolean = false): string
 export async function applyCsrfProtection(
     request: Request
 ): Promise<Response | null> {
-    if (!validateCsrfToken(request)) {
+    const isValid = await validateCsrfToken(request);
+    if (!isValid) {
         return new Response(
             JSON.stringify({
                 error: "CSRF token validation failed",
@@ -156,28 +181,3 @@ export function getCsrfToken(request: Request): { token: string; cookie: string 
 
     return { token, cookie };
 }
-
-/**
- * Example usage in Astro component:
- * 
- * ---
- * import { getCsrfToken } from "@/middleware/csrf";
- * const { token } = getCsrfToken(Astro.request);
- * Astro.response.headers.set("Set-Cookie", getCsrfToken(Astro.request).cookie);
- * ---
- * 
- * <form method="POST">
- *   <input type="hidden" name="_csrf" value={token} />
- *   <!-- rest of form -->
- * </form>
- * 
- * Or for fetch requests:
- * fetch("/api/endpoint", {
- *   method: "POST",
- *   headers: {
- *     "X-CSRF-Token": token,
- *     "Content-Type": "application/json"
- *   },
- *   body: JSON.stringify(data)
- * })
- */

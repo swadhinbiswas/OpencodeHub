@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { getDatabase, schema } from "@/db";
 import { eq, and } from "drizzle-orm";
 import { getRepoAndUser } from "@/lib/auth";
-import { badRequest, notFound, serverError, success, unauthorized } from "@/lib/api";
+import { badRequest, notFound, serverError, success } from "@/lib/api";
 import { logger } from "@/lib/logger";
 
 export const GET: APIRoute = async ({ request, params }) => {

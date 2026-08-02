@@ -10,6 +10,43 @@ import { logger } from "./logger";
 import { repositories } from "@/db/schema/repositories";
 
 /**
+ * Safe expression evaluator — replaces dangerous `new Function()`.
+ * Only supports simple property comparisons on the PR object.
+ * Allowed patterns: pr.property === "value", pr.property !== "value",
+ *                   pr.property == value, pr.property >= value, etc.
+ */
+function evaluateSafeExpression(script: string, pr: any): boolean {
+    // Only allow simple comparisons on pr.* properties
+    const allowedPattern = /^pr\.\w+\s*(===|!==|==|!=|>=|<=|>|<)\s*(?:"[^"]*"|'[^']*'|\d+)$/;
+    const normalized = script.trim();
+
+    if (!allowedPattern.test(normalized)) {
+        logger.warn({ script: normalized }, "Rejected unsafe gate expression");
+        return false;
+    }
+
+    // Parse the expression
+    const match = normalized.match(/^(pr\.(\w+))\s*(===|!==|==|!=|>=|<=|>|<)\s*(?:"([^"]*)"|'([^']*)'|(\d+))$/);
+    if (!match) return false;
+
+    const [, , prop, operator, strVal1, strVal2, numVal] = match;
+    const propValue = pr[prop];
+    const compareVal = strVal1 ?? strVal2 ?? (numVal ? Number(numVal) : undefined);
+
+    switch (operator) {
+        case "===": return propValue === compareVal;
+        case "!==": return propValue !== compareVal;
+        case "==": return propValue == compareVal;
+        case "!=": return propValue != compareVal;
+        case ">=": return Number(propValue) >= Number(compareVal);
+        case "<=": return Number(propValue) <= Number(compareVal);
+        case ">": return Number(propValue) > Number(compareVal);
+        case "<": return Number(propValue) < Number(compareVal);
+        default: return false;
+    }
+}
+
+/**
  * Required status checks for merging
  */
 export const requiredStatusChecks = pgTable("required_status_checks", {
@@ -173,18 +210,35 @@ export async function evaluateGates(prId: string): Promise<{
     const approvals = pr.reviews?.filter(r => r.state === "approved") || [];
     const changesRequested = pr.reviews?.some(r => r.state === "changes_requested");
 
-    if (approvals.length === 0) {
-        results.push({
-            passed: false,
-            gateName: "Review",
-            message: "At least one approval required",
-            details: { gateType: "review" },
-        });
-    } else if (changesRequested) {
+    const requiredReviewers = await db.query.pullRequestReviewers?.findMany({
+        where: and(
+            eq(schema.pullRequestReviewers.pullRequestId, prId),
+            eq(schema.pullRequestReviewers.isRequired, true)
+        )
+    }) || [];
+
+    const missingRequired = requiredReviewers.filter(rr => !approvals.some(a => a.reviewerId === rr.userId));
+
+    if (changesRequested) {
         results.push({
             passed: false,
             gateName: "Review",
             message: "Changes requested by reviewer",
+            details: { gateType: "review" },
+        });
+    } else if (missingRequired.length > 0) {
+        results.push({
+            passed: false,
+            gateName: "Review",
+            message: `Missing ${missingRequired.length} required approval(s)`,
+            details: { gateType: "review", missingCount: missingRequired.length },
+        });
+    } else if (approvals.length === 0 && requiredReviewers.length === 0) {
+        // Fallback: if no specific reviewers are required, still require at least 1 approval
+        results.push({
+            passed: false,
+            gateName: "Review",
+            message: "At least one approval required",
             details: { gateType: "review" },
         });
     } else {
@@ -334,12 +388,12 @@ async function evaluateSingleGate(
         }
 
         case "custom": {
-            // Execute custom condition script
+            // Execute custom condition script — SAFELY
+            // Custom scripts are restricted to simple boolean expressions
+            // that reference PR properties. No arbitrary code execution.
             if (gate.conditionScript) {
                 try {
-                    // Sandbox execution would be needed in production
-                    const fn = new Function("pr", gate.conditionScript);
-                    const passed = fn(pr);
+                    const passed = evaluateSafeExpression(gate.conditionScript, pr);
                     return {
                         passed: Boolean(passed),
                         gateName: gate.name,

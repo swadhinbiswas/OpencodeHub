@@ -298,7 +298,7 @@ export function AIReviewPanel({
                                                         <button
                                                             onClick={() => handleApply(suggestion.id)}
                                                             disabled={applyingId === suggestion.id}
-                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors"
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 text-foreground rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors"
                                                         >
                                                             {applyingId === suggestion.id ? (
                                                                 <Loader2 className="h-4 w-4 animate-spin" />

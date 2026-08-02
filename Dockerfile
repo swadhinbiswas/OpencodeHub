@@ -6,7 +6,7 @@ LABEL org.opencontainers.image.title="OpenCodeHub" \
       org.opencontainers.image.source="https://github.com/swadhinbiswas/OpencodeHub" \
       org.opencontainers.image.licenses="MIT"
 
-# Install dependencies
+# Install ALL dependencies (needed for build including CSS tooling)
 FROM base AS deps
 RUN apt-get update && apt-get install -y python3 make g++ gcc libc6-dev && rm -rf /var/lib/apt/lists/*
 COPY package.json bun.lock ./
@@ -14,6 +14,19 @@ COPY cli/package.json ./cli/package.json
 RUN for i in 1 2 3; do \
       bun install --frozen-lockfile && break || \
       (echo "bun install attempt $i failed, retrying in 10s..." && sleep 10); \
+    done
+
+# Install production dependencies only (for runtime image)
+FROM base AS prod-deps
+RUN apt-get update && apt-get install -y python3 make g++ gcc libc6-dev && rm -rf /var/lib/apt/lists/*
+COPY package.json bun.lock ./
+COPY cli/package.json ./cli/package.json
+# Clear Bun install cache to avoid stale/corrupt node-gyp entries across layers
+RUN rm -rf /root/.bun/install/cache || true
+RUN for i in 1 2 3; do \
+      bun install --frozen-lockfile --production && break || \
+      (echo "prod bun install attempt $i failed, clearing cache and retrying in 10s..." && \
+       rm -rf /root/.bun/install/cache && sleep 10); \
     done
 
 # Build the application
@@ -24,34 +37,39 @@ ENV SKIP_REDIS_CHECK=1
 RUN bun run build
 
 # Production image
-FROM oven/bun:1 AS runner
+FROM oven/bun:1-slim AS runner
 WORKDIR /app
 
-# Install git, ssh, and bash (needed for git operations and entrypoint)
-RUN apt-get update && apt-get install -y git openssh-client bash && rm -rf /var/lib/apt/lists/*
+# Install git, ssh, bash, and wget (git operations, entrypoint, healthcheck)
+RUN apt-get update && apt-get install -y --no-install-recommends git openssh-client bash wget && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create data directories
-RUN mkdir -p /data/repos /data/storage /data/cache /data/ssh && \
+RUN mkdir -p /data/repositories /data/storage /data/cache /data/ssh && \
     chown -R bun:bun /data
 
-# Copy built application
+# Copy only what's needed for runtime
 COPY --from=builder --chown=bun:bun /app/dist ./dist
-COPY --from=builder --chown=bun:bun /app/node_modules ./node_modules
+COPY --from=prod-deps --chown=bun:bun /app/node_modules ./node_modules
 COPY --from=builder --chown=bun:bun /app/package.json ./
 
-# Copy drizzle config and schema for migrations
+# Copy drizzle config, committed migrations, and full source tree.
+# The full src/ is required so raw-TS entrypoints (scripts/ssh-server.ts,
+# scripts/worker.ts) can resolve the "@/..." path aliases via tsconfig.
 COPY --from=builder --chown=bun:bun /app/drizzle.config.ts ./
-COPY --from=builder --chown=bun:bun /app/src/db ./src/db
+COPY --from=builder --chown=bun:bun /app/drizzle ./drizzle
+COPY --from=builder --chown=bun:bun /app/src ./src
 COPY --from=builder --chown=bun:bun /app/tsconfig.json ./
 
-# Copy entrypoint script
+# Copy runtime scripts (migrate, ssh-server, worker) and entrypoint
+COPY --from=builder --chown=bun:bun /app/scripts ./scripts
 COPY --chown=bun:bun docker-entrypoint.sh ./
 
 # Set environment variables
 ENV HOST=0.0.0.0
 ENV PORT=4321
 ENV DATA_DIR=/data
-ENV REPOS_PATH=/data/repos
+ENV GIT_REPOS_PATH=/data/repositories
 ENV STORAGE_PATH=/data/storage
 ENV CACHE_PATH=/data/cache
 ENV SSH_PATH=/data/ssh

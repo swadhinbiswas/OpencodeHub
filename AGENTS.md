@@ -294,7 +294,7 @@ Configured via `STORAGE_TYPE` env var (`local` or `s3`).
 npm install -g opencodehub-cli
 
 # Auth
-och auth login --url http://localhost:3000
+och auth login --url http://localhost:4321
 
 # Stack workflow
 och stack create feature/part-1    # Create stacked branch
@@ -343,7 +343,7 @@ npm run db:push
 bun run scripts/seed-admin.ts   # Create admin user
 
 # Dev
-npm run dev                     # Start dev server (port 3000)
+npm run dev                     # Start dev server (port 4321)
 npm run git:start               # Start SSH git server (port 2222)
 npm run worker:start            # Start background worker
 npm run runner:start            # Start CI runner
@@ -392,7 +392,9 @@ docker-compose up -d            # Full stack with postgres + redis + runner
 4. Configure Redis for distributed locking
 5. Enable rate limiting (`RATE_LIMIT_ENABLED=true`)
 6. Set up email (SMTP) for notifications
-7. Configure storage backend (S3/GCS recommended for multi-node)
+7. Configure storage backend (`local` for single-host/NAS, S3-compatible for multi-node)
+8. Set `METRICS_TOKEN` to protect `GET /api/metrics`
+9. Apply committed migrations (`bun run migrate` — runs automatically in containers)
 
 ### Vercel/Edge
 - Turso (LibSQL) recommended for edge deployment

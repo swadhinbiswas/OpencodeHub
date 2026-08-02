@@ -107,3 +107,6 @@ export * from "./integrations";
 
 // Package Registry
 export * from "./packages";
+
+// Review Analysis (CodeRabbit-style AI review)
+export * from "./review-analysis";

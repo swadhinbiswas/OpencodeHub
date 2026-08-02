@@ -191,7 +191,19 @@ export async function canReadRepo(
   options?: PermissionOptions,
 ): Promise<boolean> {
   const permission = await getRepoPermission(userId, repo, options);
-  return permission !== "none";
+  if (permission === "none") return false;
+  if (permission === "admin") return true;
+  if (repo.visibility === "public") return true;
+
+  // For private repos, check if user has at least read-level path permission
+  if (!userId) return false;
+  const db = getDatabase() as NodePgDatabase<typeof schema>;
+  const anyPathPerm = await db.query.repositoryPathPermissions.findFirst({
+    where: eq(schema.repositoryPathPermissions.repositoryId, repo.id),
+    columns: { id: true },
+  });
+  if (!anyPathPerm) return true;
+  return permission !== ("none" as PermissionLevel);
 }
 
 export async function canWriteRepo(
@@ -210,4 +222,67 @@ export async function canAdminRepo(
 ): Promise<boolean> {
   const permission = await getRepoPermission(userId, repo, options);
   return permission === "admin";
+}
+
+/**
+ * Check if a user can write to specific file paths in a repository.
+ * Falls back to repo-level permission if no path restrictions exist.
+ */
+export async function canWriteRepoPaths(
+  userId: string | undefined,
+  repo: Repository,
+  paths: string[],
+  options?: PermissionOptions,
+): Promise<boolean> {
+  if (!userId) return false;
+  const repoPermission = await getRepoPermission(userId, repo, options);
+  if (repoPermission === "admin") return true;
+  if (repoPermission !== "write") return false;
+
+  // Check if path-level restrictions apply
+  const db = getDatabase() as NodePgDatabase<typeof schema>;
+  const pathPerms = await db.query.repositoryPathPermissions.findMany({
+    where: eq(schema.repositoryPathPermissions.repositoryId, repo.id),
+    columns: { pathPattern: true, permission: true, userId: true, teamId: true },
+  });
+
+  if (pathPerms.length === 0) {
+    // No path restrictions — repo-level permission is sufficient
+    return true;
+  }
+
+  // Get user's teams for team-based path permissions
+  const userTeams = await db.query.teamMembers.findMany({
+    where: eq(schema.teamMembers.userId, userId),
+    columns: { teamId: true },
+  });
+  const userTeamIds = new Set(userTeams.map((t) => t.teamId));
+
+  const { minimatch } = await import("minimatch");
+
+  for (const path of paths) {
+    let hasExplicitPermission = false;
+    let isCovered = false;
+
+    for (const perm of pathPerms) {
+      if (!minimatch(path, perm.pathPattern)) continue;
+      isCovered = true;
+
+      const isUserMatch = perm.userId === userId;
+      const isTeamMatch = perm.teamId && userTeamIds.has(perm.teamId);
+
+      if (isUserMatch || isTeamMatch) {
+        if (perm.permission === "write" || perm.permission === "admin") {
+          hasExplicitPermission = true;
+          break;
+        }
+      }
+    }
+
+    if (isCovered && !hasExplicitPermission) {
+      return false;
+    }
+  }
+
+  return true;
 }

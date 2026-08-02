@@ -8,109 +8,88 @@ if (!user) {
 }
 ---
 
-<SettingsLayout title="Account Settings">
-  <div class="space-y-6">
-    <div>
-      <h3 class="text-lg font-medium leading-6 text-gray-900">
-        Account Settings
-      </h3>
-      <p class="mt-1 text-sm text-gray-500">
-        Manage your account credentials and deletion.
+<SettingsLayout title="Account settings">
+  <div class="max-w-[640px]">
+    <div class="mb-6">
+      <h2 class="text-[28px] font-semibold text-foreground">Password and authentication</h2>
+      <p class="text-sm text-muted-foreground mt-1">
+        Change your password or configure two-factor authentication.
       </p>
     </div>
 
-    <div class="border-t border-gray-200 pt-6">
-      <h4 class="text-md font-medium text-gray-900">Change Password</h4>
-      <form id="password-form" class="mt-4 space-y-4">
+    <!-- Change Password -->
+    <div class="py-5 border-t border-border">
+      <h3 class="text-base font-semibold text-foreground mb-4">Change password</h3>
+      <form id="password-form" class="space-y-4">
         <div>
-          <label
-            for="currentPassword"
-            class="block text-sm font-medium text-gray-700"
-          >
-            Current Password
+          <label for="currentPassword" class="block text-sm font-medium text-foreground mb-1">
+            Current password
           </label>
-          <div class="mt-1">
-            <input
-              type="password"
-              name="currentPassword"
-              id="currentPassword"
-              required
-              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-          </div>
+          <input
+            type="password"
+            name="currentPassword"
+            id="currentPassword"
+            required
+            class="w-full max-w-md rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff]/30 transition-colors"
+          />
         </div>
-
         <div>
-          <label
-            for="newPassword"
-            class="block text-sm font-medium text-gray-700"
-          >
-            New Password
+          <label for="newPassword" class="block text-sm font-medium text-foreground mb-1">
+            New password
           </label>
-          <div class="mt-1">
-            <input
-              type="password"
-              name="newPassword"
-              id="newPassword"
-              required
-              minlength="8"
-              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-          </div>
+          <input
+            type="password"
+            name="newPassword"
+            id="newPassword"
+            required
+            minlength="8"
+            class="w-full max-w-md rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff]/30 transition-colors"
+          />
+          <p class="text-xs text-muted-foreground mt-1">At least 8 characters.</p>
         </div>
-
         <div>
-          <label
-            for="confirmPassword"
-            class="block text-sm font-medium text-gray-700"
-          >
-            Confirm New Password
+          <label for="confirmPassword" class="block text-sm font-medium text-foreground mb-1">
+            Confirm new password
           </label>
-          <div class="mt-1">
-            <input
-              type="password"
-              name="confirmPassword"
-              id="confirmPassword"
-              required
-              minlength="8"
-              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-          </div>
+          <input
+            type="password"
+            name="confirmPassword"
+            id="confirmPassword"
+            required
+            minlength="8"
+            class="w-full max-w-md rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#58a6ff] focus:ring-1 focus:ring-[#58a6ff]/30 transition-colors"
+          />
         </div>
-
-        <div class="flex justify-end">
+        <div class="flex justify-start">
           <button
             type="submit"
-            class="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            class="px-4 py-1.5 rounded-md bg-[#238636] border border-[#2ea043] text-sm font-medium text-white hover:bg-[#2ea043] transition-colors"
           >
-            Update Password
+            Update password
           </button>
         </div>
       </form>
     </div>
 
-    <div class="border-t border-gray-200 pt-6">
-      <h4 class="text-md font-medium text-red-600">Delete Account</h4>
-      <p class="mt-1 text-sm text-gray-500">
+    <!-- Delete Account -->
+    <div class="py-5 border-t border-border">
+      <h3 class="text-base font-semibold text-foreground mb-1">Delete account</h3>
+      <p class="text-sm text-muted-foreground mb-4">
         Once you delete your account, there is no going back. Please be certain.
       </p>
-      <div class="mt-4">
-        <button
-          type="button"
-          id="delete-account-btn"
-          class="inline-flex justify-center rounded-md border border-transparent bg-red-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-        >
-          Delete Account
-        </button>
-      </div>
+      <button
+        type="button"
+        id="delete-account-btn"
+        class="px-4 py-1.5 rounded-md border border-[#da3633] bg-transparent text-sm font-medium text-[#da3633] hover:bg-[#da3633]/10 transition-colors"
+      >
+        Delete account
+      </button>
     </div>
   </div>
 </SettingsLayout>
 
 <script>
-  const passwordForm = document.getElementById(
-    "password-form"
-  ) as HTMLFormElement;
+  const passwordForm = document.getElementById("password-form") as HTMLFormElement;
   const deleteBtn = document.getElementById("delete-account-btn");
 
   passwordForm?.addEventListener("submit", async (e) => {
@@ -123,39 +102,43 @@ if (!user) {
       return;
     }
 
+    const submitBtn = passwordForm.querySelector('button[type="submit"]') as HTMLButtonElement;
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Updating...";
+
     try {
       const response = await fetch("/api/auth/password", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
 
       if (response.ok) {
-        alert("Password updated successfully");
+        submitBtn.textContent = "Updated!";
         passwordForm.reset();
+        setTimeout(() => {
+          submitBtn.textContent = originalText;
+          submitBtn.disabled = false;
+        }, 3000);
       } else {
         const error = await response.json();
         alert(error.message || "Failed to update password");
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
       }
     } catch (error) {
       console.error("Error updating password:", error);
       alert("An error occurred while updating password");
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
     }
   });
 
   deleteBtn?.addEventListener("click", async () => {
-    if (
-      confirm(
-        "Are you sure you want to delete your account? This action cannot be undone."
-      )
-    ) {
+    if (confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
       try {
-        const response = await fetch("/api/auth/me", {
-          method: "DELETE",
-        });
-
+        const response = await fetch("/api/auth/me", { method: "DELETE" });
         if (response.ok) {
           window.location.href = "/";
         } else {

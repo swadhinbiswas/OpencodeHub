@@ -74,14 +74,14 @@ if (prIds.length > 0) {
     <div class="container py-8 max-w-5xl mx-auto">
         <div class="flex items-center justify-between mb-8">
             <div>
-                <h1 class="text-2xl font-bold text-white mb-2">Your Stacks</h1>
-                <p class="text-gray-400">
+                <h1 class="text-2xl font-bold text-foreground mb-2">Your Stacks</h1>
+                <p class="text-muted-foreground">
                     Manage and visualize your stacked pull requests.
                 </p>
             </div>
             <a
                 href="/dashboard"
-                class="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-gray-300 transition-colors"
+                class="px-4 py-2 rounded-lg bg-secondary hover:bg-secondary/80 text-sm text-muted-foreground transition-colors"
             >
                 Back to Dashboard
             </a>
@@ -95,7 +95,7 @@ if (prIds.length > 0) {
                     ))}
                 </div>
             ) : (
-                <div class="text-center py-20 bg-[#0d1117]/50 rounded-xl border border-white/5">
+                <div class="text-center py-20 bg-card/50 rounded-xl border border-border">
                     <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-500/10 text-blue-400 mb-4">
                         <svg
                             class="w-8 h-8"
@@ -111,15 +111,15 @@ if (prIds.length > 0) {
                             />
                         </svg>
                     </div>
-                    <h3 class="text-lg font-medium text-white mb-2">
+                    <h3 class="text-lg font-medium text-foreground mb-2">
                         No active stacks
                     </h3>
-                    <p class="text-gray-500 max-w-sm mx-auto mb-6">
+                    <p class="text-muted-foreground max-w-sm mx-auto mb-6">
                         Create stacked pull requests to see them visualized
                         here.
                     </p>
                     <a
-                        href="/docs/stacks"
+                        href="https://docs.opencodehub.space/features/stacked-prs/"
                         class="text-blue-400 hover:text-blue-300 text-sm"
                     >
                         Learn how to create stacks &rarr;

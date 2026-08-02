@@ -13,6 +13,30 @@ import { parse as parseYaml } from "yaml";
 import { generateId } from "./utils";
 import { logger } from "@/lib/logger";
 
+/**
+ * Filter sensitive environment variables to prevent leaking secrets to workflows.
+ */
+function filterSensitiveEnvVars(env: Record<string, string | undefined>): Record<string, string> {
+  const sensitiveKeys = new Set([
+    "JWT_SECRET", "SESSION_SECRET", "INTERNAL_HOOK_SECRET", "CRON_SECRET",
+    "RUNNER_SECRET", "AI_CONFIG_ENCRYPTION_KEY", "WORKFLOW_SECRET_ENCRYPTION_KEY",
+    "DATABASE_URL", "DATABASE_AUTH_TOKEN", "POSTGRES_PASSWORD",
+    "REDIS_PASSWORD", "SMTP_PASSWORD", "SESSION_SECRET",
+    "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GROQ_API_KEY",
+    "BYTEZ_API_KEY", "OPENROUTER_API_KEY", "TOGETHER_API_KEY", "GOOGLE_AI_API_KEY",
+    "EXTERNAL_AGENT_API_KEY", "EXTERNAL_AGENT_CALLBACK_SECRET",
+    "BACKUP_ENCRYPTION_KEY", "STORAGE_ACCESS_KEY_ID", "STORAGE_SECRET_ACCESS_KEY",
+    "GRAFANA_API_KEY", "GRAFANA_INSTANCE_ID",
+  ]);
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(env)) {
+    if (value !== undefined && !sensitiveKeys.has(key)) {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
 // Types
 export interface WorkflowConfig {
   name: string;
@@ -420,7 +444,7 @@ export class PipelineRunner extends EventEmitter {
           graphql_url:
             process.env.GRAPHQL_URL || "http://localhost:4321/graphql",
         },
-        env: { ...process.env, ...workflow.env } as Record<string, string>,
+        env: { ...filterSensitiveEnvVars(process.env), ...workflow.env } as Record<string, string>,
         job: { status: "in_progress" },
         steps: {},
         runner: {
@@ -1020,7 +1044,12 @@ export class PipelineRunner extends EventEmitter {
   }
 
   /**
-   * Collect output from Docker stream
+   * Collect output from Docker stream.
+   * Docker multiplexed streams have an 8-byte header per frame:
+   *   [0] = stream type (1=stdout, 2=stderr)
+   *   [1-3] = padding
+   *   [4-7] = frame size (big-endian uint32)
+   * A single data event may contain multiple frames or partial frames.
    */
   private async collectOutput(
     stream: NodeJS.ReadableStream,
@@ -1028,14 +1057,30 @@ export class PipelineRunner extends EventEmitter {
   ): Promise<string> {
     return new Promise((resolve, reject) => {
       let output = "";
-      stream.on("data", (chunk) => {
-        // Docker multiplexes stdout/stderr in stream
-        // Skip first 8 bytes (header) for each chunk
-        const data = chunk.slice(8).toString();
-        output += data;
-        this.emit("output", data);
-        if (logContext) {
-          this.emit("log", { ...logContext, data, timestamp: new Date() });
+      let buffer = Buffer.alloc(0);
+
+      stream.on("data", (chunk: Buffer) => {
+        buffer = Buffer.concat([buffer, chunk]);
+
+        // Process complete frames from the buffer
+        while (buffer.length >= 8) {
+          const frameSize = buffer.readUInt32BE(4);
+          const totalFrameSize = 8 + frameSize;
+
+          if (buffer.length < totalFrameSize) {
+            break; // Wait for more data
+          }
+
+          // Extract frame payload (skip 8-byte header)
+          const framePayload = buffer.slice(8, totalFrameSize);
+          buffer = buffer.slice(totalFrameSize);
+
+          const data = framePayload.toString();
+          output += data;
+          this.emit("output", data);
+          if (logContext) {
+            this.emit("log", { ...logContext, data, timestamp: new Date() });
+          }
         }
       });
       stream.on("end", () => resolve(output));

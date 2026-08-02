@@ -27,23 +27,23 @@ const isFullyMerged = stack.prs.every(pr => pr.isMerged);
 const hasFailures = stack.prs.some(pr => pr.status === 'failure' || pr.status === 'error');
 const isDraft = stack.prs.some(pr => pr.status === 'draft');
 
-const statusColor = isFullyMerged ? "text-green-400" : hasFailures ? "text-red-400" : isDraft ? "text-gray-400" : "text-blue-400";
+const statusColor = isFullyMerged ? "text-green-400" : hasFailures ? "text-red-400" : isDraft ? "text-muted-foreground" : "text-blue-400";
 const statusBorder = isFullyMerged ? "border-green-500/30" : hasFailures ? "border-red-500/30" : isDraft ? "border-gray-500/30" : "border-blue-500/30";
 const statusBg = isFullyMerged ? "bg-green-500/10" : hasFailures ? "bg-red-500/10" : isDraft ? "bg-gray-500/10" : "bg-blue-500/10";
 ---
 
 <div class="relative group">
     <div class="absolute -inset-[1px] bg-gradient-to-r from-blue-500/20 via-cyan-500/20 to-purple-500/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-    <div class="relative rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-sm p-5 hover:bg-white/[0.02] transition-colors">
+    <div class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm p-5 hover:bg-accent/50 transition-colors">
         
         <!-- Header -->
         <div class="flex items-center justify-between mb-4">
             <div>
                 <div class="flex items-center gap-2">
                     <span class={`text-sm font-semibold ${statusColor}`}>{stack.name}</span>
-                    <span class="text-xs text-gray-500">in {stack.repoOwner}/{stack.repoName}</span>
+                    <span class="text-xs text-muted-foreground">in {stack.repoOwner}/{stack.repoName}</span>
                 </div>
-                <div class="text-xs text-gray-600 mt-0.5">
+                <div class="text-xs text-muted-foreground mt-0.5">
                     Updated {new Date(stack.updatedAt).toLocaleDateString()}
                 </div>
             </div>
@@ -67,15 +67,15 @@ const statusBg = isFullyMerged ? "bg-green-500/10" : hasFailures ? "bg-red-500/1
                             ? "bg-green-500 border-green-500" 
                             : pr.isClosed
                                 ? "bg-red-500 border-red-500"
-                                : "bg-[#0d1117] border-blue-500"
+                                : "bg-card border-blue-500"
                     }`} />
 
                     <!-- Content -->
                     <div class="flex-1 min-w-0 -mt-0.5">
-                        <a href={pr.url} class="block hover:underline truncate text-sm font-medium text-gray-300 hover:text-blue-400 decoration-blue-400/50">
+                        <a href={pr.url} class="block hover:underline truncate text-sm font-medium text-muted-foreground hover:text-blue-400 decoration-blue-400/50">
                             {pr.title}
                         </a>
-                        <div class="flex items-center gap-2 text-xs text-gray-500">
+                        <div class="flex items-center gap-2 text-xs text-muted-foreground">
                             <span class="font-mono">#{pr.number}</span>
                             <span>•</span>
                             <span class={

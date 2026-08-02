@@ -9,7 +9,7 @@ import { eq } from "drizzle-orm";
 import { getDatabase, schema } from "@/db";
 import { users } from "@/db/schema/users";
 import { getUserFromRequest } from "@/lib/auth";
-import { unauthorized, success, serverError } from "@/lib/api";
+import { unauthorized, success } from "@/lib/api";
 
 import { withErrorHandler } from "@/lib/errors";
 

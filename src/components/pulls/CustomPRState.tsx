@@ -61,7 +61,7 @@ export function CustomPRState({ initialStateId, customStates, repoOwner, repoNam
       const res = await fetch(`/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}/state`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ state: selectedState }),
+        body: JSON.stringify(selectedState.startsWith('custom:') ? { stateId: selectedState.replace('custom:', '') } : { state: selectedState.replace('builtin:', '') }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -81,8 +81,8 @@ export function CustomPRState({ initialStateId, customStates, repoOwner, repoNam
     : null;
 
   return (
-    <div className="w-full max-w-sm rounded-xl border border-white/10 bg-[#0d1117]/80 backdrop-blur-md shadow-2xl overflow-hidden mb-6">
-      <div className="p-4 border-b border-white/10 bg-white/[0.02]">
+    <div className="w-full max-w-sm rounded-xl border border-border bg-card/80 backdrop-blur-md shadow-2xl overflow-hidden mb-6">
+      <div className="p-4 border-b border-border bg-white/[0.02]">
         <div className="flex items-center justify-between">
           <div className="text-sm font-semibold flex items-center gap-2 text-gray-200">
             <div className="p-1.5 rounded-md bg-blue-500/10">
@@ -99,7 +99,7 @@ export function CustomPRState({ initialStateId, customStates, repoOwner, repoNam
             <select
               value={selectedState}
               onChange={(e) => setSelectedState(e.target.value)}
-              className="w-full h-9 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-gray-200 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 appearance-none outline-none transition-all cursor-pointer"
+              className="w-full h-9 rounded-lg border border-border bg-secondary px-3 text-sm text-gray-200 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 appearance-none outline-none transition-all cursor-pointer"
             >
               <option value="builtin:open">Open</option>
               <option value="builtin:closed">Closed</option>
@@ -109,15 +109,15 @@ export function CustomPRState({ initialStateId, customStates, repoOwner, repoNam
                 </option>
               ))}
             </select>
-            <ChevronDown className="absolute right-3 top-2.5 h-4 w-4 text-gray-500 pointer-events-none" />
+            <ChevronDown className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
           </div>
           <button
             onClick={handleApply}
             disabled={isApplying || (initialStateId === selectedState.replace("custom:", ""))}
-            className="h-9 px-4 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[70px]"
+            className="h-9 px-4 rounded-lg bg-blue-500 hover:bg-blue-600 text-foreground text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[70px]"
           >
             {isApplying ? (
-              <div className="h-4 w-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+              <div className="h-4 w-4 rounded-full border-2 border-border/80 border-t-white animate-spin" />
             ) : (
               "Apply"
             )}
@@ -133,7 +133,7 @@ export function CustomPRState({ initialStateId, customStates, repoOwner, repoNam
               exit={{ opacity: 0, y: -5 }}
               className="rounded-lg border border-white/5 bg-white/[0.02] p-3 space-y-3"
             >
-              <div className="text-xs text-gray-400">
+              <div className="text-xs text-muted-foreground">
                 <span className="font-medium text-gray-200">{selectedStateObj.displayName}</span>
                 {selectedStateObj.description && <span className="ml-2">— {selectedStateObj.description}</span>}
               </div>
@@ -157,17 +157,17 @@ export function CustomPRState({ initialStateId, customStates, repoOwner, repoNam
               </div>
 
               {isLoadingPolicy ? (
-                <div className="text-xs text-gray-500 flex items-center gap-2">
+                <div className="text-xs text-muted-foreground flex items-center gap-2">
                   <div className="h-3 w-3 rounded-full border-2 border-gray-500 border-t-transparent animate-spin" />
                   Loading reviewer policy...
                 </div>
               ) : policyData ? (
                 <div className="text-xs space-y-1 mt-2 pt-2 border-t border-white/5">
-                  <div className="text-gray-300">
-                    Required approvals: <span className="text-white font-medium">{policyData.approvedRequired || 0}/{policyData.totalRequired || 0}</span>
+                  <div className="text-muted-foreground">
+                    Required approvals: <span className="text-foreground font-medium">{policyData.approvedRequired || 0}/{policyData.totalRequired || 0}</span>
                   </div>
                   {policyData.reviewers && policyData.reviewers.length > 0 && (
-                    <div className="text-gray-400">
+                    <div className="text-muted-foreground">
                       Waiting on: {policyData.reviewers.filter((r: any) => !r.hasApproved).map((r: any) => r.username).join(", ")}
                     </div>
                   )}
@@ -180,7 +180,7 @@ export function CustomPRState({ initialStateId, customStates, repoOwner, repoNam
               initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -5 }}
-              className="text-xs text-gray-500 flex items-start gap-1.5 px-1"
+              className="text-xs text-muted-foreground flex items-start gap-1.5 px-1"
             >
               <Globe className="h-4 w-4 shrink-0" />
               <span>{selectedState === "builtin:closed" ? "Transitioning to Closed will close this pull request." : "Standard pull request state."}</span>

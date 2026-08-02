@@ -270,10 +270,6 @@ stackCommands
   .action(async () => {
     try {
       const roots = await getStackTopology(git);
-        console.log(chalk.hex("#6272a4")("No stack found."));
-        return;
-      }
-
       const { printSectionHeader, formatBadge } = await import("../../lib/formatter.js");
 
       // Use Dracula colors directly or via chalk

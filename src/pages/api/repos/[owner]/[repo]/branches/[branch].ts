@@ -8,7 +8,7 @@ import { and, eq } from "drizzle-orm";
 
 import { withErrorHandler } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { unauthorized, badRequest, notFound, serverError, forbidden, success } from "@/lib/api";
+import { unauthorized, badRequest, notFound, forbidden, success } from "@/lib/api";
 
 // ... existing imports ...
 

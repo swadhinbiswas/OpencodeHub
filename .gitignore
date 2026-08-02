@@ -61,8 +61,9 @@ pci/
 # Docker
 .docker/
 
-# Drizzle
-drizzle/meta/
+# Drizzle — migrations and the migration journal must be committed so that
+# runtime containers can apply schema deterministically (scripts/migrate.ts)
+# drizzle/
 
 # Monaco Editor cache
 .monaco/

@@ -30,6 +30,7 @@ vi.mock("@/db", () => ({
 
 vi.mock("@/lib/permissions", () => ({
   canReadRepo: canReadRepoMock,
+  canWriteRepo: vi.fn(async () => true),
   canAdminRepo: canAdminRepoMock,
 }));
 

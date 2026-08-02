@@ -29,9 +29,9 @@ export default function RecentActivity({ activities = [] }: Props) {
             <div className="glass-panel rounded-xl p-4 w-72">
                 <div className="flex items-center gap-2 mb-4">
                     <Clock className="w-4 h-4 text-cyan-400" />
-                    <h3 className="text-sm font-semibold text-white">Recent Activity</h3>
+                    <h3 className="text-sm font-semibold text-foreground">Recent Activity</h3>
                 </div>
-                <div className="text-center py-4 text-gray-500 text-sm">
+                <div className="text-center py-4 text-muted-foreground text-sm">
                     No recent activity
                 </div>
             </div>
@@ -46,7 +46,7 @@ export default function RecentActivity({ activities = [] }: Props) {
                 >
                     <Clock className="w-4 h-4 text-cyan-400" />
                 </motion.div>
-                <h3 className="text-sm font-semibold text-white">Recent Activity</h3>
+                <h3 className="text-sm font-semibold text-foreground">Recent Activity</h3>
             </div>
 
             <div className="space-y-3">
@@ -68,12 +68,12 @@ export default function RecentActivity({ activities = [] }: Props) {
 
                             {/* Content */}
                             <div className="flex-1 min-w-0">
-                                <div className="text-xs text-gray-300 truncate">
-                                    <span className="font-medium text-white">{activity.user}</span>
-                                    <span className="text-gray-500"> {activity.action} </span>
+                                <div className="text-xs text-muted-foreground truncate">
+                                    <span className="font-medium text-foreground">{activity.user}</span>
+                                    <span className="text-muted-foreground"> {activity.action} </span>
                                     <span className="text-cyan-400">{activity.target}</span>
                                 </div>
-                                <div className="text-[10px] text-gray-600 mt-0.5">
+                                <div className="text-[10px] text-muted-foreground mt-0.5">
                                     {activity.time}
                                 </div>
                             </div>

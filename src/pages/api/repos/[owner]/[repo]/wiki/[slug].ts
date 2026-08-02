@@ -1,7 +1,7 @@
 
 import type { APIRoute } from "astro";
 import { getDatabase, schema } from "@/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { getUserFromRequest, getRepoAndUser } from "@/lib/auth";
 import { unauthorized, badRequest, success, notFound, serverError } from "@/lib/api";
 import { wikiPages, wikiRevisions } from "@/db/schema";

@@ -2,6 +2,7 @@
 import "@/styles/globals.css";
 import Header from "@/components/layout/Header.astro";
 import { Toaster } from "@/components/ui/sonner";
+import { getCsrfToken } from "@/middleware/csrf";
 
 interface Props {
   title?: string;
@@ -10,8 +11,11 @@ interface Props {
 
 const {
   title = "OpenCodeHub - Self-hosted Git Platform",
-  description = "A powerful, self-hosted Git platform with CI/CD, code review, and collaboration features",
+  description = "A powerful, self-hosted Git Platform with CI/CD, code review, and collaboration features",
 } = Astro.props;
+
+const { token, cookie } = getCsrfToken(Astro.request);
+Astro.response.headers.set("Set-Cookie", cookie);
 ---
 
 <!doctype html>
@@ -23,13 +27,52 @@ const {
     <meta name="generator" content={Astro.generator} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title}</title>
+    <meta name="csrf-token" content={token} />
+    <!-- Global CSRF Fetch Interceptor -->
+    <script is:inline>
+      (function() {
+        const originalFetch = window.fetch;
+        window.fetch = async function () {
+          let [resource, config] = arguments;
+          if (!config) config = {};
+          
+          const method = (config.method || 'GET').toUpperCase();
+          if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (token) {
+              // Handle Headers object or plain object
+              if (config.headers instanceof Headers) {
+                config.headers.set('x-csrf-token', token);
+              } else {
+                config.headers = {
+                  ...config.headers,
+                  'x-csrf-token': token
+                };
+              }
+            }
+          }
+          return originalFetch(resource, config);
+        };
+      })();
+    </script>
     <!-- Theme: apply before paint to prevent FOUC -->
     <script is:inline>
       (function() {
         var t = localStorage.getItem('theme') || 'system';
-        var dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        if (dark) document.documentElement.classList.add('dark');
-        else document.documentElement.classList.remove('dark');
+        var isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var theme = t === 'system' ? (isSystemDark ? 'dark' : 'light') : t;
+        
+        if (theme === 'light') {
+           document.documentElement.classList.remove('dark');
+           document.documentElement.removeAttribute('data-theme');
+        } else {
+           document.documentElement.classList.add('dark');
+           if (theme !== 'dark' && theme !== 'system') {
+               document.documentElement.setAttribute('data-theme', theme);
+           } else {
+               document.documentElement.removeAttribute('data-theme');
+           }
+        }
       })();
     </script>
     <!-- Preload fonts -->
@@ -49,6 +92,12 @@ const {
       Skip to main content
     </a>
 
+    <!-- Premium Background Effects -->
+    <div class="fixed inset-0 z-[-1] h-full w-full bg-background dark:bg-slate-950">
+      <div class="absolute bottom-0 left-0 right-0 top-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:14px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
+      <div class="absolute top-0 z-[-2] h-screen w-screen dark:bg-slate-950 dark:bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.3),rgba(255,255,255,0))]"></div>
+    </div>
+
     <div class="relative flex min-h-screen flex-col">
       <Header />
       <main id="main-content" class="flex-1" role="main" tabindex="-1">
@@ -64,7 +113,7 @@ const {
             Built with ❤️ using OpenCodeHub. Self-hosted and open source.
           </p>
           <nav class="flex items-center gap-4 text-sm text-muted-foreground" aria-label="Footer navigation">
-            <a href="/docs" class="hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 focus:rounded-sm">Documentation</a>
+            <a href="https://docs.opencodehub.space/" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 focus:rounded-sm">Documentation</a>
             <a href="/api" class="hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 focus:rounded-sm">API</a>
             <a
               href="https://github.com/swadhinbiswas/OpencodeHub"
@@ -109,19 +158,3 @@ const {
     </script>
   </body>
 </html>
-
-<style is:global>
-  body {
-    font-family: "Inter", system-ui, sans-serif;
-  }
-
-  code,
-  pre,
-  .font-mono {
-    font-family: "JetBrains Mono", monospace;
-  }
-
-  .container {
-    @apply mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl;
-  }
-</style>

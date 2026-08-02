@@ -3,7 +3,7 @@
 Welcome to OpenCodeHub! This guide will help you navigate the platform and start collaborating in minutes.
 
 ## 1. Login
-Navigate to your instance URL (e.g., `http://localhost:3000`) and log in with the admin credentials you created during installation.
+Navigate to your instance URL (e.g., `http://localhost:4321`) and log in with the admin credentials you created during installation.
 
 ![Login Screen](../../assets/login-screen.png)
 

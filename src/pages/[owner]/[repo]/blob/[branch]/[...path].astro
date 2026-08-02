@@ -355,14 +355,14 @@ function formatSize(bytes: number) {
                      </a>
                   </div>
                ) : isMarkdown ? (
-                  <div class="p-8 bg-[#0d1117] rounded-b-lg">
+                  <div class="p-8 bg-card rounded-b-lg">
                      <article class="markdown-body" set:html={markdownHtml} />
                   </div>
                ) : (
-                  <div class="overflow-x-auto text-sm leading-6 custom-scrollbar bg-[#0d1117] text-[#c9d1d9] rounded-b-lg">
+                  <div class="overflow-x-auto text-sm leading-6 custom-scrollbar bg-card text-[#c9d1d9] rounded-b-lg">
                      <div class="flex min-w-full">
                         {/* Line Numbers */}
-                        <div class="flex flex-col items-end px-3 py-4 text-xs font-mono text-gray-600 bg-[#0d1117] select-none border-r border-gray-800">
+                        <div class="flex flex-col items-end px-3 py-4 text-xs font-mono text-muted-foreground bg-card select-none border-r border-gray-800">
                            {Array.from({ length: lineCount }).map((_, i) => (
                               <div class="h-6">{i + 1}</div>
                            ))}
@@ -380,40 +380,6 @@ function formatSize(bytes: number) {
       </div>
    </div>
 </BaseLayout>
-
-<style is:global>
-   /* Custom scrollbar for code block */
-   .custom-scrollbar::-webkit-scrollbar {
-      height: 10px;
-      width: 10px;
-   }
-   .custom-scrollbar::-webkit-scrollbar-track {
-      background: transparent;
-   }
-   .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #30363d;
-      border-radius: 5px;
-      border: 2px solid #0d1117;
-   }
-   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-      background: #424a53;
-   }
-
-   /* Shiki Overrides to match layout */
-   .shiki {
-      background-color: transparent !important;
-      margin: 0 !important;
-      padding: 0 !important;
-   }
-   .shiki code {
-      display: flex;
-      flex-direction: column;
-   }
-   .shiki .line {
-      height: 1.5rem; /* Matches h-6 logic */
-      display: block;
-   }
-</style>
 
 <script
    define:vars={{ initialContent: !fileData.isBinary ? fileData.content : "" }}

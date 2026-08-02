@@ -3,6 +3,10 @@ import type { APIRoute } from "astro";
 import { handleUploadPack } from "@/lib/git-server";
 import { acquireRepo, releaseRepo } from "@/lib/git-storage";
 import { logger } from "@/lib/logger";
+import { getDatabase, schema } from "@/db";
+import { validateBasicAuth } from "@/lib/auth-basic";
+import { canReadRepo } from "@/lib/permissions";
+import { and, eq } from "drizzle-orm";
 
 export const POST: APIRoute = async ({ params, request }) => {
     const { owner, repo } = params;
@@ -18,6 +22,43 @@ export const POST: APIRoute = async ({ params, request }) => {
     const contentType = request.headers.get("Content-Type");
     if (contentType !== "application/x-git-upload-pack-request") {
         return new Response("Invalid Content-Type", { status: 415 });
+    }
+
+    // Authenticate user
+    const authHeader = request.headers.get("Authorization");
+    let userId: string | null = null;
+    if (authHeader) {
+        userId = await validateBasicAuth(authHeader);
+    }
+
+    // Find repo and check permissions
+    const db = getDatabase();
+    const ownerUser = await db.query.users.findFirst({
+        where: eq(schema.users.username, owner),
+    });
+
+    if (!ownerUser) {
+        return new Response("Repository not found", { status: 404 });
+    }
+
+    const repoData = await db.query.repositories.findFirst({
+        where: and(
+            eq(schema.repositories.ownerId, ownerUser.id),
+            eq(schema.repositories.name, repoName)
+        ),
+    });
+
+    if (!repoData) {
+        return new Response("Repository not found", { status: 404 });
+    }
+
+    // Check read permission
+    const hasAccess = await canReadRepo(userId || undefined, repoData);
+    if (!hasAccess) {
+        return new Response("Unauthorized", {
+            status: 401,
+            headers: { "WWW-Authenticate": 'Basic realm="OpenCodeHub"' },
+        });
     }
 
     logger.info({ owner, repoName }, "Git upload-pack request");

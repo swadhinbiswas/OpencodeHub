@@ -49,7 +49,7 @@ Start the development server:
 bun dev
 ```
 
-Visit `http://localhost:3000`.
+Visit `http://localhost:4321`.
 
 ---
 

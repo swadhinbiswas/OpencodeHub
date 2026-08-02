@@ -2,7 +2,7 @@
 import { RunnerClient } from './client';
 import { Executor } from './executor';
 import pino from 'pino';
-import path from 'node:path';
+
 import os from 'node:os';
 
 const logger = pino({

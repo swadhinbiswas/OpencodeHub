@@ -16,7 +16,6 @@ import {
   unauthorized,
   forbidden,
   notFound,
-  serverError,
   noContent,
   parseBody,
 } from '@/lib/api';

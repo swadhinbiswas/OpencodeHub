@@ -4,6 +4,23 @@
 
 Deploy OpenCodeHub on your **Network Attached Storage (NAS)** device. This is perfect for small teams, personal use, or as a private Git server at home. Works on Synology DSM, TrueNAS SCALE, QNAP QTS, and any NAS supporting Docker.
 
+> **Recommended:** the repository ships `docker-compose.nas.yml`, which is
+> the production-safe version of every snippet below. It runs the web app,
+> the **SSH Git server**, and the **background worker** as separate
+> containers, requires secrets instead of defaulting them, and binds every
+> data directory to one host path (`OCH_DATA_DIR`, default `/mnt/och`) —
+> perfect for a dedicated hard disk or NAS share:
+>
+> ```bash
+> cp .env.example .env      # then fill in ALL secrets
+> OCH_DATA_DIR=/volume1/opencodehub docker compose -f docker-compose.nas.yml up -d
+> ```
+>
+> The inline YAML in this guide is a minimal reference. Note that the **web
+> app container does not run SSH Git** — if you use a snippet as-is, port
+> 2222 will not serve SSH. Add the `ssh-git` service (or use
+> `docker-compose.nas.yml`) for SSH access.
+
 ---
 
 ## Prerequisites
@@ -135,7 +152,6 @@ docker run -d \
   --link opencodehub-postgres:postgres \
   --link opencodehub-redis:redis \
   -p 4321:4321 \
-  -p 2222:2222 \
   -e NODE_ENV=production \
   -e DATABASE_URL=postgresql://opencodehub:POSTGRES_PASS@host.docker.internal:5432/opencodehub \
   -e REDIS_URL=redis://:REDIS_PASS@host.docker.internal:6379 \
@@ -145,19 +161,24 @@ docker run -d \
   -e CRON_SECRET=$(openssl rand -hex 32) \
   -e RUNNER_SECRET=$(openssl rand -hex 32) \
   -e WORKFLOW_SECRET_ENCRYPTION_KEY=$(openssl rand -hex 32) \
+  -e AI_CONFIG_ENCRYPTION_KEY=$(openssl rand -hex 32) \
   -e SITE_URL=https://git.yourddns.net \
   -e STORAGE_TYPE=local \
   -e STORAGE_PATH=/data/storage \
-  -e REPOS_PATH=/data/repos \
-  -e SSH_HOST_KEY_PATH=/data/ssh/host_key \
+  -e GIT_REPOS_PATH=/data/repos \
+  -e GIT_SSH_HOST_KEY=/data/ssh/host_key \
   -v /volume1/opencodehub/repos:/data/repos \
   -v /volume1/opencodehub/storage:/data/storage \
   -v /volume1/opencodehub/ssh:/data/ssh \
   -v /volume1/opencodehub/cache:/data/cache \
-  swadhinbiswas/opencodehub:latest
+  opencodehub/opencodehub:latest
 ```
 
 > **Note:** On Synology, `host.docker.internal` may not work. Use your NAS IP address instead (e.g., `192.168.1.100`).
+>
+> **SSH Git:** the app container serves the web UI only. For SSH access,
+> run a second container from the same image with `PROCESS_TYPE=ssh` and
+> expose port 2222 (this is exactly what `docker-compose.nas.yml` does).
 
 #### Option B: Build from Source
 
@@ -175,9 +196,9 @@ services:
     restart: unless-stopped
     ports:
       - "4321:4321"
-      - "2222:2222"
     environment:
       - NODE_ENV=production
+      - PROCESS_TYPE=app
       - DATABASE_URL=postgresql://opencodehub:YOUR_PASS@postgres:5432/opencodehub
       - REDIS_URL=redis://:YOUR_PASS@redis:6379
       - JWT_SECRET=YOUR_SECRET
@@ -186,11 +207,72 @@ services:
       - CRON_SECRET=YOUR_SECRET
       - RUNNER_SECRET=YOUR_SECRET
       - WORKFLOW_SECRET_ENCRYPTION_KEY=YOUR_SECRET
+      - AI_CONFIG_ENCRYPTION_KEY=YOUR_SECRET
       - SITE_URL=https://git.yourddns.net
       - STORAGE_TYPE=local
       - STORAGE_PATH=/data/storage
+      - GIT_REPOS_PATH=/data/repos
       - REPOS_PATH=/data/repos
-      - SSH_HOST_KEY_PATH=/data/ssh/host_key
+      - GIT_SSH_HOST_KEY=/data/ssh/host_key
+      - GIT_SSH_PORT=2222
+    volumes:
+      - /volume1/opencodehub/repos:/data/repos
+      - /volume1/opencodehub/storage:/data/storage
+      - /volume1/opencodehub/ssh:/data/ssh
+      - /volume1/opencodehub/cache:/data/cache
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - och-net
+
+  ssh-git:
+    build:
+      context: /volume1/docker/OpenCodeHub
+      dockerfile: Dockerfile
+    container_name: opencodehub-ssh
+    restart: unless-stopped
+    ports:
+      - "2222:2222"
+    environment:
+      - NODE_ENV=production
+      - PROCESS_TYPE=ssh
+      - DATABASE_URL=postgresql://opencodehub:YOUR_PASS@postgres:5432/opencodehub
+      - REDIS_URL=redis://:YOUR_PASS@redis:6379
+      - JWT_SECRET=YOUR_SECRET
+      - INTERNAL_HOOK_SECRET=YOUR_SECRET
+      - GIT_REPOS_PATH=/data/repos
+      - REPOS_PATH=/data/repos
+      - GIT_SSH_HOST_KEY=/data/ssh/host_key
+      - GIT_SSH_PORT=2222
+    volumes:
+      - /volume1/opencodehub/repos:/data/repos
+      - /volume1/opencodehub/storage:/data/storage
+      - /volume1/opencodehub/ssh:/data/ssh
+      - /volume1/opencodehub/cache:/data/cache
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - och-net
+
+  worker:
+    build:
+      context: /volume1/docker/OpenCodeHub
+      dockerfile: Dockerfile
+    container_name: opencodehub-worker
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PROCESS_TYPE=worker
+      - DATABASE_URL=postgresql://opencodehub:YOUR_PASS@postgres:5432/opencodehub
+      - REDIS_URL=redis://:YOUR_PASS@redis:6379
+      - JWT_SECRET=YOUR_SECRET
+      - INTERNAL_HOOK_SECRET=YOUR_SECRET
+      - GIT_REPOS_PATH=/data/repos
+      - REPOS_PATH=/data/repos
+      - STORAGE_TYPE=local
+      - STORAGE_PATH=/data/storage
     volumes:
       - /volume1/opencodehub/repos:/data/repos
       - /volume1/opencodehub/storage:/data/storage
@@ -301,14 +383,14 @@ version: '3.8'
 
 services:
   app:
-    image: swadhinbiswas/opencodehub:latest
+    image: opencodehub/opencodehub:latest
     container_name: opencodehub
     restart: unless-stopped
     ports:
       - "4321:4321"
-      - "2222:2222"
     environment:
       - NODE_ENV=production
+      - PROCESS_TYPE=app
       - DATABASE_URL=postgresql://opencodehub:YOUR_PASS@postgres:5432/opencodehub
       - REDIS_URL=redis://:YOUR_PASS@redis:6379
       - JWT_SECRET=YOUR_SECRET
@@ -317,11 +399,68 @@ services:
       - CRON_SECRET=YOUR_SECRET
       - RUNNER_SECRET=YOUR_SECRET
       - WORKFLOW_SECRET_ENCRYPTION_KEY=YOUR_SECRET
+      - AI_CONFIG_ENCRYPTION_KEY=YOUR_SECRET
       - SITE_URL=https://git.yourdomain.com
       - STORAGE_TYPE=local
       - STORAGE_PATH=/data/storage
+      - GIT_REPOS_PATH=/data/repos
       - REPOS_PATH=/data/repos
-      - SSH_HOST_KEY_PATH=/data/ssh/host_key
+      - GIT_SSH_HOST_KEY=/data/ssh/host_key
+      - GIT_SSH_PORT=2222
+    volumes:
+      - /mnt/YOURPOOL/opencodehub/repos:/data/repos
+      - /mnt/YOURPOOL/opencodehub/storage:/data/storage
+      - /mnt/YOURPOOL/opencodehub/ssh:/data/ssh
+      - /mnt/YOURPOOL/opencodehub/cache:/data/cache
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - och-net
+
+  ssh-git:
+    image: opencodehub/opencodehub:latest
+    container_name: opencodehub-ssh
+    restart: unless-stopped
+    ports:
+      - "2222:2222"
+    environment:
+      - NODE_ENV=production
+      - PROCESS_TYPE=ssh
+      - DATABASE_URL=postgresql://opencodehub:YOUR_PASS@postgres:5432/opencodehub
+      - REDIS_URL=redis://:YOUR_PASS@redis:6379
+      - JWT_SECRET=YOUR_SECRET
+      - INTERNAL_HOOK_SECRET=YOUR_SECRET
+      - GIT_REPOS_PATH=/data/repos
+      - REPOS_PATH=/data/repos
+      - GIT_SSH_HOST_KEY=/data/ssh/host_key
+      - GIT_SSH_PORT=2222
+    volumes:
+      - /mnt/YOURPOOL/opencodehub/repos:/data/repos
+      - /mnt/YOURPOOL/opencodehub/storage:/data/storage
+      - /mnt/YOURPOOL/opencodehub/ssh:/data/ssh
+      - /mnt/YOURPOOL/opencodehub/cache:/data/cache
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - och-net
+
+  worker:
+    image: opencodehub/opencodehub:latest
+    container_name: opencodehub-worker
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PROCESS_TYPE=worker
+      - DATABASE_URL=postgresql://opencodehub:YOUR_PASS@postgres:5432/opencodehub
+      - REDIS_URL=redis://:YOUR_PASS@redis:6379
+      - JWT_SECRET=YOUR_SECRET
+      - INTERNAL_HOOK_SECRET=YOUR_SECRET
+      - GIT_REPOS_PATH=/data/repos
+      - REPOS_PATH=/data/repos
+      - STORAGE_TYPE=local
+      - STORAGE_PATH=/data/storage
     volumes:
       - /mnt/YOURPOOL/opencodehub/repos:/data/repos
       - /mnt/YOURPOOL/opencodehub/storage:/data/storage
@@ -443,7 +582,7 @@ Install Nginx Proxy Manager from the TrueNAS Apps catalog:
 
 #### Create OpenCodeHub:
 
-1. Search and install `swadhinbiswas/opencodehub:latest`
+1. Search and install `opencodehub/opencodehub:latest`
 2. Name: `opencodehub`
 3. Network: `opencodehub-network`
 4. Environment variables (same as Synology example)
@@ -496,14 +635,14 @@ version: '3.8'
 
 services:
   app:
-    image: swadhinbiswas/opencodehub:latest
+    image: opencodehub/opencodehub:latest
     container_name: opencodehub
     restart: unless-stopped
     ports:
       - "4321:4321"
-      - "2222:2222"
     environment:
       - NODE_ENV=production
+      - PROCESS_TYPE=app
       - DATABASE_URL=postgresql://opencodehub:YOUR_PASS@postgres:5432/opencodehub
       - REDIS_URL=redis://:YOUR_PASS@redis:6379
       - JWT_SECRET=YOUR_SECRET
@@ -512,11 +651,68 @@ services:
       - CRON_SECRET=YOUR_SECRET
       - RUNNER_SECRET=YOUR_SECRET
       - WORKFLOW_SECRET_ENCRYPTION_KEY=YOUR_SECRET
+      - AI_CONFIG_ENCRYPTION_KEY=YOUR_SECRET
       - SITE_URL=https://git.yourdomain.com
       - STORAGE_TYPE=local
       - STORAGE_PATH=/data/storage
+      - GIT_REPOS_PATH=/data/repos
       - REPOS_PATH=/data/repos
-      - SSH_HOST_KEY_PATH=/data/ssh/host_key
+      - GIT_SSH_HOST_KEY=/data/ssh/host_key
+      - GIT_SSH_PORT=2222
+    volumes:
+      - ./repos:/data/repos
+      - ./storage:/data/storage
+      - ./ssh:/data/ssh
+      - ./cache:/data/cache
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - och-net
+
+  ssh-git:
+    image: opencodehub/opencodehub:latest
+    container_name: opencodehub-ssh
+    restart: unless-stopped
+    ports:
+      - "2222:2222"
+    environment:
+      - NODE_ENV=production
+      - PROCESS_TYPE=ssh
+      - DATABASE_URL=postgresql://opencodehub:YOUR_PASS@postgres:5432/opencodehub
+      - REDIS_URL=redis://:YOUR_PASS@redis:6379
+      - JWT_SECRET=YOUR_SECRET
+      - INTERNAL_HOOK_SECRET=YOUR_SECRET
+      - GIT_REPOS_PATH=/data/repos
+      - REPOS_PATH=/data/repos
+      - GIT_SSH_HOST_KEY=/data/ssh/host_key
+      - GIT_SSH_PORT=2222
+    volumes:
+      - ./repos:/data/repos
+      - ./storage:/data/storage
+      - ./ssh:/data/ssh
+      - ./cache:/data/cache
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - och-net
+
+  worker:
+    image: opencodehub/opencodehub:latest
+    container_name: opencodehub-worker
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PROCESS_TYPE=worker
+      - DATABASE_URL=postgresql://opencodehub:YOUR_PASS@postgres:5432/opencodehub
+      - REDIS_URL=redis://:YOUR_PASS@redis:6379
+      - JWT_SECRET=YOUR_SECRET
+      - INTERNAL_HOOK_SECRET=YOUR_SECRET
+      - GIT_REPOS_PATH=/data/repos
+      - REPOS_PATH=/data/repos
+      - STORAGE_TYPE=local
+      - STORAGE_PATH=/data/storage
     volumes:
       - ./repos:/data/repos
       - ./storage:/data/storage

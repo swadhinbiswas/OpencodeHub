@@ -4,7 +4,7 @@ import { getDatabase, schema } from "@/db";
 import { eq, and } from "drizzle-orm";
 import { getUserFromRequest } from "@/lib/auth";
 import { unauthorized, badRequest, success, notFound, serverError } from "@/lib/api";
-import { issues, issueLabels, issueAssignees } from "@/db/schema";
+import { issues, issueLabels } from "@/db/schema";
 import { getRepoAndUser } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
@@ -39,7 +39,7 @@ export const PATCH: APIRoute = async ({ request, params }) => {
 
         // Parse body
         const body = await request.json();
-        const { title, description, state, type, parentId } = body;
+        const { title, description, state, type, parentId, labels } = body;
 
         // Prepare updates
         const updates: any = {};
@@ -79,6 +79,22 @@ export const PATCH: APIRoute = async ({ request, params }) => {
             await db.update(issues)
                 .set(updates)
                 .where(eq(issues.id, issue.id));
+        }
+
+        // Handle label updates
+        if (Array.isArray(labels)) {
+            // Remove existing labels
+            await db.delete(issueLabels).where(eq(issueLabels.issueId, issue.id));
+            // Add new labels
+            if (labels.length > 0) {
+                const { generateId } = await import("@/lib/utils");
+                const labelInserts = labels.map((labelId: string) => ({
+                    id: generateId(),
+                    issueId: issue.id,
+                    labelId: labelId,
+                }));
+                await db.insert(issueLabels).values(labelInserts);
+            }
         }
 
         if (title !== undefined || description !== undefined) {
@@ -124,8 +140,6 @@ export const GET: APIRoute = async ({ request, params }) => {
     try {
         const { owner, repo, number } = params;
         if (!owner || !repo || !number) return badRequest("Missing parameters");
-
-        const user = await getUserFromRequest(request); // Optional for public repos, but good to check context
 
         const db = getDatabase();
 

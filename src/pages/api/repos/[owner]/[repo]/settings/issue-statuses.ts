@@ -4,7 +4,7 @@ import { withErrorHandler, success, badRequest, unauthorized } from "@/lib/api";
 import { eq, asc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
-export const GET: APIRoute = withErrorHandler(async ({ params, locals }: APIContext) => {
+export const GET: APIRoute = withErrorHandler(async ({ locals }: APIContext) => {
     const { repo } = locals as any;
     const db = getDatabase();
 
@@ -16,7 +16,7 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }: APICont
     return success(statuses);
 });
 
-export const POST: APIRoute = withErrorHandler(async ({ params, request, locals }: APIContext) => {
+export const POST: APIRoute = withErrorHandler(async ({ request, locals }: APIContext) => {
     const { repo, user } = locals as any;
     const db = getDatabase();
 

@@ -202,7 +202,7 @@ export class Executor {
     let container: Docker.Container | null = null;
 
     const logStream = new Writable({
-      write: (chunk, encoding, callback) => {
+      write: (chunk, _encoding, callback) => {
         const chunkStr = chunk.toString();
         const redactedChunk = this.redactSecrets(chunkStr);
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,7 +22,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { toast } from "sonner"; // Assuming toast is available, or we'll simple alerts/console for now if not set up, but ideally use toast.
+import { toast } from "sonner";
 
 interface RepoSettingsProps {
     repo: {
@@ -41,6 +41,26 @@ interface RepoSettingsProps {
 
 export default function RepoSettings({ repo }: RepoSettingsProps) {
     const [loading, setLoading] = useState(false);
+    const [branches, setBranches] = useState<string[]>([]);
+
+    useEffect(() => {
+        fetch(`/api/repos/${repo.owner}/${repo.name}/branches`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.data) {
+                    const branchNames = data.data.map((b: any) => b.name);
+                    // Ensure default branch is in the list
+                    if (!branchNames.includes(repo.defaultBranch)) {
+                        branchNames.unshift(repo.defaultBranch);
+                    }
+                    setBranches(branchNames);
+                }
+            })
+            .catch(() => {
+                // Fallback: at least show the default branch
+                setBranches([repo.defaultBranch]);
+            });
+    }, [repo.owner, repo.name, repo.defaultBranch]);
 
     async function handleUpdate(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -125,6 +145,35 @@ export default function RepoSettings({ repo }: RepoSettingsProps) {
         }
     }
 
+    async function syncDefaultBranch() {
+        try {
+            // Fetch actual branches from git
+            const res = await fetch(`/api/repos/${repo.owner}/${repo.name}/branches`);
+            const data = await res.json();
+            if (data.data && data.data.length > 0) {
+                const actualBranch = data.data[0].name; // First branch is usually the default
+                if (actualBranch !== repo.defaultBranch) {
+                    // Update default branch to match actual
+                    const updateRes = await fetch(`/api/repos/${repo.owner}/${repo.name}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ defaultBranch: actualBranch }),
+                    });
+                    if (updateRes.ok) {
+                        toast.success(`Default branch updated to "${actualBranch}"`);
+                        setTimeout(() => window.location.reload(), 500);
+                    } else {
+                        toast.error("Failed to update default branch");
+                    }
+                } else {
+                    toast.info("Default branch is already correct");
+                }
+            }
+        } catch {
+            toast.error("Failed to sync default branch");
+        }
+    }
+
     async function handleDelete() {
         try {
             const res = await fetch(`/api/repos/${repo.owner}/${repo.name}`, {
@@ -169,11 +218,23 @@ export default function RepoSettings({ repo }: RepoSettingsProps) {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="defaultBranch">Default Branch</Label>
-                                <Input
+                                <select
                                     id="defaultBranch"
                                     name="defaultBranch"
                                     defaultValue={repo.defaultBranch}
-                                />
+                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                >
+                                    {branches.length > 0 ? (
+                                        branches.map(b => (
+                                            <option key={b} value={b}>{b}</option>
+                                        ))
+                                    ) : (
+                                        <option value={repo.defaultBranch}>{repo.defaultBranch}</option>
+                                    )}
+                                </select>
+                                <p className="text-xs text-muted-foreground">
+                                    The default branch is the base branch for pull requests and code comparisons.
+                                </p>
                             </div>
                         </CardContent>
                     </Card>
@@ -240,6 +301,24 @@ export default function RepoSettings({ repo }: RepoSettingsProps) {
                     </Card>
                 </div>
             </form>
+
+            {/* Sync Default Branch */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Default Branch</CardTitle>
+                    <CardDescription>
+                        Current default branch: <span className="font-mono text-foreground">{repo.defaultBranch}</span>
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">
+                        If your default branch doesn't match the actual branch in git, use the sync button to fix it.
+                    </p>
+                    <Button variant="outline" onClick={syncDefaultBranch}>
+                        Sync with git
+                    </Button>
+                </CardContent>
+            </Card>
 
             <Card className="border-red-200">
                 <CardHeader>

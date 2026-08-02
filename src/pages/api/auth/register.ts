@@ -18,6 +18,8 @@ import { applyRateLimit } from "@/middleware/rate-limit";
 import { RegisterUserSchema } from "@/lib/validation";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
+import { initRepository } from "@/lib/git";
+import { initRepoInStorage, finalizeRepoInit, isCloudStorage } from "@/lib/git-storage";
 import { withErrorHandler } from "@/lib/errors";
 
 const registerSchema = z.object({
@@ -69,6 +71,13 @@ export const POST: APIRoute = withErrorHandler(async ({ request, cookies }) => {
       return badRequest("Invalid email format");
     }
 
+    // Enforce password strength requirements
+    const { validatePasswordStrength } = await import("@/lib/auth");
+    const passwordCheck = validatePasswordStrength(password);
+    if (!passwordCheck.valid) {
+      return badRequest(`Weak password: ${passwordCheck.errors.join(", ")}`);
+    }
+
     const db = getDatabase() as NodePgDatabase<typeof schema>;
 
     // Check if username or email already exists
@@ -102,6 +111,54 @@ export const POST: APIRoute = withErrorHandler(async ({ request, cookies }) => {
       createdAt: timestamp,
       updatedAt: timestamp,
     });
+
+    // Create profile repository (like GitHub's username/username repo)
+    try {
+      const profileRepoName = username;
+      const localGitPath = await initRepoInStorage(username, profileRepoName);
+      const readmeContent = `# ${displayName || username}\n\nWelcome to my profile!\n`;
+      
+      await initRepository(localGitPath, {
+        defaultBranch: "main",
+        readme: false,
+        repoName: profileRepoName,
+        ownerName: displayName || username,
+      });
+
+      // Insert profile repo into database
+      const profileRepoId = generateId("repo");
+      const timestamp2 = new Date();
+      await db.insert(schema.repositories).values({
+        id: profileRepoId,
+        ownerId: userId,
+        name: profileRepoName,
+        slug: profileRepoName,
+        description: `${username}'s profile`,
+        visibility: "public",
+        defaultBranch: "main",
+        diskPath: `repos/${username}/${profileRepoName}.git`,
+        httpCloneUrl: "",
+        sshCloneUrl: "",
+        createdAt: timestamp2,
+        updatedAt: timestamp2,
+      });
+
+      // Commit the README
+      const { commitFile } = await import("@/lib/git");
+      await commitFile(localGitPath, "main", "README.md", readmeContent, "Initial commit", {
+        name: displayName || username,
+        email: email,
+      });
+
+      // Upload to cloud if needed
+      if (await isCloudStorage()) {
+        finalizeRepoInit(username, profileRepoName).catch(() => {});
+      }
+
+      logger.info({ userId, profileRepoId }, "Profile repository created");
+    } catch (err) {
+      logger.error({ err, userId }, "Failed to create profile repository (non-fatal)");
+    }
 
     // Create session
     const userAgent = request.headers.get("User-Agent") || undefined;

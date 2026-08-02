@@ -8,9 +8,8 @@ import { generateId } from "@/lib/utils";
 
 export const POST: APIRoute = async ({ params, request, locals }) => {
     const user = locals.user;
-    if (!user) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
-    }
+    // Allow anonymous starring
+
 
     const { owner, repo } = params;
     if (!owner || !repo) {
@@ -57,48 +56,62 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
         const { action } = await request.json(); // 'star' or 'unstar'
 
         if (action === "star") {
-            // Check if already starred
-            const existing = await db.query.repositoryStars.findFirst({
-                where: and(
-                    eq(schema.repositoryStars.userId, user.id),
-                    eq(schema.repositoryStars.repositoryId, targetRepo.id)
-                ),
-            });
-
-            if (!existing) {
-                await db.insert(schema.repositoryStars).values({
-                    id: generateId("star"),
-                    userId: user.id,
-                    repositoryId: targetRepo.id,
-                    createdAt: new Date(),
+            if (user) {
+                // Check if already starred
+                const existing = await db.query.repositoryStars.findFirst({
+                    where: and(
+                        eq(schema.repositoryStars.userId, user.id),
+                        eq(schema.repositoryStars.repositoryId, targetRepo.id)
+                    ),
                 });
 
-                // Update count
+                if (!existing) {
+                    await db.insert(schema.repositoryStars).values({
+                        id: generateId("star"),
+                        userId: user.id,
+                        repositoryId: targetRepo.id,
+                        createdAt: new Date(),
+                    });
+
+                    // Update count
+                    await db.update(schema.repositories)
+                        .set({ starCount: sql`${schema.repositories.starCount} + 1` })
+                        .where(eq(schema.repositories.id, targetRepo.id));
+
+                    // Log activity
+                    await logActivity(
+                        user.id,
+                        "star",
+                        "starred",
+                        "repository",
+                        targetRepo.id,
+                        targetRepo.id,
+                        { repoName: targetRepo.name, owner: targetRepo.owner.username }
+                    );
+                }
+            } else {
+                // Anonymous star
                 await db.update(schema.repositories)
                     .set({ starCount: sql`${schema.repositories.starCount} + 1` })
                     .where(eq(schema.repositories.id, targetRepo.id));
-
-                // Log activity
-                await logActivity(
-                    user.id,
-                    "star",
-                    "starred",
-                    "repository",
-                    targetRepo.id,
-                    targetRepo.id,
-                    { repoName: targetRepo.name, owner: targetRepo.owner.username }
-                );
             }
         } else if (action === "unstar") {
-            const deleted = await db.delete(schema.repositoryStars)
-                .where(and(
-                    eq(schema.repositoryStars.userId, user.id),
-                    eq(schema.repositoryStars.repositoryId, targetRepo.id)
-                ))
-                .returning();
+            if (user) {
+                const deleted = await db.delete(schema.repositoryStars)
+                    .where(and(
+                        eq(schema.repositoryStars.userId, user.id),
+                        eq(schema.repositoryStars.repositoryId, targetRepo.id)
+                    ))
+                    .returning();
 
-            if (deleted.length > 0) {
-                // Update count
+                if (deleted.length > 0) {
+                    // Update count
+                    await db.update(schema.repositories)
+                        .set({ starCount: sql`${schema.repositories.starCount} - 1` })
+                        .where(eq(schema.repositories.id, targetRepo.id));
+                }
+            } else {
+                // Anonymous unstar
                 await db.update(schema.repositories)
                     .set({ starCount: sql`${schema.repositories.starCount} - 1` })
                     .where(eq(schema.repositories.id, targetRepo.id));
