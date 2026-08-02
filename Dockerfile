@@ -40,8 +40,8 @@ RUN bun run build
 FROM oven/bun:1-slim AS runner
 WORKDIR /app
 
-# Install git, ssh, and bash (needed for git operations and entrypoint)
-RUN apt-get update && apt-get install -y --no-install-recommends git openssh-client bash && \
+# Install git, ssh, bash, and wget (git operations, entrypoint, healthcheck)
+RUN apt-get update && apt-get install -y --no-install-recommends git openssh-client bash wget && \
     rm -rf /var/lib/apt/lists/*
 
 # Create data directories
@@ -53,12 +53,16 @@ COPY --from=builder --chown=bun:bun /app/dist ./dist
 COPY --from=prod-deps --chown=bun:bun /app/node_modules ./node_modules
 COPY --from=builder --chown=bun:bun /app/package.json ./
 
-# Copy drizzle config and schema for migrations
+# Copy drizzle config, committed migrations, and full source tree.
+# The full src/ is required so raw-TS entrypoints (scripts/ssh-server.ts,
+# scripts/worker.ts) can resolve the "@/..." path aliases via tsconfig.
 COPY --from=builder --chown=bun:bun /app/drizzle.config.ts ./
-COPY --from=builder --chown=bun:bun /app/src/db ./src/db
+COPY --from=builder --chown=bun:bun /app/drizzle ./drizzle
+COPY --from=builder --chown=bun:bun /app/src ./src
 COPY --from=builder --chown=bun:bun /app/tsconfig.json ./
 
-# Copy entrypoint script
+# Copy runtime scripts (migrate, ssh-server, worker) and entrypoint
+COPY --from=builder --chown=bun:bun /app/scripts ./scripts
 COPY --chown=bun:bun docker-entrypoint.sh ./
 
 # Set environment variables

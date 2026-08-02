@@ -6,8 +6,8 @@ OpenCodeHub is configured exclusively via environment variables.
 
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
-| `SITE_URL` | Public URL of the instance | Yes | `http://localhost:3000` |
-| `PORT` | Port to listen on | No | `3000` |
+| `SITE_URL` | Public URL of the instance | Yes | `http://localhost:4321` |
+| `PORT` | Port to listen on | No | `4321` |
 | `NODE_ENV` | `development` or `production` | No | `development` |
 
 ## Security (Critical)
@@ -17,6 +17,11 @@ OpenCodeHub is configured exclusively via environment variables.
 | `JWT_SECRET` | Signs auth tokens | `openssl rand -hex 32` |
 | `SESSION_SECRET` | Signs session cookies | `openssl rand -hex 32` |
 | `INTERNAL_HOOK_SECRET` | Secures git hooks | `openssl rand -hex 32` |
+| `CRON_SECRET` | Secures cron endpoints | `openssl rand -hex 32` |
+| `RUNNER_SECRET` | Shared secret between server and CI runners | `openssl rand -hex 32` |
+| `AI_CONFIG_ENCRYPTION_KEY` | Encrypts AI provider keys at rest | `openssl rand -hex 32` |
+| `WORKFLOW_SECRET_ENCRYPTION_KEY` | Encrypts workflow/repo secrets at rest | `openssl rand -hex 32` |
+| `METRICS_TOKEN` | Bearer token for `GET /api/metrics` (Prometheus). Empty = public | `openssl rand -hex 32` |
 
 ## Database
 

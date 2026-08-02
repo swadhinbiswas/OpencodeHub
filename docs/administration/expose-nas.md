@@ -43,7 +43,7 @@ firewall never sees an inbound connection to OpenCodeHub ports.
 
 Whatever exposure method you pick, you need:
 
-1. **A working OpenCodeHub instance** on your NAS, listening on a local port (default `3000`).
+1. **A working OpenCodeHub instance** on your NAS, listening on a local port (default `4321`).
 2. **A reachable hostname** (Tailscale or Cloudflare) pointed at the tunnel.
 3. **A persistent `cloudflared` or `tailscaled`** process — running on the NAS, in Docker, or as a system service.
 4. **Trusted Proxies** correctly set in OpenCodeHub (so the real client IP is preserved and rate limits are not bypassed).  See `TRUSTED_PROXIES` in `.env.example`.
@@ -105,11 +105,11 @@ tailscale ip -4    # 100.x.y.z
 # in the Tailscale admin console: https://login.tailscale.com/admin
 # (turn on the "Funnel" feature flag).
 #
-# Then on the NAS, expose the port OpenCodeHub listens on (default 3000):
-sudo tailscale funnel 3000 on
+# Then on the NAS, expose the port OpenCodeHub listens on (default 4321):
+sudo tailscale funnel 4321 on
 
 # Or expose a specific path with HTTPS-only:
-sudo tailscale funnel --https=443 http://localhost:3000
+sudo tailscale funnel --https=443 http://localhost:4321
 ```
 
 You will get a public URL like `https://nas-hostname.tail-net.ts.net`.
@@ -137,7 +137,7 @@ For Synology DSM, use **Task Scheduler → Triggered task → Boot-up** and
 run:
 
 ```bash
-sudo tailscale funnel 3000 on
+sudo tailscale funnel 4321 on
 ```
 
 For TrueNAS SCALE, configure the Tailscale app's "Post-Start" command
@@ -267,11 +267,11 @@ In the Cloudflare dashboard → your tunnel → **Public Hostname**:
 |---|---|
 | Subdomain | `git` (or anything) |
 | Domain | `example.com` |
-| **Service** | Type: `HTTP`, URL: `opencodehub:3000` (or `localhost:3000` if `cloudflared` is host-networking) |
+| **Service** | Type: `HTTP`, URL: `opencodehub:4321` (or `localhost:4321` if `cloudflared` is host-networking) |
 
 If you used Option A (Docker bridge network), `opencodehub` must be the
 service name in your OpenCodeHub `docker-compose.yml`.  If you used
-host networking, use `localhost:3000`.
+host networking, use `localhost:4321`.
 
 Save.  After a few seconds, `https://git.example.com` should reach your
 OpenCodeHub instance.
@@ -383,8 +383,8 @@ on the NAS itself.
   - Cloudflare: the tunnel status is **HEALTHY** in the Zero Trust
     dashboard.
 - Confirm OpenCodeHub is reachable from the tunnel's network namespace:
-  - Tailscale (host networking): `curl http://localhost:3000`
-  - Cloudflare (Docker bridge): `docker exec cloudflared wget -qO- http://opencodehub:3000/`
+  - Tailscale (host networking): `curl http://localhost:4321`
+  - Cloudflare (Docker bridge): `docker exec cloudflared wget -qO- http://opencodehub:4321/`
 
 ### Real client IP is wrong
 

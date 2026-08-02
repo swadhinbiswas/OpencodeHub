@@ -10,12 +10,12 @@ This page covers how authentication and local configuration work in the OpenCode
 ### Login
 
 ```bash
-och auth login --url http://localhost:3000
+och auth login --url http://localhost:4321
 ```
 
 Options:
 
-- `--url <url>`: Instance URL (defaults to `http://localhost:3000`)
+- `--url <url>`: Instance URL (defaults to `http://localhost:4321`)
 - `--with-token`: Prompt for a personal access token
 - `--token <token>`: Non‑interactive token login
 

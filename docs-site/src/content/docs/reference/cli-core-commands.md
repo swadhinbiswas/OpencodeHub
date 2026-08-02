@@ -16,7 +16,7 @@ och repo list
 Shorthand:
 
 ```bash
-och init --url http://localhost:3000
+och init --url http://localhost:4321
 och push --branch main
 ```
 

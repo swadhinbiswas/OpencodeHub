@@ -47,7 +47,7 @@ INTERNAL_HOOK_SECRET=<openssl rand -hex 32>
 
 # Domain Configuration
 SITE_URL=https://git.yourcompany.com
-PORT=3000
+PORT=4321
 
 # Database (Using the Postgres container defined in compose)
 DATABASE_URL=postgresql://opencodehub:securepassword@postgres:5432/opencodehub
@@ -98,7 +98,7 @@ server {
     client_max_body_size 500M;
 
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:4321;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
