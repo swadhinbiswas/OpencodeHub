@@ -504,10 +504,26 @@ jobs:
         working-directory: cli
 
       - name: Publish to npm
-        run: npm publish --access public --provenance
         working-directory: cli
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # Check if package version already exists on registry
+          PKG_NAME=$(node -p "require('./package.json').name")
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://registry.npmjs.org/${PKG_NAME}/${PKG_VERSION}")
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "::warning::Version ${PKG_VERSION} already exists on npm, skipping publish"
+            exit 0
+          fi
+          # First publish of a new package: --provenance requires the package to exist
+          # so we attempt with provenance first, fall back without it on 404
+          if npm publish --access public --provenance 2>&1 | tee /tmp/npm-publish.log; then
+            echo "Published with provenance"
+          elif grep -q "404" /tmp/npm-publish.log; then
+            echo "Package not yet on registry, publishing without provenance for initial seed..."
+            npm publish --access public
+          fi
 
   # ──────────────────────────────────────────────────
   # Quality Gate Summary
