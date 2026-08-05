@@ -10,10 +10,12 @@ export function loadConfig() {
     try {
       const config = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8"));
       
-      // Override process.env with config values if they exist
-      if (config.DATABASE_URL) process.env.DATABASE_URL = config.DATABASE_URL;
-      if (config.DATABASE_DRIVER) process.env.DATABASE_DRIVER = config.DATABASE_DRIVER;
-      if (config.REDIS_URL) process.env.REDIS_URL = config.REDIS_URL;
+      // Only set env vars from config.json if they aren't already set in the
+      // environment.  CI injects DATABASE_URL etc. via process.env and those
+      // must never be overridden by a stale data/config.json on disk.
+      if (config.DATABASE_URL && !process.env.DATABASE_URL) process.env.DATABASE_URL = config.DATABASE_URL;
+      if (config.DATABASE_DRIVER && !process.env.DATABASE_DRIVER) process.env.DATABASE_DRIVER = config.DATABASE_DRIVER;
+      if (config.REDIS_URL && !process.env.REDIS_URL) process.env.REDIS_URL = config.REDIS_URL;
       
       // Store flag in process.env so we don't need to read FS constantly
       process.env.OPENCODEHUB_CONFIGURED = "true";
