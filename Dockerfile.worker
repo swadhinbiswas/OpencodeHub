@@ -11,6 +11,11 @@ RUN for i in 1 2 3; do \
       (echo "bun install attempt $i failed, retrying in 10s..." && sleep 10); \
     done
 
+# Copy source into a staging layer so COPY --from has the files
+FROM base AS source
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
 # Production image
 FROM oven/bun:1 AS runner
 WORKDIR /app
@@ -23,15 +28,15 @@ RUN mkdir -p /data/repositories /data/storage /data/cache && \
     chown -R bun:bun /data
 
 # Copy node_modules and source
-COPY --from=deps --chown=bun:bun /app/node_modules ./node_modules
-COPY --from=deps --chown=bun:bun /app/package.json ./
-COPY --from=deps --chown=bun:bun /app/cli ./cli
-COPY --from=deps --chown=bun:bun /app/tsconfig.json ./
+COPY --from=source --chown=bun:bun /app/node_modules ./node_modules
+COPY --from=source --chown=bun:bun /app/package.json ./
+COPY --from=source --chown=bun:bun /app/cli ./cli
+COPY --from=source --chown=bun:bun /app/tsconfig.json ./
 
 # Copy source files needed for worker
-COPY --from=deps --chown=bun:bun /app/src/lib ./src/lib
-COPY --from=deps --chown=bun:bun /app/src/db ./src/db
-COPY --from=deps --chown=bun:bun /app/scripts/worker.ts ./scripts/worker.ts
+COPY --from=source --chown=bun:bun /app/src/lib ./src/lib
+COPY --from=source --chown=bun:bun /app/src/db ./src/db
+COPY --from=source --chown=bun:bun /app/scripts/worker.ts ./scripts/worker.ts
 
 # Set environment variables
 ENV NODE_ENV=production
