@@ -334,15 +334,24 @@ async function executeHook(
   env: NodeJS.ProcessEnv,
 ) {
   const hookPath = join(repoPath, "hooks", hookName);
+  logger.info({ repoPath, hookName, args: args.length }, "executeHook called");
   try {
     await fs.access(hookPath, fs.constants.X_OK);
   } catch {
+    logger.warn({ hookPath }, "Hook missing or not executable — skipping");
     return; // Hook doesn't exist or not executable
   }
 
-  const input = args.join(""); // Args are already newline terminated from commandLines?
   // commandLines elements from splitReceivePackStream usually have newline?
-  // Let's check commandLines population.
+  // Ensure the input ends with a newline: bash `while read` skips the loop
+  // body on EOF-without-newline, which silently killed post-receive hooks.
+  // Also strip the `\0capabilities` suffix from ref names — real git hooks
+  // receive a clean ref; leaking capabilities broke branch filtering.
+  const input =
+    args
+      .map((line) => line.split("\0")[0])
+      .join("")
+      .replace(/\n*$/, "") + "\n";
   // Yes, they are lines.
 
   return new Promise<void>((resolve) => {
@@ -502,11 +511,25 @@ function reportStatus(commandBuffs: string[], error?: string): Readable {
   const s = new Readable();
   s._read = () => {};
 
-  // Git receive-pack uses sideband protocol (band 2 for status messages)
+  // Git receive-pack uses sideband protocol: band 1 carries the STATUS
+  // report, band 2 progress, band 3 errors. The status report inside
+  // band 1 must itself be pkt-line framed AND terminated with its own
+  // flush-pkt — git's report-status reader parses the demuxed band-1
+  // stream with packet_read() until a flush. Without the inner flush it
+  // hit EOF after "ok refs/heads/main" → "remote end hung up".
   const sidebandMsg = (msg: string): Buffer => {
-    const band = Buffer.from([0x02]); // Band 2 for progress/status
-    const text = Buffer.from(msg, "utf8");
-    const data = Buffer.concat([band, text]);
+    const band = Buffer.from([0x01]); // Band 1 for status
+    const inner = Buffer.from(pktLine(msg), "utf8"); // status must be pkt-line framed
+    const data = Buffer.concat([band, inner]);
+    const len = data.length + 4;
+    const hex = len.toString(16).padStart(4, "0");
+    return Buffer.concat([Buffer.from(hex, "utf8"), data]);
+  };
+  // A band-1 packet whose payload is exactly the flush-pkt "0000":
+  // terminates the report stream inside band 1.
+  const sidebandFlush = (): Buffer => {
+    const band = Buffer.from([0x01]);
+    const data = Buffer.concat([band, Buffer.from("0000", "utf8")]);
     const len = data.length + 4;
     const hex = len.toString(16).padStart(4, "0");
     return Buffer.concat([Buffer.from(hex, "utf8"), data]);
@@ -528,6 +551,8 @@ function reportStatus(commandBuffs: string[], error?: string): Readable {
       }
     }
   }
+  // terminate the report stream inside band 1, then end the sideband
+  s.push(sidebandFlush());
   s.push(flushPkt());
   s.push(null);
   return s;

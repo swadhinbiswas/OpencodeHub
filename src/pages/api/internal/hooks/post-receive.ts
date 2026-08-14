@@ -70,12 +70,14 @@ export const POST: APIRoute = async ({ request, url }) => {
     .where(eq(schema.repositories.id, repo.id));
 
   // Trigger CI/CD Workflows (fire and forget)
-  if (repo.hasActions && body.refname.startsWith("refs/heads/")) {
+  // refname arrives as "refs/heads/main\0capabilities..." — strip the caps
+  const cleanRef = body.refname.split("\0")[0];
+  if (repo.hasActions && cleanRef.startsWith("refs/heads/")) {
     try {
       triggerRepoWorkflows(
         repo.id,
         body.newrev,
-        body.refname,
+        cleanRef,
         repo.ownerId
       );
       logger.info({ repoId: repo.id }, "CI/CD workflows triggered");
