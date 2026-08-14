@@ -40,7 +40,8 @@ function filterSensitiveEnvVars(env: Record<string, string | undefined>): Record
 // Types
 export interface WorkflowConfig {
   name: string;
-  on: WorkflowTrigger;
+  // `on` may be an object (full triggers) or shorthand string ("push")
+  on: WorkflowTrigger | string;
   env?: Record<string, string>;
   defaults?: {
     run?: {
@@ -80,6 +81,62 @@ export interface WorkflowTrigger {
   issues?: { types?: string[] };
   issue_comment?: { types?: string[] };
   repository_dispatch?: { types?: string[] };
+}
+
+/**
+ * Expand a strategy.matrix definition into concrete combinations
+ * (GitHub Actions semantics):
+ *   - cartesian product of all non-special keys
+ *   - `exclude` entries remove matching combinations
+ *   - `include` entries add combinations (merging into an existing
+ *     combination when all its keys match)
+ */
+export function expandMatrix(
+  matrix: Record<string, any>,
+): Array<Record<string, any>> {
+  const special = new Set(["include", "exclude"]);
+  const keys = Object.keys(matrix).filter((k) => !special.has(k));
+  const includeEntries: Array<Record<string, any>> = Array.isArray(matrix.include)
+    ? matrix.include
+    : matrix.include
+      ? [matrix.include]
+      : [];
+  const excludeEntries: Array<Record<string, any>> = Array.isArray(matrix.exclude)
+    ? matrix.exclude
+    : matrix.exclude
+      ? [matrix.exclude]
+      : [];
+
+  // Cartesian product of the dimension values
+  let combos: Array<Record<string, any>> = [{}];
+  for (const key of keys) {
+    const values = Array.isArray(matrix[key]) ? matrix[key] : [matrix[key]];
+    const next: Array<Record<string, any>> = [];
+    for (const combo of combos) {
+      for (const value of values) {
+        next.push({ ...combo, [key]: value });
+      }
+    }
+    combos = next;
+  }
+
+  // Apply exclude entries: remove combos where every key/value matches
+  const matchesExclude = (combo: Record<string, any>, exclude: Record<string, any>) =>
+    Object.entries(exclude).every(([k, v]) => combo[k] === v);
+
+  // Apply include entries: merge into matching combos, else append
+  for (const entry of includeEntries) {
+    const matched = combos.find((c) =>
+      Object.entries(entry).every(([k, v]) => c[k] === v),
+    );
+    if (matched) {
+      Object.assign(matched, entry);
+    } else {
+      combos.push({ ...entry });
+    }
+  }
+
+  return combos.filter((c) => !excludeEntries.some((e) => matchesExclude(c, e)));
 }
 
 export interface JobConfig {
@@ -275,8 +332,31 @@ export class PipelineRunner extends EventEmitter {
       socketPath: options.dockerSocket || "/var/run/docker.sock",
     });
     this.workDir = options.workDir;
-    this.artifactsDir = options.artifactsDir;
-    this.cacheDir = options.cacheDir;
+    this.artifactsDir = options.artifactsDir;    this.cacheDir = options.cacheDir;
+  }
+
+  /**
+   * Ensure a Docker image exists locally; pull when missing.
+   * dockerode's createContainer does NOT auto-pull — without this, jobs
+   * fail with "(HTTP code 404) no such container - No such image".
+   */
+  private async ensureImage(image: string): Promise<void> {
+    try {
+      await this.docker.getImage(image).inspect();
+      return;
+    } catch {
+      logger.info({ image }, "Pulling CI image");
+    }
+    await new Promise<void>((resolve, reject) => {
+      this.docker.pull(image, (err: Error | null, stream: NodeJS.ReadableStream | undefined) => {
+        if (err) return reject(err);
+        if (!stream) return resolve();
+        this.docker.modem.followProgress(stream, (pullErr: Error | null) => {
+          if (pullErr) reject(pullErr);
+          else resolve();
+        });
+      });
+    });
   }
 
   /**
@@ -301,6 +381,13 @@ export class PipelineRunner extends EventEmitter {
   ): boolean {
     const trigger = workflow.on;
 
+    // Support shorthand trigger syntax: `on: push` / `on: workflow_dispatch`
+    if (typeof trigger === "string") {
+      const shorthand = trigger.split(",").map((t) => t.trim());
+      if (!shorthand.includes(event)) return false;
+      return true;
+    }
+
     // Check push event
     if (event === "push" && trigger.push) {
       const {
@@ -322,10 +409,22 @@ export class PipelineRunner extends EventEmitter {
         if (tags && !payload.ref.startsWith("refs/tags/")) return false;
       }
 
-      // Check path filters
+      // Check path filters (GitHub semantics: `!`-prefixed patterns exclude,
+      // and exclusion patterns win over inclusion patterns)
       if (payload.paths) {
-        if (paths && !payload.paths.some((p) => this.matchesPattern(p, paths)))
-          return false;
+        if (paths) {
+          const includes = paths.filter((p) => !p.startsWith("!"));
+          const excludes = paths
+            .filter((p) => p.startsWith("!"))
+            .map((p) => p.slice(1));
+          if (excludes.length > 0 && payload.paths.some((p) => this.matchesPattern(p, excludes)))
+            return false;
+          if (
+            includes.length > 0 &&
+            !payload.paths.some((p) => this.matchesPattern(p, includes))
+          )
+            return false;
+        }
         if (
           pathsIgnore &&
           payload.paths.every((p) => this.matchesPattern(p, pathsIgnore))
@@ -362,17 +461,24 @@ export class PipelineRunner extends EventEmitter {
   }
 
   /**
-   * Match string against glob patterns
+   * Match string against glob patterns (GitHub Actions compatible)
+   *
+   * - `**` matches across directory separators (matches all directories)
+   * - `*` matches zero or more characters but never `/`
+   * - `?` matches any single character
    */
   private matchesPattern(str: string, patterns: string[]): boolean {
     return patterns.some((pattern) => {
-      // Simple glob matching
+      if (pattern.startsWith("!")) return false;
+      // Placeholder keeps `**`→`.*` from being re-processed by the `*` rule
+      const DEEP = "\u0000";
       const regex = new RegExp(
         "^" +
           pattern
-            .replace(/\*\*/g, ".*")
+            .replace(/\*\*/g, `${DEEP}${DEEP}`)
             .replace(/\*/g, "[^/]*")
-            .replace(/\?/g, ".") +
+            .replace(/\?/g, ".")
+            .replace(new RegExp(DEEP + DEEP, "g"), ".*") +
           "$",
       );
       return regex.test(str);
@@ -394,9 +500,12 @@ export class PipelineRunner extends EventEmitter {
       inputs?: Record<string, string>;
       secrets?: Record<string, string>;
       variables?: Record<string, string>;
+      // Persistence bridge: pre-created DB IDs so runs/jobs are visible
+      runId?: string;
+      jobIdByJobName?: Record<string, string>;
     },
   ): Promise<WorkflowRun> {
-    const runId = generateId();
+    const runId = options.runId || generateId();
     const run: WorkflowRun = {
       id: runId,
       workflowId: workflow.name,
@@ -464,77 +573,44 @@ export class PipelineRunner extends EventEmitter {
       for (const jobId of jobOrder) {
         const jobConfig = workflow.jobs[jobId];
 
-        // Check job condition
-        if (jobConfig.if && !this.evaluateExpression(jobConfig.if, context)) {
-          const skippedJob: JobRun = {
-            id: generateId(),
-            name: jobConfig.name || jobId,
-            status: "skipped",
-            conclusion: "skipped",
-            steps: [],
-          };
-          run.jobs.push(skippedJob);
-          continue;
+        // Matrix expansion (WS1-05): each combination becomes a job instance
+        const matrixConfig = jobConfig.strategy?.matrix;
+        let combos: Array<Record<string, any>> = [{}];
+        if (matrixConfig && typeof matrixConfig === "object") {
+          combos = expandMatrix(matrixConfig);
         }
 
-        // Check dependencies
-        const needs = Array.isArray(jobConfig.needs)
-          ? jobConfig.needs
-          : jobConfig.needs
-            ? [jobConfig.needs]
-            : [];
-        const needsResults: Record<
-          string,
-          { outputs: Record<string, string>; result: string }
-        > = {};
+        for (let comboIndex = 0; comboIndex < combos.length; comboIndex++) {
+          const combo = combos[comboIndex];
+          const forcedJobId =
+            options.jobIdByJobName?.[
+              comboIndex === 0 ? jobId : `${jobId}#${comboIndex}`
+            ];
+          const jobNameSuffix = Object.values(combo).length
+            ? ` (${Object.values(combo).join(", ")})`
+            : "";
 
-        let shouldSkip = false;
-        for (const dep of needs) {
-          const depJob = run.jobs.find(
-            (j) => j.name === (workflow.jobs[dep].name || dep),
-          );
-          if (!depJob || depJob.conclusion !== "success") {
-            shouldSkip = true;
-            break;
+          // Per-instance context: matrix vars + env
+          const instanceContext = structuredClone(context);
+          instanceContext.matrix = combo;
+          for (const [k, v] of Object.entries(combo)) {
+            instanceContext.env[k] = String(v);
           }
-          needsResults[dep] = {
-            outputs: depJob.outputs || {},
-            result: depJob.conclusion || "success",
-          };
-        }
+          instanceContext.github.job = jobId;
 
-        if (shouldSkip) {
-          const skippedJob: JobRun = {
-            id: generateId(),
-            name: jobConfig.name || jobId,
-            status: "skipped",
-            conclusion: "skipped",
-            steps: [],
-          };
-          run.jobs.push(skippedJob);
-          continue;
-        }
+          await this.runJobInstance({
+            jobId,
+            jobConfig,
+            context: instanceContext,
+            repositoryPath: options.repositoryPath,
+            runId,
+            logPersister,
+            forcedJobId,
+            nameSuffix: jobNameSuffix,
+            run,
+          });
 
-        context.needs = needsResults;
-        context.github.job = jobId;
-
-        const jobRun = await this.runJob(
-          jobId,
-          jobConfig,
-          context,
-          options.repositoryPath,
-          runId,
-          logPersister,
-        );
-        run.jobs.push(jobRun);
-
-        if (jobRun.conclusion === "failure" && !jobConfig.continue_on_error) {
-          run.status = "completed";
-          run.conclusion = "failure";
-          run.completedAt = new Date();
-          await logPersister.close();
-          this.emit("workflow:complete", run);
-          return run;
+          if (run.conclusion === "failure") break;
         }
       }
 
@@ -555,6 +631,7 @@ export class PipelineRunner extends EventEmitter {
       run.completedAt = new Date();
       run.logs = error instanceof Error ? error.message : String(error);
       await logPersister.close();
+      logger.error({ err: error, runId }, "Workflow execution failed");
       this.emit("workflow:error", run, error);
       return run;
     }
@@ -593,6 +670,110 @@ export class PipelineRunner extends EventEmitter {
   }
 
   /**
+   * Run a single job instance (used by the job loop, including matrix
+   * instances). Handles `if:` conditions, `needs:` dependency gating,
+   * failure short-circuiting and run-level bookkeeping.
+   */
+  private async runJobInstance(options: {
+    jobId: string;
+    jobConfig: JobConfig;
+    context: WorkflowContext;
+    repositoryPath: string;
+    runId: string;
+    logPersister: import("./ci-logs").LogPersister;
+    forcedJobId?: string;
+    nameSuffix?: string;
+    run: WorkflowRun;
+  }): Promise<void> {
+    const {
+      jobId,
+      jobConfig,
+      context,
+      repositoryPath,
+      runId,
+      logPersister,
+      forcedJobId,
+      nameSuffix,
+      run,
+    } = options;
+    const workflow = context.github.workflow ? { jobs: {} } : { jobs: {} };
+    void workflow;
+
+    // Check job condition
+    if (jobConfig.if && !this.evaluateExpression(jobConfig.if, context)) {
+      run.jobs.push({
+        id: forcedJobId || generateId(),
+        name: `${jobConfig.name || jobId}${nameSuffix || ""}`,
+        status: "skipped",
+        conclusion: "skipped",
+        steps: [],
+      });
+      return;
+    }
+
+    // Check dependencies
+    const needs = Array.isArray(jobConfig.needs)
+      ? jobConfig.needs
+      : jobConfig.needs
+        ? [jobConfig.needs]
+        : [];
+    const needsResults: Record<
+      string,
+      { outputs: Record<string, string>; result: string }
+    > = {};
+
+    let shouldSkip = false;
+    for (const dep of needs) {
+      const depJob = run.jobs.find(
+        (j) => j.name === (dep.endsWith(")") ? dep.split(" (")[0] : dep) || j.name.startsWith(dep + " "),
+      );
+      if (!depJob || depJob.conclusion !== "success") {
+        shouldSkip = true;
+        break;
+      }
+      needsResults[dep] = {
+        outputs: depJob.outputs || {},
+        result: depJob.conclusion || "success",
+      };
+    }
+
+    if (shouldSkip) {
+      run.jobs.push({
+        id: forcedJobId || generateId(),
+        name: `${jobConfig.name || jobId}${nameSuffix || ""}`,
+        status: "skipped",
+        conclusion: "skipped",
+        steps: [],
+      });
+      return;
+    }
+
+    context.needs = needsResults;
+
+    const jobRun = await this.runJob(
+      jobId,
+      jobConfig,
+      context,
+      repositoryPath,
+      runId,
+      logPersister,
+      forcedJobId,
+      nameSuffix,
+    );
+    run.jobs.push(jobRun);
+
+    if (jobRun.conclusion === "failure" && !jobConfig.continue_on_error) {
+      logger.error(
+        { jobId, conclusion: jobRun.conclusion, logs: jobRun.logs?.slice(0, 2000) },
+        "Job failed",
+      );
+      // Signal failure to the outer loop; the final status computation
+      // and workflow:complete emission happen once at the end of runWorkflow
+      run.conclusion = "failure";
+    }
+  }
+
+  /**
    * Run a single job
    */
   private async runJob(
@@ -602,10 +783,12 @@ export class PipelineRunner extends EventEmitter {
     repositoryPath: string,
     runId: string,
     logPersister?: import("./ci-logs").LogPersister,
+    forcedJobId?: string,
+    nameSuffix?: string,
   ): Promise<JobRun> {
     const jobRun: JobRun = {
-      id: generateId(),
-      name: config.name || jobId,
+      id: forcedJobId || generateId(),
+      name: `${config.name || jobId}${nameSuffix || ""}`,
       status: "in_progress",
       startedAt: new Date(),
       steps: [],
@@ -644,6 +827,7 @@ export class PipelineRunner extends EventEmitter {
         for (const [serviceName, serviceConfig] of Object.entries(
           config.services,
         )) {
+          await this.ensureImage(serviceConfig.image);
           const container = await this.docker.createContainer({
             Image: serviceConfig.image,
             Env: Object.entries(serviceConfig.env || {}).map(
@@ -659,6 +843,7 @@ export class PipelineRunner extends EventEmitter {
       }
 
       // Create job container
+      await this.ensureImage(containerImage);
       const jobContainer = await this.docker.createContainer({
         Image: containerImage,
         Cmd: ["/bin/sh", "-c", "tail -f /dev/null"],

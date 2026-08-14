@@ -185,22 +185,46 @@ export class QueueWorker {
         pullRequestId: string,
         db: NodePgDatabase<typeof schema>
     ): Promise<"pending" | "passed" | "failed"> {
+        // 1. External/ingested checks (GitHub-style check runs)
         const checks = await db.query.pullRequestChecks.findMany({
             where: eq(schema.pullRequestChecks.pullRequestId, pullRequestId),
         });
 
-        if (checks.length === 0) {
-            // No checks configured/ingested; allow merge queue to proceed.
+        if (checks.length > 0) {
+            const hasPending = checks.some((check) => check.status !== "completed");
+            if (hasPending) return "pending";
+            const hasFailed = checks.some((check) =>
+                ["failure", "cancelled", "timed_out", "action_required"].includes(check.conclusion || "")
+            );
+            if (hasFailed) return "failed";
             return "passed";
         }
 
-        const hasPending = checks.some((check) => check.status !== "completed");
-        if (hasPending) return "pending";
+        // 2. Native pipeline runs (WS1-15): gate on the persisted workflow
+        //    runs for this PR's head branch (push-triggered or speculative)
+        const pr = await db.query.pullRequests.findFirst({
+            where: eq(schema.pullRequests.id, pullRequestId),
+        });
+        if (pr) {
+            const runs = await db.query.workflowRuns.findMany({
+                where: eq(schema.workflowRuns.headBranch, pr.headBranch),
+                orderBy: (runs, { desc }) => [desc(runs.runNumber)],
+                limit: 5,
+            });
+            if (runs.length > 0) {
+                if (runs.some((r) => r.status === "queued" || r.status === "in_progress")) {
+                    return "pending";
+                }
+                const latest = runs[0];
+                if (latest.status === "completed") {
+                    if (latest.conclusion === "failure") return "failed";
+                    if (latest.conclusion === "success") return "passed";
+                }
+            }
+        }
 
-        const hasFailed = checks.some((check) =>
-            ["failure", "cancelled", "timed_out", "action_required"].includes(check.conclusion || "")
-        );
-        return hasFailed ? "failed" : "passed";
+        // 3. No checks and no native runs: allow the queue to proceed.
+        return "passed";
     }
 
     /**
@@ -263,6 +287,26 @@ export class QueueWorker {
                             // but having executionBranch implies speculative CI is running.
                         })
                         .where(eq(schema.mergeQueueItems.id, item.id));
+
+                    // ── WS1-09: actually RUN the speculative CI ──────────
+                    try {
+                        const { triggerSpecWorkflow } = await import("@/lib/workflows");
+                        const specSha = await (async () => {
+                            const { getGit } = await import("@/lib/git");
+                            return getGit(repoPath).revparse([result.branchName]).catch(() => "");
+                        })();
+                        if (specSha) {
+                            triggerSpecWorkflow({
+                                repositoryId,
+                                repositoryPath: repoPath,
+                                specBranch: result.branchName,
+                                baseBranch: pr.baseBranch,
+                                commitSha: specSha.trim(),
+                            }).catch((err) => logger.error({ err }, "Speculative CI trigger failed"));
+                        }
+                    } catch (err) {
+                        logger.warn({ err }, "Speculative CI not triggered");
+                    }
 
                     logger.info(`Speculative branch created: ${result.branchName}`);
                 } else {

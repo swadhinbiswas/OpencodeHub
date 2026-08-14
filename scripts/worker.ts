@@ -13,6 +13,7 @@ const WORKER_INTERVAL = parseInt(process.env.WORKER_INTERVAL || "5000", 10);
 const MIRROR_SYNC_INTERVAL = parseInt(process.env.MIRROR_SYNC_INTERVAL || "60000", 10);
 const CLEANUP_INTERVAL = parseInt(process.env.CLEANUP_INTERVAL || "3600000", 10);
 const DIGEST_INTERVAL = parseInt(process.env.DIGEST_INTERVAL || "300000", 10);
+const SCHEDULE_INTERVAL = parseInt(process.env.SCHEDULE_INTERVAL || "60000", 10);
 const HEALTH_PORT = parseInt(process.env.WORKER_HEALTH_PORT || "9090", 10);
 const MAX_RETRIES = parseInt(process.env.WORKER_MAX_RETRIES || "3", 10);
 const STALE_JOB_TIMEOUT_MS = parseInt(process.env.WORKER_STALE_TIMEOUT || "300000", 10);
@@ -27,6 +28,7 @@ let lastQueueRun = 0;
 let lastMirrorRun = 0;
 let lastCleanupRun = 0;
 let lastDigestRun = 0;
+let lastScheduleRun = 0;
 
 // Circuit breaker state per task
 interface CircuitBreakerState {
@@ -282,6 +284,11 @@ async function startWorker() {
       logger.info("Running scheduled digests processing...");
       await runDueDigests();
     }, DIGEST_INTERVAL, () => lastDigestRun, (t) => { lastDigestRun = t; }),
+    runLoop("schedule", async () => {
+      const { runScheduledWorkflows } = await import("@/lib/schedule-worker");
+      const { pipelineRunner } = await import("@/lib/pipeline");
+      await runScheduledWorkflows(pipelineRunner);
+    }, SCHEDULE_INTERVAL, () => lastScheduleRun, (t) => { lastScheduleRun = t; }),
   ]);
 }
 
