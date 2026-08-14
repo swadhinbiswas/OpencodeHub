@@ -1,0 +1,1778 @@
+[
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "createReleaseEmbed",
+    "location": "src/lib/integrations/discord.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "sendNotification",
+    "location": "src/lib/integrations/notifications.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "testWebhook",
+    "location": "src/lib/integrations/notifications.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getJiraClient",
+    "location": "src/lib/integrations/jira.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "cleanupAllRepos",
+    "location": "src/lib/cron/cleanup-branches.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "cleanupSpeculativeBranches",
+    "location": "src/lib/cron/cleanup-branches.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "initTracing",
+    "location": "src/lib/tracing.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "handleError",
+    "location": "src/lib/errors.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "assert",
+    "location": "src/lib/errors.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "assertAuthenticated",
+    "location": "src/lib/errors.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "sendVerificationEmail",
+    "location": "src/lib/email.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "generateStorageSignature",
+    "location": "src/lib/storage-auth.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getSignedStorageUrl",
+    "location": "src/lib/storage-auth.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "generateRunnerToken",
+    "location": "src/lib/runner-auth.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "isRunnerAuthConfigured",
+    "location": "src/lib/runner-auth.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getUserInboxSections",
+    "location": "src/lib/inbox-sections.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getOrCreateDefaultSections",
+    "location": "src/lib/inbox-sections.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "createInboxSection",
+    "location": "src/lib/inbox-sections.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "updateInboxSection",
+    "location": "src/lib/inbox-sections.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "deleteInboxSection",
+    "location": "src/lib/inbox-sections.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "reorderInboxSections",
+    "location": "src/lib/inbox-sections.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getPRsForSection",
+    "location": "src/lib/inbox-sections.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "shareInboxSection",
+    "location": "src/lib/inbox-sections.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "discoverOIDC",
+    "location": "src/lib/oidc.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "exchangeCodeForTokens",
+    "location": "src/lib/oidc.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getUserInfo",
+    "location": "src/lib/oidc.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "decodeIdToken",
+    "location": "src/lib/oidc.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "validateEmailDomain",
+    "location": "src/lib/oidc.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getEnabledOIDCProviders",
+    "location": "src/lib/oidc.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "syncAllMirrors",
+    "location": "src/lib/mirror-sync.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "checkAutoMergeEligibility",
+    "location": "src/lib/auto-merge.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "areRequiredChecksPassing",
+    "location": "src/lib/pr-checks.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "syncChecksFromWorkflow",
+    "location": "src/lib/pr-checks.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "detectFileDependencies",
+    "location": "src/lib/pr-dependencies.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "checkMergeSafety",
+    "location": "src/lib/pr-dependencies.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getFileApprovalStatus",
+    "location": "src/lib/partial-file-approvals.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "revokeFileApproval",
+    "location": "src/lib/partial-file-approvals.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getFilesNeedingApproval",
+    "location": "src/lib/partial-file-approvals.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "setFieldValue",
+    "location": "src/lib/custom-fields.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getIssueFieldValues",
+    "location": "src/lib/custom-fields.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "parseFieldValue",
+    "location": "src/lib/custom-fields.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "initializeDefaultWorkflow",
+    "location": "src/lib/issue-workflows.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getWorkflowStates",
+    "location": "src/lib/issue-workflows.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getAllowedTransitions",
+    "location": "src/lib/issue-workflows.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "createWorkflowState",
+    "location": "src/lib/issue-workflows.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "createCustomTemplate",
+    "location": "src/lib/workflow-templates.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "toggleWorkflow",
+    "location": "src/lib/workflow-templates.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "deleteRepositoryWorkflow",
+    "location": "src/lib/workflow-templates.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "isHashedPersonalAccessToken",
+    "location": "src/lib/personal-access-token.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getEmailTemplate",
+    "location": "src/lib/email-notification-templates.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "estimateReviewCost",
+    "location": "src/lib/ai-review.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getLatestAIReview",
+    "location": "src/lib/ai-review.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "applyAISuggestion",
+    "location": "src/lib/ai-review.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "dismissAISuggestion",
+    "location": "src/lib/ai-review.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "queryAuditLogs",
+    "location": "src/lib/audit.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "sendTeamsNotification",
+    "location": "src/lib/chat-notifications.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "sendDiscordNotification",
+    "location": "src/lib/chat-notifications.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "buildNotificationEmail",
+    "location": "src/lib/chat-notifications.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "dispatchNotification",
+    "location": "src/lib/chat-notifications.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "configureChatIntegration",
+    "location": "src/lib/chat-notifications.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "configureEmailSettings",
+    "location": "src/lib/chat-notifications.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "generateDigestEmail",
+    "location": "src/lib/chat-notifications.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "shouldSendDigestNow",
+    "location": "src/lib/chat-notifications.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "sendDigestWithRetry",
+    "location": "src/lib/chat-notifications.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "jiraCreateIssue",
+    "location": "src/lib/issue-trackers.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "jiraGetIssue",
+    "location": "src/lib/issue-trackers.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "jiraTransition",
+    "location": "src/lib/issue-trackers.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "linearCreateIssue",
+    "location": "src/lib/issue-trackers.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "linearGetIssue",
+    "location": "src/lib/issue-trackers.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "trelloCreateCard",
+    "location": "src/lib/issue-trackers.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "trelloGetCard",
+    "location": "src/lib/issue-trackers.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "trelloMoveCard",
+    "location": "src/lib/issue-trackers.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "clickupCreateTask",
+    "location": "src/lib/issue-trackers.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "clickupGetTask",
+    "location": "src/lib/issue-trackers.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "clickupUpdateStatus",
+    "location": "src/lib/issue-trackers.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "syncIssueToExternal",
+    "location": "src/lib/issue-trackers.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getLinkedExternalIssues",
+    "location": "src/lib/issue-trackers.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getRunnerRegistrationTokenTtlDays",
+    "location": "src/lib/runner-registration-token.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "isRunnerRegistrationTokenName",
+    "location": "src/lib/runner-registration-token.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "isEncryptedWorkflowSecret",
+    "location": "src/lib/workflow-secret-crypto.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "fetchSystemConfig",
+    "location": "src/lib/env-config.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getEnv",
+    "location": "src/lib/env-config.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "validationError",
+    "location": "src/lib/api.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "cleanupExpiredArtifacts",
+    "location": "src/lib/artifacts.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "verifyToken",
+    "location": "src/lib/auth.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "generateSSHFingerprint",
+    "location": "src/lib/auth.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "extractSSHKeyType",
+    "location": "src/lib/auth.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "generateVerificationToken",
+    "location": "src/lib/auth.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "extractBearerToken",
+    "location": "src/lib/auth.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getRunLogs",
+    "location": "src/lib/ci-logs.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getRunLogsFromFile",
+    "location": "src/lib/ci-logs.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "validateCodeOwners",
+    "location": "src/lib/codeowners.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "validateEnvironment",
+    "location": "src/lib/env-validation.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "deletePackage",
+    "location": "src/lib/packages.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "yankVersion",
+    "location": "src/lib/packages.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "recordDownload",
+    "location": "src/lib/packages.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getPackageStats",
+    "location": "src/lib/packages.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "parseIssueReferences",
+    "location": "src/lib/pr-issue-linking.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "scanLicenses",
+    "location": "src/lib/security-advanced.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getLicenseReport",
+    "location": "src/lib/security-advanced.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "createRateLimitRule",
+    "location": "src/lib/security-advanced.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "checkRateLimit",
+    "location": "src/lib/security-advanced.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "configureSAML",
+    "location": "src/lib/security-advanced.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "generateSAMLLogoutRequest",
+    "location": "src/lib/security-advanced.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "addIPAllowListEntry",
+    "location": "src/lib/security-advanced.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "checkIPAllowed",
+    "location": "src/lib/security-advanced.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "exportAuditLogs",
+    "location": "src/lib/security-advanced.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getAuditStats",
+    "location": "src/lib/security-advanced.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "isAllowedWebhookUrlSync",
+    "location": "src/lib/url-validator.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "createEpic",
+    "location": "src/lib/epics.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "createSubTask",
+    "location": "src/lib/epics.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getEpicInfo",
+    "location": "src/lib/epics.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getRepositoryEpics",
+    "location": "src/lib/epics.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "addToEpic",
+    "location": "src/lib/epics.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "removeFromEpic",
+    "location": "src/lib/epics.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getIssueHierarchy",
+    "location": "src/lib/epics.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "convertToTask",
+    "location": "src/lib/epics.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "configureExternalCI",
+    "location": "src/lib/external-ci.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getExternalCIConfigs",
+    "location": "src/lib/external-ci.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "triggerExternalBuild",
+    "location": "src/lib/external-ci.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "syncBuildStatus",
+    "location": "src/lib/external-ci.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "handleExternalCIWebhook",
+    "location": "src/lib/external-ci.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "waitForRedisReady",
+    "location": "src/lib/redis.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "setSession",
+    "location": "src/lib/redis.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getSession",
+    "location": "src/lib/redis.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "deleteSession",
+    "location": "src/lib/redis.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "definePlugin",
+    "location": "src/lib/plugins.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getDefaultCapabilities",
+    "location": "src/lib/plugins.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "submitPluginForApproval",
+    "location": "src/lib/plugins.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "approvePlugin",
+    "location": "src/lib/plugins.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "rejectPlugin",
+    "location": "src/lib/plugins.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getPluginApproval",
+    "location": "src/lib/plugins.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "listPendingApprovals",
+    "location": "src/lib/plugins.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "generateShortId",
+    "location": "src/lib/utils.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "formatBytes",
+    "location": "src/lib/utils.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "parseDate",
+    "location": "src/lib/utils.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "deepClone",
+    "location": "src/lib/utils.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "extractJiraKeys",
+    "location": "src/lib/utils.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "detectAPIChanges",
+    "location": "src/lib/dependency-awareness.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "buildMonorepoDependencyGraph",
+    "location": "src/lib/dependency-awareness.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getAffectedPackages",
+    "location": "src/lib/dependency-awareness.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "suggestBuildOrder",
+    "location": "src/lib/dependency-awareness.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "recordMetric",
+    "location": "src/lib/analytics-advanced.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getMetricTimeSeries",
+    "location": "src/lib/analytics-advanced.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getTeamBalanceReport",
+    "location": "src/lib/analytics-advanced.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "suggestReviewerAssignment",
+    "location": "src/lib/analytics-advanced.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "evaluateAutoMergeRules",
+    "location": "src/lib/auto-merge-rules.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "createAutomationRule",
+    "location": "src/lib/automations.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getAutomationRules",
+    "location": "src/lib/automations.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "toggleAutomationRule",
+    "location": "src/lib/automations.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "deleteAutomationRule",
+    "location": "src/lib/automations.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "toGitHubActions",
+    "location": "src/lib/ci-formats.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "toGitLabCI",
+    "location": "src/lib/ci-formats.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "toCircleCI",
+    "location": "src/lib/ci-formats.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "toBuildkite",
+    "location": "src/lib/ci-formats.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "toJenkins",
+    "location": "src/lib/ci-formats.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "parseGitHubActions",
+    "location": "src/lib/ci-formats.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "convertWorkflow",
+    "location": "src/lib/ci-formats.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getCITemplateForProvider",
+    "location": "src/lib/ci-formats.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "awsDeployLambda",
+    "location": "src/lib/cloud-integrations.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "k8sGetPods",
+    "location": "src/lib/cloud-integrations.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "k8sRollback",
+    "location": "src/lib/cloud-integrations.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "terraformGetState",
+    "location": "src/lib/cloud-integrations.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "configureCloudProvider",
+    "location": "src/lib/cloud-integrations.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getCloudConfigs",
+    "location": "src/lib/cloud-integrations.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getDeploymentHistory",
+    "location": "src/lib/cloud-integrations.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "processCodecovWebhook",
+    "location": "src/lib/code-quality.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "fetchCodecovCoverage",
+    "location": "src/lib/code-quality.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "processCoverallsWebhook",
+    "location": "src/lib/code-quality.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "triggerSonarAnalysis",
+    "location": "src/lib/code-quality.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "fetchSonarQubeStatus",
+    "location": "src/lib/code-quality.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "runSnykScan",
+    "location": "src/lib/code-quality.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getSnykVulnerabilities",
+    "location": "src/lib/code-quality.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "checkForConflicts",
+    "location": "src/lib/conflict-automation.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "autoRebaseAfterMerge",
+    "location": "src/lib/conflict-automation.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "suggestResolutionStrategies",
+    "location": "src/lib/conflict-automation.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "updateUserWeeklyMetrics",
+    "location": "src/lib/developer-metrics.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getRepositoryMetrics",
+    "location": "src/lib/developer-metrics.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getUserMetrics",
+    "location": "src/lib/developer-metrics.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "pktLine",
+    "location": "src/lib/git-server.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "flushPkt",
+    "location": "src/lib/git-server.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "downloadRepoFromStorage",
+    "location": "src/lib/git-storage.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "uploadRepoToStorage",
+    "location": "src/lib/git-storage.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "cleanupCache",
+    "location": "src/lib/git-storage.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "isRepoInitialized",
+    "location": "src/lib/git-storage.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getLfsStoragePath",
+    "location": "src/lib/lfs.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "processQueueBatch",
+    "location": "src/lib/merge-queue.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "updateQueuePositions",
+    "location": "src/lib/merge-queue.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "addToUrgentLane",
+    "location": "src/lib/merge-queue.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "handleCIFailure",
+    "location": "src/lib/merge-queue.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getQueueDashboard",
+    "location": "src/lib/merge-queue.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getQueueStats",
+    "location": "src/lib/merge-queue.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getReviewStatus",
+    "location": "src/lib/multi-reviewer.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "addPathPermission",
+    "location": "src/lib/path-scoping.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "removePathPermission",
+    "location": "src/lib/path-scoping.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getRateLimiter",
+    "location": "src/lib/rate-limit.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "registerConnection",
+    "location": "src/lib/realtime.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "unregisterConnection",
+    "location": "src/lib/realtime.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "sendToConnection",
+    "location": "src/lib/realtime.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "sendToUser",
+    "location": "src/lib/realtime.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "broadcastToRepository",
+    "location": "src/lib/realtime.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "broadcastToAll",
+    "location": "src/lib/realtime.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "cleanupStaleConnections",
+    "location": "src/lib/realtime.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "emitPREvent",
+    "location": "src/lib/realtime.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "emitCIEvent",
+    "location": "src/lib/realtime.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "emitQueueEvent",
+    "location": "src/lib/realtime.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "emitNotification",
+    "location": "src/lib/realtime.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getTemplateRepositories",
+    "location": "src/lib/repo-templates.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "setAsTemplate",
+    "location": "src/lib/repo-templates.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getReviewTemplates",
+    "location": "src/lib/review-templates.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getDefaultTemplate",
+    "location": "src/lib/review-templates.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "createReviewTemplate",
+    "location": "src/lib/review-templates.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "updateReviewTemplate",
+    "location": "src/lib/review-templates.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "deleteReviewTemplate",
+    "location": "src/lib/review-templates.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getSlackConfig",
+    "location": "src/lib/slack-notifications.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "sendSlackMessage",
+    "location": "src/lib/slack-notifications.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "notifyMergeQueueStatus",
+    "location": "src/lib/slack-notifications.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "createSSHServer",
+    "location": "src/lib/ssh.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "startSSHServer",
+    "location": "src/lib/ssh.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "validateSSHPublicKey",
+    "location": "src/lib/ssh.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "parseSSHPublicKey",
+    "location": "src/lib/ssh.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "removeFromStack",
+    "location": "src/lib/stacks.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "canStackOn",
+    "location": "src/lib/stacks.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getStackVisualization",
+    "location": "src/lib/stacks.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "autoRebaseStackChildren",
+    "location": "src/lib/stacks.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "mergeStack",
+    "location": "src/lib/stacks.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "detectStackConflicts",
+    "location": "src/lib/stacks.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "uploadFile",
+    "location": "src/lib/storage.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "downloadFile",
+    "location": "src/lib/storage.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getFileAsBase64",
+    "location": "src/lib/storage.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getFileHash",
+    "location": "src/lib/storage.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getSignedDownloadUrl",
+    "location": "src/lib/storage.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "parseSuggestionFromComment",
+    "location": "src/lib/suggested-changes.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "parseSuggestion",
+    "location": "src/lib/suggestions.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "ensureRcloneConfig",
+    "location": "src/lib/sync-storage.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getBranchSyncStatus",
+    "location": "src/lib/sync.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "syncCIStatus",
+    "location": "src/lib/sync.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "syncStackCIStatuses",
+    "location": "src/lib/sync.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "detectLocalStack",
+    "location": "src/lib/sync.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "createStackFromBranches",
+    "location": "src/lib/sync.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getRequiredChecks",
+    "location": "src/lib/ci-gates.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "loadConfig",
+    "location": "src/lib/config.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "parseCrossRepoReferences",
+    "location": "src/lib/cross-repo-issues.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getBlockingIssues",
+    "location": "src/lib/cross-repo-issues.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "isIssueBlocked",
+    "location": "src/lib/cross-repo-issues.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getSanitizedGitEnv",
+    "location": "src/lib/git.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getActualDefaultBranch",
+    "location": "src/lib/git.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "installHooks",
+    "location": "src/lib/git.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "parseOCIManifest",
+    "location": "src/lib/packages-server.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getOrgPermission",
+    "location": "src/lib/permissions.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "canWriteRepoPaths",
+    "location": "src/lib/permissions.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "analyzeComplexity",
+    "location": "src/lib/review/complexity-engine.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "estimateTotalTokens",
+    "location": "src/lib/review/diff-chunker.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "groupChunksByLanguage",
+    "location": "src/lib/review/diff-chunker.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "detectFrameworkFromContent",
+    "location": "src/lib/review/language-detect.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getLanguagesSummary",
+    "location": "src/lib/review/language-detect.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "getDiff",
+    "location": "src/lib/review/pipeline.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "buildGroupReviewPrompt",
+    "location": "src/lib/review/prompts.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "generateAuthnRequestUrl",
+    "location": "src/lib/saml.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "zero-caller-lib-function",
+    "name": "parseSAMLResponse",
+    "location": "src/lib/saml.ts",
+    "detail": "backlog: function exists but not wired to any route/UI; target of wiring phases (WS2/WS4)"
+  },
+  {
+    "kind": "unreferenced-schema-column",
+    "name": "autoMergeRules.lastMatchedAt",
+    "location": "src/db/schema/auto-merge-rules.ts",
+    "detail": "backlog: column never accessed; either dead or pending feature wiring (e.g. scheduledWorkflows)"
+  },
+  {
+    "kind": "unreferenced-schema-column",
+    "name": "autoMergeRules.lastMismatchReason",
+    "location": "src/db/schema/auto-merge-rules.ts",
+    "detail": "backlog: column never accessed; either dead or pending feature wiring (e.g. scheduledWorkflows)"
+  },
+  {
+    "kind": "unreferenced-schema-column",
+    "name": "milestones.closedIssueCount",
+    "location": "src/db/schema/issues.ts",
+    "detail": "backlog: column never accessed; either dead or pending feature wiring (e.g. scheduledWorkflows)"
+  },
+  {
+    "kind": "unreferenced-schema-column",
+    "name": "issueAssignees.assignedAt",
+    "location": "src/db/schema/issues.ts",
+    "detail": "backlog: column never accessed; either dead or pending feature wiring (e.g. scheduledWorkflows)"
+  },
+  {
+    "kind": "unreferenced-schema-column",
+    "name": "issueSubscribers.subscribedAt",
+    "location": "src/db/schema/issues.ts",
+    "detail": "backlog: column never accessed; either dead or pending feature wiring (e.g. scheduledWorkflows)"
+  },
+  {
+    "kind": "unreferenced-schema-column",
+    "name": "pullRequestAssignees.assignedAt",
+    "location": "src/db/schema/pull-requests.ts",
+    "detail": "backlog: column never accessed; either dead or pending feature wiring (e.g. scheduledWorkflows)"
+  },
+  {
+    "kind": "unreferenced-schema-column",
+    "name": "releases.assets",
+    "location": "src/db/schema/repositories.ts",
+    "detail": "backlog: column never accessed; either dead or pending feature wiring (e.g. scheduledWorkflows)"
+  },
+  {
+    "kind": "unreferenced-schema-column",
+    "name": "reviewRequirements.requireTeamLead",
+    "location": "src/db/schema/review-rules.ts",
+    "detail": "backlog: column never accessed; either dead or pending feature wiring (e.g. scheduledWorkflows)"
+  },
+  {
+    "kind": "unreferenced-schema-column",
+    "name": "teams.privacy",
+    "location": "src/db/schema/teams.ts",
+    "detail": "backlog: column never accessed; either dead or pending feature wiring (e.g. scheduledWorkflows)"
+  },
+  {
+    "kind": "unreferenced-schema-column",
+    "name": "users.lastLoginAt",
+    "location": "src/db/schema/users.ts",
+    "detail": "backlog: column never accessed; either dead or pending feature wiring (e.g. scheduledWorkflows)"
+  },
+  {
+    "kind": "unreferenced-schema-column",
+    "name": "gpgKeys.publicKey",
+    "location": "src/db/schema/users.ts",
+    "detail": "backlog: column never accessed; either dead or pending feature wiring (e.g. scheduledWorkflows)"
+  },
+  {
+    "kind": "unreferenced-schema-column",
+    "name": "wikiPages.lastEditorId",
+    "location": "src/db/schema/wiki.ts",
+    "detail": "backlog: column never accessed; either dead or pending feature wiring (e.g. scheduledWorkflows)"
+  },
+  {
+    "kind": "unreferenced-schema-column",
+    "name": "wikiPages.viewCount",
+    "location": "src/db/schema/wiki.ts",
+    "detail": "backlog: column never accessed; either dead or pending feature wiring (e.g. scheduledWorkflows)"
+  },
+  {
+    "kind": "unreferenced-schema-column",
+    "name": "workflowSteps.workingDirectory",
+    "location": "src/db/schema/workflows.ts",
+    "detail": "backlog: column never accessed; either dead or pending feature wiring (e.g. scheduledWorkflows)"
+  },
+  {
+    "kind": "unreferenced-schema-column",
+    "name": "workflowSteps.continueOnError",
+    "location": "src/db/schema/workflows.ts",
+    "detail": "backlog: column never accessed; either dead or pending feature wiring (e.g. scheduledWorkflows)"
+  },
+  {
+    "kind": "unreferenced-schema-column",
+    "name": "workflowSteps.timeoutMinutes",
+    "location": "src/db/schema/workflows.ts",
+    "detail": "backlog: column never accessed; either dead or pending feature wiring (e.g. scheduledWorkflows)"
+  },
+  {
+    "kind": "unreferenced-schema-column",
+    "name": "workflowLogs.logLevel",
+    "location": "src/db/schema/workflows.ts",
+    "detail": "backlog: column never accessed; either dead or pending feature wiring (e.g. scheduledWorkflows)"
+  },
+  {
+    "kind": "unreferenced-schema-column",
+    "name": "scheduledWorkflows.cronExpression",
+    "location": "src/db/schema/workflows.ts",
+    "detail": "backlog: column never accessed; either dead or pending feature wiring (e.g. scheduledWorkflows)"
+  },
+  {
+    "kind": "unreferenced-schema-column",
+    "name": "scheduledWorkflows.lastRunAt",
+    "location": "src/db/schema/workflows.ts",
+    "detail": "backlog: column never accessed; either dead or pending feature wiring (e.g. scheduledWorkflows)"
+  },
+  {
+    "kind": "unreferenced-schema-column",
+    "name": "scheduledWorkflows.nextRunAt",
+    "location": "src/db/schema/workflows.ts",
+    "detail": "backlog: column never accessed; either dead or pending feature wiring (e.g. scheduledWorkflows)"
+  },
+  {
+    "kind": "orphaned-component",
+    "name": "typewriter-effect",
+    "location": "src/components/ui/typewriter-effect.tsx",
+    "detail": "backlog: decorative ui/ library components not yet used; wire or delete"
+  },
+  {
+    "kind": "orphaned-component",
+    "name": "background-gradient",
+    "location": "src/components/ui/background-gradient.tsx",
+    "detail": "backlog: decorative ui/ library components not yet used; wire or delete"
+  },
+  {
+    "kind": "orphaned-component",
+    "name": "bento-grid",
+    "location": "src/components/ui/bento-grid.tsx",
+    "detail": "backlog: decorative ui/ library components not yet used; wire or delete"
+  },
+  {
+    "kind": "orphaned-component",
+    "name": "animated-tooltip",
+    "location": "src/components/ui/animated-tooltip.tsx",
+    "detail": "backlog: decorative ui/ library components not yet used; wire or delete"
+  },
+  {
+    "kind": "orphaned-component",
+    "name": "text-generate-effect",
+    "location": "src/components/ui/text-generate-effect.tsx",
+    "detail": "backlog: decorative ui/ library components not yet used; wire or delete"
+  },
+  {
+    "kind": "orphaned-component",
+    "name": "text-reveal-card",
+    "location": "src/components/ui/text-reveal-card.tsx",
+    "detail": "backlog: decorative ui/ library components not yet used; wire or delete"
+  },
+  {
+    "kind": "orphaned-schema-table",
+    "name": "aiCodebaseContext",
+    "location": "src/db/schema/ai-review-rules.ts",
+    "detail": "backlog: table exists with no code references; pending feature wiring or removal"
+  },
+  {
+    "kind": "orphaned-schema-table",
+    "name": "issueSubscribers",
+    "location": "src/db/schema/issues.ts",
+    "detail": "backlog: table exists with no code references; pending feature wiring or removal"
+  },
+  {
+    "kind": "orphaned-schema-table",
+    "name": "pushSubscriptions",
+    "location": "src/db/schema/notification-preferences.ts",
+    "detail": "backlog: table exists with no code references; pending feature wiring or removal"
+  },
+  {
+    "kind": "orphaned-schema-table",
+    "name": "prStateTransitions",
+    "location": "src/db/schema/pr-states.ts",
+    "detail": "backlog: table exists with no code references; pending feature wiring or removal"
+  },
+  {
+    "kind": "orphaned-schema-table",
+    "name": "repositoryWatchers",
+    "location": "src/db/schema/repositories.ts",
+    "detail": "backlog: table exists with no code references; pending feature wiring or removal"
+  },
+  {
+    "kind": "orphaned-schema-table",
+    "name": "emailVerificationTokens",
+    "location": "src/db/schema/users.ts",
+    "detail": "backlog: table exists with no code references; pending feature wiring or removal"
+  },
+  {
+    "kind": "orphaned-schema-table",
+    "name": "workflowVariables",
+    "location": "src/db/schema/workflows.ts",
+    "detail": "backlog: table exists with no code references; pending feature wiring or removal"
+  },
+  {
+    "kind": "orphaned-schema-table",
+    "name": "scheduledWorkflows",
+    "location": "src/db/schema/workflows.ts",
+    "detail": "backlog: table exists with no code references; pending feature wiring or removal"
+  },
+  {
+    "kind": "orphaned-schema-table",
+    "name": "fileSummaries",
+    "location": "src/db/schema/review-analysis.ts",
+    "detail": "backlog: table exists with no code references; pending feature wiring or removal"
+  },
+  {
+    "kind": "orphaned-schema-table",
+    "name": "aiReviewThreads",
+    "location": "src/db/schema/review-analysis.ts",
+    "detail": "backlog: table exists with no code references; pending feature wiring or removal"
+  }
+]

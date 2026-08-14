@@ -49,6 +49,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
         where: eq(schema.users.id, tokenPayload.userId),
       });
       if (user) {
+        // Preserve fine-grained PAT scopes on locals.user so permission
+        // checks (`canWriteRepo`, etc.) can enforce them.
+        (user as any).scopes = tokenPayload.scopes;
         context.locals.user = user;
       }
       // Populate session for logout and other session-aware handlers

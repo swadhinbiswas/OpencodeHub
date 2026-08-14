@@ -47,11 +47,7 @@
             "integration_id": 15368
           },
           {
-            "context": "Unit Tests (Lane: unit)",
-            "integration_id": 15368
-          },
-          {
-            "context": "Integration Tests (Lane: integration)",
+            "context": "Unit & Integration Tests",
             "integration_id": 15368
           },
           {

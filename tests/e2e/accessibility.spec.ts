@@ -29,6 +29,15 @@ const PUBLIC_PAGES = [
   // /docs/ redirects to external docs.opencodehub.space — skip in CI
 ];
 
+// Authenticated pages (need a seeded user + session; these fail fast with a
+// login redirect otherwise, which is still an a11y-valid page).
+const AUTH_PAGES = [
+  { name: "Dashboard", path: "/dashboard", expectRedirect: true },
+  { name: "Notifications", path: "/notifications", expectRedirect: true },
+  { name: "Settings", path: "/settings/profile", expectRedirect: true },
+  { name: "Organizations", path: "/orgs", expectRedirect: true },
+];
+
 /**
  * Run axe-core on a page and return the results.
  * Tags filter ensures we check WCAG 2.1 AA rules.
@@ -65,6 +74,35 @@ test.describe("Accessibility — WCAG 2.1 AA compliance", () => {
         console.error(`Accessibility violations on ${name}:\n${summary}`);
       }
 
+      expect(
+        critical,
+        `Expected no critical/serious a11y violations on ${name}`,
+      ).toHaveLength(0);
+    });
+  }
+
+  // Authenticated pages: when unauthenticated they redirect to /login
+  // (still axe-scanned); with a session they render the full page. Either
+  // way critical/serious violations must be zero.
+  for (const { name, path } of AUTH_PAGES) {
+    test(`${name} page (${path}) has no critical accessibility violations`, async ({
+      page,
+    }) => {
+      await page.goto(path, { waitUntil: "networkidle" });
+
+      const results = await runAxe(page);
+      const critical = (results.violations as AxeViolation[]).filter(
+        (v: AxeViolation) => v.impact === "critical" || v.impact === "serious",
+      );
+      if (critical.length > 0) {
+        const summary = critical
+          .map(
+            (v: AxeViolation) =>
+              `[${v.impact}] ${v.id}: ${v.description} (${v.nodes.length} occurrences)`,
+          )
+          .join("\n");
+        console.error(`Accessibility violations on ${name}:\n${summary}`);
+      }
       expect(
         critical,
         `Expected no critical/serious a11y violations on ${name}`,

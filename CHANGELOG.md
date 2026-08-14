@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-08-10
+
+### 🛡️ Quality Gates (Phase 0 of production-parity plan)
+- **CI lanes**: Added real `Contract Tests (Lane: contract)` and `Smoke Tests (Lane: smoke)` jobs; branch ruleset now requires job names that exist.
+- **Contract suite**: New `tests/contract/` — pkt-line protocol, webhook HMAC (GitHub-vector pinned), workflow trigger semantics, OpenAPI shape (27 tests).
+- **Smoke suite**: New `tests/smoke/` — boot-critical module wiring (env validation, storage, db, auth, git) (6 tests).
+- **Coverage**: vitest now emits `coverage-summary.json` + `lcov.info`; the CI threshold check is no longer a silent no-op.
+- **Disaster-recovery drills**: Implemented `drill:backup-restore`, `drill:redis`, `drill:postgres` scripts that the weekly-drills workflow was already calling.
+- **Versioning**: Root package unified to 1.1.2 (was 1.0.0), matching the CLI.
+- **GitHub-Actions glob fix**: `**` in branch/path filters now spans directories correctly (previously collapsed to a single level); `on: workflow_dispatch` shorthand triggers now work; `!`-negation in `paths:` filters is honored.
+- **OpenAPI**: Documented previously-missing core paths (`/repos`, `/repos/{owner}/{repo}/issues`, `/issues/{number}`, `/branches`, `/labels`).
+
 ## [1.1.0] - 2026-01-22
 
 ### 📚 Documentation (Major Overhaul)
