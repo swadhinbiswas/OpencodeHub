@@ -49,6 +49,7 @@ export async function mergePullRequest(
     pr.baseBranch,
     pr.headBranch,
     commitTitle,
+    mergeMethod,
   );
 
   if (!mergeResult.success) {

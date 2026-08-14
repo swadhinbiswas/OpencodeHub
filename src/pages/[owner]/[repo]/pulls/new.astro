@@ -242,6 +242,15 @@ const repo = {
                     placeholder="Leave a comment"
                   />
                 </div>
+                <label class="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" id="draft" name="draft" class="h-4 w-4" />
+                  <span>
+                    <span class="font-medium">Create as draft</span>
+                    <span class="text-muted-foreground">
+                      — a draft pull request cannot be merged until marked ready
+                    </span>
+                  </span>
+                </label>
                 <div class="flex justify-end">
                   <Button type="submit" id="create-pr-btn">
                     Create Pull Request
@@ -365,6 +374,7 @@ const repo = {
     const formData = new FormData(form);
     const title = formData.get("title");
     const body = formData.get("body");
+    const draft = formData.get("draft") === "on";
 
     try {
       const res = await fetch(`/api/repos/${repoOwner}/${repoName}/pulls`, {
@@ -375,6 +385,7 @@ const repo = {
           body,
           base: baseBranch,
           head: headBranch,
+          draft,
         }),
       });
 

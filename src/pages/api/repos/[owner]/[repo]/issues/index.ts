@@ -13,6 +13,9 @@ const createIssueSchema = z.object({
   body: z.string().optional(),
   type: z.enum(["issue", "epic", "task"]).optional().default("issue"),
   parentNumber: z.coerce.number().optional(),
+  labels: z.array(z.string()).optional(),
+  assigneeIds: z.array(z.string()).optional(),
+  milestoneId: z.string().nullable().optional(),
 });
 
 import { withErrorHandler } from "@/lib/errors";
@@ -116,6 +119,35 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
     .set({ openIssueCount: sql`${schema.repositories.openIssueCount} + 1` })
     .where(eq(schema.repositories.id, repo.id));
 
+  // Save labels, assignees, milestone (WS2-01/WS2-02 wiring)
+  if (result.data.labels?.length) {
+    await db.insert(schema.issueLabels).values(
+      result.data.labels.map((labelId) => ({
+        id: generateId(),
+        issueId,
+        labelId,
+      })),
+    );
+  }
+  if (result.data.assigneeIds?.length) {
+    await db.insert(schema.issueAssignees).values(
+      result.data.assigneeIds.map((userId) => ({
+        id: generateId(),
+        issueId,
+        userId,
+        assignedAt: new Date(),
+      })),
+    );
+  }
+  if (result.data.milestoneId !== undefined && result.data.milestoneId !== null) {
+    const milestone = await db.query.milestones.findFirst({
+      where: eq(schema.milestones.id, result.data.milestoneId),
+    });
+    if (milestone && milestone.repositoryId === repo.id) {
+      await db.update(schema.issues).set({ milestoneId: milestone.id }).where(eq(schema.issues.id, issueId));
+    }
+  }
+
   logger.info(
     { userId, repoId: repo.id, issueNumber: nextNumber },
     "Issue created",
@@ -155,6 +187,19 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
   } catch (error) {
     logger.warn({ issueId, error }, "Failed to auto-link cross-repo issues");
   }
+
+  // Notify @mentioned users (WS2-10)
+  import("@/lib/mentions").then(({ notifyMentionedUsers }) => {
+    notifyMentionedUsers({
+      text: `${title} ${issueBody || ""}`,
+      actorId: userId,
+      repositoryId: repo.id,
+      subjectType: "issue",
+      subjectId: issueId,
+      url: `/${ownerName}/${repoName}/issues/${nextNumber}`,
+      titlePrefix: "mentioned you in an issue",
+    }).catch((err) => logger.error({ err }, "Mention notification failed"));
+  });
 
   // 6. Save Custom Fields
   const { customFields } = body; // Expecting Record<string, any> where key is fieldId

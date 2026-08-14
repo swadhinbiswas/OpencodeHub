@@ -30,13 +30,61 @@ export function RepoActions({
     const [isStarred, setIsStarred] = React.useState(false);
     const [currentStarCount, setCurrentStarCount] = React.useState(stars);
     const [isStarring, setIsStarring] = React.useState(false);
+    const [isWatching, setIsWatching] = React.useState(false);
+    const [watchLevel, setWatchLevel] = React.useState<string>("watching");
+    const [watchMenuOpen, setWatchMenuOpen] = React.useState(false);
+    const [currentWatchCount, setCurrentWatchCount] = React.useState(watchers);
 
     React.useEffect(() => {
         const starred = localStorage.getItem(`starred_${owner}_${repo}`);
         if (starred === "true") {
             setIsStarred(true);
         }
+        // Load real watch state from the API (WS2-11)
+        fetch(`/api/repos/${owner}/${repo}/subscription`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+                if (data?.data?.watching) {
+                    setIsWatching(true);
+                    setWatchLevel(data.data.watchLevel || "watching");
+                }
+            })
+            .catch(() => {});
     }, [owner, repo]);
+
+    const handleWatch = async (level: string) => {
+        if (!isLoggedIn) {
+            window.location.href = "/login";
+            return;
+        }
+        const wasWatching = isWatching;
+        try {
+            if (wasWatching && level === "watching" && watchLevel === "watching") {
+                // toggle off
+                const res = await fetch(`/api/repos/${owner}/${repo}/subscription`, {
+                    method: "DELETE",
+                });
+                if (res.ok) {
+                    setIsWatching(false);
+                    setCurrentWatchCount((p) => Math.max(0, p - 1));
+                }
+            } else {
+                const res = await fetch(`/api/repos/${owner}/${repo}/subscription`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ watchLevel: level }),
+                });
+                if (res.ok) {
+                    if (!wasWatching) setCurrentWatchCount((p) => p + 1);
+                    setIsWatching(true);
+                    setWatchLevel(level);
+                }
+            }
+        } catch (e) {
+            console.error("Watch error:", e);
+        }
+        setWatchMenuOpen(false);
+    };
 
     const handleStar = async () => {
         if (isStarring) return;
@@ -99,26 +147,54 @@ export function RepoActions({
 
     return (
         <div className="flex items-center gap-2 flex-wrap">
-            {/* Watch */}
-            <div className="flex items-center rounded-lg border bg-background overflow-hidden shadow-sm">
+            {/* Watch (WS2-11) */}
+            <div className="relative flex items-center rounded-lg border bg-background overflow-hidden shadow-sm">
                 <Button
                     variant="ghost"
                     size="sm"
+                    onClick={() => handleWatch(watchLevel)}
                     className="rounded-none border-r px-3 hover:bg-muted"
                 >
-                    <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
-                    Watch
+                    <Eye className={`mr-2 h-4 w-4 ${isWatching ? "text-cyan-400" : "text-muted-foreground"}`} />
+                    {isWatching ? "Watching" : "Watch"}
                     <span className="ml-2 rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-xs font-medium">
-                        {watchers}
+                        {currentWatchCount}
                     </span>
                 </Button>
                 <Button
                     variant="ghost"
                     size="sm"
+                    onClick={() => setWatchMenuOpen((o) => !o)}
                     className="px-2 rounded-none hover:bg-muted"
                 >
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 </Button>
+                {watchMenuOpen && (
+                    <div className="absolute right-0 top-full mt-1 z-50 w-56 rounded-md border bg-background shadow-lg py-1">
+                        {[
+                            { value: "watching", label: "Watching", desc: "Notifications on all activity" },
+                            { value: "releases_only", label: "Releases only", desc: "Notifications on new releases" },
+                            { value: "ignoring", label: "Ignoring", desc: "Never notify me" },
+                        ].map((opt) => (
+                            <button
+                                key={opt.value}
+                                onClick={() => handleWatch(opt.value)}
+                                className={`w-full text-left px-3 py-2 hover:bg-muted text-sm ${watchLevel === opt.value && isWatching ? "text-cyan-400" : ""}`}
+                            >
+                                <span className="block font-medium">{opt.label}</span>
+                                <span className="block text-xs text-muted-foreground">{opt.desc}</span>
+                            </button>
+                        ))}
+                        {isWatching && (
+                            <button
+                                onClick={() => handleWatch("ignoring").then(() => {})}
+                                className="w-full text-left px-3 py-2 hover:bg-muted text-sm text-red-400"
+                            >
+                                Unwatch
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Fork */}

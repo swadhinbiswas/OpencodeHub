@@ -51,7 +51,7 @@ const issue = await db.query.issues.findFirst({
 
 if (!issue) return Astro.redirect("/404");
 
-const canLink = await canWriteRepo(currentUser?.id, repoData);
+const canLink = await canWriteRepo(currentUser?.id, repoData, { isAdmin: currentUser?.isAdmin ?? undefined });
 
 const bodyHtml = await renderMarkdown(issue.body || "");
 
@@ -148,6 +148,7 @@ const formattedIssue = {
       repoOwner={ownerName!}
       repoName={repoName!}
       canLink={canLink}
+      canEdit={canLink}
     />
   </div>
 </BaseLayout>
