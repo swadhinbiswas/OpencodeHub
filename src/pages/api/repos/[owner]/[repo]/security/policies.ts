@@ -68,7 +68,7 @@ export const PUT: APIRoute = withErrorHandler(async ({ locals, params, request }
 
   const resolved = await resolveRepo(ownerName, repoName);
   if (!resolved?.repo) return notFound("Repository not found");
-  if (!(await canWriteRepo(user.id, resolved.repo))) return forbidden();
+  if (!(await canWriteRepo(user.id, resolved.repo, { tokenScopes: user.scopes }))) return forbidden();
 
   const body = await request.json();
   const parsed = PolicySchema.safeParse(body);

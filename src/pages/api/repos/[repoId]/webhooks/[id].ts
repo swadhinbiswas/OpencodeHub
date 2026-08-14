@@ -24,7 +24,7 @@ export const DELETE: APIRoute = withErrorHandler(async ({ params, locals }) => {
     });
 
     if (!repo) return notFound("Not Found");
-    if (!await canWriteRepo(user.id, repo)) return forbidden();
+    if (!await canWriteRepo(user.id, repo, { tokenScopes: user.scopes })) return forbidden();
 
     const webhook = await db.query.webhooks.findFirst({
         where: and(

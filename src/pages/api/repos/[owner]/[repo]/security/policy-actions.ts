@@ -58,7 +58,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals, request 
 
   const resolved = await resolveRepo(ownerName, repoName);
   if (!resolved?.repo) return notFound("Repository not found");
-  if (!(await canWriteRepo(user.id, resolved.repo))) return forbidden();
+  if (!(await canWriteRepo(user.id, resolved.repo, { tokenScopes: user.scopes }))) return forbidden();
 
   const policy = await getRepositorySecurityPolicy(resolved.repo.id);
   const value = parsed.data.value.trim();

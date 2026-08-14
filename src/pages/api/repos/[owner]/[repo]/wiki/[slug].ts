@@ -102,3 +102,42 @@ export const PATCH: APIRoute = async ({ request, params }) => {
         return serverError("Failed to update wiki page");
     }
 };
+
+// DELETE: Delete a wiki page (WS2-14)
+export const DELETE: APIRoute = async ({ request, params }) => {
+    try {
+        const { owner, repo, slug } = params;
+        if (!owner || !repo || !slug) return badRequest("Missing parameters");
+
+        const user = await getUserFromRequest(request);
+        if (!user) return unauthorized();
+
+        const db = getDatabase() as NodePgDatabase<typeof schema>;
+        const repoData = await getRepoAndUser(request, owner, repo);
+
+        if (!repoData) return notFound("Repository not found");
+        if (repoData.permission !== "admin" && repoData.permission !== "write") {
+            return unauthorized("Write access required");
+        }
+
+        const page = await db.query.wikiPages.findFirst({
+            where: and(
+                eq(wikiPages.repositoryId, repoData.repository.id),
+                eq(wikiPages.slug, slug)
+            )
+        });
+
+        if (!page) return notFound("Wiki page not found");
+
+        // Revisions are cascade-deleted with the page
+        await db.delete(wikiPages).where(eq(wikiPages.id, page.id));
+
+        logger.info({ userId: user.userId, pageId: page.id }, "Wiki page deleted");
+
+        return success({ message: "Page deleted successfully" });
+
+    } catch (error) {
+        logger.error({ err: error }, "Failed to delete wiki page");
+        return serverError("Failed to delete wiki page");
+    }
+};

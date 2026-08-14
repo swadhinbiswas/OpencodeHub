@@ -153,7 +153,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
         return notFound("Repository not found");
     }
 
-    if (state !== "COMMENTED" && !(await canWriteRepo(user.id, repo))) {
+    if (state !== "COMMENTED" && !(await canWriteRepo(user.id, repo, { tokenScopes: user.scopes }))) {
         return forbidden("Write access required to approve or request changes");
     }
 

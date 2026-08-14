@@ -52,13 +52,13 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
         return notFound("Repository not found");
     }
 
-    if (!(await canWriteRepo(user.id, repo, { isAdmin: user.isAdmin }))) {
+    if (!(await canWriteRepo(user.id, repo, { isAdmin: user.isAdmin, tokenScopes: user.scopes }))) {
         return forbidden();
     }
 
     // Parse body
     const body = await request.json();
-    const { title, body: description, base, head } = body;
+    const { title, body: description, base, head, draft } = body;
 
     if (!title || !base || !head) {
         return badRequest("Missing required fields");
@@ -145,6 +145,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
         title: cleanTitle,
         body: cleanBody,
         state: "open",
+        isDraft: draft === true,
         authorId: user.id,
         headBranch: head,
         headSha: headCommit.sha,
@@ -219,6 +220,19 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
     }
 
     logger.info({ userId: user.id, repoId: repo.id, prNumber: number }, "Pull request created");
+
+    // Notify @mentioned users (WS2-10)
+    import("@/lib/mentions").then(({ notifyMentionedUsers }) => {
+      notifyMentionedUsers({
+        text: `${cleanTitle} ${cleanBody}`,
+        actorId: user.id,
+        repositoryId: repo.id,
+        subjectType: "pull_request",
+        subjectId: prId,
+        url: `/${ownerName}/${repoName}/pulls/${number}`,
+        titlePrefix: "mentioned you in a pull request",
+      }).catch((err) => logger.error({ err }, "Mention notification failed"));
+    });
 
     // Send email notification to repo owner
     if (repoOwner.email && repoOwner.id !== user.id) {

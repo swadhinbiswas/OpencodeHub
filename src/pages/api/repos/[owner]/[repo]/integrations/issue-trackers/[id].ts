@@ -64,7 +64,7 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request }) => {
   const repository = await resolveRepository(owner, repoName);
   if (!repository) return notFound("Repository not found");
 
-  if (!(await canWriteRepo(user.userId, repository, { isAdmin: user.isAdmin }))) {
+  if (!(await canWriteRepo(user.userId, repository, { isAdmin: user.isAdmin, tokenScopes: user.scopes }))) {
     return forbidden();
   }
 
@@ -125,7 +125,7 @@ export const DELETE: APIRoute = withErrorHandler(async ({ params, request }) => 
   const repository = await resolveRepository(owner, repoName);
   if (!repository) return notFound("Repository not found");
 
-  if (!(await canWriteRepo(user.userId, repository, { isAdmin: user.isAdmin }))) {
+  if (!(await canWriteRepo(user.userId, repository, { isAdmin: user.isAdmin, tokenScopes: user.scopes }))) {
     return forbidden();
   }
 

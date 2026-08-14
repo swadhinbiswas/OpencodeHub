@@ -26,9 +26,15 @@ const createCommentSchema = z.object({
     suggestionContent: z.string().optional(),
 });
 
-const updateCommentSchema = z.object({
-    body: z.string().min(1),
-});
+const updateCommentSchema = z
+  .object({
+    body: z.string().min(1).optional(),
+    // WS2-09: review threads can now be resolved/unresolved
+    resolved: z.boolean().optional(),
+  })
+  .refine((d) => d.body !== undefined || d.resolved !== undefined, {
+    message: "body or resolved must be provided",
+  });
 
 import { withErrorHandler } from "@/lib/errors";
 import { logger } from "@/lib/logger";
@@ -212,6 +218,19 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
 
     logger.info({ userId: tokenPayload.userId, repoId: pr.repository.id, prId: pr.id, commentId }, "PR comment created");
 
+    // Notify @mentioned users (WS2-10)
+    import("@/lib/mentions").then(({ notifyMentionedUsers }) => {
+      notifyMentionedUsers({
+        text: body,
+        actorId: tokenPayload.userId,
+        repositoryId: pr.repository.id,
+        subjectType: "comment",
+        subjectId: commentId,
+        url: `/${owner}/${repo}/pulls/${number}#comment-${commentId}`,
+        titlePrefix: "mentioned you in a comment",
+      }).catch((err) => logger.error({ err }, "Mention notification failed"));
+    });
+
     return success({ comment, message: "Comment created" });
 });
 
@@ -250,8 +269,9 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request }) => {
         return notFound("Comment not found");
     }
 
-    // Check ownership
-    if (comment.authorId !== tokenPayload.userId) {
+    // Check ownership (only required for content edits; resolving a thread
+    // is allowed for anyone with write access, matching GitHub semantics)
+    if (parsed.data.body !== undefined && comment.authorId !== tokenPayload.userId) {
         return unauthorized("Not your comment");
     }
 
@@ -268,13 +288,16 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request }) => {
     }
 
     // Update
+    const commentUpdate: any = { isEdited: true, editedAt: new Date() };
+    if (parsed.data.body !== undefined) commentUpdate.body = parsed.data.body;
+    if (parsed.data.resolved !== undefined) {
+        commentUpdate.isResolved = parsed.data.resolved;
+        commentUpdate.resolvedById = parsed.data.resolved ? tokenPayload.userId : null;
+        commentUpdate.resolvedAt = parsed.data.resolved ? new Date() : null;
+    }
     await db
         .update(schema.pullRequestComments)
-        .set({
-            body: parsed.data.body,
-            isEdited: true,
-            editedAt: new Date(),
-        })
+        .set(commentUpdate)
         .where(eq(schema.pullRequestComments.id, commentId as string));
 
     logger.info({ userId: tokenPayload.userId, commentId }, "PR comment updated");
