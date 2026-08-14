@@ -2,7 +2,7 @@
 import RepoHeader from "@/components/repo/RepoHeader.astro";
 import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import { canReadRepo } from "@/lib/permissions";
+import { canReadRepo, canWriteRepo } from "@/lib/permissions";
 import { and, eq, desc } from "drizzle-orm";
 import { marked } from "marked";
 
@@ -31,6 +31,9 @@ if (!repoData) return Astro.redirect("/404");
 // Check permissions
 const currentUser = Astro.locals.user;
 const hasAccess = await canReadRepo(currentUser?.id, repoData);
+const canEdit =
+  !!currentUser &&
+  (await canWriteRepo(currentUser.id, repoData, { isAdmin: currentUser.isAdmin ?? undefined }));
 
 if (!hasAccess) {
     return Astro.redirect("/404");
@@ -178,6 +181,14 @@ if (!currentPage) {
                                     {currentPage.title}
                                 </h1>
                                 <div class="flex gap-2">
+                                    {canEdit && (
+                                        <button
+                                            id="wiki-delete-btn"
+                                            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-red-500/20 bg-red-500/5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                                        >
+                                            Delete
+                                        </button>
+                                    )}
                                     <a
                                         href={`/${repo.owner}/${repo.name}/wiki/edit/${currentPage.slug}`}
                                         class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-secondary text-sm text-muted-foreground hover:bg-secondary/80 transition-colors"
@@ -218,14 +229,32 @@ if (!currentPage) {
                                     </a>
                                 </div>
                             </div>
-                            <div
-                                class="p-6 prose prose-invert prose-sm max-w-none prose-p:text-muted-foreground prose-headings:text-foreground prose-a:text-blue-400 prose-code:text-pink-400"
-                                set:html={contentHtml}
-                            />
-                        </div>
+                        <div
+                            class="p-6 prose prose-invert prose-sm max-w-none prose-p:text-muted-foreground prose-headings:text-foreground prose-a:text-blue-400 prose-code:text-pink-400"
+                            set:html={contentHtml}
+                        />
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </BaseLayout>
+
+<script>
+  const deleteBtn = document.getElementById("wiki-delete-btn");
+  deleteBtn?.addEventListener("click", async () => {
+    if (!confirm("Delete this wiki page? This cannot be undone.")) return;
+    const parts = window.location.pathname.split("/wiki/");
+    const slug = parts[1] || "";
+    try {
+      const res = await fetch(
+        `/api/repos/${window.location.pathname.split("/")[1]}/${window.location.pathname.split("/")[2]}/wiki/${slug}`,
+        { method: "DELETE" },
+      );
+      if (!res.ok) throw new Error("Failed to delete page");
+      window.location.href = `/${window.location.pathname.split("/")[1]}/${window.location.pathname.split("/")[2]}/wiki`;
+    } catch (e) {
+      alert("Failed to delete page: " + (e instanceof Error ? e.message : String(e)));
+    }
+  });
+</script>

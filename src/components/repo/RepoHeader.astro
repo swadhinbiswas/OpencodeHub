@@ -9,6 +9,9 @@ import {
   Layout,
   PlayCircle,
   Book,
+  Tag,
+  Package,
+  GitBranch,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { RepoActions } from "@/components/repo/RepoActions";
@@ -40,6 +43,9 @@ interface Props {
     | "issues"
     | "pulls"
     | "actions"
+    | "releases"
+    | "packages"
+    | "branches"
     | "projects"
     | "wiki"
     | "security"
@@ -95,6 +101,24 @@ const tabs = [
     label: "Actions",
     icon: PlayCircle,
     href: `/${repo.owner}/${repo.name}/actions`,
+  },
+  {
+    id: "releases",
+    label: "Releases",
+    icon: Tag,
+    href: `/${repo.owner}/${repo.name}/releases`,
+  },
+  {
+    id: "packages",
+    label: "Packages",
+    icon: Package,
+    href: `/${repo.owner}/${repo.name}/packages`,
+  },
+  {
+    id: "branches",
+    label: "Branches",
+    icon: GitBranch,
+    href: `/${repo.owner}/${repo.name}/branches`,
   },
   {
     id: "projects",

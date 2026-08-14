@@ -13,6 +13,12 @@ export const typeDefs = /* GraphQL */ `
     
     # Repository queries  
     repository(owner: String!, name: String!): Repository
+
+    # Issue queries (WS5-02)
+    issue(owner: String!, repo: String!, number: Int!): Issue
+
+    # Organization queries (WS5-02)
+    organization(login: String!): Organization
     
     # Search
     search(query: String!, type: SearchType!, first: Int = 10, after: String): SearchConnection!
@@ -25,12 +31,20 @@ export const typeDefs = /* GraphQL */ `
     # Pull request mutations
     createPullRequest(input: CreatePullRequestInput!): CreatePullRequestPayload!
     mergePullRequest(input: MergePullRequestInput!): MergePullRequestPayload!
+    updatePullRequest(input: UpdatePullRequestInput!): UpdatePullRequestPayload!
     
     # Review mutations
     addPullRequestReview(input: AddPullRequestReviewInput!): AddPullRequestReviewPayload!
     
     # Comment mutations
     addComment(input: AddCommentInput!): AddCommentPayload!
+
+    # Issue mutations (WS5-02)
+    createIssue(input: CreateIssueInput!): CreateIssuePayload!
+    updateIssue(input: UpdateIssueInput!): UpdateIssuePayload!
+
+    # Labels (WS5-02)
+    addLabels(input: AddLabelsInput!): AddLabelsPayload!
   }
 
   enum SearchType {
@@ -457,6 +471,36 @@ export const typeDefs = /* GraphQL */ `
     body: String!
   }
 
+  # ============ Issue Mutations (WS5-02) ============
+  input CreateIssueInput {
+    repositoryId: ID!
+    title: String!
+    body: String
+    labelIds: [ID!]
+    assigneeIds: [ID!]
+    milestoneId: ID
+  }
+
+  input UpdateIssueInput {
+    issueId: ID!
+    title: String
+    body: String
+    state: IssueState
+    milestoneId: ID
+  }
+
+  input UpdatePullRequestInput {
+    pullRequestId: ID!
+    title: String
+    body: String
+    draft: Boolean
+  }
+
+  input AddLabelsInput {
+    subjectId: ID!
+    labelIds: [ID!]!
+  }
+
   # ============ Payload Types ============
   type CreateRepositoryPayload {
     repository: Repository
@@ -482,4 +526,26 @@ export const typeDefs = /* GraphQL */ `
     comment: Comment
     clientMutationId: String
   }
+
+  type CreateIssuePayload {
+    issue: Issue
+    clientMutationId: String
+  }
+
+  type UpdateIssuePayload {
+    issue: Issue
+    clientMutationId: String
+  }
+
+  type UpdatePullRequestPayload {
+    pullRequest: PullRequest
+    clientMutationId: String
+  }
+
+  type AddLabelsPayload {
+    subject: AddLabelsSubject
+    clientMutationId: String
+  }
+
+  union AddLabelsSubject = Issue | PullRequest
 `;
