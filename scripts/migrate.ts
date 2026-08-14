@@ -14,7 +14,7 @@ import { config } from "dotenv";
 import Database from "better-sqlite3";
 import pg from "pg";
 
-config({ override: true });
+config();
 
 async function run() {
   const driver = process.env.DATABASE_DRIVER || "postgres";
