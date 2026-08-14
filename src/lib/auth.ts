@@ -5,7 +5,7 @@
 
 import { getDatabase, schema } from "@/db";
 import { logger } from "@/lib/logger";
-import { getRepoPermission } from "@/lib/permissions";
+import { getRepoPermission, getOrgPermission, type PermissionLevel } from "@/lib/permissions";
 import {
   hashPersonalAccessToken,
   verifyPersonalAccessTokenValue,
@@ -24,6 +24,8 @@ export interface TokenPayload extends JWTPayload {
   email: string;
   isAdmin?: boolean;
   sessionId?: string;
+  /** Fine-grained PAT scopes (empty/undefined = full access for legacy tokens) */
+  scopes?: string[];
 }
 
 export interface SessionData {
@@ -342,6 +344,9 @@ async function verifyPersonalAccessToken(
       username: pat.user.username,
       email: pat.user.email,
       isAdmin: pat.user.isAdmin || false,
+      // Fine-grained scopes: JSON array stored on the token row.
+      // Legacy tokens (null) remain full-access.
+      scopes: pat.scopes ? JSON.parse(pat.scopes) : undefined,
     };
   } catch (error) {
     logger.error("PAT verification error:", error);
@@ -378,12 +383,53 @@ export async function getRepoAndUser(
   const tokenUser = await getUserFromRequest(request);
   const userId = tokenUser?.userId;
 
-  // 1. Get Repo Owner
+  // 1. Get Repo Owner (user OR organization)
   const repoOwner = await db.query.users.findFirst({
     where: eq(schema.users.username, ownerName),
   });
 
-  if (!repoOwner) return null;
+  if (!repoOwner) {
+    // Org-owned repos (ownerType='organization', ownerId=org.id) must be
+    // resolvable by their org name — previously they 404'd everywhere
+    const org = await db.query.organizations.findFirst({
+      where: eq(schema.organizations.name, ownerName),
+    });
+    if (!org) return null;
+
+    const orgRepository = await db.query.repositories.findFirst({
+      where: and(
+        eq(schema.repositories.ownerId, org.id),
+        eq(schema.repositories.ownerType, "organization"),
+        eq(schema.repositories.name, repoName),
+      ),
+    });
+    if (!orgRepository) return null;
+
+    const orgPermission = await getOrgPermission(userId, org.id, {
+      isAdmin: tokenUser?.isAdmin,
+    });
+    const permission: PermissionLevel =
+      orgPermission === "owner" || orgPermission === "admin"
+        ? "admin"
+        : orgPermission === "member"
+          ? "write"
+          : orgRepository.visibility === "public"
+            ? "read"
+            : "none";
+    if (permission === "none") return null;
+
+    const requester = userId
+      ? await db.query.users.findFirst({
+          where: eq(schema.users.id, userId),
+        })
+      : null;
+
+    return {
+      repository: orgRepository,
+      user: requester,
+      permission,
+    };
+  }
 
   // 2. Get Repository
   const repository = await db.query.repositories.findFirst({

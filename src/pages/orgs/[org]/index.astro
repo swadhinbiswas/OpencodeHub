@@ -1,0 +1,131 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, and, desc } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { getOrgPermission } from "@/lib/permissions";
+
+const { org: orgName } = Astro.params;
+const db = getDatabase() as NodePgDatabase<typeof schema>;
+
+const organization = await db.query.organizations.findFirst({
+  where: eq(schema.organizations.name, orgName!),
+});
+if (!organization) return Astro.redirect("/404");
+
+const currentUser = Astro.locals.user;
+const permission = currentUser
+  ? await getOrgPermission(currentUser.id, organization.id)
+  : "none";
+
+// Public members list
+const members = await db.query.organizationMembers.findMany({
+  where: eq(schema.organizationMembers.organizationId, organization.id),
+  with: { user: true },
+  orderBy: [desc(schema.organizationMembers.createdAt)],
+});
+
+// Org repositories (org-owned repos: ownerType=organization, ownerId=org.id)
+const repos = await db.query.repositories.findMany({
+  where: and(
+    eq(schema.repositories.ownerType, "organization"),
+    eq(schema.repositories.ownerId, organization.id),
+    permission === "none"
+      ? eq(schema.repositories.visibility, "public")
+      : undefined!,
+  ),
+  orderBy: [desc(schema.repositories.updatedAt)],
+});
+---
+
+<BaseLayout title={`${organization.displayName || organization.name} · OpenCodeHub`}>
+  <div class="container max-w-[1280px] py-8 px-4 sm:px-6">
+    <!-- Org header -->
+    <div class="border rounded-lg bg-card p-6 mb-8">
+      <div class="flex items-start gap-4">
+        <div class="h-20 w-20 rounded-xl bg-muted flex items-center justify-center text-3xl font-semibold border overflow-hidden">
+          {organization.avatarUrl ? (
+            <img src={organization.avatarUrl} alt={organization.name} class="w-full h-full object-cover" />
+          ) : (
+            <span class="text-muted-foreground">{organization.name[0]?.toUpperCase()}</span>
+          )}
+        </div>
+        <div class="flex-1 min-w-0">
+          <h1 class="text-2xl font-semibold">{organization.displayName || organization.name}</h1>
+          <p class="text-muted-foreground">@{organization.name}</p>
+          {organization.description && (
+            <p class="mt-2 text-sm">{organization.description}</p>
+          )}
+          <div class="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-sm text-muted-foreground">
+            {organization.location && <span>{organization.location}</span>}
+            {organization.website && (
+              <a href={organization.website} class="text-cyan-400 hover:underline" target="_blank">
+                {organization.website}
+              </a>
+            )}
+            <span>{members.length} members</span>
+            <span>{repos.length} repositories</span>
+          </div>
+        </div>
+        {permission === "owner" || permission === "admin" ? (
+          <a
+            href={`/orgs/${organization.name}/settings`}
+            class="rounded-md border bg-background px-3 py-2 text-sm hover:bg-muted transition-colors"
+          >
+            Settings
+          </a>
+        ) : null}
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <!-- Repositories -->
+      <div class="lg:col-span-2 space-y-3">
+        <h2 class="text-lg font-medium">Repositories</h2>
+        {repos.length === 0 && (
+          <p class="text-sm text-muted-foreground border rounded-lg p-8 text-center">
+            No repositories yet{permission !== "none" ? " — create or transfer one to this organization" : ""}.
+          </p>
+        )}
+        {repos.map((repo) => (
+          <a
+            href={`/${organization.name}/${repo.name}`}
+            class="block border rounded-lg p-4 hover:bg-muted/40 transition-colors"
+          >
+            <div class="flex items-center justify-between">
+              <span class="font-medium text-cyan-400">{repo.name}</span>
+              <span class="text-xs text-muted-foreground">{repo.visibility}</span>
+            </div>
+            {repo.description && <p class="text-sm text-muted-foreground mt-1">{repo.description}</p>}
+            <div class="flex gap-4 mt-2 text-xs text-muted-foreground">
+              <span>{repo.language || "N/A"}</span>
+              <span>{(repo as any).stars || 0} stars</span>
+            </div>
+          </a>
+        ))}
+      </div>
+
+      <!-- Members -->
+      <div class="space-y-3">
+        <h2 class="text-lg font-medium">Members</h2>
+        <div class="border rounded-lg divide-y">
+          {members.map((m) => (
+            <a href={`/${m.user.username}`} class="flex items-center gap-3 p-3 hover:bg-muted/40">
+              <div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold border">
+                {m.user.avatarUrl ? (
+                  <img src={m.user.avatarUrl} alt="" class="w-full h-full rounded-full object-cover" />
+                ) : (
+                  m.user.username[0]?.toUpperCase()
+                )}
+              </div>
+              <div class="flex-1 min-w-0">
+                <span class="block text-sm font-medium truncate">{m.user.username}</span>
+              </div>
+              <span class="text-xs text-muted-foreground capitalize">{m.role}</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

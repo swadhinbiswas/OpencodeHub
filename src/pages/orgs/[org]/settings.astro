@@ -1,0 +1,393 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, desc } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { getOrgPermission } from "@/lib/permissions";
+
+const { org: orgName } = Astro.params;
+const db = getDatabase() as NodePgDatabase<typeof schema>;
+const user = Astro.locals.user;
+
+const organization = await db.query.organizations.findFirst({
+  where: eq(schema.organizations.name, orgName!),
+});
+if (!organization) return Astro.redirect("/404");
+
+const permission = user
+  ? await getOrgPermission(user.id, organization.id)
+  : "none";
+if (permission !== "owner" && permission !== "admin") return Astro.redirect(`/orgs/${orgName}`);
+
+const members = await db.query.organizationMembers.findMany({
+  where: eq(schema.organizations.id, organization.id),
+  with: { user: true },
+  orderBy: [desc(schema.organizationMembers.createdAt)],
+});
+---
+
+<BaseLayout title={`Settings · ${organization.name} · OpenCodeHub`}>
+  <div class="container max-w-[900px] py-8 px-4 sm:px-6">
+    <h1 class="text-2xl font-semibold mb-6">Organization settings</h1>
+
+    <div class="border rounded-lg p-5 bg-card space-y-3 mb-8">
+      <h2 class="font-medium">Profile</h2>
+      <input
+        id="org-display"
+        value={organization.displayName || ""}
+        placeholder="Display name"
+        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+      />
+      <textarea
+        id="org-desc"
+        rows="3"
+        placeholder="Description"
+        class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+      >{organization.description || ""}</textarea>
+      <input
+        id="org-website"
+        value={organization.website || ""}
+        placeholder="Website"
+        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+      />
+      <input
+        id="org-location"
+        value={organization.location || ""}
+        placeholder="Location"
+        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+      />
+      <div class="flex items-center gap-2">
+        <button
+          id="org-save"
+          class="rounded-md bg-cyan-500/90 hover:bg-cyan-500 text-foreground px-4 py-2 text-sm font-medium"
+        >
+          Save changes
+        </button>
+        <span id="org-save-msg" class="text-sm text-green-500 hidden">Saved</span>
+      </div>
+    </div>
+
+    <div class="border rounded-lg p-5 bg-card space-y-3 mb-8">
+      <h2 class="font-medium">Invite members</h2>
+      <div class="flex gap-2">
+        <input
+          id="invite-username"
+          placeholder="Username"
+          class="flex h-10 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+        />
+        <input
+          id="invite-email"
+          placeholder="Email (optional)"
+          class="flex h-10 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+        />
+        <select id="invite-role" class="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm">
+          <option value="member">Member</option>
+          <option value="admin">Admin</option>
+        </select>
+        <button
+          id="invite-btn"
+          class="rounded-md bg-cyan-500/90 hover:bg-cyan-500 text-foreground px-4 py-2 text-sm font-medium"
+        >
+          Invite
+        </button>
+      </div>
+      <div id="invite-msg" class="text-sm hidden"></div>
+      <div id="pending-invites" class="space-y-1.5"></div>
+    </div>
+
+    <div class="border rounded-lg p-5 bg-card space-y-3">
+      <h2 class="font-medium">SAML SSO</h2>
+      <p class="text-xs text-muted-foreground">
+        SP metadata: <code class="bg-secondary rounded px-1.5 py-0.5" id="saml-metadata-url"></code>
+      </p>
+      <input
+        id="saml-entity"
+        placeholder="IdP Entity ID"
+        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+      />
+      <input
+        id="saml-sso-url"
+        placeholder="IdP SSO URL"
+        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+      />
+      <textarea
+        id="saml-cert"
+        rows="4"
+        placeholder="IdP X.509 certificate (PEM)"
+        class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+      ></textarea>
+      <label class="flex items-center gap-2 text-sm">
+        <input type="checkbox" id="saml-enabled" class="h-4 w-4" />
+        Enabled
+      </label>
+      <div class="flex items-center gap-2">
+        <button
+          id="saml-save"
+          class="rounded-md bg-cyan-500/90 hover:bg-cyan-500 text-foreground px-4 py-2 text-sm font-medium"
+        >
+          Save SAML config
+        </button>
+        <span id="saml-msg" class="text-sm hidden"></span>
+      </div>
+      <p class="text-xs text-muted-foreground">
+        Member sign-in URL:
+        <code class="bg-secondary rounded px-1.5 py-0.5" id="saml-login-url"></code>
+      </p>
+    </div>
+
+    <div class="border rounded-lg p-5 bg-card space-y-3">
+      <h2 class="font-medium">Teams</h2>
+      <div class="flex gap-2">
+        <input
+          id="team-name"
+          placeholder="Team name"
+          class="flex h-10 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+        />
+        <button
+          id="team-create"
+          class="rounded-md bg-cyan-500/90 hover:bg-cyan-500 text-foreground px-4 py-2 text-sm font-medium"
+        >
+          Create team
+        </button>
+      </div>
+      <div id="teams-list" class="space-y-2"></div>
+    </div>
+
+    <div class="border rounded-lg p-5 bg-card space-y-3">
+      <h2 class="font-medium">Members</h2>
+      <div class="divide-y">
+        {members.map((m) => (
+          <div class="flex items-center gap-3 py-2.5">
+            <div class="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold border">
+              {m.user.username[0]?.toUpperCase()}
+            </div>
+            <div class="flex-1 min-w-0">
+              <span class="block text-sm font-medium truncate">{m.user.username}</span>
+            </div>
+            <span class="text-xs text-muted-foreground capitalize">{m.role}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const saveBtn = document.getElementById("org-save");
+    const orgName = window.location.pathname.split("/")[2];
+
+    // ── Invites (WS3-02) ───────────────────────────────────────────────
+    const inviteBtn = document.getElementById("invite-btn");
+    const inviteMsg = document.getElementById("invite-msg");
+
+    function showMsg(text: string, isError: boolean) {
+      if (!inviteMsg) return;
+      inviteMsg.textContent = text;
+      inviteMsg.className = "text-sm " + (isError ? "text-red-500" : "text-green-500");
+    }
+
+    async function loadPendingInvites() {
+      try {
+        const res = await fetch(`/api/orgs/${orgName}/invites`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const container = document.getElementById("pending-invites");
+        if (!container) return;
+        const invites = data.data?.invites || [];
+        container.innerHTML = "";
+        for (const invite of invites) {
+          const row = document.createElement("div");
+          row.className = "flex items-center justify-between text-sm border rounded-md px-3 py-2";
+          const label = document.createElement("span");
+          label.textContent = `Pending: ${invite.email || invite.id} (${invite.role})`;
+          const revoke = document.createElement("button");
+          revoke.textContent = "Revoke";
+          revoke.className = "text-xs text-red-400 hover:underline";
+          revoke.onclick = async () => {
+            await fetch(`/api/orgs/${orgName}/invites/${invite.id}`, { method: "DELETE" });
+            loadPendingInvites();
+          };
+          row.appendChild(label);
+          row.appendChild(revoke);
+          container.appendChild(row);
+        }
+      } catch {
+        /* invites optional */
+      }
+    }
+
+    inviteBtn?.addEventListener("click", async () => {
+      const usernameInput = document.getElementById("invite-username");
+      const emailInput = document.getElementById("invite-email");
+      const roleInput = document.getElementById("invite-role");
+      const username = usernameInput instanceof HTMLInputElement ? usernameInput.value : "";
+      const email = emailInput instanceof HTMLInputElement ? emailInput.value : "";
+      const role = roleInput instanceof HTMLSelectElement ? roleInput.value : "member";
+      try {
+        const res = await fetch(`/api/orgs/${orgName}/invites`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, email, role }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error?.message || "Failed to invite");
+        showMsg("Invitation sent: " + data.data.invite.acceptUrl, false);
+        loadPendingInvites();
+      } catch (e) {
+        showMsg(e instanceof Error ? e.message : String(e), true);
+      }
+    });
+
+    loadPendingInvites();
+
+    // ── SAML SSO (WS4-04) ──────────────────────────────────────────────
+    const samlMsg = document.getElementById("saml-msg");
+    const metadataUrlEl = document.getElementById("saml-metadata-url");
+    const loginUrlEl = document.getElementById("saml-login-url");
+    if (metadataUrlEl) metadataUrlEl.textContent =
+      window.location.origin + `/api/auth/saml/metadata`;
+    if (loginUrlEl) loginUrlEl.textContent =
+      window.location.origin + `/api/auth/saml/callback?org=${orgName}`;
+
+    async function loadSamlConfig() {
+      try {
+        const res = await fetch(`/api/orgs/${orgName}/saml-config`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const saml = data.data?.saml;
+        if (!saml) return;
+        const entity = document.getElementById("saml-entity");
+        if (entity instanceof HTMLInputElement) entity.value = saml.entityId || "";
+        const url = document.getElementById("saml-sso-url");
+        if (url instanceof HTMLInputElement) url.value = saml.ssoUrl || "";
+        const cert = document.getElementById("saml-cert");
+        if (cert instanceof HTMLTextAreaElement) cert.value = saml.certificate || "";
+        const enabled = document.getElementById("saml-enabled");
+        if (enabled instanceof HTMLInputElement) enabled.checked = !!saml.isEnabled;
+      } catch {
+        /* optional */
+      }
+    }
+
+    document.getElementById("saml-save")?.addEventListener("click", async () => {
+      const entity = document.getElementById("saml-entity");
+      const url = document.getElementById("saml-sso-url");
+      const cert = document.getElementById("saml-cert");
+      const enabled = document.getElementById("saml-enabled");
+      const payload = {
+        entityId: entity instanceof HTMLInputElement ? entity.value : "",
+        ssoUrl: url instanceof HTMLInputElement ? url.value : "",
+        certificate: cert instanceof HTMLTextAreaElement ? cert.value : "",
+        isEnabled: enabled instanceof HTMLInputElement ? enabled.checked : false,
+      };
+      try {
+        const res = await fetch(`/api/orgs/${orgName}/saml-config`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error("Failed to save SAML config");
+        if (samlMsg) {
+          samlMsg.textContent = "Saved";
+          samlMsg.className = "text-sm text-green-500";
+          setTimeout(() => (samlMsg.className = "text-sm hidden"), 2000);
+        }
+      } catch (e) {
+        if (samlMsg) {
+          samlMsg.textContent = e instanceof Error ? e.message : String(e);
+          samlMsg.className = "text-sm text-red-500";
+        }
+      }
+    });
+
+    loadSamlConfig();
+
+    // ── Teams (WS3-03) ─────────────────────────────────────────────────
+    const teamsList = document.getElementById("teams-list");
+
+    async function loadTeams() {
+      try {
+        const res = await fetch(`/api/orgs/${orgName}/teams`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const teams = data.data?.teams || [];
+        if (!teamsList) return;
+        teamsList.innerHTML = "";
+        if (teams.length === 0) {
+          teamsList.innerHTML =
+            '<p class="text-sm text-muted-foreground border rounded-md p-4 text-center">No teams yet.</p>';
+          return;
+        }
+        for (const team of teams) {
+          const row = document.createElement("div");
+          row.className = "border rounded-md px-3 py-2.5";
+          const head = document.createElement("div");
+          head.className = "flex items-center justify-between";
+          const name = document.createElement("span");
+          name.className = "font-medium text-sm";
+          name.textContent = `${team.name} (${team.members.length})`;
+          const del = document.createElement("button");
+          del.textContent = "Delete";
+          del.className = "text-xs text-red-400 hover:underline";
+          del.onclick = async () => {
+            if (!confirm(`Delete team ${team.name}?`)) return;
+            await fetch(`/api/orgs/${orgName}/teams/${team.id}`, { method: "DELETE" });
+            loadTeams();
+          };
+          head.appendChild(name);
+          head.appendChild(del);
+          const members = document.createElement("div");
+          members.className = "text-xs text-muted-foreground mt-1";
+          members.textContent = team.members.map((m: { username: string }) => m.username).join(", ") || "No members";
+          row.appendChild(head);
+          row.appendChild(members);
+          teamsList.appendChild(row);
+        }
+      } catch {
+        /* optional */
+      }
+    }
+
+    document.getElementById("team-create")?.addEventListener("click", async () => {
+      const nameInput = document.getElementById("team-name");
+      const name = nameInput instanceof HTMLInputElement ? nameInput.value.trim() : "";
+      if (!name) return;
+      try {
+        const res = await fetch(`/api/orgs/${orgName}/teams`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error?.message || "Failed to create team");
+        if (nameInput instanceof HTMLInputElement) nameInput.value = "";
+        loadTeams();
+      } catch (e) {
+        alert(e instanceof Error ? e.message : String(e));
+      }
+    });
+
+    loadTeams();
+
+    saveBtn?.addEventListener("click", async () => {
+      const displayName = (document.getElementById("org-display") as HTMLInputElement).value;
+      const description = (document.getElementById("org-desc") as HTMLTextAreaElement).value;
+      const website = (document.getElementById("org-website") as HTMLInputElement).value;
+      const location = (document.getElementById("org-location") as HTMLInputElement).value;
+      try {
+        const res = await fetch(`/api/orgs/${orgName}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ displayName, description, website, location }),
+        });
+        if (!res.ok) throw new Error("Failed to save");
+        const msg = document.getElementById("org-save-msg");
+        if (msg) {
+          msg.classList.remove("hidden");
+          setTimeout(() => msg.classList.add("hidden"), 2000);
+        }
+      } catch (e) {
+        alert("Failed to save settings: " + (e instanceof Error ? e.message : String(e)));
+      }
+    });
+  </script>
+</BaseLayout>

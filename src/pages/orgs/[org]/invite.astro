@@ -1,0 +1,115 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDatabase, schema } from "@/db";
+import { eq, and } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { createHash } from "crypto";
+
+const { org: orgName } = Astro.params;
+const token = Astro.url.searchParams.get("token") || "";
+const db = getDatabase() as NodePgDatabase<typeof schema>;
+
+const organization = await db.query.organizations.findFirst({
+  where: eq(schema.organizations.name, orgName!),
+});
+
+let invite = null;
+if (organization && token) {
+  const tokenHash = createHash("sha256").update(`och-invite:${token}`).digest("hex");
+  invite = await db.query.orgInvites.findFirst({
+    where: and(
+      eq(schema.orgInvites.tokenHash, tokenHash),
+      eq(schema.orgInvites.organizationId, organization.id),
+    ),
+  });
+}
+
+const currentUser = Astro.locals.user;
+const isExpired = invite
+  ? invite.expiresAt && new Date(invite.expiresAt) < new Date()
+  : false;
+const isPending = invite?.status === "pending";
+---
+
+<BaseLayout title={`Invitation · ${organization?.name || "Organization"}`}>
+  <div class="container max-w-[560px] py-16 px-4">
+    <div class="border rounded-lg bg-card p-8 text-center">
+      {!organization || !invite ? (
+        <>
+          <h1 class="text-xl font-semibold mb-2">Invitation not found</h1>
+          <p class="text-sm text-muted-foreground">
+            This invitation link is invalid or has already been used.
+          </p>
+        </>
+      ) : isExpired ? (
+        <>
+          <h1 class="text-xl font-semibold mb-2">Invitation expired</h1>
+          <p class="text-sm text-muted-foreground">
+            Ask an organization admin to send a new invitation.
+          </p>
+        </>
+      ) : !isPending ? (
+        <>
+          <h1 class="text-xl font-semibold mb-2">Invitation already handled</h1>
+          <p class="text-sm text-muted-foreground">
+            This invitation has been {invite.status}.
+          </p>
+        </>
+      ) : !currentUser ? (
+        <>
+          <h1 class="text-xl font-semibold mb-2">You're invited!</h1>
+          <p class="text-sm text-muted-foreground mb-6">
+            Join <strong>{organization.displayName || organization.name}</strong> on OpenCodeHub.
+          </p>
+          <a
+            href={`/login?redirect=/orgs/${organization.name}/invite?token=${encodeURIComponent(token)}`}
+            class="inline-block rounded-md bg-cyan-500/90 hover:bg-cyan-500 text-foreground px-6 py-2.5 text-sm font-medium"
+          >
+            Sign in to accept
+          </a>
+        </>
+      ) : (
+        <>
+          <h1 class="text-xl font-semibold mb-2">You're invited!</h1>
+          <p class="text-sm text-muted-foreground mb-6">
+            Join <strong>{organization.displayName || organization.name}</strong> as a {invite.role}.
+          </p>
+          <form method="POST">
+            <input type="hidden" name="token" value={token} />
+            <button
+              type="submit"
+              class="inline-block rounded-md bg-cyan-500/90 hover:bg-cyan-500 text-foreground px-6 py-2.5 text-sm font-medium"
+            >
+              Accept invitation
+            </button>
+          </form>
+          <div id="accept-error" class="hidden text-sm text-red-500 mt-3"></div>
+        </>
+      )}
+    </div>
+  </div>
+
+  <script>
+    const form = document.querySelector("form[method='POST']");
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        const formEl = e.target as HTMLFormElement;
+        const res = await fetch("/api/orgs/accept-invite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: new FormData(formEl).get("token") }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error?.message || "Failed to accept");
+        window.location.href = `/orgs/${location.pathname.split("/")[2]}`;
+      } catch (err) {
+        const el = document.getElementById("accept-error");
+        if (el) {
+          el.textContent = err instanceof Error ? err.message : String(err);
+          el.classList.remove("hidden");
+        }
+      }
+    });
+  </script>
+</BaseLayout>

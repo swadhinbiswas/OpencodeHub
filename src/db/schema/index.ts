@@ -110,3 +110,5 @@ export * from "./packages";
 
 // Review Analysis (CodeRabbit-style AI review)
 export * from "./review-analysis";
+export * from "./oauth-apps";
+export * from "./org-invites";
