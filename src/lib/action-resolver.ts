@@ -27,7 +27,7 @@ export interface ResolveActionInput {
 
 export interface ResolvedAction {
   run: string;
-  kind: "composite" | "checkout" | "unsupported";
+  kind: "composite" | "checkout" | "docker" | "unsupported";
 }
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -93,6 +93,34 @@ export async function resolveActionStep(
   input: ResolveActionInput,
 ): Promise<ResolvedAction> {
   const uses = input.uses;
+
+  // ── uses: docker://image — no download needed, run the image directly ─
+  if (uses.startsWith("docker://")) {
+    const image = uses.slice("docker://".length);
+    if (!image) {
+      return {
+        kind: "unsupported",
+        run: "echo '::error::docker:// action has no image' && exit 1",
+      };
+    }
+    const inputEnv = Object.entries(input.withInputs || {})
+      .map(([key, value]) => {
+        const envKey = `INPUT_${key.toUpperCase().replace(/-/g, "_")}`;
+        const escaped = String(value).replace(/'/g, `'\\''`);
+        return `export ${envKey}='${escaped}'`;
+      })
+      .join("\n");
+    return {
+      kind: "docker",
+      run: [
+        "set -e",
+        `docker pull "${image}"`,
+        "cd \"$GITHUB_WORKSPACE\" 2>/dev/null || true",
+        inputEnv,
+        `docker run --rm -v "$(pwd):/workspace" -w /workspace -e "GITHUB_WORKSPACE=/workspace" "${image}"`,
+      ].join("\n"),
+    };
+  }
 
   // ── actions/checkout: native clone ────────────────────────────────────
   if (uses.startsWith("actions/checkout@")) {
@@ -172,7 +200,32 @@ export async function resolveActionStep(
     return { kind: "composite", run: lines.join("\n") };
   }
 
-  // ── Node / Docker actions: fail fast with a clear message ─────────────
+  // ── Docker actions: run the image with INPUT_* env + workspace mount ──
+  if (using === "docker" || uses.startsWith("docker://")) {
+    const image =
+      using === "docker" ? config.runs?.image : uses.slice("docker://".length);
+    const args = (config.runs?.args || [])
+      .map((a: string) => `"${a.replace(/"/g, '\\"')}"`)
+      .join(" ");
+    if (!image) {
+      return {
+        kind: "unsupported",
+        run: `echo '::error::Docker action "${uses}" has no image' && exit 1`,
+      };
+    }
+    return {
+      kind: "docker",
+      run: [
+        "set -e",
+        `docker pull "${image}"`,
+        "cd \"$GITHUB_WORKSPACE\" 2>/dev/null || true",
+        inputEnv,
+        `docker run --rm -v "$(pwd):/workspace" -w /workspace -e "GITHUB_WORKSPACE=/workspace" ${args} "${image}"`,
+      ].join("\n"),
+    };
+  }
+
+  // ── Node actions: fail fast with a clear message ──────────────────────
   const kindLabel = isLocal ? "local" : "remote";
   return {
     kind: "unsupported",

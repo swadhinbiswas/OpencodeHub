@@ -116,3 +116,60 @@ runs:
     expect(a.run).toBe(b.run);
   });
 });
+
+describe("docker action resolution", () => {
+  it("resolves uses: docker://image to a docker run script", async () => {
+    const result = await resolveActionStep({
+      uses: "docker://alpine:3.18",
+      withInputs: { who: "world" },
+      repositoryPath: "/tmp",
+      cacheDir: "/tmp/och-cache",
+    });
+    expect(result.kind).toBe("docker");
+    expect(result.run).toContain("docker pull \"alpine:3.18\"");
+    expect(result.run).toContain("docker run --rm");
+    expect(result.run).toContain("export INPUT_WHO='world'");
+  });
+
+  it("resolves local docker-type actions with image + args", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "och-docker-action-"));
+    makeLocalAction(
+      dir,
+      `name: Docker
+description: Test
+runs:
+  using: docker
+  image: busybox:1.36
+  args: [sh, -c, "echo hi"]
+`,
+    );
+    const result = await resolveActionStep({
+      uses: "./my-action",
+      repositoryPath: dir,
+      cacheDir: "/tmp/och-cache",
+    });
+    expect(result.kind).toBe("docker");
+    expect(result.run).toContain("docker pull \"busybox:1.36\"");
+    expect(result.run).toContain('"sh"');
+  });
+
+  it("still fail-fasts for node actions", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "och-node-action-"));
+    makeLocalAction(
+      dir,
+      `name: Node
+description: Test
+runs:
+  using: node20
+  main: index.js
+`,
+    );
+    const result = await resolveActionStep({
+      uses: "./my-action",
+      repositoryPath: dir,
+      cacheDir: "/tmp/och-cache",
+    });
+    expect(result.kind).toBe("unsupported");
+    expect(result.run).toContain("::error::");
+  });
+});
