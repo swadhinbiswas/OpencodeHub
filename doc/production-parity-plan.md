@@ -424,3 +424,31 @@ Legend: `P0` = blocking GA, `P1` = should-ship GA, `P2` = post-GA stretch. Effor
 ---
 
 *This plan supersedes `notimplemented.md` (which remains as historical context). `doc/feature_audit.md` statuses should be re-reconciled after each phase.*
+
+## 17. Execution Log — Batch 6 (readiness closure, 2026-08-15)
+
+### Shipped ✅
+| Item | Evidence |
+|---|---|
+| E2E proof committed + green (20/20) | `scripts/e2e-proof.sh` — reproducible full-stack proof |
+| Redis static imports (in-memory fallback eliminated) | `src/lib/redis.ts`, `rate-limit.ts`, `distributed-lock.ts` — `require("ioredis")` broken under Vite SSR |
+| Org-owned repos across 7 global pages | `resolveOrgOwners()` helper; home/actions/issues/pulls/stars/stacks/merge-queue |
+| Parallel job waves + GITHUB_OUTPUT/ENV | `pipeline.ts` — verified 6-job workflow with needs ordering |
+| Authz matrix suite (43 cases) | `tests/unit/authz-matrix.test.ts` — caught scope-implication gap (fixed) |
+| Correlation IDs | `src/lib/request-context.ts` + logger binding + middleware |
+| Load baseline green | p95: health 33ms, metrics 75ms, explore 136ms, repos 32ms @20-concurrency ×300 |
+| Repo transfer UI | settings Danger Zone org picker |
+| Docker actions on runners | `docker://image` + docker-type resolution in action-resolver |
+| OAuth refresh tokens | refresh_token grant + rotation, verified live |
+| npm registry protocol completion | CouchDB login, whoami, Basic/Bearer publish auth, org-null scoping, tarball bridge, SITE_URL tarball URLs — verified login→whoami→publish→metadata→download |
+| Version 1.2.0 release commit | root+CLI unified, changelog |
+
+### Verification
+- **668 tests** · tsc 0 · astro check 0 · build OK · E2E 20/20 · load green · wiring audit 0 new
+- 22 commits total on `feature/ai-code-reviewer`, tree clean
+
+### Pending (user action)
+- `opencodehub-cli@1.2.0` publish to npmjs requires browser OTP (npm OAuth token) — run:
+  `cd cli && npm publish --registry https://registry.npmjs.org`
+  (authenticate in the browser when prompted)
+- Push branch + open PR; git tag `v1.2.0`
