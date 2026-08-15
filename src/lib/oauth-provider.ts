@@ -66,6 +66,56 @@ export async function issueAccessToken(options: {
     .sign(getJwtSecret());
 }
 
+/**
+ * Mint an OAuth refresh token (JWT, 30 days). Validated only by signature
+ * + type; rotation is encouraged by issuing a new one on every refresh.
+ */
+export async function issueRefreshToken(options: {
+  userId: string;
+  appId: string;
+  scopes: string[];
+  expiresInSeconds?: number;
+}): Promise<string> {
+  const expiresIn = options.expiresInSeconds ?? 30 * 24 * 60 * 60; // 30d
+  return new SignJWT({
+    sub: options.userId,
+    type: "oauth_refresh",
+    appId: options.appId,
+    scopes: options.scopes,
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(`${Math.floor(expiresIn / 60)}m`)
+    .sign(getJwtSecret());
+}
+
+export interface OAuthRefreshPayload {
+  userId: string;
+  appId: string;
+  scopes: string[];
+  valid: boolean;
+}
+
+/** Validate a refresh token and return its claims (no rotation here). */
+export async function verifyRefreshToken(
+  token: string,
+): Promise<OAuthRefreshPayload | null> {
+  try {
+    const { payload } = await jwtVerify(token, getJwtSecret());
+    if (payload.type !== "oauth_refresh" || !payload.sub || !payload.appId) {
+      return null;
+    }
+    return {
+      userId: payload.sub,
+      appId: String(payload.appId),
+      scopes: Array.isArray(payload.scopes) ? (payload.scopes as string[]) : [],
+      valid: true,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export interface OAuthAccessTokenPayload {
   userId: string;
   appId: string;
