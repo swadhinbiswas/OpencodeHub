@@ -569,17 +569,26 @@ export class PipelineRunner extends EventEmitter {
         needs: {},
       };
 
-      // Run jobs in dependency order
+      // ── Run jobs in dependency-order WAVES (parallel when independent) ──
+      // Build task list: (job, matrix combo) pairs, topologically ordered.
+      type Task = {
+        jobId: string;
+        jobConfig: JobConfig;
+        comboIndex: number;
+        combo: Record<string, any>;
+        forcedJobId?: string;
+        nameSuffix: string;
+        instanceContext: WorkflowContext;
+        launched: boolean;
+      };
+      const tasks: Task[] = [];
       for (const jobId of jobOrder) {
         const jobConfig = workflow.jobs[jobId];
-
-        // Matrix expansion (WS1-05): each combination becomes a job instance
         const matrixConfig = jobConfig.strategy?.matrix;
         let combos: Array<Record<string, any>> = [{}];
         if (matrixConfig && typeof matrixConfig === "object") {
           combos = expandMatrix(matrixConfig);
         }
-
         for (let comboIndex = 0; comboIndex < combos.length; comboIndex++) {
           const combo = combos[comboIndex];
           const forcedJobId =
@@ -590,7 +599,6 @@ export class PipelineRunner extends EventEmitter {
             ? ` (${Object.values(combo).join(", ")})`
             : "";
 
-          // Per-instance context: matrix vars + env
           const instanceContext = structuredClone(context);
           instanceContext.matrix = combo;
           for (const [k, v] of Object.entries(combo)) {
@@ -598,20 +606,88 @@ export class PipelineRunner extends EventEmitter {
           }
           instanceContext.github.job = jobId;
 
-          await this.runJobInstance({
+          tasks.push({
             jobId,
             jobConfig,
-            context: instanceContext,
-            repositoryPath: options.repositoryPath,
-            runId,
-            logPersister,
+            comboIndex,
+            combo,
             forcedJobId,
             nameSuffix: jobNameSuffix,
-            run,
+            instanceContext,
+            launched: false,
           });
-
-          if (run.conclusion === "failure") break;
         }
+      }
+
+      const depNames = (jobConfig: JobConfig): string[] =>
+        Array.isArray(jobConfig.needs)
+          ? jobConfig.needs
+          : jobConfig.needs
+            ? [jobConfig.needs]
+            : [];
+
+      // A dependency is satisfied once its task entries exist in run.jobs
+      // (they are pushed when the previous wave completes)
+      const depSatisfied = (dep: string): boolean =>
+        run.jobs.some(
+          (j) => j.name === dep || j.name.startsWith(`${dep} `),
+        );
+
+      while (tasks.some((t) => !t.launched)) {
+        if (run.conclusion === "failure") {
+          // fail-fast: mark remaining tasks skipped so downstream jobs
+          // show as skipped rather than missing
+          for (const t of tasks) {
+            if (t.launched) continue;
+            t.launched = true;
+            run.jobs.push({
+              id: t.forcedJobId || generateId(),
+              name: `${t.jobConfig.name || t.jobId}${t.nameSuffix}`,
+              status: "skipped",
+              conclusion: "skipped",
+              steps: [],
+            });
+          }
+          break;
+        }
+
+        const wave = tasks.filter(
+          (t) =>
+            !t.launched &&
+            depNames(t.jobConfig).every((d) => depSatisfied(d)),
+        );
+        if (wave.length === 0) {
+          // blocked (cycle) — skip everything remaining
+          for (const t of tasks) {
+            if (t.launched) continue;
+            t.launched = true;
+            run.jobs.push({
+              id: t.forcedJobId || generateId(),
+              name: `${t.jobConfig.name || t.jobId}${t.nameSuffix}`,
+              status: "skipped",
+              conclusion: "skipped",
+              steps: [],
+            });
+          }
+          break;
+        }
+
+        wave.forEach((t) => (t.launched = true));
+        await Promise.all(
+          wave.map((t) =>
+            this.runJobInstance({
+              jobId: t.jobId,
+              jobConfig: t.jobConfig,
+              context: t.instanceContext,
+              repositoryPath: options.repositoryPath,
+              runId,
+              logPersister,
+              forcedJobId: t.forcedJobId,
+              nameSuffix: t.nameSuffix,
+              run,
+            }),
+          ),
+        );
       }
 
       run.status = "completed";
@@ -901,6 +977,7 @@ export class PipelineRunner extends EventEmitter {
 
         try {
           let output = "";
+          let ghOutputsFromFile: Record<string, string> = {};
 
           if (stepConfig.uses) {
             // Run action
@@ -917,7 +994,7 @@ export class PipelineRunner extends EventEmitter {
             );
           } else if (stepConfig.run) {
             // Run shell command
-            output = await this.runShellCommand(
+            const shellResult = await this.runShellCommand(
               jobContainer,
               stepConfig,
               context,
@@ -927,6 +1004,8 @@ export class PipelineRunner extends EventEmitter {
                 stepId: stepRun.id,
               },
             );
+            output = shellResult.output;
+            ghOutputsFromFile = shellResult.ghOutputs;
           }
 
           stepRun.status = "completed";
@@ -952,13 +1031,16 @@ export class PipelineRunner extends EventEmitter {
             });
           }
 
-          // Parse outputs
+          // Parse outputs: legacy ::set-output + GITHUB_OUTPUT file
           const outputMatches = output.matchAll(
             /::set-output name=(\w+)::(.+)/g,
           );
           stepRun.outputs = {};
           for (const match of outputMatches) {
             stepRun.outputs[match[1]] = match[2];
+          }
+          for (const [k, v] of Object.entries(ghOutputsFromFile || {})) {
+            stepRun.outputs[k] = v;
           }
 
           // Update context
@@ -1167,12 +1249,13 @@ export class PipelineRunner extends EventEmitter {
       let output = "";
       for (const subStep of actionConfig.runs.steps) {
         if (subStep.run) {
-          output += await this.runShellCommand(
+          const sub = await this.runShellCommand(
             container,
             subStep,
             context,
             logContext,
           );
+          output += sub.output;
         }
       }
       return output;
@@ -1195,7 +1278,7 @@ export class PipelineRunner extends EventEmitter {
     step: StepConfig,
     context: WorkflowContext,
     logContext?: { runId: string; jobId: string; stepId: string },
-  ): Promise<string> {
+  ): Promise<{ output: string; ghOutputs: Record<string, string> }> {
     if (!step.run) throw new Error("No command specified");
 
     // Substitute expressions in command
@@ -1204,18 +1287,64 @@ export class PipelineRunner extends EventEmitter {
     const shell = step.shell || "bash";
     const workDir = step["working-directory"] || "/workspace";
 
+    // GITHUB_OUTPUT / GITHUB_ENV (GitHub Actions compat): per-step files the
+    // command appends to; read back after execution.
+    const ghOutputFile = `/tmp/gh_output_${Date.now()}_${Math.floor(Math.random() * 1e9)}`;
+    const ghEnvFile = `/tmp/gh_env_${Date.now()}_${Math.floor(Math.random() * 1e9)}`;
+
     const exec = await container.exec({
       Cmd: [shell, "-c", command],
       WorkingDir: workDir,
-      Env: Object.entries(step.env || {}).map(([k, v]) => {
-        return `${k}=${this.substituteExpressions(v, context)}`;
-      }),
+      Env: [
+        `GITHUB_OUTPUT=${ghOutputFile}`,
+        `GITHUB_ENV=${ghEnvFile}`,
+        ...Object.entries(step.env || {}).map(([k, v]) => {
+          return `${k}=${this.substituteExpressions(v, context)}`;
+        }),
+      ],
       AttachStdout: true,
       AttachStderr: true,
     });
 
     const stream = await exec.start({});
     const output = await this.collectOutput(stream, logContext);
+
+    // ── Read GITHUB_OUTPUT (name=value lines) → step outputs ───────────
+    const ghOutputs: Record<string, string> = {};
+    try {
+      const cat = await container.exec({
+        Cmd: ["sh", "-c", `cat ${ghOutputFile} 2>/dev/null`],
+        AttachStdout: true,
+        AttachStderr: true,
+      });
+      const catStream = await cat.start({});
+      const fileText = await this.collectOutput(catStream);
+      for (const line of fileText.split("\n")) {
+        const eq = line.indexOf("=");
+        if (eq > 0) ghOutputs[line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
+      }
+      // cleanup
+      await container.exec({ Cmd: ["sh", "-c", `rm -f ${ghOutputFile} ${ghEnvFile}`] }).then((c) => c.start({})).catch(() => {});
+    } catch {
+      // GITHUB_OUTPUT readback is best-effort
+    }
+
+    // ── Read GITHUB_ENV → merge into context.env for subsequent steps ──
+    try {
+      const cat = await container.exec({
+        Cmd: ["sh", "-c", `cat ${ghEnvFile} 2>/dev/null`],
+        AttachStdout: true,
+        AttachStderr: true,
+      });
+      const catStream = await cat.start({});
+      const fileText = await this.collectOutput(catStream);
+      for (const line of fileText.split("\n")) {
+        const eq = line.indexOf("=");
+        if (eq > 0) context.env[line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
+      }
+    } catch {
+      // GITHUB_ENV readback is best-effort
+    }
 
     // Check exit code
     const inspectData = await exec.inspect();
@@ -1225,7 +1354,7 @@ export class PipelineRunner extends EventEmitter {
       );
     }
 
-    return output;
+    return { output, ghOutputs };
   }
 
   /**
