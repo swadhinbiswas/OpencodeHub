@@ -7,7 +7,7 @@
  * repo. Use `resolveOwnerRepo` instead of the naive lookup.
  */
 import { getDatabase, schema } from "@/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 export async function resolveOwnerRepo(
@@ -44,4 +44,71 @@ export async function resolveOwnerRepo(
   }
 
   return null;
+}
+
+/**
+ * Fill in a synthetic `owner.username` for org-owned repos.
+ * Queries that use `with: { owner: true }` get a null owner for org repos
+ * (ownerId = org id), which crashes `repo.owner.username` renders.
+ */
+export async function attachOwnerNames<T extends { ownerId: string; ownerType?: string | null; owner?: any }>(
+  repos: T[],
+): Promise<T[]> {
+  if (repos.length === 0) return repos;
+  const orgIds = repos
+    .filter((r) => r.ownerType === "organization" && !r.owner)
+    .map((r) => r.ownerId);
+  if (orgIds.length === 0) return repos;
+  const db = getDatabase() as NodePgDatabase<typeof schema>;
+  const orgs = await db.query.organizations.findMany({
+    where: inArray(schema.organizations.id, orgIds),
+    columns: { id: true, name: true },
+  });
+  const nameById = new Map(orgs.map((o) => [o.id, o.name]));
+  return repos.map((r) =>
+    r.ownerType === "organization" && !r.owner
+      ? { ...r, owner: { username: nameById.get(r.ownerId) ?? "org" } }
+      : r,
+  );
+}
+
+/**
+ * Deep org-owner fix for list pages. Walks query results and fills a
+ * synthetic `owner.username` on any org-owned repo found at the top level
+ * or nested under `item.repository` (the `with: { owner: true }` relation
+ * is null for org repos).
+ */
+export async function resolveOrgOwners<T>(items: T[]): Promise<T[]> {
+  const candidates: any[] = [];
+  const walk = (obj: any) => {
+    if (!obj || typeof obj !== "object") return;
+    if (obj.ownerType === "organization" && !obj.owner && obj.ownerId) {
+      candidates.push(obj);
+    }
+    if (
+      obj.repository &&
+      obj.repository.ownerType === "organization" &&
+      !obj.repository.owner &&
+      obj.repository.ownerId
+    ) {
+      candidates.push(obj.repository);
+    }
+    for (const key of Object.keys(obj)) {
+      const value = obj[key];
+      if (Array.isArray(value)) value.forEach(walk);
+    }
+  };
+  items.forEach(walk);
+  if (candidates.length === 0) return items;
+
+  const db = getDatabase() as NodePgDatabase<typeof schema>;
+  const orgs = await db.query.organizations.findMany({
+    where: inArray(schema.organizations.id, candidates.map((c) => c.ownerId)),
+    columns: { id: true, name: true },
+  });
+  const nameById = new Map(orgs.map((o) => [o.id, o.name]));
+  for (const c of candidates) {
+    c.owner = { username: nameById.get(c.ownerId) ?? "org" };
+  }
+  return items;
 }

@@ -1,5 +1,5 @@
 
-import type Redis from "ioredis";
+import Redis from "ioredis";
 import { logger } from "@/lib/logger";
 
 interface RateLimitEntry {
@@ -122,10 +122,8 @@ export function getRateLimiter(): RateLimiter {
         return cached;
     }
     try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const RedisCtor = require("ioredis");
         const url = process.env.REDIS_URL || "redis://localhost:6379";
-        const client: Redis = new RedisCtor(url, {
+        const client: Redis = new Redis(url, {
             enableReadyCheck: false,
             maxRetriesPerRequest: 1,
             lazyConnect: true,

@@ -1,4 +1,5 @@
 ---
+import { resolveOrgOwners } from "@/lib/repo-owner";
 import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { desc, eq } from "drizzle-orm";
@@ -11,17 +12,19 @@ if (!user) {
 const db = getDatabase();
 
 // Fetch user's starred repositories
-const starredRepos = await db.query.repositoryStars.findMany({
-  where: eq(schema.repositoryStars.userId, user.id),
-  orderBy: [desc(schema.repositoryStars.createdAt)],
-  with: {
-    repository: {
-      with: {
-        owner: true,
+const starredRepos = await resolveOrgOwners(
+  await db.query.repositoryStars.findMany({
+    where: eq(schema.repositoryStars.userId, user.id),
+    orderBy: [desc(schema.repositoryStars.createdAt)],
+    with: {
+      repository: {
+        with: {
+          owner: true,
+        },
       },
     },
-  },
-});
+  }),
+);
 
 // Language colors
 const langColors: Record<string, string> = {
