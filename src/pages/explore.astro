@@ -27,11 +27,26 @@ const repos = await db.query.repositories.findMany({
   where: eq(schema.repositories.visibility, "public"),
   orderBy: [desc(schema.repositories.updatedAt)],
   with: {
-    owner: true,
+    owner: {
+      columns: { id: true, username: true, avatarUrl: true, displayName: true },
+    },
   },
   limit: perPage,
   offset: offset,
 });
+
+// Org-owned repos have a null `owner` relation — resolve org names in one pass
+const orgIds = repos
+  .filter((r) => (r as any).ownerType === "organization")
+  .map((r) => r.ownerId);
+const orgNameById = new Map<string, string>();
+if (orgIds.length > 0) {
+  const orgs = await db.query.organizations.findMany({
+    where: (t, { inArray }) => inArray(t.id, orgIds),
+    columns: { id: true, name: true },
+  });
+  for (const o of orgs) orgNameById.set(o.id, o.name);
+}
 
 function timeAgo(date: string | Date) {
   const seconds = Math.floor(
@@ -201,29 +216,34 @@ const langColors: Record<string, string> = {
         </div>
       ) : (
         <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {repos.map((repo) => (
+          {repos.map((repo) => {
+            const ownerName =
+              (repo as any).owner?.username ??
+              orgNameById.get((repo as any).ownerId) ??
+              "unknown";
+            return (
             <a
-              href={`/${repo.owner.username}/${repo.name}`}
+              href={`/${ownerName}/${repo.name}`}
               class="group relative"
             >
               <div class="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/20 via-transparent to-purple-500/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" />
               <div class="relative h-full rounded-xl border border-border bg-card/80 backdrop-blur-sm p-5 hover:bg-accent/50 transition-colors flex flex-col">
                 <div class="flex items-start gap-3 mb-3">
-                  {repo.owner.avatarUrl ? (
+                  {(repo as any).owner?.avatarUrl ? (
                     <img
-                      src={repo.owner.avatarUrl}
+                      src={(repo as any).owner.avatarUrl}
                       alt=""
                       class="h-8 w-8 rounded-full ring-2 ring-border"
                     />
                   ) : (
                     <div class="h-8 w-8 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-sm font-bold text-foreground ring-2 ring-border">
-                      {repo.owner.username[0].toUpperCase()}
+                      {ownerName[0].toUpperCase()}
                     </div>
                   )}
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
                       <span class="font-semibold text-foreground group-hover:text-cyan-400 transition-colors truncate">
-                        {repo.owner.username}/{repo.name}
+                        {ownerName}/{repo.name}
                       </span>
                     </div>
                     <span class="text-xs text-muted-foreground">
@@ -274,7 +294,8 @@ const langColors: Record<string, string> = {
                 </div>
               </div>
             </a>
-          ))}
+          );
+          })}
         </div>
       )
     }

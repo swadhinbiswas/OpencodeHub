@@ -1,4 +1,5 @@
 import { defineMiddleware } from "astro:middleware";
+import type { MiddlewareHandler } from "astro";
 import { eq } from "drizzle-orm";
 import { getDatabase, schema } from "./db";
 import { getUserFromRequest } from "./lib/auth";
@@ -7,6 +8,11 @@ import { httpRequestDurationMicroseconds } from "./lib/metrics";
 import { applyCsrfProtection } from "./middleware/csrf";
 import { createRateLimitMiddleware } from "./middleware/rate-limit";
 import { isConfigured } from "./lib/config";
+import {
+  ensureRequestStorage,
+  newRequestId,
+  withRequestContext,
+} from "./lib/request-context";
 
 // Define tiers for different routes
 const apiLimiter = createRateLimitMiddleware("api");
@@ -22,6 +28,26 @@ const CSRF_EXEMPT_PREFIXES = [
 ];
 
 export const onRequest = defineMiddleware(async (context, next) => {
+  const { request, url } = context;
+
+  // ── Correlation ID: one requestId for every log line in this request ──
+  await ensureRequestStorage();
+  const requestId =
+    request.headers.get("x-request-id") || newRequestId();
+  return withRequestContext(
+    {
+      requestId,
+      userId: (context.locals as any)?.user?.id,
+      route: url.pathname,
+    },
+    () => onRequestInner(context, next),
+  );
+});
+
+async function onRequestInner(
+  context: Parameters<MiddlewareHandler>[0],
+  next: () => Promise<Response>,
+) {
   const { request, url } = context;
 
   // ── Configuration Check ──
@@ -140,4 +166,4 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   return response;
-});
+}

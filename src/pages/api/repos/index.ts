@@ -5,7 +5,7 @@
 import { type APIRoute } from 'astro';
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { z } from 'zod';
-import { eq, desc, and, or, like, count } from 'drizzle-orm';
+import { eq, desc, and, or, like, count, inArray } from 'drizzle-orm';
 import { getDatabase, schema } from "@/db";
 import { repositories, users } from '@/db/schema';
 import { getUserFromRequest } from '@/lib/auth';
@@ -142,12 +142,28 @@ export const GET: APIRoute = withErrorHandler(async ({ request, url }) => {
     },
   });
 
+  // Org-owned repos have a null `owner` relation (ownerId = org id) —
+  // resolve org names in one batched query
+  const orgIds = repos
+    .filter((r) => r.ownerType === "organization")
+    .map((r) => r.ownerId);
+  let orgNameById = new Map<string, string>();
+  if (orgIds.length > 0) {
+    const orgs = await db.query.organizations.findMany({
+      where: inArray(schema.organizations.id, orgIds),
+      columns: { id: true, name: true },
+    });
+    orgNameById = new Map(orgs.map((o) => [o.id, o.name]));
+  }
+
   // Transform for response
   const data = repos.map((repo) => ({
     id: repo.id,
     name: repo.name,
     slug: repo.slug,
-    fullName: `${repo.owner.username}/${repo.name}`,
+    fullName: `${
+      repo.owner?.username ?? orgNameById.get(repo.ownerId) ?? "unknown"
+    }/${repo.name}`,
     description: repo.description,
     visibility: repo.visibility,
     defaultBranch: repo.defaultBranch,
