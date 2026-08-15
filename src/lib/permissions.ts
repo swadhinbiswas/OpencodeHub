@@ -20,16 +20,22 @@ export type PatScope = (typeof PAT_SCOPES)[number];
 /**
  * Check whether a token payload is permitted to perform an action.
  * Legacy tokens (no scopes) keep full access; scoped tokens must
- * declare the required scope. `admin` implies all other scopes.
+ * declare the required scope. Implication: `admin` implies all,
+ * `repo:write` implies `repo:read` (GitHub fine-grained semantics).
  */
+const SCOPE_IMPLIES: Record<string, string[]> = {
+  admin: ["repo:read", "repo:write", "notifications", "user:read"],
+  "repo:write": ["repo:read"],
+};
+
 export function hasPatScope(
   tokenScopes: string[] | undefined,
   required: PatScope | PatScope[],
 ): boolean {
   if (!tokenScopes || tokenScopes.length === 0) return true; // legacy full access
   const requiredScopes = Array.isArray(required) ? required : [required];
-  return requiredScopes.every(
-    (s) => tokenScopes.includes(s) || tokenScopes.includes("admin"),
+  return requiredScopes.every((s) =>
+    tokenScopes.some((t) => t === s || (SCOPE_IMPLIES[t] ?? []).includes(s)),
   );
 }
 
