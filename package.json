@@ -1,6 +1,6 @@
 {
   "name": "opencodehub",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "description": "A fully self-hosted, open-source GitHub/GitLab alternative with SSH git hosting, pipelines/actions, and advanced UI",
   "type": "module",
   "workspaces": [
