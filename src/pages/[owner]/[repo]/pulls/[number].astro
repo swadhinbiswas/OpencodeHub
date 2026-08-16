@@ -222,6 +222,11 @@ try {
         <div>
           <h1 class="text-2xl font-semibold mb-1">
             {pr.title}
+            {pr.isDraft && pr.state === "open" && (
+              <span class="ml-2 inline-flex items-center rounded-full bg-slate-500/15 px-2.5 py-0.5 text-xs font-medium text-slate-400 border border-slate-500/20">
+                Draft
+              </span>
+            )}
             <span class="text-muted-foreground font-light">#{pr.number}</span>
           </h1>
           <div
@@ -370,6 +375,24 @@ try {
 
                     {canWrite && !queueItem && (
                       <div class="flex items-center gap-2">
+                        <Button
+                          id="draft-btn"
+                          variant="outline"
+                          className={pr.isDraft
+                            ? "border-green-500/30 hover:bg-green-500/10 text-green-400"
+                            : "border-slate-500/30 hover:bg-slate-500/10 text-slate-400"}
+                        >
+                          {pr.isDraft ? "Mark ready for review" : "Convert to draft"}
+                        </Button>
+                        <select
+                          id="merge-method"
+                          class="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          title="Merge method"
+                        >
+                          <option value="merge">Create a merge commit</option>
+                          <option value="squash">Squash and merge</option>
+                          <option value="rebase">Rebase and merge</option>
+                        </select>
                         <Button
                           id="merge-btn"
                           className="bg-green-600 hover:bg-green-700 text-foreground"
@@ -772,6 +795,29 @@ try {
             )
           }
 
+          <div class="border-t pt-4">
+            <div class="text-sm font-medium mb-2 text-muted-foreground">
+              Labels
+            </div>
+            <div id="pr-labels" class="flex flex-wrap gap-1.5 mb-2"></div>
+            {canWrite && (
+              <div class="flex items-center gap-2">
+                <select
+                  id="pr-label-select"
+                  class="h-8 rounded-md border bg-background px-2 text-sm flex-1"
+                >
+                  <option value="">Add label…</option>
+                </select>
+                <Button
+                  id="pr-label-add"
+                  variant="outline"
+                  className="h-8 px-2 text-xs"
+                >
+                  Add
+                </Button>
+              </div>
+            )}
+          </div>
           <div class="border-t pt-4 lg:border-t-0 lg:pt-0">
             <div class="text-sm font-medium mb-2 text-muted-foreground">
               Reviewers
@@ -1806,10 +1852,14 @@ try {
     errorDiv.classList.add("hidden");
 
     try {
+      const methodSelect = document.getElementById("merge-method");
+      const mergeMethod = methodSelect?.value || "merge";
       const res = await fetch(
         `/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}/merge`,
         {
           method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mergeMethod }),
         },
       );
 
@@ -1824,6 +1874,110 @@ try {
       errorDiv.classList.remove("hidden");
       mergeBtn.removeAttribute("disabled");
       mergeBtn.textContent = "Merge pull request";
+    }
+  });
+
+  const draftBtn = document.getElementById("draft-btn");
+  draftBtn?.addEventListener("click", async () => {
+    draftBtn.setAttribute("disabled", "true");
+    try {
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ draft: !pr.isDraft }),
+        },
+      );
+      if (!res.ok) throw new Error("Failed to update draft status");
+      window.location.reload();
+    } catch (e) {
+      alert("Failed to update draft status: " + e.message);
+      draftBtn.removeAttribute("disabled");
+    }
+  });
+
+  // ── PR labels (WS2-06) ───────────────────────────────────────────────
+  const prLabelsEl = document.getElementById("pr-labels");
+  const prLabelSelect = document.getElementById("pr-label-select");
+
+  function renderPrLabels(labels) {
+    if (!prLabelsEl) return;
+    if (labels.length === 0) {
+      prLabelsEl.innerHTML = '<span class="text-sm text-muted-foreground">None yet</span>';
+      return;
+    }
+    prLabelsEl.innerHTML = "";
+    for (const label of labels) {
+      const el = document.createElement("span");
+      el.className =
+        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium border";
+      el.style.color = label.color || "#9ca3af";
+      el.style.borderColor = (label.color || "#9ca3af") + "44";
+      el.textContent = label.name;
+      const remove = document.createElement("button");
+      remove.className = "opacity-60 hover:opacity-100 ml-0.5";
+      remove.textContent = "×";
+      remove.title = "Remove label";
+      remove.onclick = async () => {
+        const res = await fetch(
+          `/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}/labels`,
+          {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ labels: [label.id] }),
+          },
+        );
+        if (res.ok) {
+          const data = await res.json();
+          renderPrLabels(data.data?.labels || []);
+        }
+      };
+      el.appendChild(remove);
+      prLabelsEl.appendChild(el);
+    }
+  }
+
+  (async () => {
+    try {
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}/labels`,
+      );
+      if (res.ok) {
+        const data = await res.json();
+        renderPrLabels(data.data?.labels || []);
+      }
+      // Populate the repo labels dropdown
+      const labelsRes = await fetch(`/api/repos/${repoOwner}/${repoName}/labels`);
+      if (labelsRes.ok && prLabelSelect) {
+        const labelData = await labelsRes.json();
+        const repoLabels = labelData.data?.labels || labelData.labels || [];
+        for (const label of repoLabels) {
+          const opt = document.createElement("option");
+          opt.value = label.id;
+          opt.textContent = label.name;
+          prLabelSelect.appendChild(opt);
+        }
+      }
+    } catch {
+      /* labels are optional */
+    }
+  })();
+
+  document.getElementById("pr-label-add")?.addEventListener("click", async () => {
+    if (!prLabelSelect?.value) return;
+    const res = await fetch(
+      `/api/repos/${repoOwner}/${repoName}/pulls/${prNumber}/labels`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ labels: [prLabelSelect.value] }),
+      },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      renderPrLabels(data.data?.labels || []);
+      prLabelSelect.value = "";
     }
   });
 

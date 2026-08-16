@@ -10,6 +10,46 @@ export type OrgPermissionLevel = "owner" | "admin" | "member" | "none";
 export interface PermissionOptions {
   /** If true, the user is a site-wide admin with full access to all repositories */
   isAdmin?: boolean;
+  /** Fine-grained PAT scopes from the token payload (undefined = legacy full access) */
+  tokenScopes?: string[];
+}
+
+export const PAT_SCOPES = ["repo:read", "repo:write", "admin", "notifications"] as const;
+export type PatScope = (typeof PAT_SCOPES)[number];
+
+/**
+ * Check whether a token payload is permitted to perform an action.
+ * Legacy tokens (no scopes) keep full access; scoped tokens must
+ * declare the required scope. Implication: `admin` implies all,
+ * `repo:write` implies `repo:read` (GitHub fine-grained semantics).
+ */
+const SCOPE_IMPLIES: Record<string, string[]> = {
+  admin: ["repo:read", "repo:write", "notifications", "user:read"],
+  "repo:write": ["repo:read"],
+};
+
+export function hasPatScope(
+  tokenScopes: string[] | undefined,
+  required: PatScope | PatScope[],
+): boolean {
+  if (!tokenScopes || tokenScopes.length === 0) return true; // legacy full access
+  const requiredScopes = Array.isArray(required) ? required : [required];
+  return requiredScopes.every((s) =>
+    tokenScopes.some((t) => t === s || (SCOPE_IMPLIES[t] ?? []).includes(s)),
+  );
+}
+
+/**
+ * Effective write permission for a repo under a scoped PAT:
+ * a token with only `repo:read` cannot perform write operations.
+ */
+export function hasRepoWriteScope(
+  tokenScopes: string[] | undefined,
+): boolean {
+  if (!tokenScopes || tokenScopes.length === 0) return true; // legacy full access
+  return (
+    tokenScopes.includes("repo:write") || tokenScopes.includes("admin")
+  );
 }
 
 export async function getRepoPermission(
@@ -212,7 +252,9 @@ export async function canWriteRepo(
   options?: PermissionOptions,
 ): Promise<boolean> {
   const permission = await getRepoPermission(userId, repo, options);
-  return permission === "write" || permission === "admin";
+  if (permission !== "write" && permission !== "admin") return false;
+  // Fine-grained PAT enforcement: tokens restricted to repo:read cannot write
+  return hasRepoWriteScope(options?.tokenScopes);
 }
 
 export async function canAdminRepo(
@@ -221,7 +263,9 @@ export async function canAdminRepo(
   options?: PermissionOptions,
 ): Promise<boolean> {
   const permission = await getRepoPermission(userId, repo, options);
-  return permission === "admin";
+  if (permission !== "admin") return false;
+  // Admin-scoped PATs require the admin scope (or legacy full access)
+  return hasPatScope(options?.tokenScopes, "admin");
 }
 
 /**

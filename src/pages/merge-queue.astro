@@ -1,4 +1,5 @@
 ---
+import { resolveOrgOwners } from "@/lib/repo-owner";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { getDatabase, schema } from "@/db";
 import { eq, desc, and, asc } from "drizzle-orm";
@@ -94,12 +95,13 @@ try {
             },
         },
     });
+    const mqItems = await resolveOrgOwners(items);
 
     // Calculate estimated merge times and add stack info
     let currentPosition = 1;
     const avgCiTime = 10; // minutes
 
-    for (const item of items) {
+    for (const item of mqItems) {
         const estimatedMerge = new Date(
             Date.now() + currentPosition * avgCiTime * 60 * 1000,
         );

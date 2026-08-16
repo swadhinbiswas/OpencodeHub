@@ -45,7 +45,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
 
   const repository = await resolveRepository(owner, repoName);
   if (!repository) return notFound("Repository not found");
-  if (!(await canWriteRepo(user.id, repository, { isAdmin: user.isAdmin }))) {
+  if (!(await canWriteRepo(user.id, repository, { isAdmin: user.isAdmin, tokenScopes: user.scopes }))) {
     return forbidden();
   }
 

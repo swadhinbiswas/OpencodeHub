@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import path from "path";
 import fs from "fs/promises";
 import { existsSync } from "fs";
+import { getGit } from "@/lib/git";
 
 // Initialize Runner (Singleton-ish for this context)
 const runner = new PipelineRunner({
@@ -111,14 +112,33 @@ export async function triggerRepoWorkflows(repoId: string, commitSha: string, re
                 if (shouldRun) {
                     logger.info({ workflow: config.name }, "Triggering workflow");
 
-                    // Run it (Fire and forget, or track?)
-                    runner.runWorkflow(config, {
+                    // Load repository secrets for injection (encrypted at rest;
+                    // decrypted only at dispatch, never logged)
+                    let secrets: Record<string, string> = {};
+                    try {
+                        const { listRepoSecrets } = await import("./workflow-secrets");
+                        if (typeof listRepoSecrets === "function") {
+                            const found = await listRepoSecrets(repoId);
+                            for (const s of found) secrets[s.name] = s.value;
+                        }
+                    } catch (err) {
+                        logger.debug({ err }, "No secrets loaded for workflow");
+                    }
+
+                    // Run through the persister so push-triggered runs are
+                    // visible in the Actions UI and gated by the merge queue
+                    const { persistAndRunWorkflow } = await import("./workflow-run-persister");
+                    persistAndRunWorkflow(runner, {
                         repositoryId: repoId,
                         repositoryPath: repo.diskPath,
+                        workflowPath: file,
+                        workflowName: config.name || file,
+                        config,
                         branch: ref.replace("refs/heads/", ""),
                         commit: commitSha,
                         triggeredBy: "push",
-                        triggerEvent: "push"
+                        pusherId: pusherId || undefined,
+                        secrets: Object.keys(secrets).length > 0 ? secrets : undefined,
                     }).catch(err => {
                         logger.error({ err, workflow: config.name }, "Workflow failed");
                     });
@@ -135,4 +155,86 @@ export async function triggerRepoWorkflows(repoId: string, commitSha: string, re
         // likely dir doesn't exist
         // console.log("   No .github/workflows directory or error checking.");
     }
+}
+
+/**
+ * Trigger CI on a merge-queue speculative branch (WS1-09).
+ *
+ * The speculative branch contains the combined changes of the queued PRs.
+ * Workflow triggers are evaluated against the PRs' BASE branch (so branch
+ * filters match), while the run is recorded against the spec branch so the
+ * result is attributable to the speculative build.
+ */
+export async function triggerSpecWorkflow(options: {
+    repositoryId: string;
+    repositoryPath: string;
+    specBranch: string;
+    baseBranch: string;
+    commitSha: string;
+}): Promise<{ triggered: number }> {
+    const { repositoryId, repositoryPath, specBranch, baseBranch, commitSha } = options;
+    const git = getGit(repositoryPath);
+    let triggered = 0;
+
+    // List workflow files at the spec head
+    let workflowFiles: string[] = [];
+    try {
+        const treeInfo = await git.raw(["ls-tree", "-r", "--name-only", commitSha, ".github/workflows"]);
+        workflowFiles = treeInfo.split("\n").filter((f: string) => f.endsWith(".yml") || f.endsWith(".yaml"));
+    } catch {
+        return { triggered: 0 };
+    }
+    if (workflowFiles.length === 0) return { triggered: 0 };
+
+    // Changed files vs base (for path filters)
+    let changedPaths: string[] = [];
+    try {
+        const diffOutput = await git.raw(["diff", "--name-only", `origin/${baseBranch}`, commitSha]);
+        changedPaths = diffOutput.split("\n").filter(Boolean);
+    } catch {}
+
+    for (const file of workflowFiles) {
+        try {
+            const content = await git.show([`${commitSha}:${file}`]);
+            const tempWorkflowPath = path.join("/tmp", `workflow-${crypto.randomUUID()}.yml`);
+            await fs.writeFile(tempWorkflowPath, content);
+            const config = await runner.parseWorkflow(tempWorkflowPath);
+            await fs.unlink(tempWorkflowPath);
+
+            const shouldRun = runner.shouldTrigger(config, "push", {
+                ref: `refs/heads/${baseBranch}`,
+                paths: changedPaths.length > 0 ? changedPaths : undefined,
+            });
+            if (!shouldRun) continue;
+
+            // Load secrets for injection
+            let secrets: Record<string, string> = {};
+            try {
+                const { listRepoSecrets } = await import("./workflow-secrets");
+                const found = await listRepoSecrets(repositoryId);
+                for (const s of found) secrets[s.name] = s.value;
+            } catch {}
+
+            const { persistAndRunWorkflow } = await import("./workflow-run-persister");
+            persistAndRunWorkflow(runner, {
+                repositoryId,
+                repositoryPath,
+                workflowPath: file,
+                workflowName: config.name || file,
+                config,
+                branch: specBranch,
+                commit: commitSha,
+                triggeredBy: "push",
+                secrets: Object.keys(secrets).length > 0 ? secrets : undefined,
+            }).catch((err) => logger.error({ err, file }, "Speculative workflow failed"));
+            triggered++;
+        } catch (e) {
+            logger.error({ err: e, file }, "Error processing speculative workflow");
+        }
+    }
+
+    if (triggered > 0) {
+        logger.info({ specBranch, triggered }, "Speculative builds triggered");
+    }
+    return { triggered };
 }

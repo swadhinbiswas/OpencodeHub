@@ -19,17 +19,9 @@ export const GET: APIRoute = withErrorHandler(async ({ params, locals }) => {
   }
 
   const db = getDatabase() as NodePgDatabase<typeof schema>;
-  const ownerUser = await db.query.users.findFirst({
-    where: eq(schema.users.username, owner),
-  });
-  if (!ownerUser) return notFound("Repository not found");
-
-  const repository = await db.query.repositories.findFirst({
-    where: and(
-      eq(schema.repositories.ownerId, ownerUser.id),
-      eq(schema.repositories.name, repoName)
-    ),
-  });
+  const { resolveOwnerRepo } = await import("@/lib/repo-owner");
+  const resolved = await resolveOwnerRepo(owner!, repoName);
+  const repository = resolved?.repository;
   if (!repository) return notFound("Repository not found");
 
   if (!(await canReadRepo(user.id, repository, { isAdmin: user.isAdmin }))) {

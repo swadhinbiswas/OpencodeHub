@@ -42,6 +42,23 @@ interface RepoSettingsProps {
 export default function RepoSettings({ repo }: RepoSettingsProps) {
     const [loading, setLoading] = useState(false);
     const [branches, setBranches] = useState<string[]>([]);
+    const [orgs, setOrgs] = useState<Array<{ id: string; name: string }>>([]);
+    const [transferTarget, setTransferTarget] = useState("");
+
+    useEffect(() => {
+        // Load organizations the user can transfer to (WS3-05)
+        fetch("/api/orgs")
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+                const orgs = data?.data?.organizations || [];
+                // only orgs where the user is owner/admin
+                const adminOrgs = orgs.filter(
+                    (o: any) => o.memberRole === "owner" || o.memberRole === "admin",
+                );
+                setOrgs(adminOrgs);
+            })
+            .catch(() => {});
+    }, [repo.owner, repo.name]);
 
     useEffect(() => {
         fetch(`/api/repos/${repo.owner}/${repo.name}/branches`)
@@ -186,6 +203,23 @@ export default function RepoSettings({ repo }: RepoSettingsProps) {
             window.location.href = "/dashboard";
         } catch (err: any) {
             toast.error(err.message || "Failed to delete repository");
+        }
+    }
+
+    async function handleTransfer() {
+        if (!transferTarget) return;
+        try {
+            const res = await fetch(`/api/repos/${repo.owner}/${repo.name}/transfer`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ orgName: transferTarget }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data?.error?.message || "Failed to transfer repository");
+            toast.success("Repository transferred");
+            window.location.href = data?.data?.url || `/${transferTarget}/${repo.name}`;
+        } catch (err: any) {
+            toast.error(err.message || "Failed to transfer repository");
         }
     }
 
@@ -388,6 +422,57 @@ export default function RepoSettings({ repo }: RepoSettingsProps) {
                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                                     <AlertDialogAction onClick={handleArchive} className="bg-red-600 hover:bg-red-700">
                                         Confirm
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
+
+                    {/* Transfer (WS3-05) */}
+                    <div className="flex items-center justify-between rounded-lg border border-red-200 p-4">
+                        <div className="flex-1 min-w-0 pr-4">
+                            <h4 className="font-medium">Transfer ownership</h4>
+                            <p className="text-sm text-muted-foreground">
+                                Move this repository to an organization you own or administer.
+                                {orgs.length === 0 && " No organizations available — create one first."}
+                            </p>
+                            <select
+                                value={transferTarget}
+                                onChange={(e) => setTransferTarget(e.target.value)}
+                                className="mt-2 flex h-9 w-full max-w-xs rounded-md border border-input bg-background px-2 py-1 text-sm"
+                                disabled={orgs.length === 0}
+                            >
+                                <option value="">Select organization…</option>
+                                {orgs.map((o) => (
+                                    <option key={o.id} value={o.name}>
+                                        {o.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    className="text-red-600 border-red-200 hover:bg-red-50"
+                                    disabled={!transferTarget}
+                                >
+                                    Transfer
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Transfer repository?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will move <strong>{repo.owner}/{repo.name}</strong> to{" "}
+                                        <strong>{transferTarget || "…"}</strong>. Existing collaborators
+                                        stay; you will retain admin access.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleTransfer} className="bg-red-600 hover:bg-red-700">
+                                        Transfer
                                     </AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>

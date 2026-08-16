@@ -81,7 +81,7 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request, locals
 
     if (!repo) return notFound("Repository not found");
 
-    if (!(await canWriteRepo(user.id, repo))) {
+    if (!(await canWriteRepo(user.id, repo, { tokenScopes: user.scopes }))) {
         return forbidden();
     }
 
@@ -98,11 +98,12 @@ export const PATCH: APIRoute = withErrorHandler(async ({ params, request, locals
     if (!body || typeof body !== "object") {
         return badRequest("Invalid request body");
     }
-    const { title, body: description, state } = body;
+    const { title, body: description, state, draft } = body;
 
     const updateData: any = { updatedAt: new Date() };
     if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.body = description;
+    if (draft !== undefined) updateData.isDraft = draft === true;
 
     // Handle state change
     let stateChanged = false;

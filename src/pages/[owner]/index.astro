@@ -10,6 +10,11 @@ const { owner: username } = Astro.params;
 const db = getDatabase() as NodePgDatabase<typeof schema>;
 const tab = Astro.url.searchParams.get("tab") || "overview";
 
+// Window for the contribution graph (last 365 days)
+const activityStart = new Date();
+activityStart.setDate(activityStart.getDate() - 364);
+activityStart.setHours(0, 0, 0, 0);
+
 // 1. Fetch User
 const user = await db.query.users.findFirst({
   where: eq(schema.users.username, username!),
@@ -67,9 +72,16 @@ try {
   const [result] = await db
     .select({ count: sql`count(*)` })
     .from(schema.activities)
-    .where(eq(schema.activities.userId, user.id));
+    .where(
+      and(
+        eq(schema.activities.userId, user.id),
+        sql`${schema.activities.createdAt} >= ${activityStart}`,
+      ),
+    );
   contributionCount = Number(result?.count) || 0;
-} catch {}
+} catch {
+  // SQLite fallback: sum the in-memory day map built below
+}
 
 // 7. Fetch recent activity
 let recentActivity: any[] = [];
@@ -132,22 +144,70 @@ function formatDate(date: Date) {
   return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
-// Generate contribution data (last 365 days) - seeded by user ID for consistency
-const seed = user.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-function seededRandom(s: number) {
-  s = Math.sin(s) * 10000;
-  return s - Math.floor(s);
+// Real contribution data (last 365 days) — grouped from the activities table
+let activityByDay = new Map<string, number>();
+try {
+  const activityRows = await db
+    .select({
+      day: sql<string>`date_trunc('day', ${schema.activities.createdAt})::date`,
+      count: sql<number>`count(*)`,
+    })
+    .from(schema.activities)
+    .where(
+      and(
+        eq(schema.activities.userId, user.id),
+        sql`${schema.activities.createdAt} >= ${activityStart}`,
+      ),
+    )
+    .groupBy(sql`date_trunc('day', ${schema.activities.createdAt})::date`);
+  for (const row of activityRows) {
+    const day = String(row.day).slice(0, 10);
+    activityByDay.set(day, Number(row.count));
+  }
+} catch (e) {
+  // SQLite fallback (date_trunc is Postgres-specific)
+  try {
+    const activityRows = await db
+      .select({
+        createdAt: schema.activities.createdAt,
+      })
+      .from(schema.activities)
+      .where(
+        and(
+          eq(schema.activities.userId, user.id),
+          sql`${schema.activities.createdAt} >= ${activityStart}`,
+        ),
+      );
+    for (const row of activityRows) {
+      const day = new Date(row.createdAt).toISOString().slice(0, 10);
+      activityByDay.set(day, (activityByDay.get(day) || 0) + 1);
+    }
+  } catch {}
 }
-const weeks = Array.from({ length: 52 }, (_, wi) =>
-  Array.from({ length: 7 }, (_, di) => {
-    const r = seededRandom(seed + wi * 7 + di);
-    if (r < 0.65) return 0;
-    if (r < 0.80) return 1;
-    if (r < 0.92) return 2;
-    if (r < 0.97) return 3;
-    return 4;
-  })
-);
+
+// Build the 52-week x 7-day grid ending today (GitHub-style 5-level buckets)
+function levelForCount(c: number): number {
+  if (c === 0) return 0;
+  if (c === 1) return 1;
+  if (c <= 3) return 2;
+  if (c <= 6) return 3;
+  return 4;
+}
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+const weeks: number[][] = [];
+const cursor = new Date(activityStart);
+while (cursor <= today) {
+  const week: number[] = [];
+  for (let d = 0; d < 7; d++) {
+    const iso = cursor.toISOString().slice(0, 10);
+    week.push(levelForCount(activityByDay.get(iso) || 0));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  weeks.push(week);
+}
+// Normalize to 52 columns (GitHub-style: drop the leading partial week)
+const contributionWeeks = weeks.slice(Math.max(0, weeks.length - 52));
 ---
 
 <BaseLayout title={`${user.displayName || user.username} (${user.username})`}>
@@ -417,13 +477,12 @@ const weeks = Array.from({ length: 52 }, (_, wi) =>
               <div class="border border-border bg-card rounded-lg p-4">
                 <div class="w-full overflow-x-auto no-scrollbar">
                   <div class="inline-flex gap-[3px] justify-start">
-                    {weeks.map((week, wi) => (
+                    {contributionWeeks.map((week, wi) => (
                       <div class="flex flex-col gap-[3px]">
                         {week.map((dayLevel, di) => {
-                          const totalDays = wi * 7 + di;
-                          const date = new Date();
-                          date.setDate(date.getDate() - (364 - totalDays));
-                          const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                          const dayDate = new Date(activityStart);
+                          dayDate.setDate(dayDate.getDate() + wi * 7 + di);
+                          const dateStr = dayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                           return (
                             <div
                               class:list={[

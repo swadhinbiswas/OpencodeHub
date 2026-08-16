@@ -1,6 +1,6 @@
 {
     "name": "opencodehub-cli",
-    "version": "1.1.2",
+    "version": "1.2.0",
     "description": "Stack-first PR workflows from your terminal - CLI for OpenCodeHub",
     "author": "Swadhin Biswas <swadhinbiswas@duck.com>",
     "license": "MIT",

@@ -25,9 +25,28 @@ try {
     orderBy: (repositories, { desc }) => [desc(repositories.updatedAt)],
     limit: 6,
     with: {
-      owner: true,
+      owner: {
+        columns: { id: true, username: true, avatarUrl: true },
+      },
     },
   });
+
+  // Org-owned repos have a null `owner` relation — resolve org names
+  const orgIds = (recentRepos as any[])
+    .filter((r) => r.ownerType === "organization")
+    .map((r) => r.ownerId);
+  if (orgIds.length > 0) {
+    const orgs = await db.query.organizations.findMany({
+      where: (t, { inArray }) => inArray(t.id, orgIds),
+      columns: { id: true, name: true },
+    });
+    const orgNameById = new Map(orgs.map((o) => [o.id, o.name]));
+    recentRepos = recentRepos.map((r: any) =>
+      r.ownerType === "organization"
+        ? { ...r, owner: { username: orgNameById.get(r.ownerId) ?? "org" } }
+        : r,
+    );
+  }
 
   // Get basic stats
   const dbTyped = db as NodePgDatabase<typeof schema>;

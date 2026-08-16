@@ -66,6 +66,17 @@ const customFields = await db.query.customFieldDefinitions.findMany({
 
     <div class="grid grid-cols-1 md:grid-cols-[1fr_300px] gap-8">
       <div class="space-y-6">
+        <!-- Template chooser (WS2-05) -->
+        <div id="template-chooser" class="hidden space-y-2">
+          <label class="text-sm font-medium">Template</label>
+          <select
+            id="template-select"
+            class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="">Blank issue</option>
+          </select>
+        </div>
+
         <form id="create-issue-form" class="space-y-4">
           <div class="space-y-2">
             <Input
@@ -207,6 +218,46 @@ const customFields = await db.query.customFieldDefinitions.findMany({
 
     const urlParams = new URLSearchParams(window.location.search);
     const parentParam = urlParams.get("parent");
+    const pathParts = window.location.pathname.split("/");
+    const repoOwner = pathParts[1];
+    const repoName = pathParts[2];
+
+    // ── Template chooser (WS2-05) ──────────────────────────────────────
+    const templateChooser = document.getElementById("template-chooser");
+    const templateSelect = document.getElementById(
+      "template-select",
+    ) as HTMLSelectElement;
+    let templates: Array<{ name: string; path: string; content: string; labels?: string[]; title?: string }> = [];
+
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/repos/${repoOwner}/${repoName}/issues/templates`,
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        templates = data.templates || [];
+        if (templates.length === 0) return;
+        for (const t of templates) {
+          const opt = document.createElement("option");
+          opt.value = t.path;
+          opt.textContent = t.name;
+          templateSelect?.appendChild(opt);
+        }
+        templateChooser?.classList.remove("hidden");
+      } catch {
+        /* templates are optional */
+      }
+    })();
+
+    templateSelect?.addEventListener("change", () => {
+      const t = templates.find((x) => x.path === templateSelect.value);
+      const titleInput = document.getElementById("title") as HTMLInputElement;
+      const bodyInput = document.getElementById("body") as HTMLTextAreaElement;
+      if (!t) return;
+      if (t.title && titleInput && !titleInput.value) titleInput.value = t.title;
+      if (bodyInput) bodyInput.value = t.content;
+    });
 
     if (parentParam) {
       // Hidden input for parentNumber

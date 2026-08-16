@@ -1,5 +1,8 @@
 import { config } from "dotenv";
-config({ override: true });
+// Do NOT override real environment variables with .env values:
+// CI and container environments set DATABASE_URL externally and must win.
+// (override:true here previously made .env silently shadow production env)
+config();
 import { logger } from "@/lib/logger";
 import { createClient } from "@libsql/client";
 import Database from "better-sqlite3";

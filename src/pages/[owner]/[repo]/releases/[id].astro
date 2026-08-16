@@ -29,7 +29,10 @@ const currentUser = Astro.locals.user;
 const hasAccess = await canReadRepo(currentUser?.id, repoData);
 if (!hasAccess) return Astro.redirect("/404");
 
-const canWrite = currentUser?.id ? await canWriteRepo(currentUser.id, repoData) : false;
+const canWrite = currentUser?.id
+  ? await canWriteRepo(currentUser.id, repoData, { isAdmin: currentUser.isAdmin ?? undefined })
+  : false;
+const canEdit = canWrite;
 
 const release = await db.query.releases?.findFirst?.({
   where: and(
@@ -187,25 +190,59 @@ const repo = {
             )}
 
             {/* Assets */}
-            {assets.length > 0 && (
-              <div class="border-t px-6 py-4">
-                <h3 class="text-sm font-semibold mb-3">Assets</h3>
-                <div class="space-y-2">
+            <div class="border-t px-6 py-4">
+              <h3 class="text-sm font-semibold mb-3">Assets</h3>
+              {assets.length > 0 ? (
+                <div class="space-y-2 mb-4">
                   {assets.map((asset: any) => (
-                    <a
-                      href={asset.url}
-                      class="flex items-center justify-between rounded-md border px-4 py-2.5 hover:bg-muted/50 transition-colors"
-                    >
-                      <div class="flex items-center gap-2">
-                        <Download className="h-4 w-4 text-muted-foreground" />
-                        <span class="text-sm font-medium">{asset.name}</span>
+                    <div class="flex items-center justify-between rounded-md border px-4 py-2.5 hover:bg-muted/50 transition-colors">
+                      <a
+                        href={`/api/repos/${repo.owner}/${repo.name}/releases/${release.id}/assets/${asset.id}`}
+                        class="flex items-center gap-2 flex-1 min-w-0"
+                      >
+                        <Download className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span class="text-sm font-medium truncate">{asset.name}</span>
+                      </a>
+                      <div class="flex items-center gap-3 shrink-0">
+                        <span class="text-xs text-muted-foreground">
+                          {(asset.size || 0) > 1024 * 1024
+                            ? `${(asset.size / 1024 / 1024).toFixed(1)} MB`
+                            : `${Math.max(1, Math.round((asset.size || 0) / 1024))} KB`}
+                          {" · "}
+                          {(asset.downloadCount || 0)} downloads
+                        </span>
+                        {canEdit && (
+                          <button
+                            class="asset-delete text-xs text-red-400 hover:underline"
+                            data-asset-id={asset.id}
+                            data-asset-name={asset.name}
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
-                      <span class="text-xs text-muted-foreground">{asset.size}</span>
-                    </a>
+                    </div>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p class="text-sm text-muted-foreground mb-4">No assets attached.</p>
+              )}
+              {canEdit && (
+                <div class="flex items-center gap-2">
+                  <input
+                    id="asset-file"
+                    type="file"
+                    class="flex h-9 flex-1 rounded-md border border-input bg-background px-2 py-1 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm"
+                  />
+                  <button
+                    id="asset-upload"
+                    class="rounded-md bg-cyan-500/90 hover:bg-cyan-500 text-foreground px-4 py-2 text-sm font-medium"
+                  >
+                    Upload
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -229,5 +266,47 @@ const repo = {
     } catch (e) {
       alert("Failed to delete release");
     }
+  });
+
+  // Asset upload (WS2-15)
+  const uploadBtn = document.getElementById("asset-upload");
+  uploadBtn?.addEventListener("click", async () => {
+    const fileInput = document.getElementById("asset-file");
+    const file = fileInput?.files?.[0];
+    if (!file) {
+      alert("Choose a file first");
+      return;
+    }
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = "Uploading...";
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`/api/repos/${repoOwner}/${repoName}/releases/${releaseId}/assets`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      window.location.reload();
+    } catch (e) {
+      alert("Failed to upload asset: " + (e instanceof Error ? e.message : String(e)));
+      uploadBtn.disabled = false;
+      uploadBtn.textContent = "Upload";
+    }
+  });
+
+  // Asset delete
+  document.querySelectorAll(".asset-delete").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const assetId = btn.dataset.assetId;
+      const assetName = btn.dataset.assetName;
+      if (!confirm(`Delete asset "${assetName}"?`)) return;
+      const res = await fetch(
+        `/api/repos/${repoOwner}/${repoName}/releases/${releaseId}/assets/${assetId}`,
+        { method: "DELETE" },
+      );
+      if (res.ok) window.location.reload();
+      else alert("Failed to delete asset");
+    });
   });
 </script>

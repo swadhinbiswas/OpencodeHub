@@ -38,6 +38,13 @@ const createTokenSchema = z.object({
     .enum(["7d", "30d", "90d", "1y", "never"])
     .optional()
     .default("30d"),
+  // Fine-grained scopes (WS4-01): subset of
+  // ["repo:read", "repo:write", "admin", "notifications"]
+  scopes: z
+    .array(
+      z.enum(["repo:read", "repo:write", "admin", "notifications"]),
+    )
+    .optional(),
 });
 
 import { withErrorHandler } from "@/lib/errors";
@@ -68,6 +75,7 @@ export const GET: APIRoute = withErrorHandler(async ({ request }) => {
       expiresAt: t.expiresAt,
       lastUsedAt: t.lastUsedAt,
       createdAt: t.createdAt,
+      scopes: t.scopes ? JSON.parse(t.scopes) : null,
     })),
   });
 });
@@ -82,7 +90,12 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
   const parsed = await parseBody(request, createTokenSchema);
   if ("error" in parsed) return parsed.error;
 
-  const { name, expiresIn } = parsed.data;
+  const { name, expiresIn, scopes } = parsed.data;
+
+  // Empty scopes array means full access (legacy behavior); only restrict
+  // when the user explicitly picked scopes.
+  const scopesJson =
+    scopes && scopes.length > 0 ? JSON.stringify([...new Set(scopes)]) : null;
 
   // Calculate expiry date
   let expiresAt: Date | null = null;
@@ -119,6 +132,7 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
     name,
     token: hashPersonalAccessToken(token),
     expiresAt,
+    scopes: scopesJson,
     createdAt: new Date(),
   });
 

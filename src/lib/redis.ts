@@ -1,4 +1,4 @@
-import type Redis from "ioredis";
+import Redis from "ioredis";
 import { logger } from "@/lib/logger";
 
 const REDIS_DEFAULT_URL = "redis://localhost:6379";
@@ -23,8 +23,7 @@ let client: Redis | null = null;
 let connecting: Promise<Redis | null> | null = null;
 
 function createClient(url: string): Redis {
-    const RedisCtor = require("ioredis");
-    const instance: Redis = new RedisCtor(url, {
+    const instance: Redis = new Redis(url, {
         enableReadyCheck: false,
         maxRetriesPerRequest: 3,
         lazyConnect: true,

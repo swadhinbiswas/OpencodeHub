@@ -36,7 +36,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals, request 
     ),
   });
   if (!repo) return notFound("Repository not found");
-  if (!(await canWriteRepo(user.id, repo))) return forbidden();
+  if (!(await canWriteRepo(user.id, repo, { tokenScopes: user.scopes }))) return forbidden();
 
   const body = await request.json().catch(() => null);
   const parsed = bulkMergeSchema.safeParse(body || {});

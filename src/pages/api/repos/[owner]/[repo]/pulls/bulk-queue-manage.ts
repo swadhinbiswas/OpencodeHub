@@ -56,7 +56,7 @@ export const POST: APIRoute = withErrorHandler(
       ),
     });
     if (!repo) return notFound("Repository not found");
-    if (!(await canWriteRepo(user.id, repo, { isAdmin: user.isAdmin }))) {
+    if (!(await canWriteRepo(user.id, repo, { isAdmin: user.isAdmin, tokenScopes: user.scopes }))) {
       return forbidden();
     }
 

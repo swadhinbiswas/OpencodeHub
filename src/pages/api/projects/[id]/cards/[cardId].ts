@@ -23,7 +23,7 @@ export const DELETE: APIRoute = withErrorHandler(async ({ request, params }) => 
     });
     if (!project) return notFound("Project not found");
 
-    if (!(await canWriteRepo(user.userId, project.repository, { isAdmin: user.isAdmin }))) {
+    if (!(await canWriteRepo(user.userId, project.repository, { isAdmin: user.isAdmin, tokenScopes: user.scopes }))) {
         return unauthorized("Write access required");
     }
 
@@ -58,7 +58,7 @@ export const PATCH: APIRoute = withErrorHandler(async ({ request, params }) => {
     });
     if (!project) return notFound("Project not found");
 
-    if (!(await canWriteRepo(user.userId, project.repository, { isAdmin: user.isAdmin }))) {
+    if (!(await canWriteRepo(user.userId, project.repository, { isAdmin: user.isAdmin, tokenScopes: user.scopes }))) {
         return unauthorized("Write access required");
     }
 

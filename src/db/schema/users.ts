@@ -126,6 +126,10 @@ export const personalAccessTokens = pgTable("personal_access_tokens", {
   token: text("token").notNull().unique(),
   expiresAt: timestamp("expires_at"),
   lastUsedAt: timestamp("last_used_at"),
+  // Fine-grained scopes (WS4-01): JSON array of scopes like
+  // ["repo:read", "repo:write", "admin", "notifications"]
+  // null/[] = legacy full-access token
+  scopes: text("scopes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

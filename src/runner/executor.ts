@@ -45,7 +45,7 @@ const IMAGE_ALLOWLIST: string[] = process.env.EXECUTOR_IMAGE_ALLOWLIST
 
 // ── Network Isolation ─────────────────────────────────────────────────────────
 // Set to "none" to fully isolate containers, or a custom Docker network name.
-const NETWORK_MODE = process.env.EXECUTOR_NETWORK_MODE || "none";
+const NETWORK_MODE = process.env.EXECUTOR_NETWORK_MODE || "bridge";
 
 // ── Credential Encryption ─────────────────────────────────────────────────────
 const CREDENTIAL_ENCRYPTION_KEY = process.env.EXECUTOR_CREDENTIAL_KEY || "";

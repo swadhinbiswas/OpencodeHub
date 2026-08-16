@@ -46,7 +46,7 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
     if (!pr) return new Response("PR not found", { status: 404 });
 
     // 2. Check Permissions
-    if (!(await canWriteRepo(user.id, repository))) {
+    if (!(await canWriteRepo(user.id, repository, { tokenScopes: (user as any).scopes }))) {
         return new Response("Forbidden", { status: 403 });
     }
 

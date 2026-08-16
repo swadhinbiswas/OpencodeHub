@@ -1,0 +1,211 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import SettingsLayout from "@/layouts/SettingsLayout.astro";
+---
+
+<BaseLayout title="OAuth Apps · Settings · OpenCodeHub">
+  <SettingsLayout active="oauth-apps">
+    <div class="space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-xl font-semibold">OAuth Apps</h1>
+          <p class="text-sm text-muted-foreground mt-1">
+            Third-party applications can request access to OpenCodeHub via OAuth 2.0
+            (authorization-code flow).
+          </p>
+        </div>
+        <button
+          id="new-app-btn"
+          class="rounded-md bg-cyan-500/90 hover:bg-cyan-500 text-foreground px-4 py-2 text-sm font-medium"
+        >
+          New OAuth App
+        </button>
+      </div>
+
+      <!-- Create form -->
+      <div id="new-app-form" class="hidden border rounded-lg p-5 bg-card space-y-3">
+        <h2 class="font-medium">Register application</h2>
+        <input
+          id="app-name"
+          placeholder="Application name"
+          class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+        />
+        <input
+          id="app-homepage"
+          placeholder="Homepage URL"
+          class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+        />
+        <textarea
+          id="app-description"
+          placeholder="Description"
+          rows="2"
+          class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+        ></textarea>
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-muted-foreground">
+            Redirect URIs (one per line)
+          </label>
+          <textarea
+            id="app-redirects"
+            rows="3"
+            placeholder="https://app.example.com/callback"
+            class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+          ></textarea>
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-muted-foreground">Scopes</label>
+          <div class="flex flex-wrap gap-3">
+            {["user:read", "repo:read", "repo:write", "notifications"].map((s) => (
+              <label class="flex items-center gap-1.5 text-sm">
+                <input type="checkbox" class="app-scope h-4 w-4" value={s} />
+                <span class="font-mono text-xs">{s}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button
+            id="app-create-submit"
+            class="rounded-md bg-cyan-500/90 hover:bg-cyan-500 text-foreground px-4 py-2 text-sm font-medium"
+          >
+            Register
+          </button>
+          <button
+            id="app-create-cancel"
+            class="rounded-md border bg-background px-4 py-2 text-sm hover:bg-muted"
+          >
+            Cancel
+          </button>
+        </div>
+        <div id="app-create-error" class="text-sm text-red-500 hidden"></div>
+      </div>
+
+      <!-- Credentials modal -->
+      <div id="creds-modal" class="hidden border rounded-lg p-5 bg-card space-y-3">
+        <h2 class="font-medium">Client credentials — save these now</h2>
+        <p class="text-sm text-muted-foreground">
+          The client secret is shown only once.
+        </p>
+        <div class="space-y-2">
+          <div>
+            <label class="text-xs text-muted-foreground">Client ID</label>
+            <code id="creds-client-id" class="block bg-secondary rounded-md p-2 text-sm font-mono break-all"></code>
+          </div>
+          <div>
+            <label class="text-xs text-muted-foreground">Client Secret</label>
+            <code id="creds-client-secret" class="block bg-secondary rounded-md p-2 text-sm font-mono break-all"></code>
+          </div>
+        </div>
+        <button
+          id="creds-close"
+          class="rounded-md bg-cyan-500/90 hover:bg-cyan-500 text-foreground px-4 py-2 text-sm font-medium"
+        >
+          Done
+        </button>
+      </div>
+
+      <!-- App list -->
+      <div id="app-list" class="space-y-3"></div>
+    </div>
+  </SettingsLayout>
+
+  <script>
+    const appListEl = document.getElementById("app-list");
+    const appList = appListEl;
+    const form = document.getElementById("new-app-form");
+    const credsModal = document.getElementById("creds-modal");
+
+    async function loadApps() {
+      try {
+        const res = await fetch("/api/oauth/apps");
+        if (!res.ok) return;
+        const data = await res.json();
+        const apps = data.data?.apps || [];
+        if (appList) appList.innerHTML = "";
+        if (apps.length === 0) {
+          if (appList) appList.innerHTML =
+            '<p class="text-sm text-muted-foreground border rounded-lg p-8 text-center">No OAuth apps registered yet.</p>';
+          return;
+        }
+        for (const app of apps) {
+          const card = document.createElement("div");
+          card.className = "border rounded-lg p-4 bg-card flex items-center justify-between";
+          const info = document.createElement("div");
+          const name = document.createElement("div");
+          name.className = "font-medium";
+          name.textContent = app.name;
+          const meta = document.createElement("div");
+          meta.className = "text-xs text-muted-foreground font-mono mt-0.5";
+          meta.textContent = app.clientId + " · " + (app.scopes || []).join(" ");
+          info.appendChild(name);
+          info.appendChild(meta);
+          const del = document.createElement("button");
+          del.textContent = "Delete";
+          del.className = "text-xs text-red-400 hover:underline";
+          del.onclick = async () => {
+            if (!confirm(`Delete ${app.name}? All its access tokens stop working.`)) return;
+            await fetch(`/api/oauth/apps/${app.id}`, { method: "DELETE" });
+            loadApps();
+          };
+          card.appendChild(info);
+          card.appendChild(del);
+          appList?.appendChild(card);
+        }
+      } catch {
+        /* optional */
+      }
+    }
+
+    document.getElementById("new-app-btn")?.addEventListener("click", () => {
+      form?.classList.toggle("hidden");
+    });
+    document.getElementById("app-create-cancel")?.addEventListener("click", () => {
+      form?.classList.add("hidden");
+    });
+
+    document.getElementById("app-create-submit")?.addEventListener("click", async () => {
+      const errorDiv = document.getElementById("app-create-error");
+      errorDiv?.classList.add("hidden");
+      const nameInput = document.getElementById("app-name");
+      const name = nameInput instanceof HTMLInputElement ? nameInput.value : "";
+      const descInput = document.getElementById("app-description");
+      const description = descInput instanceof HTMLTextAreaElement ? descInput.value : "";
+      const homeInput = document.getElementById("app-homepage");
+      const homepageUrl = homeInput instanceof HTMLInputElement ? homeInput.value : "";
+      const redirectsEl = document.getElementById("app-redirects");
+      const redirectUris = (redirectsEl instanceof HTMLTextAreaElement ? redirectsEl.value : "").split("\n")
+        .map((u: string) => u.trim())
+        .filter(Boolean);
+      const scopes = Array.from(document.querySelectorAll(".app-scope:checked")).map(
+        (c) => (c as HTMLInputElement).value,
+      );
+      try {
+        const res = await fetch("/api/oauth/apps", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, description, homepageUrl, redirectUris, scopes }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error?.message || "Failed to register app");
+        form?.classList.add("hidden");
+        const credId = document.getElementById("creds-client-id");
+        if (credId) credId.textContent = data.data.app.clientId;
+        const credSecret = document.getElementById("creds-client-secret");
+        if (credSecret) credSecret.textContent = data.data.app.clientSecret;
+        credsModal?.classList.remove("hidden");
+        loadApps();
+      } catch (e) {
+        if (errorDiv) {
+          errorDiv.textContent = e instanceof Error ? e.message : String(e);
+          errorDiv.classList.remove("hidden");
+        }
+      }
+    });
+
+    document.getElementById("creds-close")?.addEventListener("click", () => {
+      credsModal?.classList.add("hidden");
+    });
+
+    loadApps();
+  </script>
+</BaseLayout>

@@ -90,13 +90,14 @@ export const POST: APIRoute = async ({ request, params }) => {
 
     const body = (await request.json()) as { body?: string };
     if (!body.body?.trim()) return badRequest("Comment body is required");
+    const commentText = body.body.trim();
     const [comment] = await db
       .insert(schema.issueComments)
       .values({
         id: crypto.randomUUID(),
         issueId: issue.id,
         authorId: user.userId,
-        body: body.body.trim(),
+        body: commentText,
         createdAt: new Date(),
         updatedAt: new Date(),
       })
@@ -106,6 +107,19 @@ export const POST: APIRoute = async ({ request, params }) => {
       { issueNumber: number, userId: user.userId },
       "Issue comment created",
     );
+
+    // Notify @mentioned users (WS2-10)
+    import("@/lib/mentions").then(({ notifyMentionedUsers }) => {
+      notifyMentionedUsers({
+        text: commentText,
+        actorId: user.userId,
+        repositoryId: repository.id,
+        subjectType: "comment",
+        subjectId: comment.id,
+        url: `/${owner}/${repo}/issues/${number}#comment-${comment.id}`,
+        titlePrefix: "mentioned you in a comment",
+      }).catch((err) => logger.error({ err }, "Mention notification failed"));
+    });
 
     return new Response(JSON.stringify({ data: comment }), {
       status: 201,

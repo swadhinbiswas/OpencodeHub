@@ -1272,6 +1272,7 @@ export async function mergeBranch(
   base: string,
   head: string,
   message?: string,
+  method: "merge" | "squash" | "rebase" = "merge",
 ): Promise<MergeResult> {
   const tempDir = mkdtempSync(join(tmpdir(), "och-merge-"));
   try {
@@ -1290,7 +1291,20 @@ export async function mergeBranch(
     await workGit.fetch("origin", head, ["--depth=1"]);
 
     const commitMsg = message || `Merge pull request from ${head} into ${base}`;
-    await workGit.merge(["--no-ff", "-m", commitMsg, `origin/${head}`]);
+
+    if (method === "squash") {
+      // Squash merge: merge --squash stages the combined diff, then commit
+      await workGit.merge(["--squash", `origin/${head}`]);
+      await workGit.commit(commitMsg);
+    } else if (method === "rebase") {
+      // Rebase merge: replay head commits onto base, then fast-forward base
+      await workGit.checkout(["-b", "och-rebase", `origin/${head}`]);
+      await workGit.rebase([base]);
+      await workGit.checkout(base);
+      await workGit.merge(["--ff-only", "och-rebase"]);
+    } else {
+      await workGit.merge(["--no-ff", "-m", commitMsg, `origin/${head}`]);
+    }
 
     const newCommitSha = (await workGit.revparse(["HEAD"])).trim();
     await workGit.push("origin", `${base}:${base}`);

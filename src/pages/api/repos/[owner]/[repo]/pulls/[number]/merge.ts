@@ -15,7 +15,7 @@ import { checkPathPermissions } from "@/lib/path-scoping";
 
 // ... existing imports ...
 
-export const POST: APIRoute = withErrorHandler(async ({ params, locals }) => {
+export const POST: APIRoute = withErrorHandler(async ({ params, locals, request }) => {
     const { owner: ownerName, repo: repoName, number } = params;
     const user = locals.user;
 
@@ -26,6 +26,23 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals }) => {
     // Validate inputs
     if (!ownerName || !repoName || !number) {
         return badRequest("Missing parameters");
+    }
+
+    // Parse merge method (WS2-08: manual merge previously always used a merge commit)
+    let mergeMethod: "merge" | "squash" | "rebase" = "merge";
+    try {
+        const rawBody = await request.text();
+        if (rawBody) {
+            const body = JSON.parse(rawBody);
+            if (body.mergeMethod) {
+                if (!["merge", "squash", "rebase"].includes(body.mergeMethod)) {
+                    return badRequest("mergeMethod must be one of: merge, squash, rebase");
+                }
+                mergeMethod = body.mergeMethod;
+            }
+        }
+    } catch {
+        // non-JSON or empty body — default to merge
     }
 
     // Check repo existence and permissions
@@ -49,7 +66,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals }) => {
         return notFound("Repository not found");
     }
 
-    if (!(await canWriteRepo(user.id, repo, { isAdmin: user.isAdmin }))) {
+    if (!(await canWriteRepo(user.id, repo, { isAdmin: user.isAdmin, tokenScopes: user.scopes }))) {
         return forbidden();
     }
 
@@ -111,7 +128,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals }) => {
         return conflict(`Merge blocked: ${failedGates}`);
     }
     // Merge branch
-    const result = await mergeBranch(repoPath, pr.baseBranch, pr.headBranch);
+    const result = await mergeBranch(repoPath, pr.baseBranch, pr.headBranch, undefined, mergeMethod);
 
     if (result.success) {
         // Update PR state with all merge fields
@@ -122,6 +139,9 @@ export const POST: APIRoute = withErrorHandler(async ({ params, locals }) => {
                 isMerged: true,
                 mergedAt: now,
                 mergedById: user.id,
+                mergeCommitSha: result.sha || null,
+                mergeSha: result.sha || null,
+                mergeMethod,
                 updatedAt: now,
             })
             .where(eq(schema.pullRequests.id, pr.id));

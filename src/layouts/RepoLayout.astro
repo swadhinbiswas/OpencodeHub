@@ -28,8 +28,11 @@ if (!repoInfo) {
 
 const { repository } = repoInfo;
 
+// Org-owned repos have no user `owner` relation (ownerId = org id)
+const repoOwnerName = (repository as any).owner?.username ?? owner!;
+
 const repoData = {
-    owner: repository.owner.username,
+    owner: repoOwnerName,
     name: repository.name,
     description: repository.description,
     visibility: repository.visibility,

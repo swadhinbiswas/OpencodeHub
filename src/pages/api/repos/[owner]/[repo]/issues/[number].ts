@@ -4,11 +4,14 @@ import { getDatabase, schema } from "@/db";
 import { eq, and } from "drizzle-orm";
 import { getUserFromRequest } from "@/lib/auth";
 import { unauthorized, badRequest, success, notFound, serverError } from "@/lib/api";
-import { issues, issueLabels } from "@/db/schema";
+import { issues, issueLabels, issueAssignees } from "@/db/schema";
 import { getRepoAndUser } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { autoLinkCrossRepoIssues } from "@/lib/cross-repo-issues";
+import { transitionIssue } from "@/lib/issue-workflows";
+import { setFieldValue, getCustomFields } from "@/lib/custom-fields";
+import { generateId } from "@/lib/utils";
 
 // PATCH: Update an issue
 export const PATCH: APIRoute = async ({ request, params }) => {
@@ -39,7 +42,7 @@ export const PATCH: APIRoute = async ({ request, params }) => {
 
         // Parse body
         const body = await request.json();
-        const { title, description, state, type, parentId, labels } = body;
+        const { title, description, state, type, parentId, labels, assigneeIds, milestoneId, statusId, customFields } = body;
 
         // Prepare updates
         const updates: any = {};
@@ -74,11 +77,84 @@ export const PATCH: APIRoute = async ({ request, params }) => {
             }
         }
 
+        // Handle milestone assignment (WS2-02: issues.milestoneId was never written)
+        if (milestoneId !== undefined) {
+            if (milestoneId === null) {
+                updates.milestoneId = null;
+            } else {
+                const milestone = await db.query.milestones.findFirst({
+                    where: and(
+                        eq(schema.milestones.repositoryId, repoData.repository.id),
+                        eq(schema.milestones.id, milestoneId)
+                    )
+                });
+                if (!milestone) return badRequest("Milestone not found in this repository");
+                updates.milestoneId = milestone.id;
+            }
+        }
+
+        // Handle workflow state transition (WS2-03: transitionIssue was never called)
+        if (statusId !== undefined) {
+            if (statusId === null) {
+                updates.statusId = null;
+            } else {
+                const transition = await transitionIssue({
+                    issueId: issue.id,
+                    toStateId: statusId,
+                    userId: user.userId,
+                });
+                if (!transition.success) return badRequest(transition.error || "Invalid state transition");
+                updates.statusId = statusId;
+                if (updates.state === undefined) {
+                    // transitionIssue already set open/closed state; keep statusId consistent
+                }
+            }
+        }
+
         if (Object.keys(updates).length > 0) {
             updates.updatedAt = new Date();
             await db.update(issues)
                 .set(updates)
                 .where(eq(issues.id, issue.id));
+        }
+
+        // Handle assignee updates (WS2-01: issue assignees were never settable)
+        if (assigneeIds !== undefined) {
+            if (!Array.isArray(assigneeIds)) return badRequest("assigneeIds must be an array");
+            // Verify assignees exist
+            const valid: string[] = [];
+            for (const assigneeId of assigneeIds) {
+                const assignee = await db.query.users.findFirst({
+                    where: eq(schema.users.id, assigneeId)
+                });
+                if (assignee) valid.push(assigneeId);
+            }
+            await db.delete(issueAssignees).where(eq(issueAssignees.issueId, issue.id));
+            if (valid.length > 0) {
+                await db.insert(issueAssignees).values(
+                    valid.map((userId) => ({
+                        id: generateId(),
+                        issueId: issue.id,
+                        userId,
+                        assignedAt: new Date(),
+                    }))
+                );
+            }
+        }
+
+        // Handle custom field values (WS2-04: setFieldValue was never callable)
+        if (customFields !== undefined && typeof customFields === "object") {
+            const repoFields = await getCustomFields(repoData.repository.id);
+            const repoFieldIds = new Set(repoFields.map((f) => f.id));
+            for (const [fieldId, value] of Object.entries(customFields)) {
+                if (!repoFieldIds.has(fieldId)) return badRequest(`Custom field ${fieldId} does not exist in this repository`);
+                try {
+                    await setFieldValue({ issueId: issue.id, fieldId, value: value as any });
+                } catch (err) {
+                    logger.error({ err, fieldId, issueId: issue.id }, "Failed to set custom field value");
+                    return badRequest(`Failed to set custom field ${fieldId}`);
+                }
+            }
         }
 
         // Handle label updates
@@ -87,7 +163,6 @@ export const PATCH: APIRoute = async ({ request, params }) => {
             await db.delete(issueLabels).where(eq(issueLabels.issueId, issue.id));
             // Add new labels
             if (labels.length > 0) {
-                const { generateId } = await import("@/lib/utils");
                 const labelInserts = labels.map((labelId: string) => ({
                     id: generateId(),
                     issueId: issue.id,

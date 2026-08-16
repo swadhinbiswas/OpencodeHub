@@ -73,13 +73,80 @@ export async function triggerWebhooks(
 }
 
 /**
- * Dispatch a single webhook
+ * Dispatch a single webhook with retry + exponential backoff.
+ * Non-2xx responses and network errors are retried up to
+ * WEBHOOK_MAX_RETRIES times (default 4) with 1s→16s backoff.
+ * One delivery row is logged per attempt.
  */
 async function dispatchWebhook(
   webhook: typeof schema.webhooks.$inferSelect,
   event: string,
   payload: WebhookPayload,
 ): Promise<void> {
+  const db = getDatabase() as NodePgDatabase<typeof schema>;
+  const maxRetries = Math.max(
+    0,
+    parseInt(process.env.WEBHOOK_MAX_RETRIES || "4", 10),
+  );
+
+  let lastError: unknown = null;
+  let lastResponse: Response | null = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (attempt > 0) {
+      const backoffMs = Math.min(1000 * 2 ** (attempt - 1), 16_000);
+      logger.info(
+        { webhookId: webhook.id, attempt, backoffMs },
+        "Retrying webhook delivery",
+      );
+      await new Promise((r) => setTimeout(r, backoffMs));
+    }
+
+    const outcome = await deliverOnce(
+      webhook,
+      event,
+      payload,
+      attempt + 1,
+      maxRetries + 1,
+    );
+    lastError = outcome.error ?? null;
+    lastResponse = outcome.response ?? null;
+
+    // Success (2xx) — stop retrying
+    if (outcome.success) return;
+    // 4xx from the receiver: retrying won't help (bad payload/secret) — stop
+    if (
+      lastResponse &&
+      lastResponse.status >= 400 &&
+      lastResponse.status < 500
+    ) {
+      logger.warn(
+        { webhookId: webhook.id, status: lastResponse.status },
+        "Webhook rejected with 4xx, not retrying",
+      );
+      return;
+    }
+  }
+
+  if (!lastError && lastResponse) {
+    lastError = new Error(`Webhook failed with HTTP ${lastResponse.status}`);
+  }
+  logger.error(
+    { webhookId: webhook.id, error: lastError },
+    "Webhook delivery failed after retries",
+  );
+}
+
+/**
+ * Single delivery attempt. Returns { success } and logs the delivery row.
+ */
+async function deliverOnce(
+  webhook: typeof schema.webhooks.$inferSelect,
+  event: string,
+  payload: WebhookPayload,
+  attempt: number,
+  totalAttempts: number,
+): Promise<{ success: boolean; error?: unknown; response?: Response }> {
   const db = getDatabase() as NodePgDatabase<typeof schema>;
   const deliveryId = generateId();
   const startTime = Date.now();
@@ -88,7 +155,7 @@ async function dispatchWebhook(
     // SSRF protection: validate URL resolves to a public IP
     const urlCheck = await validateWebhookUrl(webhook.url);
     const { isOfflineMode } = await import("@/lib/config");
-    
+
     if (isOfflineMode()) {
       if (urlCheck.valid) {
         throw new Error(`Webhook blocked: External webhooks are disabled in Air-Gapped/Offline mode`);
@@ -118,6 +185,7 @@ async function dispatchWebhook(
       "User-Agent": "OpenCodeHub-Hookshot/1.0",
       "X-OpenCodeHub-Event": event,
       "X-OpenCodeHub-Delivery": deliveryId,
+      "X-OpenCodeHub-Attempt": String(attempt),
     };
     if (signature) {
       headers["X-Hub-Signature-256"] = `sha256=${signature}`;
@@ -140,7 +208,8 @@ async function dispatchWebhook(
     }
 
     const durationMs = Date.now() - startTime;
-    const responseBody = await response!.text();
+    const responseBody = await response.text();
+    const ok = response.ok;
 
     // Log delivery
     await db.insert(schema.webhookDeliveries).values({
@@ -148,10 +217,13 @@ async function dispatchWebhook(
       webhookId: webhook.id,
       event,
       payload: JSON.stringify(payload),
-      status: response.ok ? "success" : "failure",
+      status: ok ? "success" : "failure",
       responseCode: response.status,
       responseBody: responseBody.slice(0, 1000), // Truncate
       durationMs,
+      error: ok
+        ? null
+        : `attempt ${attempt}/${totalAttempts} HTTP ${response.status}`,
       requestHeaders: JSON.stringify(headers),
       responseHeaders: JSON.stringify(
         Object.fromEntries(response.headers.entries()),
@@ -163,10 +235,12 @@ async function dispatchWebhook(
       .update(schema.webhooks)
       .set({
         deliveryCount: sql`COALESCE(${schema.webhooks.deliveryCount}, 0) + 1`,
-        lastDeliveryStatus: response.ok ? "success" : "failure",
+        lastDeliveryStatus: ok ? "success" : "failure",
         lastDeliveryAt: new Date(),
       })
       .where(eq(schema.webhooks.id, webhook.id));
+
+    return { success: ok, response, error: ok ? undefined : new Error(`HTTP ${response.status}`) };
   } catch (error: any) {
     const durationMs = Date.now() - startTime;
 
@@ -178,7 +252,7 @@ async function dispatchWebhook(
       payload: JSON.stringify(payload),
       status: "failure",
       responseCode: 0,
-      error: error.message,
+      error: `attempt ${attempt}/${totalAttempts}: ${error.message}`,
       durationMs,
     });
 
@@ -191,6 +265,8 @@ async function dispatchWebhook(
         lastDeliveryAt: new Date(),
       })
       .where(eq(schema.webhooks.id, webhook.id));
+
+    return { success: false, error };
   }
 }
 

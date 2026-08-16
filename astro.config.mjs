@@ -35,6 +35,7 @@ export default defineConfig({
     },
     ssr: {
       noExternal: ["@radix-ui/*"],
+      external: ["node:async_hooks"],
     },
   },
 });

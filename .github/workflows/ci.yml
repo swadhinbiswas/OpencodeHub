@@ -65,6 +65,56 @@ jobs:
       - name: Check docs parity
         run: bun run docs:parity
 
+  wiring-audit:
+    name: Wiring Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: |
+          for i in 1 2 3; do
+            bun install --frozen-lockfile && exit 0
+            echo "bun install attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "::error::bun install failed after 3 attempts"
+          exit 1
+
+      - name: Run wiring audit
+        run: bun run wiring:audit
+
+  openapi-coverage:
+    name: OpenAPI Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: |
+          for i in 1 2 3; do
+            bun install --frozen-lockfile && exit 0
+            echo "bun install attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "::error::bun install failed after 3 attempts"
+          exit 1
+
+      - name: Check OpenAPI coverage
+        run: bun run openapi:coverage
+        env:
+          OPENAPI_COVERAGE_THRESHOLD: "60"
+
   # ──────────────────────────────────────────────────
   # Stage 2: Security Audit
   # ──────────────────────────────────────────────────
@@ -167,6 +217,62 @@ jobs:
           name: coverage-report
           path: coverage/
           retention-days: 14
+
+  # ──────────────────────────────────────────────────
+  # Stage 3b: Contract Tests (Lane: contract)
+  # ──────────────────────────────────────────────────
+  contract:
+    name: Contract Tests (Lane: contract)
+    runs-on: ubuntu-latest
+    needs: lint
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: |
+          for i in 1 2 3; do
+            bun install --frozen-lockfile && exit 0
+            echo "bun install attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "::error::bun install failed after 3 attempts"
+          exit 1
+
+      - name: Run contract tests
+        run: bun run test:contract
+
+  # ──────────────────────────────────────────────────
+  # Stage 3c: Smoke Tests (Lane: smoke)
+  # ──────────────────────────────────────────────────
+  smoke:
+    name: Smoke Tests (Lane: smoke)
+    runs-on: ubuntu-latest
+    needs: lint
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: |
+          for i in 1 2 3; do
+            bun install --frozen-lockfile && exit 0
+            echo "bun install attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "::error::bun install failed after 3 attempts"
+          exit 1
+
+      - name: Run smoke tests
+        run: bun run test:smoke
 
   # ──────────────────────────────────────────────────
   # Stage 4: E2E Tests (Playwright)
@@ -531,14 +637,19 @@ jobs:
   quality-gate:
     name: Quality Gate
     runs-on: ubuntu-latest
-    needs: [lint, docs-parity, security, test, e2e, container-scan, sast, performance, build]
+    needs: [lint, docs-parity, wiring-audit, openapi-coverage, security, test, contract, smoke, e2e, container-scan, sast, performance, build]
     if: always()
     steps:
       - name: Check all gates
         run: |
           echo "=== Quality Gate Summary ==="
           echo "Lint & Typecheck: ${{ needs.lint.result }}"
+          echo "Docs Parity:      ${{ needs.docs-parity.result }}"
+          echo "Wiring Audit:     ${{ needs.wiring-audit.result }}"
+          echo "OpenAPI Coverage: ${{ needs.openapi-coverage.result }}"
           echo "Unit Tests:       ${{ needs.test.result }}"
+          echo "Contract Tests:   ${{ needs.contract.result }}"
+          echo "Smoke Tests:      ${{ needs.smoke.result }}"
           echo "E2E Tests:        ${{ needs.e2e.result }}"
           echo "Container Scan:   ${{ needs.container-scan.result }}"
           echo "SAST:             ${{ needs.sast.result }}"

@@ -17,7 +17,8 @@ import {
     Trash2,
     Layers,
     CheckSquare,
-    ListTodo
+    ListTodo,
+    Users
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { marked } from "marked";
@@ -68,6 +69,7 @@ interface Props {
     repoOwner: string;
     repoName: string;
     canLink?: boolean;
+    canEdit?: boolean;
 }
 
 function timeAgo(date: string): string {
@@ -89,8 +91,9 @@ function timeAgo(date: string): string {
     return `${diffMonths} months ago`;
 }
 
-export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canLink }: Props) {
+export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canLink, canEdit }: Props) {
     const [showMenu, setShowMenu] = useState(false);
+    const [collaborators, setCollaborators] = useState<Array<{ id: string; username: string }>>([]);
     const [linkedPRs, setLinkedPRs] = useState<Array<{
         id: string;
         linkType: string;
@@ -133,13 +136,37 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
         }
     }
 
+    // Assignees (WS2-01): toggle a user's assignment on the issue
+    async function handleAssigneeToggle(assigneeId: string) {
+        if (!assigneeId) return;
+        const currentIds = (issue.assignees || []).map((a: any) => a.id || a.username);
+        const isAssigned = currentIds.includes(assigneeId);
+        const newIds = isAssigned
+            ? currentIds.filter((id) => id !== assigneeId)
+            : [...currentIds, assigneeId];
+        try {
+            const res = await fetch(`/api/repos/${repoOwner}/${repoName}/issues/${issue.number}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ assigneeIds: newIds })
+            });
+            if (res.ok) {
+                window.location.reload();
+            } else {
+                const data = await res.json().catch(() => null);
+                alert(data?.error?.message || "Failed to update assignees");
+            }
+        } catch (e) {
+            alert("Failed to update assignees");
+        }
+    }
+
     useEffect(() => {
         let isMounted = true;
 
         async function loadLinks() {
             try {
-                const res = await fetch(`/api/repos/${repoOwner}/${repoName}/issues/${issue.number}/linked-prs`);
-                if (!res.ok) throw new Error("Failed to load linked PRs");
+                const res = await fetch(`/api/repos/${repoOwner}/${repoName}/issues/${issue.number}/linked-prs`);                if (!res.ok) throw new Error("Failed to load linked PRs");
                 const data = await res.json();
                 if (isMounted) {
                     setLinkedPRs(data.links || []);
@@ -156,6 +183,16 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
         }
 
         loadLinks();
+
+        // Load collaborators for the assignee dropdown (WS2-01)
+        if (canEdit) {
+            fetch(`/api/repos/${repoOwner}/${repoName}/collaborators`)
+                .then((r) => (r.ok ? r.json() : null))
+                .then((data) => {
+                    if (isMounted) setCollaborators(data?.data?.collaborators || data?.collaborators || []);
+                })
+                .catch(() => {});
+        }
 
         return () => {
             isMounted = false;
@@ -500,6 +537,57 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
                                         </span>
                                     ))}
                                 </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Assignees (WS2-01) */}
+                    {((issue.assignees && issue.assignees.length > 0) || canEdit) && (
+                        <div className="relative">
+                            <div className="relative rounded-xl border border-border bg-card/60 p-4">
+                                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
+                                    <Users className="h-4 w-4 text-cyan-400" />
+                                    Assignees
+                                </h3>
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                    {issue.assignees && issue.assignees.length > 0 ? (                                        issue.assignees.map((a: any) => (
+                                            <span
+                                                key={a.id || a.username}
+                                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/80"
+                                            >
+                                                <span className="h-4 w-4 rounded-full bg-muted flex items-center justify-center text-[9px] font-semibold">
+                                                    {a.username?.[0]?.toUpperCase()}
+                                                </span>
+                                                {a.username}
+                                                {canEdit && (
+                                                    <button
+                                                        className="opacity-60 hover:opacity-100 ml-0.5"
+                                                        onClick={() => handleAssigneeToggle(a.id || a.username)}
+                                                        title="Unassign"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                )}
+                                            </span>
+                                        ))
+                                    ) : (
+                                        <span className="text-xs text-muted-foreground">No one assigned</span>
+                                    )}
+                                </div>
+                                {canEdit && (
+                                    <select
+                                        className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
+                                        value=""
+                                        onChange={(e) => handleAssigneeToggle(e.target.value)}
+                                    >
+                                        <option value="">Assign user…</option>
+                                        {collaborators.map((c: any) => (
+                                            <option key={c.id || c.username} value={c.id || c.username}>
+                                                {c.username}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
                             </div>
                         </div>
                     )}

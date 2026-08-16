@@ -159,6 +159,44 @@ export const resolvers = {
         },
 
         organizations: async () => [],
+
+        // ── WS5-02: issue query ─────────────────────────────────────────
+        issue: async (
+            _: unknown,
+            { owner, repo, number }: { owner: string; repo: string; number: number },
+            ctx: GraphQLContext
+        ) => {
+            const ownerUser = await ctx.db.query.users.findFirst({
+                where: eq(schema.users.username, owner),
+            });
+            if (!ownerUser) return null;
+
+            const repository = await ctx.db.query.repositories.findFirst({
+                where: and(
+                    eq(schema.repositories.ownerId, ownerUser.id),
+                    eq(schema.repositories.name, repo),
+                ),
+            });
+            if (!repository) return null;
+
+            return ctx.db.query.issues.findFirst({
+                where: and(
+                    eq(schema.issues.repositoryId, repository.id),
+                    eq(schema.issues.number, number),
+                ),
+            });
+        },
+
+        // ── WS5-02: organization query ──────────────────────────────────
+        organization: async (
+            _: unknown,
+            { login }: { login: string },
+            ctx: GraphQLContext
+        ) => {
+            return ctx.db.query.organizations.findFirst({
+                where: eq(schema.organizations.name, login),
+            });
+        },
     },
 
     Repository: {
@@ -369,22 +407,45 @@ export const resolvers = {
 
         state: (issue: typeof schema.issues.$inferSelect) => issue.state.toUpperCase(),
 
-        comments: () => ({
-            nodes: [],
-            pageInfo: { hasNextPage: false, hasPreviousPage: false },
-            totalCount: 0,
-        }),
-        assignees: () => ({
-            nodes: [],
-            pageInfo: { hasNextPage: false, hasPreviousPage: false },
-            totalCount: 0,
-        }),
-        labels: () => ({
-            nodes: [],
-            pageInfo: { hasNextPage: false, hasPreviousPage: false },
-            totalCount: 0,
-        }),
-        milestone: () => null,
+        // ── WS5-02: real nested data for Issue ──────────────────────────
+        comments: async (issue: typeof schema.issues.$inferSelect, _: unknown, ctx: GraphQLContext) => {
+            const rows = await ctx.db.query.issueComments.findMany({
+                where: eq(schema.issueComments.issueId, issue.id),
+            });
+            return {
+                nodes: rows,
+                pageInfo: { hasNextPage: false, hasPreviousPage: false },
+                totalCount: rows.length,
+            };
+        },
+        assignees: async (issue: typeof schema.issues.$inferSelect, _: unknown, ctx: GraphQLContext) => {
+            const rows = await ctx.db.query.issueAssignees.findMany({
+                where: eq(schema.issueAssignees.issueId, issue.id),
+                with: { user: true },
+            });
+            return {
+                nodes: rows.map((r) => r.user),
+                pageInfo: { hasNextPage: false, hasPreviousPage: false },
+                totalCount: rows.length,
+            };
+        },
+        labels: async (issue: typeof schema.issues.$inferSelect, _: unknown, ctx: GraphQLContext) => {
+            const rows = await ctx.db.query.issueLabels.findMany({
+                where: eq(schema.issueLabels.issueId, issue.id),
+                with: { label: true },
+            });
+            return {
+                nodes: rows.map((r) => r.label),
+                pageInfo: { hasNextPage: false, hasPreviousPage: false },
+                totalCount: rows.length,
+            };
+        },
+        milestone: async (issue: typeof schema.issues.$inferSelect, _: unknown, ctx: GraphQLContext) => {
+            if (!issue.milestoneId) return null;
+            return ctx.db.query.milestones.findFirst({
+                where: eq(schema.milestones.id, issue.milestoneId),
+            });
+        },
     },
 
     SearchResultItem: {
@@ -393,6 +454,13 @@ export const resolvers = {
             if (obj.repositoryId && obj.number) return "Issue";
             if (obj.diskPath) return "Repository";
             return "User";
+        },
+    },
+
+    AddLabelsSubject: {
+        __resolveType(obj: any) {
+            if (obj.headBranch) return "PullRequest";
+            return "Issue";
         },
     },
 
@@ -718,6 +786,207 @@ export const resolvers = {
             }
 
             throw new Error("Subject not found (must be Issue ID or Pull Request ID)");
+        },
+
+        // ── WS5-02: createIssue ─────────────────────────────────────────
+        createIssue: async (
+            _: unknown,
+            { input }: { input: any },
+            ctx: GraphQLContext
+        ) => {
+            if (!ctx.userId) throw new Error("Authentication required");
+            const { generateId } = await import("@/lib/utils");
+
+            const repository = await ctx.db.query.repositories.findFirst({
+                where: eq(schema.repositories.id, input.repositoryId),
+            });
+            if (!repository) throw new Error("Repository not found");
+            if (!(await canWriteRepo(ctx.userId, repository, { isAdmin: ctx.user?.isAdmin ?? undefined }))) {
+                throw new Error("Insufficient repository permissions");
+            }
+
+            const lastIssue = await ctx.db.query.issues.findFirst({
+                where: eq(schema.issues.repositoryId, repository.id),
+                orderBy: (issues, { desc }) => [desc(issues.number)],
+            });
+            const number = (lastIssue?.number || 0) + 1;
+            const id = generateId("issue");
+
+            await ctx.db.insert(schema.issues).values({
+                id,
+                repositoryId: repository.id,
+                number,
+                title: input.title,
+                body: input.body || null,
+                state: "open",
+                type: "issue",
+                authorId: ctx.userId,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            });
+
+            if (Array.isArray(input.labelIds) && input.labelIds.length > 0) {
+                await ctx.db.insert(schema.issueLabels).values(
+                    input.labelIds.map((labelId: string) => ({
+                        id: generateId(),
+                        issueId: id,
+                        labelId,
+                    })),
+                );
+            }
+            if (Array.isArray(input.assigneeIds) && input.assigneeIds.length > 0) {
+                await ctx.db.insert(schema.issueAssignees).values(
+                    input.assigneeIds.map((userId: string) => ({
+                        id: generateId(),
+                        issueId: id,
+                        userId,
+                        assignedAt: new Date(),
+                    })),
+                );
+            }
+            if (input.milestoneId) {
+                const milestone = await ctx.db.query.milestones.findFirst({
+                    where: eq(schema.milestones.id, input.milestoneId),
+                });
+                if (milestone && milestone.repositoryId === repository.id) {
+                    await ctx.db.update(schema.issues).set({ milestoneId: milestone.id }).where(eq(schema.issues.id, id));
+                }
+            }
+
+            const issue = await ctx.db.query.issues.findFirst({ where: eq(schema.issues.id, id) });
+            return { issue };
+        },
+
+        // ── WS5-02: updateIssue ─────────────────────────────────────────
+        updateIssue: async (
+            _: unknown,
+            { input }: { input: any },
+            ctx: GraphQLContext
+        ) => {
+            if (!ctx.userId) throw new Error("Authentication required");
+
+            const issue = await ctx.db.query.issues.findFirst({
+                where: eq(schema.issues.id, input.issueId),
+            });
+            if (!issue) throw new Error("Issue not found");
+
+            const repository = await ctx.db.query.repositories.findFirst({
+                where: eq(schema.repositories.id, issue.repositoryId),
+            });
+            if (!repository || !(await canWriteRepo(ctx.userId, repository, { isAdmin: ctx.user?.isAdmin ?? undefined }))) {
+                throw new Error("Insufficient repository permissions");
+            }
+
+            const updates: any = { updatedAt: new Date() };
+            if (input.title !== undefined) updates.title = input.title;
+            if (input.body !== undefined) updates.body = input.body;
+            if (input.state !== undefined) {
+                const closed = String(input.state).toLowerCase() === "closed";
+                updates.state = closed ? "closed" : "open";
+                updates.closedAt = closed ? new Date() : null;
+                updates.closedById = closed ? ctx.userId : null;
+            }
+            if (input.milestoneId !== undefined) updates.milestoneId = input.milestoneId || null;
+
+            await ctx.db.update(schema.issues).set(updates).where(eq(schema.issues.id, issue.id));
+
+            const updated = await ctx.db.query.issues.findFirst({ where: eq(schema.issues.id, issue.id) });
+            return { issue: updated };
+        },
+
+        // ── WS5-02: updatePullRequest (title/body/draft) ────────────────
+        updatePullRequest: async (
+            _: unknown,
+            { input }: { input: any },
+            ctx: GraphQLContext
+        ) => {
+            if (!ctx.userId) throw new Error("Authentication required");
+
+            const pr = await ctx.db.query.pullRequests.findFirst({
+                where: eq(schema.pullRequests.id, input.pullRequestId),
+            });
+            if (!pr) throw new Error("Pull request not found");
+
+            const repository = await ctx.db.query.repositories.findFirst({
+                where: eq(schema.repositories.id, pr.repositoryId),
+            });
+            if (!repository || !(await canWriteRepo(ctx.userId, repository, { isAdmin: ctx.user?.isAdmin ?? undefined }))) {
+                throw new Error("Insufficient repository permissions");
+            }
+
+            const updates: any = { updatedAt: new Date() };
+            if (input.title !== undefined) updates.title = input.title;
+            if (input.body !== undefined) updates.body = input.body;
+            if (input.draft !== undefined) updates.isDraft = input.draft === true;
+
+            await ctx.db.update(schema.pullRequests).set(updates).where(eq(schema.pullRequests.id, pr.id));
+
+            const updated = await ctx.db.query.pullRequests.findFirst({ where: eq(schema.pullRequests.id, pr.id) });
+            return { pullRequest: updated };
+        },
+
+        // ── WS5-02: addLabels (issue or PR) ─────────────────────────────
+        addLabels: async (
+            _: unknown,
+            { input }: { input: any },
+            ctx: GraphQLContext
+        ) => {
+            if (!ctx.userId) throw new Error("Authentication required");
+            const { generateId } = await import("@/lib/utils");
+
+            const [issue, pr] = await Promise.all([
+                ctx.db.query.issues.findFirst({ where: eq(schema.issues.id, input.subjectId) }),
+                ctx.db.query.pullRequests.findFirst({ where: eq(schema.pullRequests.id, input.subjectId) }),
+            ]);
+            if (!issue && !pr) throw new Error("Subject not found");
+
+            const repositoryId = issue?.repositoryId || pr?.repositoryId;
+            if (!repositoryId) throw new Error("Subject not found");
+            const repository = await ctx.db.query.repositories.findFirst({
+                where: eq(schema.repositories.id, repositoryId),
+            });
+            if (!repository || !(await canWriteRepo(ctx.userId, repository, { isAdmin: ctx.user?.isAdmin ?? undefined }))) {
+                throw new Error("Insufficient repository permissions");
+            }
+
+            const labelIds = input.labelIds as string[];
+            if (issue) {
+                const existing = await ctx.db.query.issueLabels.findMany({
+                    where: (t, { and: andFn, eq: eqFn, inArray: inArr }) =>
+                        andFn(eqFn(t.issueId, issue.id), inArr(t.labelId, labelIds)),
+                    columns: { labelId: true },
+                });
+                const existingIds = new Set(existing.map((e) => e.labelId));
+                const toAdd = labelIds.filter((id) => !existingIds.has(id));
+                if (toAdd.length > 0) {
+                    await ctx.db.insert(schema.issueLabels).values(
+                        toAdd.map((labelId) => ({ id: generateId(), issueId: issue.id, labelId })),
+                    );
+                }
+                const updated = await ctx.db.query.issues.findFirst({
+                    where: eq(schema.issues.id, issue.id),
+                    with: { labels: { with: { label: true } } },
+                });
+                return { subject: updated };
+            }
+
+            const existing = await ctx.db.query.pullRequestLabels.findMany({
+                where: (t, { and: andFn, eq: eqFn, inArray: inArr }) =>
+                    andFn(eqFn(t.pullRequestId, pr!.id), inArr(t.labelId, labelIds)),
+                columns: { labelId: true },
+            });
+            const existingIds = new Set(existing.map((e) => e.labelId));
+            const toAdd = labelIds.filter((id) => !existingIds.has(id));
+            if (toAdd.length > 0) {
+                await ctx.db.insert(schema.pullRequestLabels).values(
+                    toAdd.map((labelId) => ({ id: generateId(), pullRequestId: pr!.id, labelId })),
+                );
+            }
+            const updated = await ctx.db.query.pullRequests.findFirst({
+                where: eq(schema.pullRequests.id, pr!.id),
+                with: { labels: { with: { label: true } } },
+            });
+            return { subject: updated };
         },
 
         applySuggestion: async (

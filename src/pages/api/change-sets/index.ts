@@ -59,7 +59,7 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
   for (const input of parsed.data.items) {
     const repo = await resolveRepo(input.owner, input.repo);
     if (!repo) return notFound(`Repository not found: ${input.owner}/${input.repo}`);
-    if (!(await canWriteRepo(user.userId, repo, { isAdmin: user.isAdmin }))) {
+    if (!(await canWriteRepo(user.userId, repo, { isAdmin: user.isAdmin, tokenScopes: user.scopes }))) {
       return forbidden(`No write access to ${input.owner}/${input.repo}`);
     }
 

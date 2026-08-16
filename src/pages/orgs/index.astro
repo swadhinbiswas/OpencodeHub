@@ -1,0 +1,133 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDatabase, schema } from "@/db";
+import { eq } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+
+const db = getDatabase() as NodePgDatabase<typeof schema>;
+const user = Astro.locals.user;
+
+if (!user) return Astro.redirect("/login");
+
+const memberships = await db.query.organizationMembers.findMany({
+  where: eq(schema.organizationMembers.userId, user.id),
+  with: { organization: true },
+  orderBy: (m, { desc }) => [desc(m.createdAt)],
+});
+---
+
+<BaseLayout title="Organizations · OpenCodeHub">
+  <div class="container max-w-[900px] py-8 px-4 sm:px-6">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-semibold">Organizations</h1>
+      <button
+        id="new-org-btn"
+        class="rounded-md bg-cyan-500/90 hover:bg-cyan-500 text-foreground px-4 py-2 text-sm font-medium"
+      >
+        New organization
+      </button>
+    </div>
+
+    <!-- Create form (hidden by default) -->
+    <div id="new-org-form" class="hidden border rounded-lg p-5 mb-6 bg-card space-y-3">
+      <h2 class="font-medium">Create organization</h2>
+      <input
+        id="org-name"
+        placeholder="Name (lowercase, hyphens)"
+        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+      />
+      <input
+        id="org-display"
+        placeholder="Display name"
+        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+      />
+      <textarea
+        id="org-desc"
+        placeholder="Description"
+        rows="2"
+        class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+      ></textarea>
+      <div class="flex gap-2">
+        <button
+          id="org-create-submit"
+          class="rounded-md bg-cyan-500/90 hover:bg-cyan-500 text-foreground px-4 py-2 text-sm font-medium"
+        >
+          Create
+        </button>
+        <button
+          id="org-create-cancel"
+          class="rounded-md border bg-background px-4 py-2 text-sm hover:bg-muted"
+        >
+          Cancel
+        </button>
+      </div>
+      <div id="org-create-error" class="text-sm text-red-500 hidden"></div>
+    </div>
+
+    <div class="space-y-3">
+      {memberships.length === 0 && (
+        <p class="text-sm text-muted-foreground border rounded-lg p-8 text-center">
+          You are not a member of any organization yet.
+        </p>
+      )}
+      {memberships.map((m) => (
+        <a
+          href={`/orgs/${m.organization.name}`}
+          class="flex items-center gap-4 border rounded-lg p-4 hover:bg-muted/40 transition-colors"
+        >
+          <div class="h-12 w-12 rounded-xl bg-muted flex items-center justify-center text-xl font-semibold border">
+            {m.organization.avatarUrl ? (
+              <img src={m.organization.avatarUrl} alt="" class="w-full h-full rounded-xl object-cover" />
+            ) : (
+              m.organization.name[0]?.toUpperCase()
+            )}
+          </div>
+          <div class="flex-1 min-w-0">
+            <span class="block font-medium">{m.organization.displayName || m.organization.name}</span>
+            <span class="block text-sm text-muted-foreground">@{m.organization.name}</span>
+            {m.organization.description && (
+              <span class="block text-sm text-muted-foreground mt-0.5 truncate">{m.organization.description}</span>
+            )}
+          </div>
+          <span class="text-xs text-muted-foreground capitalize">{m.role}</span>
+        </a>
+      ))}
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("new-org-form");
+    const toggleBtn = document.getElementById("new-org-btn");
+    const cancelBtn = document.getElementById("org-create-cancel");
+    const submitBtn = document.getElementById("org-create-submit");
+    const errorDiv = document.getElementById("org-create-error");
+
+    toggleBtn?.addEventListener("click", () => {
+      form?.classList.toggle("hidden");
+      errorDiv?.classList.add("hidden");
+    });
+    cancelBtn?.addEventListener("click", () => form?.classList.add("hidden"));
+
+    submitBtn?.addEventListener("click", async () => {
+      errorDiv?.classList.add("hidden");
+      const name = (document.getElementById("org-name") as HTMLInputElement).value;
+      const displayName = (document.getElementById("org-display") as HTMLInputElement).value;
+      const description = (document.getElementById("org-desc") as HTMLTextAreaElement).value;
+      try {
+        const res = await fetch("/api/orgs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, displayName, description }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error?.message || "Failed to create organization");
+        window.location.href = `/orgs/${data.data.organization.name}`;
+      } catch (e) {
+        if (errorDiv) {
+          errorDiv.textContent = e instanceof Error ? e.message : String(e);
+          errorDiv.classList.remove("hidden");
+        }
+      }
+    });
+  </script>
+</BaseLayout>

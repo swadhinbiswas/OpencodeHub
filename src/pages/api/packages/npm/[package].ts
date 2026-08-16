@@ -49,13 +49,23 @@ export const PUT: APIRoute = async ({ params, request }) => {
     });
   }
 
-  const orgId = request.headers.get("x-org-id") || "default";
-  const userId = request.headers.get("x-user-id");
-
+  // Authenticate via Basic auth (npm CLI with _auth) or Bearer token
+  // (npm CLI with _authToken, or PAT). Legacy x-user-id was spoofable.
+  const authHeader = request.headers.get("authorization") || "";
+  let userId: string | null = null;
+  if (authHeader.startsWith("Basic ")) {
+    const { validateBasicAuth } = await import("@/lib/auth-basic");
+    userId = await validateBasicAuth(authHeader);
+  } else if (authHeader.startsWith("Bearer ")) {
+    const { getUserFromRequest } = await import("@/lib/auth");
+    const payload = await getUserFromRequest(request);
+    userId = payload?.userId || null;
+  }
   if (!userId) {
-    return new Response(JSON.stringify({ error: "Authentication required" }), {
-      status: 401,
-    });
+    return new Response(
+      JSON.stringify({ error: "Authentication required (PAT via Basic or Bearer)" }),
+      { status: 401, headers: { "WWW-Authenticate": 'Basic realm="npm"' } },
+    );
   }
 
   try {
@@ -69,7 +79,8 @@ export const PUT: APIRoute = async ({ params, request }) => {
       });
     }
 
-    // Find or create package
+    // Find or create package (org scoping: default org for now)
+    const orgId = "default";
     let pkg = await getPackage(orgId, "npm", packageName);
     if (!pkg) {
       pkg = await createPackage({
@@ -130,7 +141,7 @@ export const PUT: APIRoute = async ({ params, request }) => {
       });
 
       logger.info(
-        { package: packageName, version: ver },
+        { package: packageName, version: ver, userId },
         "npm package version published",
       );
     }

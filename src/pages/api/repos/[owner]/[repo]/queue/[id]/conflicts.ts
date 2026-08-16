@@ -33,7 +33,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
     if (!repository) return new Response("Repo not found", { status: 404 });
 
     // 2. Check Permissions
-    if (!(await canWriteRepo(user.id, repository))) {
+    if (!(await canWriteRepo(user.id, repository, { tokenScopes: (user as any).scopes }))) {
         return new Response("Forbidden", { status: 403 });
     }
 
@@ -74,7 +74,7 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
 
     if (!repository) return new Response("Repo not found", { status: 404 });
 
-    if (!(await canWriteRepo(user.id, repository))) {
+    if (!(await canWriteRepo(user.id, repository, { tokenScopes: (user as any).scopes }))) {
         return new Response("Forbidden", { status: 403 });
     }
 

@@ -5,7 +5,7 @@
 
 import { getDatabase, schema } from "@/db";
 import type { Package, PackageVersion } from "@/db/schema/packages";
-import { and, desc, eq, ilike, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, sql, isNull } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { logger } from "./logger";
 
@@ -35,7 +35,7 @@ export async function createPackage(options: {
 
   const pkg = {
     id: crypto.randomUUID(),
-    organizationId: options.organizationId,
+    organizationId: options.organizationId === "default" ? null : options.organizationId,
     repositoryId: options.repositoryId || null,
     type: options.type,
     name: options.name,
@@ -63,9 +63,13 @@ export async function getPackage(
   name: string,
 ): Promise<Package | undefined> {
   const db = getDatabase();
+  const orgFilter =
+    organizationId === "default"
+      ? isNull(schema.packages.organizationId)
+      : eq(schema.packages.organizationId, organizationId);
   return (await db.query.packages?.findFirst({
     where: and(
-      eq(schema.packages.organizationId, organizationId),
+      orgFilter,
       eq(schema.packages.type, type),
       eq(schema.packages.name, name),
     ),
@@ -263,7 +267,7 @@ export async function getNpmPackageMetadata(
       version: ver.version,
       description: pkg.description,
       dist: {
-        tarball: `${process.env.APP_URL}/api/packages/npm/${packageName}/-/${packageName}-${ver.version}.tgz`,
+        tarball: `${process.env.SITE_URL || process.env.APP_URL || "http://localhost:4321"}/api/packages/npm/${packageName}/-/${packageName}-${ver.version}.tgz`,
         shasum: ver.digest,
         integrity: `sha256-${ver.digest}`,
       },

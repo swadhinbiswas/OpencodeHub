@@ -35,7 +35,7 @@ export const DELETE: APIRoute = withErrorHandler(async ({ params, locals }) => {
 
   if (!repository) return notFound("Repository not found");
 
-  if (!(await canWriteRepo(user.id, repository))) {
+  if (!(await canWriteRepo(user.id, repository, { tokenScopes: user.scopes }))) {
     return forbidden();
   }
 

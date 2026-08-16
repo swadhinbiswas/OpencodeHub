@@ -24,7 +24,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
     });
 
     if (!repo) return notFound("Not Found");
-    if (!await canWriteRepo(user.id, repo)) return forbidden();
+    if (!await canWriteRepo(user.id, repo, { tokenScopes: user.scopes })) return forbidden();
 
     const body = await request.json();
     const {

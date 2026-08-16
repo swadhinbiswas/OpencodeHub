@@ -40,7 +40,7 @@ export const GET: APIRoute = withErrorHandler(async ({ request }) => {
     where: eq(schema.repositories.id, repositoryId),
   });
   if (!repo) return unauthorized("Repository not found");
-  if (!(await canWriteRepo(user.userId, repo, { isAdmin: user.isAdmin }))) {
+  if (!(await canWriteRepo(user.userId, repo, { isAdmin: user.isAdmin, tokenScopes: user.scopes }))) {
     return forbidden("Insufficient permissions");
   }
 
@@ -61,7 +61,7 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
     with: { owner: true },
   });
   if (!repo) return unauthorized("Repository not found");
-  if (!(await canWriteRepo(user.userId, repo, { isAdmin: user.isAdmin }))) {
+  if (!(await canWriteRepo(user.userId, repo, { isAdmin: user.isAdmin, tokenScopes: user.scopes }))) {
     return forbidden("Insufficient permissions");
   }
 
@@ -112,7 +112,7 @@ export const DELETE: APIRoute = withErrorHandler(async ({ request }) => {
     where: eq(schema.repositories.id, parsed.data.repositoryId),
   });
   if (!repo) return unauthorized("Repository not found");
-  if (!(await canWriteRepo(user.userId, repo, { isAdmin: user.isAdmin }))) {
+  if (!(await canWriteRepo(user.userId, repo, { isAdmin: user.isAdmin, tokenScopes: user.scopes }))) {
     return forbidden("Insufficient permissions");
   }
 

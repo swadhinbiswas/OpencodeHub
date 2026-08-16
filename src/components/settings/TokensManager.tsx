@@ -47,6 +47,20 @@ export default function TokensManager({ initialTokens }: TokensManagerProps) {
     // Form state
     const [name, setName] = useState("");
     const [expiresIn, setExpiresIn] = useState("30d");
+    const [scopes, setScopes] = useState<string[]>([]);
+
+    const SCOPE_OPTIONS: { value: string; label: string; desc: string }[] = [
+        { value: "repo:read", label: "repo:read", desc: "Read repositories, issues, PRs" },
+        { value: "repo:write", label: "repo:write", desc: "Create and modify repositories, issues, PRs" },
+        { value: "notifications", label: "notifications", desc: "Read notifications" },
+        { value: "admin", label: "admin", desc: "Full access (implies all scopes)" },
+    ];
+
+    const toggleScope = (scope: string) => {
+        setScopes((prev) =>
+            prev.includes(scope) ? prev.filter((s) => s !== scope) : [...prev, scope],
+        );
+    };
 
     // Deletion state
     const [tokenToDelete, setTokenToDelete] = useState<string | null>(null);
@@ -59,7 +73,7 @@ export default function TokensManager({ initialTokens }: TokensManagerProps) {
             const res = await fetch("/api/user/tokens", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, expiresIn }),
+                body: JSON.stringify({ name, expiresIn, scopes }),
             });
 
             const data = await res.json();
@@ -173,6 +187,28 @@ export default function TokensManager({ initialTokens }: TokensManagerProps) {
                                     <option value="1y">1 year</option>
                                     <option value="never">No expiration</option>
                                 </select>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-muted-foreground">Scopes (optional)</label>
+                                <div className="space-y-1.5">
+                                    {SCOPE_OPTIONS.map((opt) => (
+                                        <label key={opt.value} className="flex items-start gap-2 cursor-pointer rounded-md border border-border bg-secondary/40 px-3 py-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={scopes.includes(opt.value)}
+                                                onChange={() => toggleScope(opt.value)}
+                                                className="mt-0.5 h-4 w-4"
+                                            />
+                                            <span className="flex-1">
+                                                <span className="block text-sm font-medium text-foreground font-mono">{opt.label}</span>
+                                                <span className="block text-xs text-muted-foreground">{opt.desc}</span>
+                                            </span>
+                                        </label>
+                                    ))}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    No scopes selected = full access (legacy tokens).
+                                </p>
                             </div>
                             <DialogFooter>
                                 <Button variant="ghost" type="button" onClick={() => setIsCreateOpen(false)} className="text-muted-foreground hover:text-foreground hover:bg-secondary/80">

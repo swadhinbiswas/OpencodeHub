@@ -1,4 +1,5 @@
 ---
+import { resolveOrgOwners } from "@/lib/repo-owner";
 import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { desc, eq, and, sql } from "drizzle-orm";
@@ -37,7 +38,7 @@ try {
   });
 
   // Filter to only public repos
-  issues = rawIssues.filter(issue => 
+  issues = (await resolveOrgOwners(rawIssues)).filter(issue => 
     issue.repository?.visibility === "public"
   );
 } catch (e) {

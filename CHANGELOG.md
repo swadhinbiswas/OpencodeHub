@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-08-15
+
+### 🚀 Production Readiness Release
+- **Full-stack E2E proof** (`scripts/e2e-proof.sh`, 20 checks): real git push → workflow → CI success (Docker), PR + squash merge, OAuth provider flow, org invites + transfer, org-owned repo APIs — all green against Postgres + Redis.
+- **Git protocol fixes** (found by the proof): post-receive hooks now fire (stdin newline + capability stripping), receive-pack status on sideband band 1 with nested pkt-line framing + inner flush — real `git push` completes cleanly.
+- **CI engine**: parallel job waves with `needs` ordering, matrix expansion, cron scheduler, GITHUB_OUTPUT/GITHUB_ENV, repo secrets injection, Docker image auto-pull, speculative-build CI execution, docker actions (`uses: docker://`) on self-hosted runners, action resolver for composite actions + checkout.
+- **Configuration**: `.env` no longer shadows real environment variables; Redis uses static imports (distributed rate limiting + locks actually active).
+- **Collaboration**: issue assignees/milestones/custom-fields/workflow transitions wired, PR labels + assignees + requested-reviewers, draft PRs, merge-method selection, review-thread resolution, @mentions, issue templates, real contribution graph, watch/unwatch.
+- **Security**: OAuth provider mode (authorization-code + refresh-token grants, userinfo), fine-grained PAT scopes with implication, GitHub/Google login, org SAML config, org-aware permission resolution everywhere.
+- **Organizations**: CRUD + pages, member invites, teams, repo transfer (API + UI), org-owned repos work across all routes/pages.
+- **DX**: GraphQL expansion (issues/orgs/labels mutations), OpenAPI 100% coverage (275 routes) with an idempotent generator + CI gate, npm registry protocol completion (login/whoami/publish/metadata/tarballs).
+- **Observability**: per-request correlation IDs bound to every log line; OTLP transport for Grafana Cloud.
+- **Quality**: authz matrix suite (43 cases, scope-implication fix), multi-instance chaos suite, load baseline green (p95 ≤136ms at 20-concurrency), DR drills, wiring-audit gate, contract/smoke lanes.
+- **CLI**: `opencodehub-cli` 1.2.0.
+
+## [1.1.2] - 2026-08-10
+
+### 🛡️ Quality Gates (Phase 0 of production-parity plan)
+- **CI lanes**: Added real `Contract Tests (Lane: contract)` and `Smoke Tests (Lane: smoke)` jobs; branch ruleset now requires job names that exist.
+- **Contract suite**: New `tests/contract/` — pkt-line protocol, webhook HMAC (GitHub-vector pinned), workflow trigger semantics, OpenAPI shape (27 tests).
+- **Smoke suite**: New `tests/smoke/` — boot-critical module wiring (env validation, storage, db, auth, git) (6 tests).
+- **Coverage**: vitest now emits `coverage-summary.json` + `lcov.info`; the CI threshold check is no longer a silent no-op.
+- **Disaster-recovery drills**: Implemented `drill:backup-restore`, `drill:redis`, `drill:postgres` scripts that the weekly-drills workflow was already calling.
+- **Versioning**: Root package unified to 1.1.2 (was 1.0.0), matching the CLI.
+- **GitHub-Actions glob fix**: `**` in branch/path filters now spans directories correctly (previously collapsed to a single level); `on: workflow_dispatch` shorthand triggers now work; `!`-negation in `paths:` filters is honored.
+- **OpenAPI**: Documented previously-missing core paths (`/repos`, `/repos/{owner}/{repo}/issues`, `/issues/{number}`, `/branches`, `/labels`).
+
 ## [1.1.0] - 2026-01-22
 
 ### 📚 Documentation (Major Overhaul)

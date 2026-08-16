@@ -1,4 +1,5 @@
 import pino from "pino";
+import { getRequestContext } from "./request-context";
 
 // Custom OTLP transport for Grafana Cloud
 const createOtlpTransport = () => {
@@ -85,14 +86,19 @@ const baseLogger = pino({
 // Wrap logger to also send to OTLP if configured
 const createWrappedLogger = () => {
   const wrap = (level: string) => (msg: string | object, ...args: unknown[]) => {
+    // Bind the current request context (requestId/userId) onto the line
+    const ctx = getRequestContext();
+    const bound = ctx
+      ? baseLogger.child({ requestId: ctx.requestId, userId: ctx.userId })
+      : baseLogger;
     // Call original pino method
-    (baseLogger as unknown as Record<string, Function>)[level](msg, ...args);
+    (bound as unknown as Record<string, Function>)[level](msg, ...args);
 
     // Send to OTLP if configured
     if (otlpTransport) {
       const message = typeof msg === 'string' ? msg : JSON.stringify(msg);
       const extra = typeof msg === 'object' ? msg : (args[0] as Record<string, unknown>) || {};
-      otlpTransport.send(level, message, extra as Record<string, unknown>);
+      otlpTransport.send(level, message, { ...(ctx || {}), ...extra } as Record<string, unknown>);
     }
   };
 
@@ -108,4 +114,17 @@ const createWrappedLogger = () => {
   };
 };
 
-export const logger = otlpTransport ? createWrappedLogger() : baseLogger;
+export const logger = otlpTransport ? createWrappedLogger() : (() => {
+  // Proxy binds the request context onto every log call
+  const bind = (target: typeof baseLogger) => {
+    const ctx = getRequestContext();
+    return ctx ? target.child({ requestId: ctx.requestId, userId: ctx.userId }) : target;
+  };
+  return new Proxy(baseLogger, {
+    get(target, prop, receiver) {
+      const bound = bind(target);
+      const value = Reflect.get(bound, prop, receiver);
+      return typeof value === "function" ? value.bind(bound) : value;
+    },
+  });
+})();

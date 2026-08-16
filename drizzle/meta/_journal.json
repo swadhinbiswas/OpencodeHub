@@ -8,6 +8,34 @@
       "when": 1785662563617,
       "tag": "0000_jittery_bedlam",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786353612700,
+      "tag": "0001_tricky_grandmaster",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786369039588,
+      "tag": "0002_daily_liz_osborn",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786369751752,
+      "tag": "0003_far_dreaming_celestial",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786400000000,
+      "tag": "0004_drop_owner_fk",
+      "breakpoints": true
     }
   ]
 }
