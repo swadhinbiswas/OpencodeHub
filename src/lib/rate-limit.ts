@@ -68,6 +68,8 @@ class InMemoryRateLimiter implements RateLimiter {
 }
 
 class RedisRateLimiter implements RateLimiter {
+    private readonly fallback = new InMemoryRateLimiter();
+
     constructor(private readonly redis: Redis) {}
 
     async check(
@@ -101,8 +103,8 @@ class RedisRateLimiter implements RateLimiter {
 
             return { allowed: count <= limit, remaining, resetTime };
         } catch (error) {
-            logger.error({ error, identifier }, "Redis rate limit check failed, allowing request");
-            return { allowed: true, remaining: limit, resetTime: now + windowMs };
+            logger.error({ error, identifier }, "Redis rate limit check failed, falling back to in-memory limiter");
+            return this.fallback.check(identifier, limit, windowMs);
         }
     }
 

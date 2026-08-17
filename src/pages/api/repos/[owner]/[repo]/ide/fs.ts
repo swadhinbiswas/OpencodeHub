@@ -18,6 +18,11 @@ export const GET: APIRoute = async ({ request, params, url }) => {
     const branch = url.searchParams.get("branch") || "main";
     const filePath = url.searchParams.get("path") || "";
 
+    // Prevent path traversal
+    if (filePath.includes("..")) {
+        return badRequest("Invalid path: path traversal detected");
+    }
+
     const db = getDatabase();
     const ownerUser = await db.query.users.findFirst({ where: eq(schema.users.username, owner!) });
     if (!ownerUser) return notFound("Owner not found");
@@ -84,7 +89,11 @@ export const POST: APIRoute = async ({ request, params }) => {
 
         // Write files
         for (const [filePath, content] of Object.entries(files)) {
-            const fullPath = path.join(tempPath, filePath);
+            const fullPath = path.resolve(path.join(tempPath, filePath));
+            if (!fullPath.startsWith(path.resolve(tempPath))) {
+                await fs.rm(tempPath, { recursive: true, force: true });
+                return badRequest("Invalid file path: path traversal detected");
+            }
             await fs.mkdir(path.dirname(fullPath), { recursive: true });
             await fs.writeFile(fullPath, content);
             await workGit.add(filePath);

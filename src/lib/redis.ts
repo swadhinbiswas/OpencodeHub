@@ -151,6 +151,18 @@ export async function deleteSession(sessionId: string): Promise<void> {
     }
 }
 
+export async function closeRedis(): Promise<void> {
+  if (client) {
+    try {
+      await client.quit();
+      logger.info("Redis connection closed");
+    } catch {
+      // Already disconnected
+    }
+    client = null;
+  }
+}
+
 // log Redis configuration on module load only when actually used
 if (!shouldSkipRedis()) {
     logger.info({ redisUrl: safeUrl(resolveRedisUrl()) }, "Redis configured");

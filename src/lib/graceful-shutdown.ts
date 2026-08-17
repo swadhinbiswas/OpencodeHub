@@ -9,16 +9,20 @@
  * - Worker queues stop accepting new jobs
  */
 
+import { closeDatabase } from "@/db";
 import { logger } from "@/lib/logger";
 
 let isShuttingDown = false;
 const SHUTDOWN_TIMEOUT_MS = 30_000;
 
-function gracefulShutdown(signal: string) {
+async function gracefulShutdown(signal: string) {
   if (isShuttingDown) return;
   isShuttingDown = true;
 
   logger.info({ signal }, "Received shutdown signal, draining...");
+
+  // Set flag so health checks return "shutting down"
+  process.env.OPCODEHUB_SHUTTING_DOWN = "1";
 
   // Force exit after timeout
   const forceTimer = setTimeout(() => {
@@ -27,33 +31,41 @@ function gracefulShutdown(signal: string) {
   }, SHUTDOWN_TIMEOUT_MS);
   forceTimer.unref();
 
-  // Let the process exit naturally once all handles are drained.
-  // The Node.js event loop will empty when no more async work is pending.
-  // We set a flag so any health check returns "shutting down".
-  process.env.OPCODEHUB_SHUTTING_DOWN = "1";
+  try {
+    // Close database connections
+    await closeDatabase();
+    logger.info("Database connections closed");
+  } catch (err) {
+    logger.error({ err }, "Error closing database connections");
+  }
 
-  logger.info("Shutdown signal processed, waiting for in-flight requests...");
+  try {
+    // Close Redis if available — import dynamically to avoid circular deps
+    const { closeRedis } = await import("@/lib/redis");
+    await closeRedis();
+  } catch {
+    // Redis not available, skip
+  }
+
+  logger.info("Shutdown complete, exiting...");
+
+  // Let the process exit naturally once all handles are drained
+  setTimeout(() => process.exit(0), 1000);
 }
 
 // Handle signals
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
-// Handle uncaught errors — log and continue (don't crash)
+// Handle uncaught errors — log and exit to let process manager restart
 process.on("uncaughtException", (err) => {
-  logger.error({ err }, "Uncaught exception");
-  // In production, don't crash — log and keep serving
-  if (process.env.NODE_ENV !== "production") {
-    process.exit(1);
-  }
+  logger.fatal({ err }, "Uncaught exception — exiting to prevent corrupted state");
+  process.exit(1);
 });
 
 process.on("unhandledRejection", (reason) => {
-  logger.error({ reason }, "Unhandled rejection");
-  // In production, don't crash
-  if (process.env.NODE_ENV !== "production") {
-    process.exit(1);
-  }
+  logger.fatal({ reason }, "Unhandled rejection — exiting to let process manager restart");
+  process.exit(1);
 });
 
 // Memory pressure warning

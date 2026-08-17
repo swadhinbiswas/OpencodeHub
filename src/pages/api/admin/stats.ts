@@ -1,10 +1,11 @@
 
 import { getDatabase, schema } from "@/db";
-import { count, desc, eq, gte } from "drizzle-orm";
+import { count, desc, eq, gte, sql } from "drizzle-orm";
 import type { APIRoute } from "astro";
 import os from "node:os";
 import { withErrorHandler } from "@/lib/errors";
 import { success } from "@/lib/api";
+import { logger } from "@/lib/logger";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 
 export const GET: APIRoute = withErrorHandler(async ({ locals }) => {
@@ -44,35 +45,51 @@ export const GET: APIRoute = withErrorHandler(async ({ locals }) => {
         }
     });
 
-    // 4. Code Stats (Real Aggregation)
-    const allCommits = await db.select({ stats: schema.commits.stats }).from(schema.commits);
+    // 4. Code Stats — aggregate in SQL to avoid loading all rows into memory
     let added = 0;
     let deleted = 0;
-    allCommits.forEach(c => {
-        try {
-            const s = typeof c.stats === 'string' ? JSON.parse(c.stats) : c.stats;
-            if (s) {
-                // ...
-            }
-        } catch (e) { }
-    });
+    try {
+      const statsRows = await db.execute(sql`
+        SELECT
+          COALESCE(SUM((stats::json->>'additions')::int), 0)::int AS total_added,
+          COALESCE(SUM((stats::json->>'deletions')::int), 0)::int AS total_deleted
+        FROM commits
+      `);
+      const row = (statsRows as any)?.rows?.[0] || (Array.isArray(statsRows) ? statsRows[0] : null);
+      if (row) {
+        added = Number(row.total_added) || 0;
+        deleted = Number(row.total_deleted) || 0;
+      }
+    } catch (e) {
+      // Fallback: if JSON extraction fails, return zeros (non-critical)
+      logger.warn({ e }, "Failed to aggregate commit stats via SQL");
+    }
 
-    // 5. Languages Stats (Real Aggregation)
-    const allRepos = await db.select({ languages: schema.repositories.languages }).from(schema.repositories);
+    // 5. Languages Stats — aggregate in SQL to avoid loading all repos into memory
     const langMap: Record<string, number> = {};
     let totalLangUsage = 0;
-
-    allRepos.forEach(r => {
-        try {
-            const l = typeof r.languages === 'string' ? JSON.parse(r.languages) : r.languages;
-            if (l) {
-                Object.entries(l).forEach(([key, val]) => {
-                    langMap[key] = (langMap[key] || 0) + (val as number);
-                    totalLangUsage += (val as number);
-                });
-            }
-        } catch (e) { }
-    });
+    try {
+      const langRows = await db.execute(sql`
+        SELECT
+          key AS lang,
+          SUM(val::bigint)::bigint AS total_bytes
+        FROM repositories,
+             jsonb_each_text(COALESCE(languages::jsonb, '{}'::jsonb)) AS kv(key, val)
+        GROUP BY key
+        ORDER BY total_bytes DESC
+        LIMIT 20
+      `);
+      const rows = (langRows as any)?.rows || (Array.isArray(langRows) ? langRows : []);
+      for (const r of rows) {
+        const langName = String(r.lang);
+        const bytes = Number(r.total_bytes) || 0;
+        langMap[langName] = bytes;
+        totalLangUsage += bytes;
+      }
+    } catch (e) {
+      // Fallback: if JSON extraction fails, return empty (non-critical)
+      logger.warn({ e }, "Failed to aggregate language stats via SQL");
+    }
 
     const languages = Object.entries(langMap)
         .map(([name, count]) => ({

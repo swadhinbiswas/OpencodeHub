@@ -5,6 +5,7 @@
 
 import { relations } from "drizzle-orm";
 import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { index } from "drizzle-orm/pg-core";
 import { pullRequests } from "./pull-requests";
 import { users } from "./users";
 
@@ -48,7 +49,9 @@ export const aiReviews = pgTable("ai_reviews", {
 
     // Error
     errorMessage: text("error_message"),
-});
+}, (table) => [
+    index("ai_reviews_pull_request_id_idx").on(table.pullRequestId),
+]);
 
 // AI Review Suggestions - individual findings
 export const aiReviewSuggestions = pgTable("ai_review_suggestions", {

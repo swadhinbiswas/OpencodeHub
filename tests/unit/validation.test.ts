@@ -203,8 +203,8 @@ describe("BranchProtectionSchema", () => {
 });
 
 describe("WebhookConfigSchema", () => {
-  it("accepts valid webhook config", () => {
-    const result = WebhookConfigSchema.safeParse({
+  it("accepts valid webhook config", async () => {
+    const result = await WebhookConfigSchema.safeParseAsync({
       url: "https://example.com/webhook",
       events: ["push", "pull_request"],
       secret: "mysecret",
@@ -213,15 +213,15 @@ describe("WebhookConfigSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects missing url", () => {
-    const result = WebhookConfigSchema.safeParse({
+  it("rejects missing url", async () => {
+    const result = await WebhookConfigSchema.safeParseAsync({
       events: ["push"],
     });
     expect(result.success).toBe(false);
   });
 
-  it("rejects private IP urls (SSRF protection)", () => {
-    const result = WebhookConfigSchema.safeParse({
+  it("rejects private IP urls (SSRF protection)", async () => {
+    const result = await WebhookConfigSchema.safeParseAsync({
       url: "http://127.0.0.1:8080/hook",
       events: ["push"],
     });
@@ -229,8 +229,8 @@ describe("WebhookConfigSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects localhost urls", () => {
-    const result = WebhookConfigSchema.safeParse({
+  it("rejects localhost urls", async () => {
+    const result = await WebhookConfigSchema.safeParseAsync({
       url: "http://localhost:3000/hook",
       events: ["push"],
     });

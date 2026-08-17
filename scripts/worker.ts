@@ -250,9 +250,11 @@ function setupGracefulShutdown(healthServer: ReturnType<typeof createServer>) {
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   process.on("uncaughtException", (err) => {
     logger.error({ err }, "Uncaught exception in worker");
+    process.exit(1);
   });
   process.on("unhandledRejection", (reason) => {
     logger.error({ reason }, "Unhandled rejection in worker");
+    process.exit(1);
   });
 }
 

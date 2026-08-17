@@ -13,6 +13,7 @@ import {
   newRequestId,
   withRequestContext,
 } from "./lib/request-context";
+import { randomBytes } from "crypto";
 
 // Define tiers for different routes
 const apiLimiter = createRateLimitMiddleware("api");
@@ -157,11 +158,13 @@ async function onRequestInner(
   // Add Server-Timing header for observability
   response.headers.set("Server-Timing", `total;dur=${durationMs.toFixed(1)}`);
 
-  // Add Content-Security-Policy header
+  // Add Content-Security-Policy header with nonce-based script-src
   if (!response.headers.has("Content-Security-Policy")) {
+    const cspNonce = randomBytes(16).toString("base64");
+    context.locals.cspNonce = cspNonce;
     response.headers.set(
       "Content-Security-Policy",
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https:;",
+      `default-src 'self'; script-src 'self' 'nonce-${cspNonce}' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https:;`,
     );
   }
 

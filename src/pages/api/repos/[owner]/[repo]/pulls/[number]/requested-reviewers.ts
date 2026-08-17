@@ -63,14 +63,12 @@ export const POST: APIRoute = async ({ request, params }) => {
     if (!pr) return notFound("Pull request not found");
 
     // Verify users exist and exclude the author
-    const valid: string[] = [];
-    for (const id of userIds) {
-      const u = await db.query.users.findFirst({
-        where: eq(schema.users.id, id),
-        columns: { id: true },
-      });
-      if (u && u.id !== pr.authorId) valid.push(id);
-    }
+    const uniqueUserIds = [...new Set(userIds)];
+    const validUsers = await db.query.users.findMany({
+      where: inArray(schema.users.id, uniqueUserIds),
+      columns: { id: true },
+    });
+    const valid = validUsers.map(u => u.id).filter(id => id !== pr.authorId);
 
     const existing = await db.query.pullRequestReviewers.findMany({
       where: and(

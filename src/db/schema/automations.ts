@@ -5,6 +5,7 @@
 
 import { relations } from "drizzle-orm";
 import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { index } from "drizzle-orm/pg-core";
 import { repositories } from "./repositories";
 import { users } from "./users";
 
@@ -31,7 +32,9 @@ export const automationRules = pgTable("automation_rules", {
     lastRunAt: timestamp("last_run_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+    index("automation_rules_repository_id_idx").on(table.repositoryId),
+]);
 
 /**
  * Trigger types:

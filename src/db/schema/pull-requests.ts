@@ -196,7 +196,9 @@ export const pullRequestReviewers = pgTable("pull_request_reviewers", {
     .references(() => users.id, { onDelete: "cascade" }),
   isRequired: boolean("is_required").default(false),
   requestedAt: timestamp("requested_at").notNull().defaultNow(),
-});
+}, (t) => ({
+  prIdx: index("pr_reviewers_pr_idx").on(t.pullRequestId),
+}));
 
 export const pullRequestChecks = pgTable(
   "pull_request_checks",

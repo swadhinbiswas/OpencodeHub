@@ -5,6 +5,7 @@
 
 import { relations } from "drizzle-orm";
 import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { index } from "drizzle-orm/pg-core";
 import { repositories } from "./repositories";
 import { users } from "./users";
 
@@ -29,7 +30,9 @@ export const branchProtection = pgTable("branch_protection", {
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
     createdById: text("created_by_id").references(() => users.id),
-});
+}, (table) => [
+    index("branch_protection_repository_id_idx").on(table.repositoryId),
+]);
 
 export const branchProtectionRelations = relations(branchProtection, ({ one }) => ({
     repository: one(repositories, {

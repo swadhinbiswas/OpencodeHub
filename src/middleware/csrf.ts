@@ -5,6 +5,7 @@
  */
 
 import { nanoid } from "nanoid";
+import { timingSafeEqual as nodeTimingSafeEqual } from "crypto";
 
 const CSRF_TOKEN_LENGTH = 32;
 const CSRF_COOKIE_NAME = "csrf_token";
@@ -104,19 +105,17 @@ export async function validateCsrfToken(request: Request): Promise<boolean> {
 }
 
 /**
- * Timing-safe string comparison
+ * Timing-safe string comparison using Node.js crypto
+ * Pads both strings to a fixed length to prevent length leakage
  */
+const COMPARISON_FIXED_LENGTH = 64;
+
 function timingSafeEqual(a: string, b: string): boolean {
-    if (a.length !== b.length) {
-        return false;
-    }
-
-    let mismatch = 0;
-    for (let i = 0; i < a.length; i++) {
-        mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
-    }
-
-    return mismatch === 0;
+    const paddedA = a.padEnd(COMPARISON_FIXED_LENGTH, "\0");
+    const paddedB = b.padEnd(COMPARISON_FIXED_LENGTH, "\0");
+    const bufA = Buffer.from(paddedA, "utf8");
+    const bufB = Buffer.from(paddedB, "utf8");
+    return nodeTimingSafeEqual(bufA, bufB);
 }
 
 /**

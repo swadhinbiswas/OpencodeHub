@@ -8,6 +8,7 @@ import { logger } from "@/lib/logger";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { createHash, randomBytes } from "crypto";
 import { generateId } from "@/lib/utils";
+import { escapeHtml } from "@/lib/sanitize";
 
 const CODE_TTL_MINUTES = 10;
 
@@ -44,10 +45,17 @@ export const GET: APIRoute = withErrorHandler(async ({ request, url }) => {
   const appScopes: string[] = app.scopes ? JSON.parse(app.scopes) : [];
   const scopeOk = requestedScopes.every((s: string) => appScopes.includes(s) || appScopes.includes("admin"));
 
+  const safeAppName = escapeHtml(app.name || "");
+  const safeClientId = escapeHtml(clientId);
+  const safeRedirectUri = escapeHtml(redirectUri);
+  const safeState = escapeHtml(state);
+  const safeUsername = escapeHtml(user.username);
+  const safeScopes = requestedScopes.map((s: string) => escapeHtml(s));
+
   return new Response(
     `<!DOCTYPE html>
 <html>
-<head><title>Authorize ${app.name}</title>
+<head><title>Authorize ${safeAppName}</title>
 <style>
   body { font-family: system-ui, sans-serif; background: #0b0f1a; color: #e2e8f0; display: flex; justify-content: center; padding-top: 8vh; }
   .card { background: #131a2b; border: 1px solid #243049; border-radius: 12px; padding: 32px; width: 420px; }
@@ -60,15 +68,15 @@ export const GET: APIRoute = withErrorHandler(async ({ request, url }) => {
 </style></head>
 <body>
   <form class="card" method="POST" action="/api/oauth/authorize">
-    <input type="hidden" name="client_id" value="${clientId}" />
-    <input type="hidden" name="redirect_uri" value="${redirectUri}" />
-    <input type="hidden" name="state" value="${state}" />
-    <input type="hidden" name="scope" value="${requestedScopes.join(" ")}" />
-    <h1>Authorize ${app.name}</h1>
-    <p><strong>${app.name}</strong> (by ${user.username}) is requesting access to your OpenCodeHub account.</p>
+    <input type="hidden" name="client_id" value="${safeClientId}" />
+    <input type="hidden" name="redirect_uri" value="${safeRedirectUri}" />
+    <input type="hidden" name="state" value="${safeState}" />
+    <input type="hidden" name="scope" value="${escapeHtml(requestedScopes.join(" "))}" />
+    <h1>Authorize ${safeAppName}</h1>
+    <p><strong>${safeAppName}</strong> (by ${safeUsername}) is requesting access to your OpenCodeHub account.</p>
     <p>This app will be able to:</p>
-    <div>${requestedScopes.map((s: string) => `<span class="scope">${s}</span>`).join("") || '<span class="scope">basic profile</span>'}</div>
-    <p style="margin-top:16px">Redirect URI: <code>${redirectUri}</code></p>
+    <div>${safeScopes.map((s: string) => `<span class="scope">${s}</span>`).join("") || '<span class="scope">basic profile</span>'}</div>
+    <p style="margin-top:16px">Redirect URI: <code>${safeRedirectUri}</code></p>
     <button class="allow" name="approve" value="true" type="submit">Authorize</button>
     <button class="deny" name="approve" value="false" type="submit">Deny</button>
   </form>
