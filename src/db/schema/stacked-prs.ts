@@ -4,7 +4,7 @@
  */
 
 import { relations } from "drizzle-orm";
-import { integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { pullRequests } from "./pull-requests";
 import { repositories } from "./repositories";
 import { users } from "./users";
@@ -23,7 +23,11 @@ export const prStacks = pgTable("pr_stacks", {
         .references(() => users.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+  },
+  (t) => ({
+    repoIdx: index("pr_stacks_repo_idx").on(t.repositoryId),
+  }),
+);
 
 // Stack entries - individual PRs in a stack with ordering
 export const prStackEntries = pgTable("pr_stack_entries", {
@@ -37,7 +41,13 @@ export const prStackEntries = pgTable("pr_stack_entries", {
     stackOrder: integer("stack_order").notNull(), // Position in stack (1 = base)
     parentPrId: text("parent_pr_id").references(() => pullRequests.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+  },
+  (t) => ({
+    stackIdx: index("pr_stack_entries_stack_idx").on(t.stackId),
+    prIdx: index("pr_stack_entries_pr_idx").on(t.pullRequestId),
+    parentPrIdx: index("pr_stack_entries_parent_pr_idx").on(t.parentPrId),
+  }),
+);
 
 // Relations
 export const prStacksRelations = relations(prStacks, ({ one, many }) => ({

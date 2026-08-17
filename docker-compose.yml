@@ -68,13 +68,19 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - och
+      - opencodehub-internal
+      - opencodehub-external
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4321/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
 
   # ── SSH Git server ─────────────────────────────────────────
   ssh-git:
@@ -108,7 +114,19 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - och
+      - opencodehub-internal
+      - opencodehub-external
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 2222 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
 
   # ── Background worker (merge queue, webhooks, mirrors, digests) ──
   worker:
@@ -143,13 +161,18 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - och
+      - opencodehub-internal
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
 
   # ── PostgreSQL ─────────────────────────────────────────────
   postgres:
@@ -163,12 +186,17 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
-      - och
+      - opencodehub-internal
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-opencodehub} -d ${POSTGRES_DB:-opencodehub}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
 
   # ── Redis (sessions, caching, distributed locking, queues) ──
   redis:
@@ -188,12 +216,17 @@ services:
     volumes:
       - redis-data:/data
     networks:
-      - och
+      - opencodehub-internal
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
 
   # ── CI/CD Runner (Docker-in-Docker, optional) ──────────────
   runner:
@@ -216,7 +249,18 @@ services:
     depends_on:
       - app
     networks:
-      - och
+      - opencodehub-external
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
     profiles:
       - with-runner
 
@@ -234,7 +278,7 @@ services:
     volumes:
       - minio-data:/data
     networks:
-      - och
+      - opencodehub-external
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 30s
@@ -264,5 +308,7 @@ volumes:
     driver: local
 
 networks:
-  och:
+  opencodehub-internal:
+    driver: bridge
+  opencodehub-external:
     driver: bridge

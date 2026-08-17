@@ -30,6 +30,7 @@ let db:
   | LibSQLDatabase<typeof schema>
   | NodePgDatabase<typeof schema>
   | null = null;
+let pgPool: pg.Pool | null = null;
 
 /**
  * Infer database driver from connection URL when no explicit driver is set.
@@ -113,6 +114,10 @@ export function getDatabase():
       ssl: sslEnabled ? { rejectUnauthorized } : undefined,
       max: parseInt(process.env.DATABASE_POOL_SIZE || "10", 10),
     });
+    pool.on('error', (err) => {
+      logger.error({ err }, 'Unexpected database pool error');
+    });
+    pgPool = pool;
     db = drizzlePg(pool, { schema });
     logger.info(
       {
@@ -179,9 +184,11 @@ export async function closeDatabase(): Promise<void> {
       // @ts-ignore
       db.close();
     }
-    // For PG pool, we might need to close the pool if we had access to it,
-    // but Drizzle doesn't expose it directly on the db instance easily without type casting.
-    // In serverless/long-running app, closing might not be strictly necessary unless ensuring graceful shutdown.
+    // Close PostgreSQL pool if available
+    if (pgPool) {
+      await pgPool.end();
+      pgPool = null;
+    }
 
     logger.info("Database connection closed");
     db = null;

@@ -66,12 +66,13 @@ export function createRateLimitMiddleware(
             return null;
         }
 
-        // Skip rate limiting in development if configured
-        if (
-            process.env.NODE_ENV === "development" &&
+        // Never skip rate limiting in production, even if RATE_LIMIT_SKIP_DEV is set
+        if (process.env.NODE_ENV !== "development") {
+            // Fall through to rate limiting
+        } else if (
             process.env.RATE_LIMIT_SKIP_DEV === "true"
         ) {
-            return null; // Continue to next handler
+            return null; // Continue to next handler (development only)
         }
 
         const identifier = getClientIdentifier(request, context);

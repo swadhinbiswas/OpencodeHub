@@ -33,8 +33,13 @@ export const GET: APIRoute = withErrorHandler(async () => {
   if (process.env.REDIS_URL) {
     const redisStart = Date.now();
     try {
-      // Would ping Redis here
-      checks.redis = { status: "ok", latency: Date.now() - redisStart };
+      const { redis } = await import("@/lib/redis");
+      const pong = await redis.ping();
+      if (pong === "PONG" || pong === "OK") {
+        checks.redis = { status: "ok", latency: Date.now() - redisStart };
+      } else {
+        checks.redis = { status: "error", message: `Unexpected ping response: ${pong}` };
+      }
     } catch (error) {
       checks.redis = {
         status: "error",
@@ -108,6 +113,7 @@ export const GET: APIRoute = withErrorHandler(async () => {
       status: isHealthy ? 200 : 503,
       headers: {
         "Content-Type": "application/json",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
       },
     }
   );

@@ -276,6 +276,10 @@ export const POST: APIRoute = withErrorHandler(
     let assigneesAdded = 0;
     let assigneesSkipped = 0;
 
+    // Batch collect reviewer and assignee inserts
+    const reviewerInserts: { id: string; pullRequestId: string; userId: string; isRequired: boolean; requestedAt: Date }[] = [];
+    const assigneeInserts: { id: string; pullRequestId: string; userId: string; assignedAt: Date }[] = [];
+
     for (const pr of pullRequests) {
       for (const reviewerId of parsed.data.reviewerIds) {
         if (reviewerId === pr.authorId) {
@@ -289,7 +293,7 @@ export const POST: APIRoute = withErrorHandler(
           continue;
         }
 
-        await db.insert(schema.pullRequestReviewers).values({
+        reviewerInserts.push({
           id: generateId(),
           pullRequestId: pr.id,
           userId: reviewerId,
@@ -307,7 +311,7 @@ export const POST: APIRoute = withErrorHandler(
           continue;
         }
 
-        await db.insert(schema.pullRequestAssignees).values({
+        assigneeInserts.push({
           id: generateId(),
           pullRequestId: pr.id,
           userId: assigneeId,
@@ -316,6 +320,14 @@ export const POST: APIRoute = withErrorHandler(
         assigneeKeys.add(key);
         assigneesAdded += 1;
       }
+    }
+
+    // Batch inserts instead of N+1 individual inserts
+    if (reviewerInserts.length > 0) {
+      await db.insert(schema.pullRequestReviewers).values(reviewerInserts);
+    }
+    if (assigneeInserts.length > 0) {
+      await db.insert(schema.pullRequestAssignees).values(assigneeInserts);
     }
 
     return success({

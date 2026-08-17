@@ -17,7 +17,7 @@ import {
     parseStoragePath,
     ensureRepoInitialized
 } from "@/lib/git-storage";
-import { spawn, execSync } from "child_process";
+import { spawn } from "child_process";
 import { existsSync, writeFileSync, unlinkSync } from "fs";
 import { join } from "path";
 
@@ -146,10 +146,21 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
         // Fetch from the bundle
         const refs: string[] = [];
 
-        // Get list of refs in bundle
-        const listOutput = execSync(`git bundle list-heads "${tempBundlePath}"`, {
-            cwd: repoPath,
-            encoding: "utf-8",
+        // Get list of refs in bundle (using spawn to avoid command injection)
+        const listOutput = await new Promise<string>((resolve, reject) => {
+            const child = spawn("git", ["bundle", "list-heads", tempBundlePath], {
+                cwd: repoPath,
+                stdio: ["pipe", "pipe", "pipe"],
+            });
+            let stdout = "";
+            let stderr = "";
+            child.stdout.on("data", (data) => { stdout += data.toString(); });
+            child.stderr.on("data", (data) => { stderr += data.toString(); });
+            child.on("close", (code) => {
+                if (code !== 0) reject(new Error(`Failed to list bundle refs: ${stderr}`));
+                else resolve(stdout);
+            });
+            child.on("error", reject);
         });
 
         const bundleRefs = listOutput
@@ -161,22 +172,36 @@ export const POST: APIRoute = withErrorHandler(async ({ request, params }) => {
                 return { sha, ref };
             });
 
-        // Fetch each ref from bundle
+        // Fetch each ref from bundle (using spawn to avoid command injection)
         for (const { ref } of bundleRefs) {
             try {
                 // Fetch the ref
-                execSync(`git fetch "${tempBundlePath}" "${ref}:${ref}"`, {
-                    cwd: repoPath,
-                    stdio: "pipe",
+                await new Promise<void>((resolve, reject) => {
+                    const child = spawn("git", ["fetch", tempBundlePath, `${ref}:${ref}`], {
+                        cwd: repoPath,
+                        stdio: "pipe",
+                    });
+                    child.on("close", (code) => {
+                        if (code !== 0) reject(new Error(`git fetch exited with code ${code}`));
+                        else resolve();
+                    });
+                    child.on("error", reject);
                 });
                 refs.push(ref);
             } catch (fetchError) {
                 // Try force update if regular fetch fails
                 if (force) {
                     try {
-                        execSync(`git fetch "${tempBundlePath}" "+${ref}:${ref}"`, {
-                            cwd: repoPath,
-                            stdio: "pipe",
+                        await new Promise<void>((resolve, reject) => {
+                            const child = spawn("git", ["fetch", tempBundlePath, `+${ref}:${ref}`], {
+                                cwd: repoPath,
+                                stdio: "pipe",
+                            });
+                            child.on("close", (code) => {
+                                if (code !== 0) reject(new Error(`git fetch exited with code ${code}`));
+                                else resolve();
+                            });
+                            child.on("error", reject);
                         });
                         refs.push(`${ref} (force)`);
                     } catch {

@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { pullRequests } from "./pull-requests";
 import { repositories } from "./repositories";
 import { users } from "./users";
@@ -38,7 +38,13 @@ export const mergeQueue = pgTable("merge_queue", {
     startedAt: timestamp("started_at"),
     completedAt: timestamp("completed_at"),
     failureReason: text("failure_reason"),
-});
+  },
+  (t) => ({
+    repoIdx: index("merge_queue_repo_idx").on(t.repositoryId),
+    statusIdx: index("merge_queue_status_idx").on(t.status),
+    prIdx: index("merge_queue_pr_idx").on(t.pullRequestId),
+  }),
+);
 
 // Alias for backwards compatibility
 export const mergeQueueItems = mergeQueue;

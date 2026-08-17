@@ -11,6 +11,9 @@ import { dirname, join } from "path";
 import ssh2 from "ssh2";
 const { Server } = ssh2;
 
+const GIT_PROCESS_TIMEOUT_MS =
+  parseInt(process.env.GIT_PROCESS_TIMEOUT_SECS || "3600", 10) * 1000;
+
 /**
  * Per-IP SSH authentication rate limiter.
  * Tracks failed attempts and blocks IPs that exceed the threshold.
@@ -242,6 +245,14 @@ export function createSSHServer(
                 GL_ID: userId || "anonymous", // GitLab compatibility
               },
             });
+
+            // Kill git process if it runs too long
+            const gitTimer = setTimeout(() => {
+              logger.warn({ fullRepoPath, operation }, "SSH git process timed out, killing");
+              gitProcess.kill("SIGKILL");
+            }, GIT_PROCESS_TIMEOUT_MS);
+            gitProcess.on("close", () => clearTimeout(gitTimer));
+            gitProcess.on("error", () => clearTimeout(gitTimer));
 
             // Track refs for push hook
             let receivedRefs: string[] = [];
