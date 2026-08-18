@@ -1,19 +1,31 @@
-# OpenCodeHub Render Blueprint
-# Deploy with: New → Blueprint → Select this repo
+# ──────────────────────────────────────────────────────────────────────────────
+# OpenCodeHub — Render Blueprint (production-ready)
 #
-# Prerequisites:
-#   1. Create a free Upstash Redis at https://upstash.com (region: Asia Pacific)
-#   2. Copy the Redis URL
+# Deploy with: Render Dashboard → New → Blueprint → Select this repo
 #
-# After deploy:
-#   1. Set REDIS_URL from Upstash in Environment tab
-#   2. Update SITE_URL with your actual Render URL
-#   3. Visit your URL → /setup to create admin account
+# What this provisions:
+#   1. Web Service (app + API + Git HTTP) — Docker image, built from Dockerfile
+#   2. Background Worker (queues, webhooks, cron, scheduler)
+#   3. PostgreSQL database (Render managed, free tier)
+#   4. Redis (Render managed, free tier)
+#   5. Persistent disk (git repos, storage, SSH keys)
+#
+# Post-deploy:
+#   1. The first deploy runs migrations automatically (docker-entrypoint.sh)
+#   2. Visit your URL → /setup to create the admin account
+#   3. For SSH git: deploy separately with PROCESS_TYPE=ssh (Render supports
+#      this via a second service or a "command" on the main service)
+#
+# SSH git note: Render does not expose non-HTTP ports. To use SSH git,
+# deploy a separate "Background Worker" with PROCESS_TYPE=ssh and use
+# Render's built-in TCP proxy (or serve SSH over WebSocket).
+# For most users: HTTP git (`https://your-domain.git`) works identically.
+# ──────────────────────────────────────────────────────────────────────────────
 
 services:
-  # ── Web Service (App + API + Git HTTP) ──────────────────────
+  # ── Web Service (app + API + Git HTTP) ──────────────────────────────────────
   - type: web
-    name: opencodehub
+    name: opencodehub-web
     runtime: image
     image:
       url: ghcr.io/swadhinbiswas/opencodehub:latest
@@ -21,7 +33,7 @@ services:
     region: singapore
     healthCheckPath: /api/health
     envVars:
-      # ── Server ──
+      # ── Server ──────────────────────────────────────────────────────────
       - key: NODE_ENV
         value: production
       - key: PORT
@@ -29,11 +41,11 @@ services:
       - key: HOST
         value: "0.0.0.0"
       - key: SITE_URL
-        # TODO: Update after first deploy with your actual Render URL
-        # Example: https://opencodehub.onrender.com
         sync: false
+      # TODO: After first deploy, set this to your Render URL
+      # (e.g. https://opencodehub.onrender.com)
 
-      # ── Database (Render PostgreSQL) ──
+      # ── Database (Render PostgreSQL — injected via fromDatabase) ───────
       - key: DATABASE_DRIVER
         value: postgres
       - key: DATABASE_URL
@@ -43,13 +55,13 @@ services:
       - key: DATABASE_SSL
         value: "true"
 
-      # ── Redis (Upstash - Free) ──
-      # TODO: Create free Redis at https://upstash.com (region: Singapore)
-      # Then paste the Redis URL here:
+      # ── Redis (Render managed) ──────────────────────────────────────────
       - key: REDIS_URL
-        sync: false
+        fromRedis:
+          name: opencodehub-redis
+          property: connectionString
 
-      # ── Secrets (Auto-generated) ──
+      # ── Secrets (auto-generated, unique per deploy) ─────────────────────
       - key: JWT_SECRET
         generateValue: true
       - key: SESSION_SECRET
@@ -65,7 +77,7 @@ services:
       - key: WORKFLOW_SECRET_ENCRYPTION_KEY
         generateValue: true
 
-      # ── Storage ──
+      # ── Storage (persistent disk) ───────────────────────────────────────
       - key: STORAGE_TYPE
         value: local
       - key: GIT_REPOS_PATH
@@ -73,7 +85,13 @@ services:
       - key: STORAGE_PATH
         value: /data/storage
 
-      # ── Features ──
+      # ── Git SSH ─────────────────────────────────────────────────────────
+      - key: GIT_SSH_PORT
+        value: "2222"
+      - key: GIT_SSH_HOST_KEY
+        value: /data/ssh/host_key
+
+      # ── Features ───────────────────────────────────────────────────────
       - key: ENABLE_REGISTRATION
         value: "true"
       - key: ENABLE_WIKI
@@ -82,27 +100,98 @@ services:
         value: "true"
       - key: ENABLE_ACTIONS
         value: "true"
+      - key: ENABLE_PACKAGES
+        value: "false"
       - key: ENABLE_AI_ASSISTANT
         value: "true"
 
-      # ── Rate Limiting ──
+      # ── Rate Limiting & Security ───────────────────────────────────────
       - key: RATE_LIMIT_ENABLED
         value: "true"
+      - key: RATE_LIMIT_SKIP_DEV
+        value: "false"
+      - key: CSRF_SKIP_DEV
+        value: "false"
 
-      # ── Logging ──
+      # ── Logging ────────────────────────────────────────────────────────
       - key: LOG_LEVEL
         value: info
 
-    # Persistent disk for git repos, storage, SSH keys
+    # Persistent disk for git repos, storage, SSH host key
     disk:
       name: opencodehub-data
       mountPath: /data
-      sizeGB: 1
+      sizeGB: 10
 
-# ── PostgreSQL Database (Render Free) ────────────────────────
+  # ── Background Worker (queues, webhooks, cron, scheduler, digests) ────
+  - type: worker
+    name: opencodehub-worker
+    runtime: image
+    image:
+      url: ghcr.io/swadhinbiswas/opencodehub:latest
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PROCESS_TYPE
+        value: worker
+      - key: DATABASE_DRIVER
+        value: postgres
+      - key: DATABASE_URL
+        fromDatabase:
+          name: opencodehub-db
+          property: connectionString
+      - key: DATABASE_SSL
+        value: "true"
+      - key: REDIS_URL
+        fromRedis:
+          name: opencodehub-redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: INTERNAL_HOOK_SECRET
+        generateValue: true
+      - key: CRON_SECRET
+        generateValue: true
+      - key: RUNNER_SECRET
+        generateValue: true
+      - key: WORKFLOW_SECRET_ENCRYPTION_KEY
+        generateValue: true
+      - key: AI_CONFIG_ENCRYPTION_KEY
+        generateValue: true
+      - key: GIT_REPOS_PATH
+        value: /data/repositories
+      - key: STORAGE_TYPE
+        value: local
+      - key: STORAGE_PATH
+        value: /data/storage
+      - key: LOG_LEVEL
+        value: info
+      - key: SCHEDULE_INTERVAL
+        value: "60000"
+      - key: MIRROR_SYNC_INTERVAL
+        value: "60000"
+      - key: CLEANUP_INTERVAL
+        value: "3600000"
+      - key: DIGEST_INTERVAL
+        value: "300000"
+
+      # Persistent disk (shared with web service — mounted at same path)
+      # Note: Render workers share the same disk as the web service by name.
+      # If using separate disks, mount at /data with the same disk name.
+
+# ── PostgreSQL Database (Render managed) ─────────────────────
 databases:
   - name: opencodehub-db
     plan: free
     databaseName: opencodehub
-    user: opencodehub
-    region: singapore
+    ipAllowList: []  # Restrict to Render private network
+
+# ── Redis (Render managed) ──────────────────────────────────
+# Render now provides managed Redis — no Upstash needed.
+redis:
+  - name: opencodehub-redis
+    plan: free
+    ipAllowList: []  # Restrict to Render private network
