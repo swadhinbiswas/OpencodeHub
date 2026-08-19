@@ -2,7 +2,14 @@
 import { resolveOrgOwners } from "@/lib/repo-owner";
 import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import { desc, eq, and, sql } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
+import {
+  CircleDot,
+  CheckCircle2,
+  MessageSquare,
+  Filter,
+  Plus
+} from "lucide-react";
 
 const db = getDatabase();
 const currentUser = Astro.locals.user;
@@ -13,6 +20,9 @@ const sort = Astro.url.searchParams.get("sort") || "newest";
 
 // Fetch issues from public repos, ordered by most recent
 let issues: any[] = [];
+let openCount = 0;
+let closedCount = 0;
+
 try {
   // Get issues with their repositories
   const rawIssues = await db.query.issues.findMany({
@@ -41,6 +51,19 @@ try {
   issues = (await resolveOrgOwners(rawIssues)).filter(issue => 
     issue.repository?.visibility === "public"
   );
+
+  // Fetch counts for badges
+  const allPublicIssues = await db.query.issues.findMany({
+    columns: { state: true },
+    with: {
+      repository: {
+        columns: { visibility: true }
+      }
+    }
+  });
+  const publicOnly = allPublicIssues.filter(i => i.repository?.visibility === "public");
+  openCount = publicOnly.filter(i => i.state === "open").length;
+  closedCount = publicOnly.filter(i => i.state === "closed").length;
 } catch (e) {
   console.error("Error fetching issues:", e);
 }
@@ -58,182 +81,168 @@ function timeAgo(date: string | number | Date) {
 }
 ---
 
-<BaseLayout title="Issues - OpenCodeHub">
-  <div class="container py-8 max-w-5xl">
+<BaseLayout title="Issues · OpenCodeHub">
+  <div class="container max-w-[1280px] mx-auto py-8 px-4 sm:px-6">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border mb-6">
       <div>
-        <h1 class="text-3xl font-bold text-foreground flex items-center gap-3">
-          <div class="p-2 rounded-lg bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-500/30">
-            <svg class="h-7 w-7 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-          </div>
-          Issues
+        <h1 class="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2.5">
+          <CircleDot className="h-6 w-6 text-foreground" />
+          <span>Issues</span>
         </h1>
-        <p class="text-muted-foreground mt-2">Browse issues across all public repositories</p>
+        <p class="text-sm text-muted-foreground mt-1">Track and browse issues across all public repositories</p>
       </div>
     </div>
 
-    <!-- Filters -->
-    <div class="relative mb-6">
-      <div class="absolute -inset-[1px] bg-gradient-to-r from-green-500/20 via-transparent to-emerald-500/20 rounded-xl opacity-50"></div>
-      <div class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm p-4">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <!-- Filter Tabs -->
-          <div class="flex items-center gap-1">
-            <a
-              href="/issues?filter=open"
-              class:list={[
-                "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                filter === "open"
-                  ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                  : "text-muted-foreground hover:bg-accent"
-              ]}
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              Open
-            </a>
-            <a
-              href="/issues?filter=closed"
-              class:list={[
-                "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                filter === "closed"
-                  ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
-                  : "text-muted-foreground hover:bg-accent"
-              ]}
-            >
-              <svg class="h-4   w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              Closed
-            </a>
-            <a
-              href="/issues?filter=all"
-              class:list={[
-                "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                filter === "all"
-                  ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
-                  : "text-muted-foreground hover:bg-accent"
-              ]}
-            >
-              All
-            </a>
-          </div>
+    <!-- Filter Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+      <!-- State Filter Pills -->
+      <div class="inline-flex items-center gap-1 p-1 rounded-lg border border-border/80 bg-card/60 backdrop-blur-sm self-start">
+        <a
+          href="/issues?filter=open"
+          class:list={[
+            "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors",
+            filter === "open"
+              ? "bg-secondary text-foreground font-semibold shadow-sm"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+          ]}
+        >
+          <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+          <span>Open</span>
+          <span class="ml-0.5 rounded-full bg-muted px-1.5 py-0.2 text-[11px] font-semibold text-muted-foreground">
+            {openCount}
+          </span>
+        </a>
+        <a
+          href="/issues?filter=closed"
+          class:list={[
+            "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors",
+            filter === "closed"
+              ? "bg-secondary text-foreground font-semibold shadow-sm"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+          ]}
+        >
+          <span class="h-2 w-2 rounded-full bg-purple-500"></span>
+          <span>Closed</span>
+          <span class="ml-0.5 rounded-full bg-muted px-1.5 py-0.2 text-[11px] font-semibold text-muted-foreground">
+            {closedCount}
+          </span>
+        </a>
+        <a
+          href="/issues?filter=all"
+          class:list={[
+            "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors",
+            filter === "all"
+              ? "bg-secondary text-foreground font-semibold shadow-sm"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+          ]}
+        >
+          <span>All</span>
+        </a>
+      </div>
 
-          <!-- Sort -->
-          <div class="flex items-center gap-2">
-            <span class="text-sm text-muted-foreground">Sort:</span>
-            <select
-              id="sort-select"
-              class="rounded-lg border border-border bg-secondary px-3 py-1.5 text-sm text-muted-foreground focus:outline-none focus:border-green-500/50"
-            >
-              <option value="newest" selected={sort === "newest"}>Newest</option>
-              <option value="oldest" selected={sort === "oldest"}>Oldest</option>
-              <option value="comments" selected={sort === "comments"}>Most commented</option>
-            </select>
-          </div>
-        </div>
+      <!-- Sort Selection -->
+      <div class="flex items-center gap-2 self-end sm:self-center">
+        <label for="sort-select" class="text-xs text-muted-foreground font-medium">Sort:</label>
+        <select
+          id="sort-select"
+          class="h-8 rounded-md border border-border/70 bg-card px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
+        >
+          <option value="newest" selected={sort === "newest"}>Newest</option>
+          <option value="oldest" selected={sort === "oldest"}>Oldest</option>
+          <option value="comments" selected={sort === "comments"}>Most commented</option>
+        </select>
       </div>
     </div>
 
-    <!-- Issues List -->
-    <div class="relative">
-      <div class="absolute -inset-[1px] bg-gradient-to-r from-green-500/20 via-transparent to-emerald-500/20 rounded-xl opacity-50"></div>
-      <div class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden">
-        {issues.length > 0 ? (
-          <div class="divide-y divide-white/5">
-            {issues.map((issue) => (
+    <!-- Issues List Card -->
+    <div class="rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm overflow-hidden shadow-sm">
+      {issues.length > 0 ? (
+        <div class="divide-y divide-border/60">
+          {issues.map((issue) => {
+            const ownerName = issue.repository?.owner?.username || "unknown";
+            const repoName = issue.repository?.name || "repo";
+            return (
               <a
-                href={`/${issue.repository?.owner?.username}/${issue.repository?.name}/issues/${issue.number}`}
-                class="block p-4 hover:bg-accent/50 transition-colors group"
+                href={`/${ownerName}/${repoName}/issues/${issue.number}`}
+                class="group flex items-start gap-3.5 p-4 hover:bg-accent/40 transition-colors"
               >
-                <div class="flex items-start gap-3">
-                  <!-- Status Icon -->
-                  <div class:list={[
-                    "p-2 rounded-lg mt-0.5",
-                    issue.state === "open" 
-                      ? "bg-green-500/10 text-green-400" 
-                      : "bg-purple-500/10 text-purple-400"
-                  ]}>
-                    {issue.state === "open" ? (
-                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                      </svg>
-                    ) : (
-                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                      </svg>
-                    )}
-                  </div>
-
-                  <div class="flex-1 min-w-0">
-                    <!-- Title & Repo -->
-                    <div class="flex items-center gap-2 mb-1">
-                      <span class="text-xs text-muted-foreground font-medium">
-                        {issue.repository?.owner?.username}/{issue.repository?.name}
-                      </span>
-                      <span class="text-muted-foreground">#{issue.number}</span>
+                <!-- Status Icon -->
+                <div class="mt-0.5 flex-shrink-0">
+                  {issue.state === "open" ? (
+                    <div class="h-6 w-6 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20" title="Open issue">
+                      <CircleDot className="h-3.5 w-3.5" />
                     </div>
-                    <h3 class="font-semibold text-foreground group-hover:text-green-400 transition-colors truncate">
-                      {issue.title}
-                    </h3>
-                    
-                    <!-- Meta -->
-                    <div class="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                      <span>
-                        opened {timeAgo(issue.createdAt)} by {issue.author?.username || "unknown"}
-                      </span>
-                      {(issue.commentCount || 0) > 0 && (
-                        <span class="flex items-center gap-1">
-                          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                          </svg>
+                  ) : (
+                    <div class="h-6 w-6 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20" title="Closed issue">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    </div>
+                  )}
+                </div>
+
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-baseline gap-2 flex-wrap mb-1">
+                    <span class="text-xs font-semibold text-muted-foreground hover:text-foreground">
+                      {ownerName}/{repoName}
+                    </span>
+                    <span class="text-xs text-muted-foreground/80 font-mono">#{issue.number}</span>
+                  </div>
+                  
+                  <h3 class="text-sm font-semibold text-foreground group-hover:text-primary transition-colors leading-snug break-words">
+                    {issue.title}
+                  </h3>
+
+                  <!-- Meta Info -->
+                  <div class="flex items-center gap-3 mt-2 flex-wrap text-xs text-muted-foreground">
+                    <span>
+                      opened {timeAgo(issue.createdAt)} by <span class="text-foreground font-medium">@{issue.author?.username || "unknown"}</span>
+                    </span>
+
+                    {(issue.commentCount || 0) > 0 && (
+                      <>
+                        <span>·</span>
+                        <span class="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground">
+                          <MessageSquare className="h-3 w-3" />
                           {issue.commentCount}
                         </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <!-- Avatar -->
-                  <div class="hidden sm:block">
-                    {issue.author?.avatarUrl ? (
-                      <img
-                        src={issue.author.avatarUrl}
-                        alt={issue.author.username}
-                        class="w-8 h-8 rounded-full ring-2 ring-border"
-                      />
-                    ) : (
-                      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-xs font-bold text-foreground ring-2 ring-border">
-                        {issue.author?.username?.[0]?.toUpperCase() || "?"}
-                      </div>
+                      </>
                     )}
                   </div>
                 </div>
+
+                <!-- Author Avatar -->
+                <div class="hidden sm:block flex-shrink-0">
+                  {issue.author?.avatarUrl ? (
+                    <img
+                      src={issue.author.avatarUrl}
+                      alt={issue.author.username}
+                      class="h-7 w-7 rounded-full border border-border/80 object-cover"
+                    />
+                  ) : (
+                    <div class="h-7 w-7 rounded-full bg-secondary border border-border/80 flex items-center justify-center text-xs font-medium text-foreground">
+                      {issue.author?.username?.[0]?.toUpperCase() || "?"}
+                    </div>
+                  )}
+                </div>
               </a>
-            ))}
+            );
+          })}
+        </div>
+      ) : (
+        <div class="text-center py-16 px-4">
+          <div class="w-12 h-12 rounded-full bg-secondary/80 border border-border flex items-center justify-center mx-auto mb-3 text-muted-foreground">
+            <CircleDot className="h-6 w-6" />
           </div>
-        ) : (
-          <div class="text-center py-16">
-            <div class="relative inline-block mb-4">
-              <svg class="h-16 w-16 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              <div class="absolute inset-0 bg-green-500 blur-2xl opacity-20"></div>
-            </div>
-            <h3 class="text-lg font-semibold text-foreground mb-2">No issues found</h3>
-            <p class="text-muted-foreground">
-              {filter === "open" 
-                ? "All issues are closed! 🎉" 
-                : filter === "closed"
-                  ? "No closed issues yet."
-                  : "No issues have been created yet."}
-            </p>
-          </div>
-        )}
-      </div>
+          <h3 class="text-base font-semibold text-foreground mb-1">No issues found</h3>
+          <p class="text-sm text-muted-foreground max-w-sm mx-auto">
+            {filter === "open" 
+              ? "All issues are resolved! 🎉" 
+              : filter === "closed"
+                ? "No closed issues found."
+                : "No issues have been created yet."}
+          </p>
+        </div>
+      )}
     </div>
   </div>
 </BaseLayout>

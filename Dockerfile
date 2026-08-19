@@ -1,71 +1,78 @@
-FROM oven/bun:1 AS base
+# ── Stage 1: Base Environment ──────────────────────────────────
+FROM oven/bun:1-slim AS base
 WORKDIR /app
+
 LABEL org.opencontainers.image.title="OpenCodeHub" \
       org.opencontainers.image.description="A modern, self-hosted Git platform with stacked PRs, merge queue, CI/CD, and AI review." \
       org.opencontainers.image.url="https://github.com/swadhinbiswas/OpencodeHub" \
       org.opencontainers.image.source="https://github.com/swadhinbiswas/OpencodeHub" \
       org.opencontainers.image.licenses="MIT"
 
-# Install ALL dependencies (needed for build including CSS tooling)
+# ── Stage 2: Dependencies (All Dev + Prod for build) ───────────
 FROM base AS deps
-RUN apt-get update && apt-get install -y python3 make g++ gcc libc6-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 make g++ gcc libc6-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY package.json bun.lock ./
 COPY cli/package.json ./cli/package.json
-RUN for i in 1 2 3; do \
-      bun install --frozen-lockfile && break || \
-      (echo "bun install attempt $i failed, retrying in 10s..." && sleep 10); \
-    done
+RUN bun install --frozen-lockfile
 
-# Install production dependencies only (for runtime image)
+# ── Stage 3: Production Dependencies Only ──────────────────────
 FROM base AS prod-deps
-RUN apt-get update && apt-get install -y python3 make g++ gcc libc6-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 make g++ gcc libc6-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY package.json bun.lock ./
 COPY cli/package.json ./cli/package.json
-# Clear Bun install cache to avoid stale/corrupt node-gyp entries across layers
-RUN rm -rf /root/.bun/install/cache || true
-RUN for i in 1 2 3; do \
-      bun install --frozen-lockfile --production && break || \
-      (echo "prod bun install attempt $i failed, clearing cache and retrying in 10s..." && \
-       rm -rf /root/.bun/install/cache && sleep 10); \
-    done
+RUN bun install --frozen-lockfile --production \
+    && find /app/node_modules -type d \( -name "test" -o -name "tests" -o -name "docs" -o -name "example" -o -name "examples" \) -prune -exec rm -rf {} + 2>/dev/null || true \
+    && find /app/node_modules -type f \( -name "*.map" -o -name "*.md" -o -name "*.markdown" \) -delete 2>/dev/null || true
 
-# Build the application
+# ── Stage 4: Builder ───────────────────────────────────────────
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY package.json tsconfig.json astro.config.mjs tailwind.config.mjs postcss.config.mjs drizzle.config.ts docker-entrypoint.sh ./
+COPY public ./public
+COPY src ./src
+COPY cli ./cli
+COPY drizzle ./drizzle
+COPY scripts ./scripts
+
+ENV NODE_ENV=production
 ENV SKIP_REDIS_CHECK=1
 RUN bun run build
 
-# Production image
+# ── Stage 5: Production Runner (Lean & Minimal) ────────────────
 FROM oven/bun:1-slim AS runner
 WORKDIR /app
 
-# Install git, ssh, bash, and wget (git operations, entrypoint, healthcheck)
-RUN apt-get update && apt-get install -y --no-install-recommends git openssh-client bash wget && \
-    rm -rf /var/lib/apt/lists/*
+# Install minimal runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    openssh-client \
+    bash \
+    wget \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Create data directories
-RUN mkdir -p /data/repositories /data/storage /data/cache /data/ssh && \
-    chown -R bun:bun /data
+# Create persistent storage directories
+RUN mkdir -p /data/repos /data/repositories /data/storage /data/cache /data/ssh /data/logs && \
+    chown -R bun:bun /data /app
 
-# Copy only what's needed for runtime
+# Copy runtime assets
 COPY --from=builder --chown=bun:bun /app/dist ./dist
 COPY --from=prod-deps --chown=bun:bun /app/node_modules ./node_modules
 COPY --from=builder --chown=bun:bun /app/package.json ./
-
-# Copy drizzle config, committed migrations, and full source tree.
-# The full src/ is required so raw-TS entrypoints (scripts/ssh-server.ts,
-# scripts/worker.ts) can resolve the "@/..." path aliases via tsconfig.
 COPY --from=builder --chown=bun:bun /app/drizzle.config.ts ./
 COPY --from=builder --chown=bun:bun /app/drizzle ./drizzle
 COPY --from=builder --chown=bun:bun /app/src ./src
 COPY --from=builder --chown=bun:bun /app/tsconfig.json ./
-
-# Copy runtime scripts (migrate, ssh-server, worker) and entrypoint
 COPY --from=builder --chown=bun:bun /app/scripts ./scripts
-COPY --chown=bun:bun docker-entrypoint.sh ./
+COPY --from=builder --chown=bun:bun /app/docker-entrypoint.sh ./
 
-# Set environment variables
+# Environment defaults
 ENV HOST=0.0.0.0
 ENV PORT=4321
 ENV DATA_DIR=/data
@@ -75,15 +82,10 @@ ENV CACHE_PATH=/data/cache
 ENV SSH_PATH=/data/ssh
 ENV NODE_ENV=production
 
-# Expose ports
-EXPOSE 4321
-
-# Switch to non-root user
+EXPOSE 4321 2222
 USER bun
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:4321/api/health || exit 1
+HEALTHCHECK --interval=20s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:4321/api/health || exit 1
 
-# Start the application with entrypoint
 ENTRYPOINT ["bash", "./docker-entrypoint.sh"]

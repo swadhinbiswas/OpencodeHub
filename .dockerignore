@@ -1,9 +1,75 @@
-node_modules
-dist
+# Version control
 .git
-.env
-data
-tests
+.gitignore
+.gitattributes
+.github
+
+# Dependencies (always install inside container)
+node_modules
+*/node_modules
+community/node_modules
+docs-site/node_modules
+cli/node_modules
+
+# Subprojects not needed in production app container
+community
+docs-site
+packages
+doc
+docs
+
+# Build outputs & caches
+dist
+.astro
+.cache
+.parcel-cache
+coverage
 playwright-report
 test-results
+.nyc_output
+
+# Local runtime data, state & logs
+data
+.tmp
+*.log
+logs
+*.local.db
+*.sqlite
+*.sqlite-journal
+*.db
+test.db
+
+# Test suites & benchmarks
+tests
+__tests__
+*.test.ts
+*.spec.ts
+playwright.config.ts
+vitest.config.ts
+
+# Documentation & project planning files
+*.md
+!DOCKERHUB.md
+UIPLAN.md
+features.md
+notimplemented.md
+github-roadmap-issues.json
+protection.json
+out.json
+pci
+check.log
+
+# IDE, agent & system metadata
+.vscode
+.idea
 .DS_Store
+Thumbs.db
+*.swp
+*.swo
+.gemini
+scratch
+
+# Environment secrets
+.env
+.env.*
+!.env.example

@@ -5,15 +5,41 @@ on:
     branches: [main]
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      platforms:
+        description: "Platforms to build (e.g. linux/amd64,linux/arm64 or linux/amd64)"
+        required: false
+        default: "linux/amd64"
+        type: string
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: opencodehub/opencodehub
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
+  IMAGE_BASE: opencodehub/opencodehub
 
 jobs:
   build-and-push:
+    name: Build & Push (${{ matrix.target.name }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - name: app
+            file: ./Dockerfile
+            suffix: ""
+            title: "OpenCodeHub Platform"
+            desc: "A modern, self-hosted Git platform with stacked PRs, merge queue, CI/CD, and AI review."
+          - name: worker
+            file: ./Dockerfile.worker
+            suffix: "-worker"
+            title: "OpenCodeHub Worker"
+            desc: "Background task worker for OpenCodeHub (queues, webhooks, notifications)."
+          - name: runner
+            file: ./Dockerfile.runner
+            suffix: "-runner"
+            title: "OpenCodeHub Runner"
+            desc: "Docker-in-Docker CI/CD runner for OpenCodeHub pipelines."
+
     permissions:
       contents: read
       packages: write
@@ -22,7 +48,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up QEMU
+      - name: Determine platforms
+        id: platforms
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.platforms }}" ]; then
+            echo "platforms=${{ github.event.inputs.platforms }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "platforms=linux/amd64,linux/arm64" >> $GITHUB_OUTPUT
+          else
+            echo "platforms=linux/amd64" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up QEMU (only when multi-arch requested)
+        if: contains(steps.platforms.outputs.platforms, 'arm64')
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
@@ -34,11 +72,11 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Extract Metadata (App)
-        id: meta-app
+      - name: Extract Metadata
+        id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}${{ matrix.target.suffix }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
@@ -46,89 +84,38 @@ jobs:
             type=sha,prefix=
             type=raw,value=latest,enable={{is_default_branch}}
           labels: |
-            org.opencontainers.image.title=OpenCodeHub Platform
-            org.opencontainers.image.description=A modern, self-hosted Git platform with stacked PRs, merge queue, CI/CD, and AI review.
+            org.opencontainers.image.title=${{ matrix.target.title }}
+            org.opencontainers.image.description=${{ matrix.target.desc }}
             org.opencontainers.image.url=https://github.com/swadhinbiswas/OpencodeHub
             org.opencontainers.image.source=https://github.com/swadhinbiswas/OpencodeHub
             org.opencontainers.image.licenses=MIT
 
-      - name: Extract Metadata (Worker)
-        id: meta-worker
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-worker
-          tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix=
-            type=raw,value=latest,enable={{is_default_branch}}
-          labels: |
-            org.opencontainers.image.title=OpenCodeHub Worker
-            org.opencontainers.image.description=Background task worker for OpenCodeHub (queues, webhooks, notifications).
-            org.opencontainers.image.url=https://github.com/swadhinbiswas/OpencodeHub
-            org.opencontainers.image.source=https://github.com/swadhinbiswas/OpencodeHub
-            org.opencontainers.image.licenses=MIT
-
-      - name: Extract Metadata (Runner)
-        id: meta-runner
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-runner
-          tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix=
-            type=raw,value=latest,enable={{is_default_branch}}
-          labels: |
-            org.opencontainers.image.title=OpenCodeHub Runner
-            org.opencontainers.image.description=Docker-in-Docker CI/CD runner for OpenCodeHub pipelines.
-            org.opencontainers.image.url=https://github.com/swadhinbiswas/OpencodeHub
-            org.opencontainers.image.source=https://github.com/swadhinbiswas/OpencodeHub
-            org.opencontainers.image.licenses=MIT
-
-      - name: Build and Push App Image
+      - name: Build and Push Image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
+          file: ${{ matrix.target.file }}
           push: true
-          tags: ${{ steps.meta-app.outputs.tags }}
-          labels: ${{ steps.meta-app.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.target.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target.name }}
+          platforms: ${{ steps.platforms.outputs.platforms }}
 
-      - name: Build and Push Worker Image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile.worker
-          push: true
-          tags: ${{ steps.meta-worker.outputs.tags }}
-          labels: ${{ steps.meta-worker.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
+  update-dockerhub-desc:
+    name: Update DockerHub Description
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Build and Push Runner Image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile.runner
-          push: true
-          tags: ${{ steps.meta-runner.outputs.tags }}
-          labels: ${{ steps.meta-runner.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
-
-      - name: Update Docker Hub Repository Description
+      - name: Update Docker Hub Description
         uses: peter-evans/dockerhub-description@v4
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
-          repository: ${{ env.IMAGE_NAME }}
+          repository: ${{ env.IMAGE_BASE }}
           readme-filepath: ./DOCKERHUB.md
           short-description: "Self-hosted Git platform with stacked PRs, merge queue, CI/CD, and AI code review"

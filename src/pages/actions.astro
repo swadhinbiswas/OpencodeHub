@@ -3,6 +3,16 @@ import { resolveOrgOwners } from "@/lib/repo-owner";
 import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { desc, eq } from "drizzle-orm";
+import {
+  Play,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Clock,
+  GitBranch,
+  GitCommit,
+  Bot
+} from "lucide-react";
 
 const db = getDatabase();
 
@@ -11,6 +21,10 @@ const filter = Astro.url.searchParams.get("filter") || "all";
 
 // Fetch workflow runs from public repos
 let workflowRuns: any[] = [];
+let successCount = 0;
+let failureCount = 0;
+let runningCount = 0;
+
 try {
   const rawRuns = await db.query.workflowRuns.findMany({
     where: filter === "success" 
@@ -36,6 +50,19 @@ try {
   workflowRuns = (await resolveOrgOwners(rawRuns)).filter(run => 
     run.repository?.visibility === "public"
   );
+
+  const allPublicRuns = await db.query.workflowRuns.findMany({
+    columns: { status: true },
+    with: {
+      repository: {
+        columns: { visibility: true }
+      }
+    }
+  });
+  const publicOnly = allPublicRuns.filter(r => r.repository?.visibility === "public");
+  successCount = publicOnly.filter(r => r.status === "success").length;
+  failureCount = publicOnly.filter(r => r.status === "failure").length;
+  runningCount = publicOnly.filter(r => r.status === "running").length;
 } catch (e) {
   console.error("Error fetching workflow runs:", e);
 }
@@ -63,211 +90,185 @@ function formatDuration(start: string, end: string | null) {
 }
 ---
 
-<BaseLayout title="Actions - OpenCodeHub">
-  <div class="container py-8 max-w-5xl">
+<BaseLayout title="Actions · OpenCodeHub">
+  <div class="container max-w-[1280px] mx-auto py-8 px-4 sm:px-6">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border mb-6">
       <div>
-        <h1 class="text-3xl font-bold text-foreground flex items-center gap-3">
-          <div class="p-2 rounded-lg bg-gradient-to-br from-orange-500/20 to-amber-500/20 border border-orange-500/30">
-            <svg class="h-7 w-7 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-            </svg>
-          </div>
-          Actions
+        <h1 class="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2.5">
+          <Play className="h-6 w-6 text-foreground fill-foreground" />
+          <span>Actions & Pipelines</span>
         </h1>
-        <p class="text-muted-foreground mt-2">Workflow runs across all public repositories</p>
+        <p class="text-sm text-muted-foreground mt-1">Global CI/CD workflow runs across all public repositories</p>
       </div>
     </div>
 
-    <!-- Filters -->
-    <div class="relative mb-6">
-      <div class="absolute -inset-[1px] bg-gradient-to-r from-orange-500/20 via-transparent to-amber-500/20 rounded-xl opacity-50"></div>
-      <div class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm p-4">
-        <div class="flex flex-wrap items-center gap-2">
-          <a
-            href="/actions?filter=all"
-            class:list={[
-              "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-              filter === "all"
-                ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
-                : "text-muted-foreground hover:bg-accent"
-            ]}
-          >
-            All
-          </a>
-          <a
-            href="/actions?filter=success"
-            class:list={[
-              "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-              filter === "success"
-                ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                : "text-muted-foreground hover:bg-accent"
-            ]}
-          >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            Success
-          </a>
-          <a
-            href="/actions?filter=failure"
-            class:list={[
-              "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-              filter === "failure"
-                ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                : "text-muted-foreground hover:bg-accent"
-            ]}
-          >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-            Failed
-          </a>
-          <a
-            href="/actions?filter=running"
-            class:list={[
-              "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-              filter === "running"
-                ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
-                : "text-muted-foreground hover:bg-accent"
-            ]}
-          >
-            <svg class="h-4 w-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-            </svg>
-            Running
-          </a>
-        </div>
-      </div>
+    <!-- Filter Tabs -->
+    <div class="inline-flex items-center gap-1 p-1 rounded-lg border border-border/80 bg-card/60 backdrop-blur-sm mb-6 self-start">
+      <a
+        href="/actions?filter=all"
+        class:list={[
+          "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors",
+          filter === "all"
+            ? "bg-secondary text-foreground font-semibold shadow-sm"
+            : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+        ]}
+      >
+        <span>All</span>
+      </a>
+      <a
+        href="/actions?filter=success"
+        class:list={[
+          "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors",
+          filter === "success"
+            ? "bg-secondary text-foreground font-semibold shadow-sm"
+            : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+        ]}
+      >
+        <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+        <span>Success</span>
+        <span class="ml-0.5 rounded-full bg-muted px-1.5 py-0.2 text-[11px] font-semibold text-muted-foreground">
+          {successCount}
+        </span>
+      </a>
+      <a
+        href="/actions?filter=failure"
+        class:list={[
+          "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors",
+          filter === "failure"
+            ? "bg-secondary text-foreground font-semibold shadow-sm"
+            : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+        ]}
+      >
+        <span class="h-2 w-2 rounded-full bg-red-500"></span>
+        <span>Failed</span>
+        <span class="ml-0.5 rounded-full bg-muted px-1.5 py-0.2 text-[11px] font-semibold text-muted-foreground">
+          {failureCount}
+        </span>
+      </a>
+      <a
+        href="/actions?filter=running"
+        class:list={[
+          "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors",
+          filter === "running"
+            ? "bg-secondary text-foreground font-semibold shadow-sm"
+            : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+        ]}
+      >
+        <span class="h-2 w-2 rounded-full bg-amber-500"></span>
+        <span>Running</span>
+        <span class="ml-0.5 rounded-full bg-muted px-1.5 py-0.2 text-[11px] font-semibold text-muted-foreground">
+          {runningCount}
+        </span>
+      </a>
     </div>
 
-    <!-- Workflow Runs List -->
-    <div class="relative">
-      <div class="absolute -inset-[1px] bg-gradient-to-r from-orange-500/20 via-transparent to-amber-500/20 rounded-xl opacity-50"></div>
-      <div class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden">
-        {workflowRuns.length > 0 ? (
-          <div class="divide-y divide-border/50">
-            {workflowRuns.map((run) => (
+    <!-- Workflow Runs List Card -->
+    <div class="rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm overflow-hidden shadow-sm">
+      {workflowRuns.length > 0 ? (
+        <div class="divide-y divide-border/60">
+          {workflowRuns.map((run) => {
+            const ownerName = run.repository?.owner?.username || "unknown";
+            const repoName = run.repository?.name || "repo";
+            return (
               <a
-                href={`/${run.repository?.owner?.username}/${run.repository?.name}/actions`}
-                class="block p-4 hover:bg-accent/50 transition-colors group"
+                href={`/${ownerName}/${repoName}/actions/runs/${run.id}`}
+                class="group flex items-start gap-4 p-4 hover:bg-accent/40 transition-colors"
               >
-                <div class="flex items-start gap-3">
-                  <!-- Status Icon -->
-                  <div class:list={[
-                    "p-2 rounded-lg mt-0.5",
-                    run.status === "success" 
-                      ? "bg-green-500/10 text-green-400" 
-                      : run.status === "failure"
-                        ? "bg-red-500/10 text-red-400"
-                        : run.status === "running"
-                          ? "bg-yellow-500/10 text-yellow-400"
-                          : "bg-gray-500/10 text-muted-foreground"
-                  ]}>
-                    {run.status === "success" ? (
-                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                      </svg>
-                    ) : run.status === "failure" ? (
-                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                      </svg>
-                    ) : run.status === "running" ? (
-                      <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                      </svg>
-                    ) : (
-                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                      </svg>
+                <!-- Status Icon -->
+                <div class="mt-0.5 flex-shrink-0">
+                  {run.status === "success" ? (
+                    <div class="h-6 w-6 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20" title="Workflow succeeded">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    </div>
+                  ) : run.status === "failure" ? (
+                    <div class="h-6 w-6 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center border border-red-500/20" title="Workflow failed">
+                      <XCircle className="h-3.5 w-3.5" />
+                    </div>
+                  ) : run.status === "running" ? (
+                    <div class="h-6 w-6 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20" title="Workflow running">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    </div>
+                  ) : (
+                    <div class="h-6 w-6 rounded-full bg-secondary text-muted-foreground flex items-center justify-center border border-border">
+                      <Clock className="h-3.5 w-3.5" />
+                    </div>
+                  )}
+                </div>
+
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-baseline gap-2 flex-wrap mb-1">
+                    <span class="text-xs font-semibold text-muted-foreground hover:text-foreground">
+                      {ownerName}/{repoName}
+                    </span>
+                  </div>
+
+                  <h3 class="text-sm font-semibold text-foreground group-hover:text-primary transition-colors leading-snug break-words">
+                    {run.name || "CI Workflow"}
+                  </h3>
+
+                  <div class="flex items-center gap-3 mt-2 flex-wrap text-xs text-muted-foreground">
+                    <div class="flex items-center gap-1 font-mono text-[11px] bg-secondary/80 text-foreground px-2 py-0.5 rounded border border-border/50">
+                      <GitBranch className="h-3 w-3 text-muted-foreground" />
+                      <span>{run.branch || "main"}</span>
+                    </div>
+
+                    {run.commitSha && (
+                      <span class="font-mono text-[11px] text-muted-foreground">
+                        {run.commitSha.slice(0, 7)}
+                      </span>
                     )}
-                  </div>
 
-                  <div class="flex-1 min-w-0">
-                    <!-- Workflow Name & Repo -->
-                    <div class="flex items-center gap-2 mb-1">
-                      <span class="text-xs text-muted-foreground font-medium">
-                        {run.repository?.owner?.username}/{run.repository?.name}
-                      </span>
-                    </div>
-                    <h3 class="font-semibold text-foreground group-hover:text-orange-400 transition-colors truncate">
-                      {run.workflowName || "Workflow"}
-                    </h3>
-                    
-                    <!-- Branch & Commit -->
-                    <div class="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
-                      {run.branch && (
-                        <span class="flex items-center gap-1">
-                          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                          </svg>
-                          {run.branch}
-                        </span>
-                      )}
-                      {run.commitSha && (
-                        <span class="font-mono bg-secondary px-1.5 py-0.5 rounded">
-                          {run.commitSha.slice(0, 7)}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <!-- Meta -->
-                    <div class="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                      <span>
-                        triggered {timeAgo(run.createdAt)} by {run.triggeredBy?.username || run.event || "system"}
-                      </span>
-                      {run.startedAt && (
-                        <span class="flex items-center gap-1">
-                          <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                          </svg>
-                          {formatDuration(run.startedAt, run.completedAt)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                    <span>·</span>
 
-                  <!-- Status Badge -->
-                  <div class:list={[
-                    "px-2.5 py-1 rounded-full text-xs font-medium capitalize",
-                    run.status === "success" 
-                      ? "bg-green-500/10 text-green-400 border border-green-500/30" 
-                      : run.status === "failure"
-                        ? "bg-red-500/10 text-red-400 border border-red-500/30"
-                        : run.status === "running"
-                          ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/30"
-                          : "bg-gray-500/10 text-muted-foreground border border-gray-500/30"
-                  ]}>
-                    {run.status}
+                    <span>
+                      triggered {timeAgo(run.createdAt)} by <span class="text-foreground font-medium">@{run.triggeredBy?.username || "workflow"}</span>
+                    </span>
+
+                    <span>·</span>
+
+                    <span class="flex items-center gap-1">
+                      <Clock className="h-3 w-3 text-muted-foreground" />
+                      {formatDuration(run.createdAt, run.completedAt)}
+                    </span>
                   </div>
                 </div>
+
+                <!-- Author Avatar -->
+                <div class="hidden sm:block flex-shrink-0">
+                  {run.triggeredBy?.avatarUrl ? (
+                    <img
+                      src={run.triggeredBy.avatarUrl}
+                      alt={run.triggeredBy.username}
+                      class="h-7 w-7 rounded-full border border-border/80 object-cover"
+                    />
+                  ) : (
+                    <div class="h-7 w-7 rounded-full bg-secondary border border-border/80 flex items-center justify-center text-xs font-medium text-foreground">
+                      {run.triggeredBy?.username?.[0]?.toUpperCase() || <Bot className="h-3.5 w-3.5 text-muted-foreground" />}
+                    </div>
+                  )}
+                </div>
               </a>
-            ))}
+            );
+          })}
+        </div>
+      ) : (
+        <div class="text-center py-16 px-4">
+          <div class="w-12 h-12 rounded-full bg-secondary/80 border border-border flex items-center justify-center mx-auto mb-3 text-muted-foreground">
+            <Play className="h-6 w-6" />
           </div>
-        ) : (
-          <div class="text-center py-16">
-            <div class="relative inline-block mb-4">
-              <svg class="h-16 w-16 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-              </svg>
-              <div class="absolute inset-0 bg-orange-500 blur-2xl opacity-20"></div>
-            </div>
-            <h3 class="text-lg font-semibold text-foreground mb-2">No workflow runs found</h3>
-            <p class="text-muted-foreground">
-              {filter === "success" 
-                ? "No successful runs yet." 
-                : filter === "failure"
-                  ? "No failed runs. Great job! 🎉"
-                  : filter === "running"
-                    ? "No workflows currently running."
-                    : "No workflow runs have been triggered yet."}
-            </p>
-          </div>
-        )}
-      </div>
+          <h3 class="text-base font-semibold text-foreground mb-1">No workflow runs found</h3>
+          <p class="text-sm text-muted-foreground max-w-sm mx-auto">
+            {filter === "success"
+              ? "No successful workflow runs found."
+              : filter === "failure"
+                ? "No failed workflow runs. Everything is green! 🎉"
+                : filter === "running"
+                  ? "No workflows are currently executing."
+                  : "No workflows have run yet."}
+          </p>
+        </div>
+      )}
     </div>
   </div>
 </BaseLayout>

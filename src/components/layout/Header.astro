@@ -2,6 +2,7 @@
 import { Search, Bell, Plus, Menu } from "lucide-react"
 import { GlobalSearch } from "@/components/search/GlobalSearch"
 import { ThemeToggle } from "@/components/ThemeToggle"
+import Logo from "@/components/ui/Logo.astro"
 import { getCsrfToken } from "@/middleware/csrf"
 
 const user = Astro.locals.user;
@@ -12,9 +13,8 @@ const { token: csrfToken } = getCsrfToken(Astro.request);
 <header class="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl" role="banner">
   <div class="container h-14 flex items-center justify-between gap-4">
     <!-- Logo -->
-    <a href="/" class="flex-shrink-0 transition-opacity hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:rounded-md" aria-label="OpenCodeHub home">
-      <img src="/logo-dark.png" alt="OpenCodeHub" class="h-7 w-auto dark:hidden" />
-      <img src="/logo-light.png" alt="OpenCodeHub" class="h-7 w-auto hidden dark:block" />
+    <a href="/" class="flex-shrink-0 text-foreground transition-opacity hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:rounded-md" aria-label="OpenCodeHub home">
+      <Logo class="h-7 w-7" />
     </a>
 
     <!-- Navigation -->

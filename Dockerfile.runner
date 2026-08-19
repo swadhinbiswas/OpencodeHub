@@ -1,7 +1,14 @@
-# CI/CD Runner Dockerfile
+# syntax=docker/dockerfile:1.4
+# OpenCodeHub CI/CD Runner (Docker-in-Docker)
 FROM docker:24-dind
 
-# Install Node.js and other dependencies
+LABEL org.opencontainers.image.title="OpenCodeHub Runner" \
+      org.opencontainers.image.description="Docker-in-Docker CI/CD runner for OpenCodeHub pipelines." \
+      org.opencontainers.image.url="https://github.com/swadhinbiswas/OpencodeHub" \
+      org.opencontainers.image.source="https://github.com/swadhinbiswas/OpencodeHub" \
+      org.opencontainers.image.licenses="MIT"
+
+# Install essential build tools & runtimes in a single layer with clean cache
 RUN apk add --no-cache \
     nodejs \
     npm \
@@ -15,28 +22,23 @@ RUN apk add --no-cache \
     make \
     gcc \
     g++ \
-    libc-dev
+    libc-dev \
+    tar \
+    gzip \
+    xz
 
-# Install common build tools
-RUN npm install -g \
-    typescript \
-    @types/node \
-    pnpm \
-    yarn
+# Install global package managers and clean npm cache
+RUN npm install -g pnpm yarn @types/node \
+    && npm cache clean --force \
+    && rm -rf /root/.npm /tmp/* /var/cache/apk/*
 
 WORKDIR /runner
 
-# Copy runner script
 COPY scripts/runner.sh /runner/runner.sh
-RUN chmod +x /runner/runner.sh
+RUN chmod +x /runner/runner.sh && mkdir -p /work /cache
 
-# Create work directories
-RUN mkdir -p /work /cache
-
-# Environment variables
 ENV RUNNER_WORK_DIR=/work
 ENV RUNNER_CACHE_DIR=/cache
 ENV DOCKER_HOST=unix:///var/run/docker.sock
 
-# Entry point
 ENTRYPOINT ["/runner/runner.sh"]

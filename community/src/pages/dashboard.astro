@@ -1,0 +1,204 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { Header } from "../components/layout/Header";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import { verifyToken } from "../lib/auth";
+import { getDb } from "../lib/db";
+import { eq, inArray } from "drizzle-orm";
+import { stars, follows, cachedRepos, cachedUsers } from "../lib/db/schema";
+import { 
+  Star, 
+  Users, 
+  GitFork, 
+  Server, 
+  ExternalLink, 
+  Compass, 
+  Sparkles, 
+  LogOut,
+  BookOpen,
+  UserCheck
+} from "lucide-react";
+
+const token = Astro.cookies.get("community_session")?.value;
+if (!token) {
+  return Astro.redirect("/auth/login");
+}
+
+const user = await verifyToken(token);
+if (!user) {
+  return Astro.redirect("/auth/login");
+}
+
+const db = getDb() as any;
+
+// Fetch Starred Repos
+const starredRows = await db.query.stars.findMany({
+  where: eq(stars.userId, user.sub)
+}).catch(() => []);
+
+const starredRepoIds = starredRows.map((r: any) => r.repoId);
+let starredRepos: any[] = [];
+if (starredRepoIds.length > 0) {
+  starredRepos = await db.query.cachedRepos.findMany({
+    where: inArray(cachedRepos.id, starredRepoIds),
+    with: { instance: true }
+  }).catch(() => []);
+}
+
+// Fetch Followed Users
+const followedRows = await db.query.follows.findMany({
+  where: eq(follows.followerId, user.sub)
+}).catch(() => []);
+const followedUsernames = followedRows.map((f: any) => f.followeeId);
+
+let followedProfiles: any[] = [];
+if (followedUsernames.length > 0) {
+  followedProfiles = await db.query.cachedUsers.findMany({
+    where: inArray(cachedUsers.username, followedUsernames),
+    with: { instance: true }
+  }).catch(() => []);
+}
+---
+<BaseLayout title="My Dashboard — OpenCodeHub Community">
+  <Header client:load user={user} />
+  
+  <main class="container px-4 sm:px-8 py-8 sm:py-12 space-y-8 max-w-6xl mx-auto">
+    
+    <!-- User Welcome Banner -->
+    <div class="rounded-3xl border border-border/60 bg-gradient-to-r from-primary/10 via-card to-card p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 backdrop-blur-xl">
+      <div class="flex items-center gap-4 text-center sm:text-left">
+        <div class="h-16 w-16 rounded-2xl bg-primary/20 text-primary border border-primary/30 flex items-center justify-center text-2xl font-bold uppercase shadow-inner">
+          {user.username?.[0] || "U"}
+        </div>
+        <div class="space-y-1">
+          <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+            Welcome back, @{user.username}
+          </h1>
+          <p class="text-xs sm:text-sm text-muted-foreground">
+            Your personalized dashboard across the federated OpenCodeHub network.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="/explore">
+          <Button size="sm" variant="outline" className="gap-1.5 text-xs">
+            <Compass className="h-3.5 w-3.5" />
+            Explore Repos
+          </Button>
+        </a>
+        <a href="/instances/submit">
+          <Button size="sm" className="gap-1.5 text-xs bg-primary hover:bg-primary/90">
+            <Sparkles className="h-3.5 w-3.5" />
+            Submit Node
+          </Button>
+        </a>
+      </div>
+    </div>
+
+    <!-- 2-Column Grid: Starred & Following -->
+    <div class="grid lg:grid-cols-2 gap-8">
+      
+      <!-- Starred Repositories Section -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-bold text-foreground flex items-center gap-2">
+            <Star className="h-5 w-5 text-amber-400 fill-amber-400" />
+            Starred Repositories ({starredRepos.length})
+          </h2>
+        </div>
+
+        <div class="space-y-3">
+          {starredRepos.length === 0 ? (
+            <div class="rounded-2xl border border-dashed border-border/80 bg-card/30 p-8 text-center space-y-2">
+              <p class="text-sm font-semibold text-foreground">No starred repositories yet</p>
+              <p class="text-xs text-muted-foreground">Browse the community network to star projects you like.</p>
+              <div class="pt-2">
+                <a href="/explore"><Button size="sm" variant="outline" className="text-xs">Explore Repos</Button></a>
+              </div>
+            </div>
+          ) : (
+            starredRepos.map((repo: any) => (
+              <div class="rounded-2xl border border-border/60 bg-card/50 p-4 hover:border-primary/40 transition-all flex items-center justify-between gap-3 shadow-sm">
+                <div class="min-w-0 space-y-1">
+                  <div class="flex items-center gap-2">
+                    <a href={`/r/${repo.instance?.name || 'node'}/${repo.fullName}`} class="font-bold text-sm text-primary hover:underline truncate">
+                      {repo.fullName}
+                    </a>
+                    {repo.instance?.name && (
+                      <span class="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+                        {repo.instance.name}
+                      </span>
+                    )}
+                  </div>
+                  <p class="text-xs text-muted-foreground line-clamp-1">
+                    {repo.description || "No description"}
+                  </p>
+                </div>
+
+                <div class="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
+                  <span class="flex items-center gap-1 font-medium"><Star className="h-3 w-3 text-amber-400 fill-amber-400" /> {repo.starCount || 0}</span>
+                  <a href={`/r/${repo.instance?.name || 'node'}/${repo.fullName}`}>
+                    <Button size="sm" variant="ghost" className="h-8 px-2 text-xs">View</Button>
+                  </a>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <!-- Followed Profiles Section -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-bold text-foreground flex items-center gap-2">
+            <Users className="h-5 w-5 text-purple-400" />
+            Following ({followedProfiles.length})
+          </h2>
+        </div>
+
+        <div class="space-y-3">
+          {followedProfiles.length === 0 ? (
+            <div class="rounded-2xl border border-dashed border-border/80 bg-card/30 p-8 text-center space-y-2">
+              <p class="text-sm font-semibold text-foreground">Not following anyone yet</p>
+              <p class="text-xs text-muted-foreground">Follow developers across federated nodes to keep up with their public projects.</p>
+              <div class="pt-2">
+                <a href="/explore"><Button size="sm" variant="outline" className="text-xs">Find Developers</Button></a>
+              </div>
+            </div>
+          ) : (
+            followedProfiles.map((profile: any) => (
+              <div class="rounded-2xl border border-border/60 bg-card/50 p-4 hover:border-primary/40 transition-all flex items-center justify-between gap-3 shadow-sm">
+                <div class="flex items-center gap-3 min-w-0">
+                  <img 
+                    src={profile.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${profile.username}`} 
+                    alt={profile.username}
+                    class="h-9 w-9 rounded-full bg-muted border border-border/40 object-cover shrink-0" 
+                  />
+                  <div class="min-w-0">
+                    <a href={`/u/${profile.username}`} class="font-bold text-sm text-foreground hover:text-primary truncate block">
+                      @{profile.username}
+                    </a>
+                    <span class="text-xs text-muted-foreground truncate block">
+                      {profile.instance?.name || "Federated Node"}
+                    </span>
+                  </div>
+                </div>
+
+                <a href={`/u/${profile.username}`} class="shrink-0">
+                  <Button size="sm" variant="outline" className="text-xs h-8">
+                    Profile
+                  </Button>
+                </a>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+    </div>
+  </main>
+</BaseLayout>

@@ -3,6 +3,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 import { getDatabase, schema } from "@/db";
 import { eq } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { Building2, Plus, Users, Shield } from "lucide-react";
 
 const db = getDatabase() as NodePgDatabase<typeof schema>;
 const user = Astro.locals.user;
@@ -17,117 +18,162 @@ const memberships = await db.query.organizationMembers.findMany({
 ---
 
 <BaseLayout title="Organizations · OpenCodeHub">
-  <div class="container max-w-[900px] py-8 px-4 sm:px-6">
-    <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-semibold">Organizations</h1>
+  <div class="container max-w-[1280px] mx-auto py-8 px-4 sm:px-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2.5">
+          <Building2 className="h-6 w-6 text-foreground" />
+          <span>Organizations</span>
+          <span class="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-muted-foreground border border-border/60">
+            {memberships.length}
+          </span>
+        </h1>
+        <p class="text-sm text-muted-foreground mt-1">
+          Manage your enterprise teams, members, and shared repositories
+        </p>
+      </div>
       <button
         id="new-org-btn"
-        class="rounded-md bg-cyan-500/90 hover:bg-cyan-500 text-foreground px-4 py-2 text-sm font-medium"
+        class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-[#238636] hover:bg-[#2ea043] text-white text-xs sm:text-sm font-medium transition-colors shadow-sm self-start sm:self-auto"
       >
-        New organization
+        <Plus className="h-4 w-4" />
+        <span>New organization</span>
       </button>
     </div>
 
     <!-- Create form (hidden by default) -->
-    <div id="new-org-form" class="hidden border rounded-lg p-5 mb-6 bg-card space-y-3">
-      <h2 class="font-medium">Create organization</h2>
-      <input
-        id="org-name"
-        placeholder="Name (lowercase, hyphens)"
-        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-      />
-      <input
-        id="org-display"
-        placeholder="Display name"
-        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-      />
-      <textarea
-        id="org-desc"
-        placeholder="Description"
-        rows="2"
-        class="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-      ></textarea>
-      <div class="flex gap-2">
+    <div id="new-org-form" class="hidden rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm p-6 mb-6 space-y-4 shadow-sm">
+      <h2 class="text-base font-semibold text-foreground">Create a new organization</h2>
+      <div class="space-y-3 max-w-lg">
+        <div>
+          <label class="block text-xs font-medium text-muted-foreground mb-1">Organization handle</label>
+          <input
+            id="org-name"
+            placeholder="e.g. acme-corp"
+            class="h-9 w-full rounded-md border border-border/70 bg-background/80 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-muted-foreground mb-1">Display name</label>
+          <input
+            id="org-display"
+            placeholder="e.g. Acme Corporation"
+            class="h-9 w-full rounded-md border border-border/70 bg-background/80 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-muted-foreground mb-1">Description</label>
+          <textarea
+            id="org-desc"
+            placeholder="Brief description of your organization"
+            rows="2"
+            class="w-full rounded-md border border-border/70 bg-background/80 p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          ></textarea>
+        </div>
+      </div>
+      <div class="flex gap-2 pt-2">
         <button
           id="org-create-submit"
-          class="rounded-md bg-cyan-500/90 hover:bg-cyan-500 text-foreground px-4 py-2 text-sm font-medium"
+          class="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-[#238636] hover:bg-[#2ea043] text-white text-xs sm:text-sm font-medium transition-colors shadow-sm"
         >
-          Create
+          Create organization
         </button>
         <button
           id="org-create-cancel"
-          class="rounded-md border bg-background px-4 py-2 text-sm hover:bg-muted"
+          class="inline-flex items-center px-4 py-2 rounded-md border border-border bg-card text-xs sm:text-sm font-medium text-foreground hover:bg-accent transition-colors shadow-sm"
         >
           Cancel
         </button>
       </div>
-      <div id="org-create-error" class="text-sm text-red-500 hidden"></div>
+      <div id="org-create-error" class="text-xs font-medium text-red-500 hidden mt-2"></div>
     </div>
 
-    <div class="space-y-3">
-      {memberships.length === 0 && (
-        <p class="text-sm text-muted-foreground border rounded-lg p-8 text-center">
-          You are not a member of any organization yet.
-        </p>
+    <!-- Organizations List Card -->
+    <div class="rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm overflow-hidden shadow-sm">
+      {memberships.length === 0 ? (
+        <div class="text-center py-16 px-4">
+          <div class="w-12 h-12 rounded-full bg-secondary/80 border border-border flex items-center justify-center mx-auto mb-3 text-muted-foreground">
+            <Building2 className="h-6 w-6" />
+          </div>
+          <h3 class="text-base font-semibold text-foreground mb-1">No organizations</h3>
+          <p class="text-sm text-muted-foreground max-w-sm mx-auto mb-4">
+            You are not a member of any organization yet.
+          </p>
+        </div>
+      ) : (
+        <div class="divide-y divide-border/60">
+          {memberships.map((m) => (
+            <a
+              href={`/orgs/${m.organization.name}`}
+              class="group flex items-center justify-between gap-4 p-5 hover:bg-accent/40 transition-colors"
+            >
+              <div class="flex items-center gap-4 min-w-0">
+                <div class="h-12 w-12 rounded-xl bg-secondary flex items-center justify-center text-lg font-bold border border-border/80 text-foreground flex-shrink-0">
+                  {m.organization.avatarUrl ? (
+                    <img src={m.organization.avatarUrl} alt="" class="w-full h-full rounded-xl object-cover" />
+                  ) : (
+                    m.organization.name[0]?.toUpperCase()
+                  )}
+                </div>
+                <div class="min-w-0">
+                  <h3 class="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                    {m.organization.displayName || m.organization.name}
+                  </h3>
+                  <p class="text-xs text-muted-foreground">@{m.organization.name}</p>
+                  {m.organization.description && (
+                    <p class="text-xs text-muted-foreground mt-1 truncate max-w-lg">
+                      {m.organization.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <span class="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-2.5 py-0.5 text-xs font-semibold text-muted-foreground capitalize">
+                  <Shield className="h-3 w-3" />
+                  {m.role}
+                </span>
+              </div>
+            </a>
+          ))}
+        </div>
       )}
-      {memberships.map((m) => (
-        <a
-          href={`/orgs/${m.organization.name}`}
-          class="flex items-center gap-4 border rounded-lg p-4 hover:bg-muted/40 transition-colors"
-        >
-          <div class="h-12 w-12 rounded-xl bg-muted flex items-center justify-center text-xl font-semibold border">
-            {m.organization.avatarUrl ? (
-              <img src={m.organization.avatarUrl} alt="" class="w-full h-full rounded-xl object-cover" />
-            ) : (
-              m.organization.name[0]?.toUpperCase()
-            )}
-          </div>
-          <div class="flex-1 min-w-0">
-            <span class="block font-medium">{m.organization.displayName || m.organization.name}</span>
-            <span class="block text-sm text-muted-foreground">@{m.organization.name}</span>
-            {m.organization.description && (
-              <span class="block text-sm text-muted-foreground mt-0.5 truncate">{m.organization.description}</span>
-            )}
-          </div>
-          <span class="text-xs text-muted-foreground capitalize">{m.role}</span>
-        </a>
-      ))}
     </div>
   </div>
-
-  <script>
-    const form = document.getElementById("new-org-form");
-    const toggleBtn = document.getElementById("new-org-btn");
-    const cancelBtn = document.getElementById("org-create-cancel");
-    const submitBtn = document.getElementById("org-create-submit");
-    const errorDiv = document.getElementById("org-create-error");
-
-    toggleBtn?.addEventListener("click", () => {
-      form?.classList.toggle("hidden");
-      errorDiv?.classList.add("hidden");
-    });
-    cancelBtn?.addEventListener("click", () => form?.classList.add("hidden"));
-
-    submitBtn?.addEventListener("click", async () => {
-      errorDiv?.classList.add("hidden");
-      const name = (document.getElementById("org-name") as HTMLInputElement).value;
-      const displayName = (document.getElementById("org-display") as HTMLInputElement).value;
-      const description = (document.getElementById("org-desc") as HTMLTextAreaElement).value;
-      try {
-        const res = await fetch("/api/orgs", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, displayName, description }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error?.message || "Failed to create organization");
-        window.location.href = `/orgs/${data.data.organization.name}`;
-      } catch (e) {
-        if (errorDiv) {
-          errorDiv.textContent = e instanceof Error ? e.message : String(e);
-          errorDiv.classList.remove("hidden");
-        }
-      }
-    });
-  </script>
 </BaseLayout>
+
+<script>
+  const form = document.getElementById("new-org-form");
+  const toggleBtn = document.getElementById("new-org-btn");
+  const cancelBtn = document.getElementById("org-create-cancel");
+  const submitBtn = document.getElementById("org-create-submit");
+  const errorDiv = document.getElementById("org-create-error");
+
+  toggleBtn?.addEventListener("click", () => {
+    form?.classList.toggle("hidden");
+    errorDiv?.classList.add("hidden");
+  });
+  cancelBtn?.addEventListener("click", () => form?.classList.add("hidden"));
+
+  submitBtn?.addEventListener("click", async () => {
+    errorDiv?.classList.add("hidden");
+    const name = (document.getElementById("org-name") as HTMLInputElement).value;
+    const displayName = (document.getElementById("org-display") as HTMLInputElement).value;
+    const description = (document.getElementById("org-desc") as HTMLTextAreaElement).value;
+    try {
+      const res = await fetch("/api/orgs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, displayName, description }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || "Failed to create organization");
+      window.location.href = `/orgs/${data.data.organization.name}`;
+    } catch (e) {
+      if (errorDiv) {
+        errorDiv.textContent = e instanceof Error ? e.message : String(e);
+        errorDiv.classList.remove("hidden");
+      }
+    }
+  });
+</script>

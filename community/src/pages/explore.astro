@@ -1,0 +1,397 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { Header } from "../components/layout/Header";
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { 
+  Search, Filter, Star, GitFork, BookOpen, Copy, Globe, ExternalLink, 
+  Users, Sparkles, Code2, X, TrendingUp, Clock, Hash, ArrowUpDown 
+} from "lucide-react";
+import { verifyToken } from "../lib/auth";
+import { getDb } from "../lib/db";
+import { desc, like, or, eq, sql, and, inArray } from "drizzle-orm";
+import { cachedRepos, cachedUsers, instances } from "../lib/db/schema";
+
+const token = Astro.cookies.get("community_session")?.value;
+const user = token ? await verifyToken(token) : null;
+
+const q = Astro.url.searchParams.get("q") || "";
+const selectedLang = Astro.url.searchParams.get("lang") || "";
+const selectedTopic = Astro.url.searchParams.get("topic") || "";
+const sortBy = Astro.url.searchParams.get("sort") || "stars";
+const page = Math.max(1, parseInt(Astro.url.searchParams.get("page") || "1"));
+const perPage = 20;
+const offset = (page - 1) * perPage;
+
+const db = getDb() as any;
+
+// Dynamic language list from actual data
+const allLangs = await db
+  .select({ language: cachedRepos.language, count: sql<number>`count(*)` })
+  .from(cachedRepos)
+  .where(sql`${cachedRepos.language} IS NOT NULL AND ${cachedRepos.language} != ''`)
+  .groupBy(cachedRepos.language)
+  .orderBy(desc(sql`count(*)`))
+  .limit(15)
+  .catch(() => []);
+const popularLanguages = allLangs.filter((l: any) => l.language).map((l: any) => l.language);
+
+// Dynamic topic list from actual data
+const allTopicsRaw = await db.select({ topics: cachedRepos.topics }).from(cachedRepos).where(sql`${cachedRepos.topics} IS NOT NULL AND ${cachedRepos.topics} != '[]'`).catch(() => []);
+const topicCounts = new Map<string, number>();
+for (const row of allTopicsRaw) {
+  try {
+    const parsed = typeof row.topics === "string" ? JSON.parse(row.topics) : row.topics;
+    if (Array.isArray(parsed)) {
+      for (const t of parsed) {
+        const topic = String(t).trim().toLowerCase();
+        if (topic) topicCounts.set(topic, (topicCounts.get(topic) || 0) + 1);
+      }
+    }
+  } catch {}
+}
+const popularTopics = [...topicCounts.entries()]
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 12)
+  .map(([topic, count]) => ({ topic, count }));
+
+const langColors: Record<string, string> = {
+  TypeScript: "#3178c6", JavaScript: "#f1e05a", Python: "#3572A5", Go: "#00ADD8",
+  Rust: "#dea584", Java: "#b07219", "C++": "#f34b7d", C: "#555555", Ruby: "#701516",
+  PHP: "#4F5D95", Swift: "#F05138", Kotlin: "#A97BFF", Dart: "#00B4AB",
+  Shell: "#89e051", HTML: "#e34c26", CSS: "#563d7c", Vue: "#41b883", Astro: "#ff5a03",
+  Scala: "#c22d40", Haskell: "#5e5086", Elixir: "#6e4a7e", Lua: "#000080",
+  R: "#198CE7", MATLAB: "#e16737", Julia: "#a270ba", Zig: "#ec915c",
+};
+
+// Build where clause — fix: combine lang+text properly
+const searchPattern = `%${q}%`;
+const conditions = [];
+if (q) {
+  conditions.push(or(like(cachedRepos.fullName, searchPattern), like(cachedRepos.description, searchPattern)));
+}
+if (selectedLang) {
+  conditions.push(eq(cachedRepos.language, selectedLang));
+}
+if (selectedTopic) {
+  conditions.push(sql`${cachedRepos.topics} LIKE ${`%${selectedTopic.toLowerCase()}%`}`);
+}
+
+const repoWhere = conditions.length > 0
+  ? conditions.length === 1 ? conditions[0] : and(...conditions)
+  : undefined;
+
+// Sorting
+let orderBy;
+switch (sortBy) {
+  case "newest": orderBy = [desc(cachedRepos.cachedAt)]; break;
+  case "updated": orderBy = [desc(cachedRepos.updatedAt)]; break;
+  case "forks": orderBy = [desc(cachedRepos.forkCount), desc(cachedRepos.starCount)]; break;
+  case "stars": default: orderBy = [desc(cachedRepos.starCount), desc(cachedRepos.updatedAt)]; break;
+}
+
+// Fetch repos with count
+const [repos, countResult] = await Promise.all([
+  db.query.cachedRepos.findMany({
+    where: repoWhere,
+    orderBy,
+    limit: perPage,
+    offset,
+    with: { instance: true },
+  }).catch(() => []),
+  db.select({ count: sql<number>`count(*)` }).from(cachedRepos).where(repoWhere).then((r: any) => r[0]?.count || 0).catch(() => 0),
+]);
+const totalPages = Math.ceil(countResult / perPage);
+
+// Fetch profiles
+const profiles = await db.query.cachedUsers.findMany({
+  where: q ? or(like(cachedUsers.username, searchPattern), like(cachedUsers.displayName, searchPattern)) : undefined,
+  orderBy: [desc(cachedUsers.cachedAt)],
+  limit: 6,
+  with: { instance: true },
+}).catch(() => []);
+
+// Network stats
+const [totalRepos, totalUsers, totalInstances] = await Promise.all([
+  db.select({ count: sql<number>`count(*)` }).from(cachedRepos).then((r: any) => r[0]?.count || 0).catch(() => 0),
+  db.select({ count: sql<number>`count(*)` }).from(cachedUsers).then((r: any) => r[0]?.count || 0).catch(() => 0),
+  db.select({ count: sql<number>`count(*)` }).from(instances).then((r: any) => r[0]?.count || 0).catch(() => 0),
+]);
+
+function buildUrl(params: Record<string, string>) {
+  const sp = new URLSearchParams();
+  if (q) sp.set("q", q);
+  if (selectedLang) sp.set("lang", selectedLang);
+  if (selectedTopic) sp.set("topic", selectedTopic);
+  if (sortBy !== "stars") sp.set("sort", sortBy);
+  for (const [k, v] of Object.entries(params)) {
+    if (v === "") sp.delete(k); else sp.set(k, v);
+  }
+  const qs = sp.toString();
+  return `/explore${qs ? `?${qs}` : ""}`;
+}
+---
+<BaseLayout title="Explore — OpenCodeHub Community">
+  <Header client:load user={user} />
+  
+  <main class="container px-4 sm:px-8 py-8 sm:py-12 space-y-8">
+    
+    <!-- Header & Search -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-border/50">
+      <div class="space-y-1">
+        <h1 class="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2.5">
+          <BookOpen className="h-7 w-7 text-primary" />
+          Explore the Network
+        </h1>
+        <p class="text-sm text-muted-foreground">
+          Discover public projects and developers from {totalInstances} federated {totalInstances === 1 ? "node" : "nodes"} &middot; {totalRepos} repos &middot; {totalUsers} users
+        </p>
+      </div>
+      <form class="flex items-center gap-2 w-full md:w-auto" action="/explore" method="get">
+        {selectedLang && <input type="hidden" name="lang" value={selectedLang} />}
+        {selectedTopic && <input type="hidden" name="topic" value={selectedTopic} />}
+        {sortBy !== "stars" && <input type="hidden" name="sort" value={sortBy} />}
+        <div class="relative flex-1 md:w-80">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input name="q" defaultValue={q} placeholder="Search repos, descriptions..." className="pl-9 pr-8 bg-card/60 border-border/60" id="search" />
+          {q && (
+            <a href={buildUrl({ q: "" })} class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="h-3.5 w-3.5" />
+            </a>
+          )}
+        </div>
+        <Button type="submit" size="sm" className="bg-primary hover:bg-primary/90 text-xs font-semibold px-4 h-9">Search</Button>
+      </form>
+    </div>
+
+    <!-- Language Filters -->
+    {popularLanguages.length > 0 && (
+      <div class="flex items-center gap-2 overflow-x-auto pb-2 text-xs">
+        <span class="text-muted-foreground font-medium flex items-center gap-1 shrink-0 mr-1">
+          <Code2 className="h-3.5 w-3.5" /> Languages:
+        </span>
+        <a href={buildUrl({ lang: "" })} class={`px-3 py-1.5 rounded-full border transition-colors shrink-0 font-medium ${!selectedLang ? "bg-primary text-primary-foreground border-primary" : "bg-card/60 text-muted-foreground hover:text-foreground border-border/60 hover:bg-accent"}`}>All</a>
+        {popularLanguages.slice(0, 10).map((lang: string) => {
+          const isActive = selectedLang.toLowerCase() === lang.toLowerCase();
+          return (
+            <a href={buildUrl({ lang: isActive ? "" : lang })} class={`px-3 py-1.5 rounded-full border transition-colors shrink-0 flex items-center gap-1.5 font-medium ${isActive ? "bg-primary text-primary-foreground border-primary" : "bg-card/60 text-muted-foreground hover:text-foreground border-border/60 hover:bg-accent"}`}>
+              <span class="h-2 w-2 rounded-full" style={`background-color: ${langColors[lang] || "#888"}`}></span>
+              {lang}
+            </a>
+          );
+        })}
+      </div>
+    )}
+
+    <!-- Topic Filters -->
+    {popularTopics.length > 0 && (
+      <div class="flex items-center gap-2 overflow-x-auto pb-2 text-xs">
+        <span class="text-muted-foreground font-medium flex items-center gap-1 shrink-0 mr-1">
+          <Hash className="h-3.5 w-3.5" /> Topics:
+        </span>
+        {popularTopics.map(({ topic, count }) => {
+          const isActive = selectedTopic.toLowerCase() === topic.toLowerCase();
+          return (
+            <a href={buildUrl({ topic: isActive ? "" : topic })} class={`px-3 py-1.5 rounded-full border transition-colors shrink-0 font-medium ${isActive ? "bg-primary text-primary-foreground border-primary" : "bg-card/60 text-muted-foreground hover:text-foreground border-border/60 hover:bg-accent"}`}>
+              #{topic} <span class="text-muted-foreground/60 ml-0.5">{count}</span>
+            </a>
+          );
+        })}
+      </div>
+    )}
+
+    <!-- Active Filters -->
+    {(q || selectedLang || selectedTopic) && (
+      <div class="flex items-center gap-2 flex-wrap text-xs">
+        <span class="text-muted-foreground">Active filters:</span>
+        {q && <Badge variant="secondary" class="gap-1">"{q}" <a href={buildUrl({ q: "" })}><X className="h-3 w-3" /></a></Badge>}
+        {selectedLang && <Badge variant="secondary" class="gap-1">{selectedLang} <a href={buildUrl({ lang: "" })}><X className="h-3 w-3" /></a></Badge>}
+        {selectedTopic && <Badge variant="secondary" class="gap-1">#{selectedTopic} <a href={buildUrl({ topic: "" })}><X className="h-3 w-3" /></a></Badge>}
+        <a href="/explore" class="text-muted-foreground hover:text-foreground ml-2">Clear all</a>
+      </div>
+    )}
+
+    <!-- Sort Bar -->
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-bold text-foreground flex items-center gap-2">
+        {q ? `Results for "${q}"` : selectedLang ? `${selectedLang} Repos` : selectedTopic ? `#${selectedTopic}` : sortBy === "newest" ? "Recently Added" : sortBy === "updated" ? "Recently Updated" : "Trending Repositories"}
+        <Badge variant="secondary" className="text-[11px]">{countResult} {countResult === 1 ? "repo" : "repos"}</Badge>
+      </h2>
+      <div class="flex items-center gap-1 text-xs">
+        {[
+          { key: "stars", label: "Stars", icon: Star },
+          { key: "updated", label: "Updated", icon: Clock },
+          { key: "newest", label: "Newest", icon: TrendingUp },
+          { key: "forks", label: "Forks", icon: GitFork },
+        ].map(({ key, label, icon: Icon }) => (
+          <a href={buildUrl({ sort: key })} class={`px-2.5 py-1.5 rounded-md flex items-center gap-1 font-medium transition-colors ${sortBy === key ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-accent"}`}>
+            <Icon className="h-3 w-3" /> {label}
+          </a>
+        ))}
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="grid lg:grid-cols-3 gap-8">
+      <div class="lg:col-span-2 space-y-3.5">
+        {repos.length === 0 ? (
+          <div class="rounded-2xl border border-dashed border-border/80 bg-card/30 p-10 text-center space-y-3">
+            <div class="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto"><BookOpen className="h-6 w-6" /></div>
+            <h3 class="font-semibold text-base">No repositories found</h3>
+            <p class="text-xs text-muted-foreground max-w-sm mx-auto">
+              {q || selectedLang || selectedTopic ? "Try different search terms or remove filters." : "Submit your OpenCodeHub instance to start aggregating repos."}
+            </p>
+            <a href="/instances/submit"><Button size="sm" className="gap-1.5 text-xs"><Sparkles className="h-3.5 w-3.5" /> Submit Node</Button></a>
+          </div>
+        ) : (
+          repos.map((repo: any) => {
+            const langColor = langColors[repo.language] || "#888";
+            let topics: string[] = [];
+            try { topics = typeof repo.topics === "string" ? JSON.parse(repo.topics) : repo.topics || []; } catch {}
+            return (
+              <div class="rounded-2xl border border-border/60 bg-card/50 p-5 hover:border-primary/40 hover:bg-card/80 transition-all shadow-sm">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="flex-1 min-w-0 space-y-1.5">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <a href={`/r/${repo.instance?.name || "node"}/${repo.fullName}`} class="font-bold text-base text-primary hover:underline truncate">{repo.fullName}</a>
+                      <Badge variant="outline" className="text-[10px] uppercase font-semibold tracking-wider">{repo.visibility || "public"}</Badge>
+                      {repo.instance?.name && <a href={`/instances/${repo.instanceId}`} class="text-[11px] font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted/60"><Globe className="h-2.5 w-2.5 text-primary" />{repo.instance.name}</a>}
+                    </div>
+                    <p class="text-xs sm:text-sm text-muted-foreground line-clamp-2 leading-relaxed">{repo.description || "No description provided."}</p>
+                    {topics.length > 0 && (
+                      <div class="flex flex-wrap gap-1.5 pt-1">
+                        {topics.slice(0, 5).map((t: string) => (
+                          <a href={buildUrl({ topic: t })} class="text-[10px] px-2 py-0.5 rounded-full bg-primary/5 text-primary border border-primary/10 hover:bg-primary/10 transition-colors">#{t}</a>
+                        ))}
+                      </div>
+                    )}
+                    <div class="flex flex-wrap items-center gap-4 pt-2 text-xs text-muted-foreground">
+                      {repo.language && <span class="flex items-center gap-1.5 font-medium text-foreground"><span class="h-2.5 w-2.5 rounded-full" style={`background-color: ${langColor}`}></span>{repo.language}</span>}
+                      <span class="flex items-center gap-1"><Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400" /><span class="font-medium">{repo.starCount || 0}</span></span>
+                      <span class="flex items-center gap-1"><GitFork className="h-3.5 w-3.5" /><span class="font-medium">{repo.forkCount || 0}</span></span>
+                      {repo.updatedAt && <span class="text-muted-foreground/60">Updated {new Date(repo.updatedAt).toLocaleDateString()}</span>}
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    <button class="star-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 bg-muted/40 hover:bg-primary/10 hover:border-primary/40 hover:text-primary transition-colors text-xs font-medium" data-repo-id={repo.id} data-full-name={repo.fullName}>
+                      <Star className="h-3.5 w-3.5 text-amber-400" /><span>Star</span>
+                    </button>
+                    <button class="clone-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 bg-muted/40 hover:bg-accent hover:text-foreground transition-colors text-xs font-medium" data-clone-url={repo.httpCloneUrl}>
+                      <Copy className="h-3.5 w-3.5" /><span class="hidden sm:inline">Clone</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+
+        <!-- Pagination -->
+        {totalPages > 1 && (
+          <div class="flex items-center justify-center gap-2 pt-4">
+            {page > 1 && <a href={buildUrl({ page: String(page - 1) })} class="px-3 py-1.5 rounded-md border text-xs font-medium hover:bg-accent">Prev</a>}
+            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+              const p = i + 1;
+              return <a href={buildUrl({ page: String(p) })} class={`px-3 py-1.5 rounded-md text-xs font-medium ${p === page ? "bg-primary text-primary-foreground" : "border hover:bg-accent"}`}>{p}</a>;
+            })}
+            {page < totalPages && <a href={buildUrl({ page: String(page + 1) })} class="px-3 py-1.5 rounded-md border text-xs font-medium hover:bg-accent">Next</a>}
+          </div>
+        )}
+      </div>
+
+      <!-- Sidebar -->
+      <div class="space-y-6">
+        <!-- Network Stats -->
+        <Card className="border-border/60 bg-card/50">
+          <CardContent className="p-5 space-y-3">
+            <h3 class="text-sm font-bold flex items-center gap-2"><Globe className="h-4 w-4 text-primary" /> Network Stats</h3>
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div class="p-2 rounded-lg bg-muted/40"><div class="text-lg font-bold text-foreground">{totalInstances}</div><div class="text-[10px] text-muted-foreground">Nodes</div></div>
+              <div class="p-2 rounded-lg bg-muted/40"><div class="text-lg font-bold text-foreground">{totalRepos}</div><div class="text-[10px] text-muted-foreground">Repos</div></div>
+              <div class="p-2 rounded-lg bg-muted/40"><div class="text-lg font-bold text-foreground">{totalUsers}</div><div class="text-[10px] text-muted-foreground">Users</div></div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <!-- Profiles -->
+        <Card className="border-border/60 bg-card/50">
+          <CardContent className="p-5 space-y-4">
+            <h3 class="text-sm font-bold flex items-center gap-2"><Users className="h-4 w-4 text-purple-400" /> {q ? "Matching Profiles" : "Community Profiles"}</h3>
+            {profiles.length === 0 ? (
+              <p class="text-xs text-muted-foreground">Profiles appear as nodes synchronize.</p>
+            ) : (
+              <div class="space-y-3">
+                {profiles.map((profile: any) => (
+                  <div class="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-muted/40 transition-colors">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                      <img src={profile.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${profile.username}`} alt="" class="h-8 w-8 rounded-full bg-muted border border-border/40 shrink-0" />
+                      <div class="min-w-0">
+                        <a href={`/u/${profile.username}`} class="text-xs font-semibold text-foreground hover:text-primary truncate block">@{profile.username}</a>
+                        <span class="text-[11px] text-muted-foreground truncate block">{profile.instance?.name || "Federated User"}</span>
+                      </div>
+                    </div>
+                    <button class="follow-btn shrink-0 text-[11px] font-medium px-2.5 py-1 rounded-md border border-border/60 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors" data-username={profile.username}>Follow</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <!-- How to Contribute -->
+        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card">
+          <CardContent className="p-5 space-y-3">
+            <h4 class="text-sm font-bold flex items-center gap-2"><Code2 className="h-4 w-4 text-primary" /> How to Contribute</h4>
+            <ol class="text-xs text-muted-foreground space-y-2 list-decimal list-inside leading-relaxed">
+              <li>Copy the project's <code class="bg-muted px-1 py-0.5 rounded">httpCloneUrl</code></li>
+              <li>Clone locally to your own workstation</li>
+              <li>Push to your personal node and open a cross-node PR!</li>
+            </ol>
+            <a href="/instances" class="text-xs text-primary font-medium hover:underline inline-flex items-center gap-1 pt-1">Browse all nodes <ExternalLink className="h-3 w-3" /></a>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    import { toast } from "sonner";
+    document.querySelectorAll('.clone-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const url = (e.currentTarget as HTMLButtonElement).dataset.cloneUrl;
+        if (url) { navigator.clipboard.writeText(url); toast.success("Clone URL copied!"); }
+      });
+    });
+    document.querySelectorAll('.star-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const t = e.currentTarget as HTMLButtonElement;
+        try {
+          const res = await fetch('/api/stars', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ repoId: t.dataset.repoId, fullName: t.dataset.fullName }) });
+          const data = await res.json();
+          if (data.success) {
+            t.classList.toggle("bg-primary/20", data.data?.starred);
+            t.classList.toggle("text-primary", data.data?.starred);
+            toast.success(data.data?.starred ? `Starred ${t.dataset.fullName}` : `Unstarred ${t.dataset.fullName}`);
+          } else { toast.error(data.error?.message || "Failed"); }
+        } catch { toast.error("Network error"); }
+      });
+    });
+    document.querySelectorAll('.follow-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const t = e.currentTarget as HTMLButtonElement;
+        try {
+          const res = await fetch('/api/follows', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ followeeType: 'user', followeeId: t.dataset.username }) });
+          const data = await res.json();
+          if (data.success) {
+            const f = data.data?.following;
+            t.textContent = f ? "Following" : "Follow";
+            t.classList.toggle("bg-primary", f);
+            t.classList.toggle("text-primary-foreground", f);
+          } else { toast.error(data.error?.message || "Failed"); }
+        } catch { toast.error("Network error"); }
+      });
+    });
+  </script>
+</BaseLayout>
