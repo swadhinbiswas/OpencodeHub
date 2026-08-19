@@ -13,6 +13,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import { checkPathPermissions } from "@/lib/path-scoping";
 import { canReadRepo, canWriteRepo } from "@/lib/permissions";
+import { notifyMentionedUsers } from "@/lib/mentions";
 
 const createCommentSchema = z.object({
     body: z.string().min(1),
@@ -219,17 +220,15 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
     logger.info({ userId: tokenPayload.userId, repoId: pr.repository.id, prId: pr.id, commentId }, "PR comment created");
 
     // Notify @mentioned users (WS2-10)
-    import("@/lib/mentions").then(({ notifyMentionedUsers }) => {
-      notifyMentionedUsers({
-        text: body,
-        actorId: tokenPayload.userId,
-        repositoryId: pr.repository.id,
-        subjectType: "comment",
-        subjectId: commentId,
-        url: `/${owner}/${repo}/pulls/${number}#comment-${commentId}`,
-        titlePrefix: "mentioned you in a comment",
-      }).catch((err) => logger.error({ err }, "Mention notification failed"));
-    });
+    notifyMentionedUsers({
+      text: body,
+      actorId: tokenPayload.userId,
+      repositoryId: pr.repository.id,
+      subjectType: "comment",
+      subjectId: commentId,
+      url: `/${owner}/${repo}/pulls/${number}#comment-${commentId}`,
+      titlePrefix: "mentioned you in a comment",
+    }).catch((err) => logger.error({ err }, "Mention notification failed"));
 
     return success({ comment, message: "Comment created" });
 });

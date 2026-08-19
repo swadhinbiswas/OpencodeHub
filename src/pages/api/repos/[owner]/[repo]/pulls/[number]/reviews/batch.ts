@@ -88,12 +88,11 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
   const createdCommentIds: string[] = [];
 
   try {
-    // @ts-expect-error - Drizzle multi-db union type issue
     await db.insert(schema.pullRequestReviews).values({
       id: reviewId,
       pullRequestId: pr.id,
       reviewerId: userId,
-      state: parsed.data.state.toLowerCase(),
+      state: (parsed.data.state || "COMMENTED").toLowerCase(),
       body: parsed.data.body || "Review submitted",
       commitSha: parsed.data.commitSha ?? null,
       submittedAt: now,

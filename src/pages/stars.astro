@@ -3,6 +3,13 @@ import { resolveOrgOwners } from "@/lib/repo-owner";
 import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { desc, eq } from "drizzle-orm";
+import {
+  Star,
+  Search,
+  BookMarked,
+  GitFork,
+  Compass
+} from "lucide-react";
 
 const user = Astro.locals.user;
 if (!user) {
@@ -28,16 +35,22 @@ const starredRepos = await resolveOrgOwners(
 
 // Language colors
 const langColors: Record<string, string> = {
-  'JavaScript': 'bg-yellow-400',
-  'TypeScript': 'bg-blue-500',
-  'Python': 'bg-green-500',
-  'Rust': 'bg-orange-500',
-  'Go': 'bg-cyan-400',
-  'Java': 'bg-red-500',
-  'Ruby': 'bg-red-600',
-  'C++': 'bg-pink-500',
-  'C': 'bg-gray-500',
-  'PHP': 'bg-purple-500',
+  JavaScript: "bg-[#f1e05a]",
+  TypeScript: "bg-[#3178c6]",
+  Python: "bg-[#3572A5]",
+  Rust: "bg-[#dea584]",
+  Go: "bg-[#00ADD8]",
+  Java: "bg-[#b07219]",
+  Ruby: "bg-[#701516]",
+  "C++": "bg-[#f34b7d]",
+  C: "bg-[#555555]",
+  PHP: "bg-[#4F5D95]",
+  HTML: "bg-[#e34c26]",
+  CSS: "bg-[#563d7c]",
+  Vue: "bg-[#41b883]",
+  Astro: "bg-[#ff5a03]",
+  Shell: "bg-[#89e051]",
+  Dockerfile: "bg-[#384d54]",
 };
 
 function timeAgo(date: string | number | Date) {
@@ -53,155 +66,143 @@ function timeAgo(date: string | number | Date) {
 }
 ---
 
-<BaseLayout title="Your Stars - OpenCodeHub">
-  <div class="container py-8 max-w-5xl">
+<BaseLayout title="Your Stars · OpenCodeHub">
+  <div class="container max-w-[1280px] mx-auto py-8 px-4 sm:px-6">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border mb-6">
       <div>
-        <h1 class="text-3xl font-bold text-foreground flex items-center gap-3">
-          <div class="p-2 rounded-lg bg-gradient-to-br from-yellow-500/20 to-amber-500/20 border border-yellow-500/30">
-            <svg class="h-7 w-7 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-            </svg>
-          </div>
-          Your Stars
+        <h1 class="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2.5">
+          <Star className="h-6 w-6 text-foreground fill-amber-400/20 text-amber-400" />
+          <span>Your Stars</span>
+          <span class="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-muted-foreground border border-border/60">
+            {starredRepos.length}
+          </span>
         </h1>
-        <p class="text-muted-foreground mt-2">Repositories you've starred</p>
+        <p class="text-sm text-muted-foreground mt-1">Repositories you have starred across OpenCodeHub</p>
       </div>
-      <div class="text-sm text-muted-foreground">
-        {starredRepos.length} starred
+      <a
+        href="/explore"
+        class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md border border-border bg-card text-sm font-medium text-foreground hover:bg-accent transition-colors shadow-sm self-start sm:self-auto"
+      >
+        <Compass className="h-4 w-4" />
+        <span>Explore more</span>
+      </a>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="mb-6">
+      <div class="relative group max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-foreground transition-colors" />
+        <input
+          type="search"
+          id="star-search"
+          placeholder="Filter stars..."
+          class="w-full h-9 rounded-md border border-border/70 bg-card/60 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 focus:bg-background transition-all"
+        />
       </div>
     </div>
 
-    <!-- Search -->
-    <div class="relative mb-6">
-      <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-      </svg>
-      <input
-        type="search"
-        id="star-search"
-        placeholder="Search your stars..."
-        class="w-full rounded-lg border border-border bg-secondary pl-10 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/20 transition-all"
-      />
-    </div>
-
-    <!-- Starred Repositories List -->
-    <div class="relative">
-      <div class="absolute -inset-[1px] bg-gradient-to-r from-yellow-500/20 via-transparent to-amber-500/20 rounded-xl opacity-50"></div>
-      <div class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden">
-        {starredRepos.length > 0 ? (
-          <div id="stars-list" class="divide-y divide-white/5">
-            {starredRepos.map((star) => (
-              <a
-                href={`/${star.repository?.owner?.username}/${star.repository?.name}`}
-                class="star-item block p-5 hover:bg-accent/50 transition-colors group"
-                data-name={star.repository?.name?.toLowerCase() || ''}
-                data-desc={star.repository?.description?.toLowerCase() || ''}
+    <!-- Starred Repositories List Card -->
+    <div class="rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm overflow-hidden shadow-sm">
+      {starredRepos.length > 0 ? (
+        <div id="stars-list" class="divide-y divide-border/60">
+          {starredRepos.map((star) => {
+            const ownerName = star.repository?.owner?.username || "unknown";
+            const repoName = star.repository?.name || "repo";
+            return (
+              <div
+                class="star-item flex flex-col sm:flex-row sm:items-start justify-between gap-4 p-5 hover:bg-accent/40 transition-colors"
+                data-name={`${ownerName}/${repoName}`.toLowerCase()}
+                data-desc={(star.repository?.description || "").toLowerCase()}
               >
-                <div class="flex items-start justify-between">
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 mb-1">
-                      <span class="text-sm text-muted-foreground">
-                        {star.repository?.owner?.username}
-                      </span>
-                      <span class="text-muted-foreground">/</span>
-                      <h3 class="font-semibold text-cyan-400 group-hover:underline">
-                        {star.repository?.name}
-                      </h3>
-                      <span class:list={[
-                        "px-2 py-0.5 rounded-full text-xs border",
-                        star.repository?.visibility === 'public' 
-                          ? "border-gray-500/30 text-muted-foreground" 
-                          : "border-yellow-500/30 text-yellow-400"
-                      ]}>
-                        {star.repository?.visibility}
-                      </span>
-                    </div>
-                    
-                    {star.repository?.description && (
-                      <p class="text-muted-foreground text-sm mb-3 line-clamp-2">
-                        {star.repository.description}
-                      </p>
-                    )}
-
-                    <div class="flex items-center gap-4 text-xs text-muted-foreground">
-                      {star.repository?.language && (
-                        <div class="flex items-center gap-1.5">
-                          <span class={`h-3 w-3 rounded-full ${langColors[star.repository.language] || 'bg-gray-400'}`}></span>
-                          {star.repository.language}
-                        </div>
-                      )}
-                      <div class="flex items-center gap-1">
-                        <svg class="h-3.5 w-3.5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                        </svg>
-                        {star.repository?.starCount || 0}
-                      </div>
-                      <div class="flex items-center gap-1">
-                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
-                        </svg>
-                        {star.repository?.forkCount || 0}
-                      </div>
-                      <span>Starred {timeAgo(star.createdAt)}</span>
-                    </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1.5">
+                    <BookMarked className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <a
+                      href={`/${ownerName}/${repoName}`}
+                      class="text-sm sm:text-base font-semibold text-primary hover:underline truncate"
+                    >
+                      {ownerName}/{repoName}
+                    </a>
+                    <span class="rounded-full border border-border/60 bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                      {star.repository?.visibility || "public"}
+                    </span>
                   </div>
 
-                  <button
-                    class="unstar-btn p-2 rounded-lg bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 transition-colors opacity-0 group-hover:opacity-100"
-                    data-repo-id={star.repository?.id}
-                    title="Unstar"
-                    onclick="event.preventDefault(); event.stopPropagation();"
-                  >
-                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                    </svg>
-                  </button>
+                  {star.repository?.description && (
+                    <p class="text-xs sm:text-sm text-muted-foreground line-clamp-2 mb-3 leading-relaxed">
+                      {star.repository.description}
+                    </p>
+                  )}
+
+                  <div class="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                    {star.repository?.language && (
+                      <div class="flex items-center gap-1.5 font-medium">
+                        <span class={`h-2.5 w-2.5 rounded-full ${langColors[star.repository.language] || "bg-muted-foreground"}`} />
+                        <span>{star.repository.language}</span>
+                      </div>
+                    )}
+                    <div class="flex items-center gap-1">
+                      <Star className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>{star.repository?.starCount || 0}</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                      <GitFork className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>{star.repository?.forkCount || 0}</span>
+                    </div>
+                    <span>·</span>
+                    <span>Starred {timeAgo(star.createdAt)}</span>
+                  </div>
                 </div>
-              </a>
-            ))}
+
+                <a
+                  href={`/${ownerName}/${repoName}`}
+                  class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-secondary/80 text-xs font-medium text-foreground hover:bg-accent transition-colors self-start shadow-sm"
+                >
+                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                  <span>Starred</span>
+                </a>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div class="text-center py-16 px-4">
+          <div class="w-12 h-12 rounded-full bg-secondary/80 border border-border flex items-center justify-center mx-auto mb-3 text-muted-foreground">
+            <Star className="h-6 w-6" />
           </div>
-        ) : (
-          <div class="text-center py-16">
-            <div class="relative inline-block mb-4">
-              <svg class="h-16 w-16 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
-              </svg>
-              <div class="absolute inset-0 bg-yellow-500 blur-2xl opacity-20"></div>
-            </div>
-            <h3 class="text-lg font-semibold text-foreground mb-2">No starred repositories</h3>
-            <p class="text-muted-foreground mb-4">
-              Star repositories to bookmark them for later.
-            </p>
-            <a
-              href="/explore"
-              class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-600 text-sm font-medium text-foreground"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-              </svg>
-              Explore repositories
-            </a>
-          </div>
-        )}
-      </div>
+          <h3 class="text-base font-semibold text-foreground mb-1">No starred repositories</h3>
+          <p class="text-sm text-muted-foreground max-w-sm mx-auto mb-6">
+            Explore interesting projects and star them to keep track of work you love.
+          </p>
+          <a
+            href="/explore"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-foreground text-background text-sm font-medium hover:bg-foreground/90 transition-colors shadow-sm"
+          >
+            <Compass className="h-4 w-4" />
+            Explore repositories
+          </a>
+        </div>
+      )}
     </div>
   </div>
 </BaseLayout>
 
 <script>
-  // Search functionality
-  const searchInput = document.getElementById('star-search') as HTMLInputElement;
-  const starItems = document.querySelectorAll('.star-item');
-  
-  searchInput?.addEventListener('input', () => {
-    const query = searchInput.value.toLowerCase().trim();
+  const starSearch = document.getElementById("star-search") as HTMLInputElement;
+  const starItems = document.querySelectorAll(".star-item");
+
+  starSearch?.addEventListener("input", () => {
+    const q = starSearch.value.toLowerCase().trim();
     starItems.forEach((item) => {
-      const name = item.getAttribute('data-name') || '';
-      const desc = item.getAttribute('data-desc') || '';
-      const matches = name.includes(query) || desc.includes(query);
-      (item as HTMLElement).style.display = matches ? 'block' : 'none';
+      const el = item as HTMLElement;
+      const name = el.dataset.name || "";
+      const desc = el.dataset.desc || "";
+      if (!q || name.includes(q) || desc.includes(q)) {
+        el.style.display = "flex";
+      } else {
+        el.style.display = "none";
+      }
     });
   });
 </script>

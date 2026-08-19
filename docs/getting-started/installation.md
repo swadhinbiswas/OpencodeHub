@@ -1,6 +1,6 @@
 # Installation Guide
 
-OpenCodeHub allows you to host your own GitHub-like platform. You can run it via **Docker** (recommended for production) or **Node.js** (for development/custom setups).
+OpenCodeHub allows you to host your own GitHub-like platform. You can run it via **Docker** (recommended for production) or **Node.js / Bun** (for development/custom setups).
 
 ## 📋 System Requirements
 
@@ -9,7 +9,41 @@ OpenCodeHub allows you to host your own GitHub-like platform. You can run it via
 | **CPU** | 1 vCPU | 2 vCPU |
 | **RAM** | 512MB | 2GB |
 | **Disk** | 10GB | 50GB SSD |
-| **OS** | Linux (Ubuntu/Debian) | Linux |
+| **OS** | Linux (Ubuntu/Debian) | Linux / macOS / Windows |
+
+---
+
+## 💻 CLI Installation (`opencodehub-cli`)
+
+Install the official OpenCodeHub CLI (`och`) to interact with your instance directly from the terminal:
+
+```bash
+# via npm
+npm install -g opencodehub-cli
+
+# via bun
+bun add -g opencodehub-cli
+
+# via pnpm
+pnpm add -g opencodehub-cli
+
+# via yarn
+yarn global add opencodehub-cli
+```
+
+Verify the CLI is ready:
+
+```bash
+och --version
+och --help
+```
+
+Authenticate with your server:
+
+```bash
+och auth login --url https://git.yourcompany.com
+och config doctor
+```
 
 ---
 
@@ -44,6 +78,8 @@ Edit `.env` and set **production values**.
 JWT_SECRET=<openssl rand -hex 32>
 SESSION_SECRET=<openssl rand -hex 32>
 INTERNAL_HOOK_SECRET=<openssl rand -hex 32>
+CRON_SECRET=<openssl rand -hex 32>
+RUNNER_SECRET=<openssl rand -hex 32>
 
 # Domain Configuration
 SITE_URL=https://git.yourcompany.com
@@ -51,27 +87,30 @@ PORT=4321
 
 # Database (Using the Postgres container defined in compose)
 DATABASE_URL=postgresql://opencodehub:securepassword@postgres:5432/opencodehub
+POSTGRES_USER=opencodehub
+POSTGRES_PASSWORD=securepassword
+POSTGRES_DB=opencodehub
 
-# Object Storage (Highly Recommended for Production)
-STORAGE_TYPE=s3
-STORAGE_BUCKET=my-git-bucket
-STORAGE_REGION=us-east-1
-STORAGE_ACCESS_KEY_ID=...
-STORAGE_SECRET_ACCESS_KEY=...
-# STORAGE_ENDPOINT=https://<account>.r2.cloudflarestorage.com  # set for non-AWS vendors
+# Redis
+REDIS_URL=redis://:redispassword@redis:6379
+REDIS_PASSWORD=redispassword
+
+# Object Storage (Optional for S3 backends)
+STORAGE_TYPE=local
+STORAGE_PATH=/data/storage
 ```
 
 ### 4. Start Services
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ### 5. Initialization
 
 Initialize the admin user:
 ```bash
-docker-compose exec app bun run scripts/seed-admin.ts
+docker compose exec app bun scripts/seed-admin.ts
 ```
 
 ---
@@ -98,30 +137,14 @@ server {
     client_max_body_size 500M;
 
     location / {
-        proxy_pass http://localhost:4321;
+        proxy_pass http://127.0.0.1:4321;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
     }
 }
 ```
-
----
-
-## ✅ Production Checklist
-
-Before going live to users:
-
-- [ ] **Secrets Rotated**: Default secrets replaced with strong random strings.
-- [ ] **HTTPS Enabled**: SSL certificate configured via Nginx/Caddy.
-- [ ] **Rate Limiting**: `RATE_LIMIT_*` env vars adjusted for expected load.
-- [ ] **Monitoring**: Grafana/Sentry configured for error tracking ([Guide](../administration/monitoring.md)).
-
----
-
-## Next Steps
-
-Now that you have OpenCodeHub up and running, let's look around:
-
-👉 **[Quick Start Guide](quick-start.md)**

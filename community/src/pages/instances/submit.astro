@@ -1,0 +1,162 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { Header } from "../../components/layout/Header";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { 
+  Server, 
+  Sparkles, 
+  ShieldCheck, 
+  CheckCircle2, 
+  ArrowLeft, 
+  Globe, 
+  Code2, 
+  HelpCircle,
+  Loader2
+} from "lucide-react";
+import { verifyToken } from "../../lib/auth";
+
+const token = Astro.cookies.get("community_session")?.value;
+const user = token ? await verifyToken(token) : null;
+---
+<BaseLayout title="Submit Federated Node — OpenCodeHub Community">
+  <Header client:load user={user} />
+  
+  <main class="container px-4 sm:px-8 py-8 sm:py-12 max-w-2xl mx-auto space-y-8">
+    
+    <a href="/instances" class="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+      <ArrowLeft className="h-3.5 w-3.5" /> Back to Instances
+    </a>
+
+    <div class="space-y-2">
+      <h1 class="text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2.5">
+        <Server className="h-7 w-7 text-primary" />
+        Connect Your Node
+      </h1>
+      <p class="text-sm text-muted-foreground">
+        Submit your self-hosted OpenCodeHub URL to join the global federated mesh.
+      </p>
+    </div>
+
+    <!-- Main Submission Card -->
+    <Card className="border-border/60 bg-card/60 backdrop-blur-xl shadow-lg">
+      <CardHeader>
+        <CardTitle className="text-lg">Instance Endpoint</CardTitle>
+        <CardDescription className="text-xs">
+          Must be a publicly reachable OpenCodeHub instance. We verify by querying <code>GET /api/instance</code>.
+        </CardDescription>
+      </CardHeader>
+      
+      <CardContent>
+        <form id="submit-form" class="space-y-5">
+          <div class="space-y-2">
+            <Label htmlFor="url" className="text-xs font-semibold">Instance URL</Label>
+            <div class="relative">
+              <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                id="url" 
+                name="url" 
+                placeholder="https://code.example.com" 
+                required 
+                type="url"
+                className="pl-9 bg-card/50 border-border/60 focus:border-primary text-sm h-11"
+              />
+            </div>
+            <p class="text-[11px] text-muted-foreground">
+              Example: <code>https://code.mysite.com</code> or <code>https://opencodehub.org</code>
+            </p>
+          </div>
+
+          <Button type="submit" className="w-full h-11 bg-primary hover:bg-primary/90 text-sm font-semibold shadow-md shadow-primary/20" id="submit-btn">
+            <Sparkles className="h-4 w-4 mr-2" />
+            Verify &amp; Register Node
+          </Button>
+
+          <!-- Result Alert Box -->
+          <div id="result" class="text-xs hidden rounded-xl border p-4 space-y-2 animate-in fade-in"></div>
+        </form>
+      </CardContent>
+    </Card>
+
+    <!-- Information Accordion / Card -->
+    <div class="rounded-2xl border border-border/60 bg-card/30 p-6 space-y-4 text-xs text-muted-foreground">
+      <h4 class="font-bold text-foreground text-sm flex items-center gap-2">
+        <ShieldCheck className="h-4 w-4 text-emerald-400" />
+        Federation Architecture &amp; Privacy
+      </h4>
+      
+      <div class="space-y-3 leading-relaxed">
+        <div class="flex gap-2.5">
+          <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+          <span>
+            <b>Public Scope:</b> We only fetch repositories where <code>visibility === "public"</code> and public creator profiles. Private codebases are never indexed or logged.
+          </span>
+        </div>
+        <div class="flex gap-2.5">
+          <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+          <span>
+            <b>Cross-Instance Contribution:</b> Developers can clone your repositories via <code>httpCloneUrl</code> directly from your server without requiring an account on this hub.
+          </span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    import { toast } from "sonner";
+
+    const form = document.getElementById('submit-form') as HTMLFormElement;
+    const btn = document.getElementById('submit-btn') as HTMLButtonElement;
+    const result = document.getElementById('result') as HTMLDivElement;
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      let url = (document.getElementById('url') as HTMLInputElement).value.trim();
+      if (!url) return;
+
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = `<span class="inline-flex items-center gap-2"><svg class="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Probing /api/instance...</span>`;
+      result.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/instances/submit', { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify({ url }) 
+        });
+        const data = await res.json();
+        result.classList.remove('hidden');
+
+        if (res.ok && data.success) {
+          result.className = 'text-xs rounded-xl border p-4 bg-emerald-500/10 border-emerald-500/30 text-emerald-300';
+          result.innerHTML = `
+            <div class="font-bold text-sm text-emerald-200">✓ Successfully Verified &amp; Connected!</div>
+            <p>Instance <b>${data.data.name}</b> (${data.data.siteUrl}) is now live. ${data.data.repoCount ?? 0} public repositories are being synchronized.</p>
+            <div class="pt-2">
+              <a href="/instances/${data.data.id}" class="underline font-semibold text-emerald-100 hover:text-white">View Instance Page &rarr;</a>
+            </div>
+          `;
+          toast.success("Instance successfully registered!");
+        } else {
+          result.className = 'text-xs rounded-xl border p-4 bg-destructive/10 border-destructive/30 text-destructive';
+          result.textContent = data.error?.message || data.message || data.error || 'Verification failed. Make sure /api/instance is accessible.';
+          toast.error("Failed to verify instance");
+        }
+      } catch (err: any) {
+        result.classList.remove('hidden');
+        result.className = 'text-xs rounded-xl border p-4 bg-destructive/10 border-destructive/30 text-destructive';
+        result.textContent = err.message || 'Network error reaching the hub.';
+        toast.error("Network error");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<svg class="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg> Verify &amp; Register Node`;
+      }
+    });
+  </script>
+</BaseLayout>

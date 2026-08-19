@@ -1,49 +1,49 @@
-FROM oven/bun:1 AS base
+FROM oven/bun:1-slim AS base
 WORKDIR /app
 
-# Install dependencies
-FROM base AS deps
-RUN apt-get update && apt-get install -y python3 make g++ gcc libc6-dev && rm -rf /var/lib/apt/lists/*
+LABEL org.opencontainers.image.title="OpenCodeHub Worker" \
+      org.opencontainers.image.description="Background task worker for OpenCodeHub (queues, webhooks, notifications)." \
+      org.opencontainers.image.url="https://github.com/swadhinbiswas/OpencodeHub" \
+      org.opencontainers.image.source="https://github.com/swadhinbiswas/OpencodeHub" \
+      org.opencontainers.image.licenses="MIT"
+
+# ── Dependencies ───────────────────────────────────────────────
+FROM base AS prod-deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 make g++ gcc libc6-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY package.json bun.lock ./
 COPY cli/package.json ./cli/package.json
-RUN for i in 1 2 3; do \
-      bun install --frozen-lockfile && break || \
-      (echo "bun install attempt $i failed, retrying in 10s..." && sleep 10); \
-    done
+RUN bun install --frozen-lockfile --production \
+    && find /app/node_modules -type d \( -name "test" -o -name "tests" -o -name "docs" -o -name "example" -o -name "examples" \) -prune -exec rm -rf {} + 2>/dev/null || true \
+    && find /app/node_modules -type f \( -name "*.map" -o -name "*.md" -o -name "*.markdown" \) -delete 2>/dev/null || true
 
-# Copy source into a staging layer so COPY --from has the files
-FROM base AS source
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-
-# Production image
-FROM oven/bun:1 AS runner
+# ── Production Worker Runner ───────────────────────────────────
+FROM oven/bun:1-slim AS runner
 WORKDIR /app
 
-# Install git (needed for git operations)
-RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    bash \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Create data directories
-RUN mkdir -p /data/repositories /data/storage /data/cache && \
-    chown -R bun:bun /data
+RUN mkdir -p /data/repositories /data/storage /data/cache /data/logs && \
+    chown -R bun:bun /data /app
 
-# Copy node_modules and source
-COPY --from=source --chown=bun:bun /app/node_modules ./node_modules
-COPY --from=source --chown=bun:bun /app/package.json ./
-COPY --from=source --chown=bun:bun /app/cli ./cli
-COPY --from=source --chown=bun:bun /app/tsconfig.json ./
+COPY --from=prod-deps --chown=bun:bun /app/node_modules ./node_modules
+COPY --chown=bun:bun package.json tsconfig.json ./
+COPY --chown=bun:bun drizzle.config.ts ./
+COPY --chown=bun:bun drizzle ./drizzle
+COPY --chown=bun:bun src ./src
+COPY --chown=bun:bun scripts ./scripts
+COPY --chown=bun:bun docker-entrypoint.sh ./
 
-# Copy source files needed for worker
-COPY --from=source --chown=bun:bun /app/src/lib ./src/lib
-COPY --from=source --chown=bun:bun /app/src/db ./src/db
-COPY --from=source --chown=bun:bun /app/scripts/worker.ts ./scripts/worker.ts
-
-# Set environment variables
 ENV NODE_ENV=production
+ENV PROCESS_TYPE=worker
 ENV DATA_DIR=/data
 
-# Switch to non-root user
 USER bun
 
-# Start the worker
-CMD ["bun", "scripts/worker.ts"]
+ENTRYPOINT ["bash", "./docker-entrypoint.sh"]

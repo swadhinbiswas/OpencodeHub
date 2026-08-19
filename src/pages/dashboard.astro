@@ -3,19 +3,20 @@ import { getDatabase, schema } from "@/db";
 import { getInboxItems } from "@/lib/inbox";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { and, desc, eq, inArray, or } from "drizzle-orm";
-// Import Shadcn UI Components (using path aliases or relative paths)
-// Assuming components are in @/components/ui or src/components/ui
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { UserAvatar } from "@/components/dashboard/UserAvatar";
-import { Badge } from "@/components/ui/badge";
+  BookMarked,
+  Star,
+  GitFork,
+  Plus,
+  Search,
+  GitPullRequest,
+  CircleDot,
+  Layers,
+  Inbox,
+  Clock,
+  Compass,
+  ArrowRight
+} from "lucide-react";
 
 const user = Astro.locals.user;
 if (!user) {
@@ -47,13 +48,11 @@ function timeAgo(date: string | Date) {
 }
 
 // Fetch Activity Feed
-// 1. Get list of users followed by current user
 const following = await db.query.userFollowers.findMany({
   where: eq(schema.userFollowers.followerId, user.id),
 });
 const followingIds = following.map((f) => f.followeeId);
 
-// 2. Fetch activities from followed users AND current user
 const activities = await db.query.activities.findMany({
   where: or(
     eq(schema.activities.userId, user.id),
@@ -68,451 +67,308 @@ const activities = await db.query.activities.findMany({
     repository: true,
   },
 });
-
-// Helper for activity icons and text
-function getActivityIcon(type: string, action: string) {
-  switch (type) {
-    case "create_repo":
-      return {
-        icon: "M12 6v6m0 0v6m0-6h6m-6 0H6",
-        color: "text-green-400",
-        bg: "bg-green-500/10",
-      };
-    case "star":
-      return {
-        icon: "M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.784.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z",
-        color: "text-yellow-400",
-        bg: "bg-yellow-500/10",
-      };
-    case "fork":
-      return {
-        icon: "M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z",
-        color: "text-purple-400",
-        bg: "bg-purple-500/10",
-      };
-    case "follow":
-      return {
-        icon: "M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z",
-        color: "text-blue-400",
-        bg: "bg-blue-500/10",
-      };
-    case "issue":
-      return {
-        icon: "M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-        color: "text-orange-400",
-        bg: "bg-orange-500/10",
-      };
-    case "pull_request":
-    case "open_pr":
-      return {
-        icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
-        color: "text-cyan-400",
-        bg: "bg-cyan-500/10",
-      };
-    default:
-      return {
-        icon: "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-        color: "text-muted-foreground",
-        bg: "bg-gray-500/10",
-      };
-  }
-}
-
-function getActivityText(activity: any) {
-  const actor = activity.user.username;
-  const repo = activity.repository?.name;
-
-  switch (activity.type) {
-    case "create_repo":
-      return `created repository ${activity.repository?.name}`;
-    case "star":
-      return `starred ${activity.repoOwner || "someone"}/${activity.repoName || activity.repository?.name}`;
-    case "fork":
-      return `forked ${activity.repository?.name}`;
-    case "follow":
-      return `followed ${JSON.parse(activity.payload || "{}").targetUsername || "someone"}`;
-    case "issue":
-      return `opened issue #${JSON.parse(activity.payload || "{}").number} in ${activity.repository?.name}`;
-    case "open_pr":
-      return `opened PR #${JSON.parse(activity.payload || "{}").number} in ${activity.repository?.name}`;
-    default:
-      return `${activity.action} ${activity.type}`;
-  }
-}
 ---
 
-<BaseLayout title="Dashboard - OpenCodeHub">
-  <div class="container py-8 max-w-7xl mx-auto space-y-8">
-    <!-- Welcome Header -->
-    <div
-      class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
-    >
+<BaseLayout title="Dashboard · OpenCodeHub">
+  <div class="container max-w-[1280px] mx-auto py-8 px-4 sm:px-6 space-y-8">
+    <!-- Top Welcome Header -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-border">
       <div class="flex items-center gap-4">
-        <UserAvatar
-          user={user}
-          className="h-16 w-16 border-2 border-border"
-          client:load
-        />
+        {user.avatarUrl ? (
+          <img
+            src={user.avatarUrl}
+            alt={user.username}
+            class="h-14 w-14 rounded-full border-2 border-border/80 object-cover flex-shrink-0 shadow-sm"
+          />
+        ) : (
+          <div class="h-14 w-14 rounded-full bg-secondary border-2 border-border/80 flex items-center justify-center text-xl font-bold text-foreground flex-shrink-0 shadow-sm">
+            {user.username[0]?.toUpperCase()}
+          </div>
+        )}
         <div>
-          <h1 class="text-3xl font-bold text-foreground tracking-tight">
+          <h1 class="text-2xl font-bold text-foreground tracking-tight">
             Welcome back, {user.displayName || user.username}
           </h1>
-          <p class="text-muted-foreground">
-            Manage your repositories and development workflow.
+          <p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
+            Your personal hub for repositories, reviews, and activity
           </p>
         </div>
       </div>
-      <div class="flex items-center gap-3">
-        <a href="/stacks">
-          <Button
-            variant="outline"
-            className="border-border text-muted-foreground hover:text-foreground hover:bg-accent"
-          >
-            <svg
-              class="mr-2 h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              ><path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-              ></path></svg
-            >
-            View Stacks
-          </Button>
+
+      <div class="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
+        <a
+          href="/stacks"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-card text-xs font-medium text-foreground hover:bg-accent transition-colors shadow-sm"
+        >
+          <Layers className="h-3.5 w-3.5" />
+          <span>Stacks</span>
         </a>
-        <a href="/new">
-          <Button
-            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-foreground border-0 shadow-lg shadow-green-500/20"
-          >
-            <svg
-              class="mr-2 h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              ><path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 4v16m8-8H4"></path></svg
-            >
-            New Repository
-          </Button>
+        <a
+          href="/new"
+          class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-[#238636] hover:bg-[#2ea043] text-white text-xs sm:text-sm font-medium transition-colors shadow-sm"
+        >
+          <Plus className="h-4 w-4" />
+          <span>New repository</span>
         </a>
       </div>
     </div>
 
-    <!-- Stats Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <Card className="bg-card/50 border-border backdrop-blur-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground"
-            >Total Repositories</CardTitle
-          >
-        </CardHeader>
-        <CardContent>
-          <div class="text-3xl font-bold text-foreground">{repos.length}</div>
-        </CardContent>
-      </Card>
-      <Card className="bg-card/50 border-border backdrop-blur-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground"
-            >Total Stars</CardTitle
-          >
-        </CardHeader>
-        <CardContent>
-          <div class="text-3xl font-bold text-yellow-400">{totalStars}</div>
-        </CardContent>
-      </Card>
-      <Card className="bg-card/50 border-border backdrop-blur-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground"
-            >Total Forks</CardTitle
-          >
-        </CardHeader>
-        <CardContent>
-          <div class="text-3xl font-bold text-purple-400">{totalForks}</div>
-        </CardContent>
-      </Card>
+    <!-- Quick Stats Row -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm p-4 shadow-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-muted-foreground">Repositories</span>
+          <BookMarked className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <div class="text-2xl font-bold text-foreground mt-2">{repos.length}</div>
+      </div>
+      <div class="rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm p-4 shadow-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-muted-foreground">Total Stars</span>
+          <Star className="h-4 w-4 text-amber-400" />
+        </div>
+        <div class="text-2xl font-bold text-foreground mt-2">{totalStars}</div>
+      </div>
+      <div class="rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm p-4 shadow-sm">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-muted-foreground">Total Forks</span>
+          <GitFork className="h-4 w-4 text-purple-400" />
+        </div>
+        <div class="text-2xl font-bold text-foreground mt-2">{totalForks}</div>
+      </div>
     </div>
 
     <!-- Main Content Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-      <!-- Left Sidebar: User Profile context & Repositories -->
-      <div class="lg:col-span-4 xl:col-span-3 space-y-6">
-        <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-foreground flex items-center gap-2">
-            Repositories
-          </h2>
-          <div class="flex items-center gap-2">
-            <a href="/new/import" class="text-sm bg-cyan-500/20 text-cyan-400 px-2 py-1 rounded hover:bg-cyan-500/30 transition-colors">
-              Import
-            </a>
-            <a href="/new" class="text-sm bg-green-500/20 text-green-400 px-2 py-1 rounded hover:bg-green-500/30 transition-colors">
-              New
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <!-- Left Sidebar: Repositories list & Navigation shortcuts -->
+      <aside class="lg:col-span-4 space-y-6">
+        <!-- Repositories Card -->
+        <div class="rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm overflow-hidden shadow-sm">
+          <div class="p-3.5 border-b border-border/80 bg-muted/30 flex items-center justify-between">
+            <h2 class="text-xs font-bold text-foreground uppercase tracking-wider">
+              Top Repositories
+            </h2>
+            <a
+              href="/new"
+              class="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              <Plus className="h-3 w-3" />
+              <span>New</span>
             </a>
           </div>
-        </div>
-        
-        <div class="bg-card/80 border border-border rounded-xl overflow-hidden">
-          <div class="p-3 border-b border-border bg-secondary">
-            <input type="text" placeholder="Find a repository..." class="w-full bg-background border border-border rounded-md px-3 py-1.5 text-sm text-foreground placeholder-gray-500 focus:outline-none focus:border-cyan-500/50" />
+
+          <div class="p-3 border-b border-border/60">
+            <div class="relative group">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground group-focus-within:text-foreground" />
+              <input
+                type="text"
+                id="sidebar-repo-search"
+                placeholder="Find a repository..."
+                class="w-full h-8 rounded-md border border-border/70 bg-background/80 pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
           </div>
-          <div class="max-h-[600px] overflow-y-auto">
+
+          <div class="max-h-[380px] overflow-y-auto divide-y divide-border/40" id="sidebar-repo-list">
             {repos.length > 0 ? (
-              <ul class="divide-y divide-white/5">
-                {repos.map((repo) => (
-                  <li>
-                    <a href={`/${user.username}/${repo.name}`} class="block p-3 hover:bg-accent transition-colors group">
-                      <div class="flex items-center gap-2 mb-1">
-                        <div class="w-4 h-4 rounded-full flex-shrink-0 flex items-center justify-center">
-                          <img src={`https://api.dicebear.com/7.x/identicon/svg?seed=${repo.ownerId}`} class="rounded-full w-4 h-4" />
-                        </div>
-                        <span class="text-sm font-medium text-blue-400 group-hover:underline truncate">{user.username}/{repo.name}</span>
-                        <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0 h-4 bg-transparent border-border/80 text-muted-foreground">
-                          {repo.visibility}
-                        </Badge>
-                      </div>
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              repos.slice(0, 15).map((repo) => (
+                <a
+                  href={`/${user.username}/${repo.name}`}
+                  class="sidebar-repo-item flex items-center justify-between p-3 hover:bg-accent/40 transition-colors group"
+                  data-name={repo.name.toLowerCase()}
+                >
+                  <div class="flex items-center gap-2 min-w-0">
+                    <BookMarked className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                    <span class="text-xs font-medium text-foreground group-hover:text-primary transition-colors truncate">
+                      {user.username}/<span class="font-semibold">{repo.name}</span>
+                    </span>
+                  </div>
+                  <span class="rounded-full border border-border/60 px-1.5 py-0.2 text-[10px] text-muted-foreground">
+                    {repo.visibility}
+                  </span>
+                </a>
+              ))
             ) : (
-              <div class="p-4 text-center text-sm text-muted-foreground">No repositories yet.</div>
+              <div class="p-6 text-center text-xs text-muted-foreground">
+                No repositories created yet.
+              </div>
             )}
           </div>
-        </div>
-      </div>
 
-      <!-- Main Feed: Activity & Inbox -->
-      <div class="lg:col-span-8 xl:col-span-9 space-y-8">
-        
-        <!-- Inbox Section -->
-        {
-          inboxItems.length > 0 && (
-            <div class="space-y-4">
-              <div class="flex items-center justify-between">
-                <h2 class="text-xl font-semibold text-foreground flex items-center gap-2">
-                  <svg
-                    class="h-5 w-5 text-yellow-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-                    />
-                  </svg>
-                  Inbox
-                </h2>
-                <Badge
-                  variant="secondary"
-                  className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
-                >
-                  {inboxItems.length} items
-                </Badge>
-              </div>
-              <div class="grid gap-3">
-                {inboxItems.map((item) => (
-                  <a
-                    href={`/${item.repository.owner}/${item.repository.name}/pulls/${item.number}`}
-                    class="block group"
-                  >
-                    <Card className="bg-card/80 border-border hover:border-border/80 hover:bg-accent transition-all duration-200">
-                      <CardContent className="p-4 flex items-center justify-between gap-4">
-                        <div class="flex items-center gap-4 min-w-0">
-                          <div class="flex-shrink-0">
-                            {item.type === "review_required" && (
-                              <div
-                                class="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 border border-blue-500/20"
-                                title="Review Required"
-                              >
-                                <svg
-                                  class="h-4 w-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                                  />
-                                  <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                                  />
-                                </svg>
-                              </div>
-                            )}
-                            {item.type === "changes_requested" && (
-                              <div
-                                class="h-8 w-8 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 border border-red-500/20"
-                                title="Changes Requested"
-                              >
-                                <svg
-                                  class="h-4 w-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                                  />
-                                </svg>
-                              </div>
-                            )}
-                            {item.type === "assigned" && (
-                              <div
-                                class="h-8 w-8 rounded-full bg-green-500/10 flex items-center justify-center text-green-500 border border-green-500/20"
-                                title="Assigned"
-                              >
-                                <svg
-                                  class="h-4 w-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                                  />
-                                </svg>
-                              </div>
-                            )}
-                          </div>
-                          <div class="min-w-0">
-                            <p class="text-sm font-medium text-foreground truncate group-hover:text-cyan-400 transition-colors">
-                              {item.title}
-                              <span class="text-muted-foreground font-normal ml-2">
-                                #{item.number}
-                              </span>
-                            </p>
-                            <div class="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                              <span>
-                                {item.repository.owner}/{item.repository.name}
-                              </span>
-                              <span>•</span>
-                              <span>Author: {item.author.username}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
-                          {timeAgo(item.updatedAt)}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </a>
-                ))}
+          {repos.length > 15 && (
+            <div class="p-2.5 text-center border-t border-border/60 bg-muted/20">
+              <a href="/repositories" class="text-xs font-medium text-primary hover:underline">
+                View all {repos.length} repositories
+              </a>
+            </div>
+          )}
+        </div>
+
+        <!-- Quick Shortcuts -->
+        <div class="rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm p-4 space-y-2 shadow-sm">
+          <h3 class="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Shortcuts</h3>
+          <a href="/pulls" class="flex items-center justify-between py-1.5 text-xs text-foreground hover:text-primary transition-colors">
+            <span class="flex items-center gap-2">
+              <GitPullRequest className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>Pull Requests</span>
+            </span>
+            <ArrowRight className="h-3 w-3 text-muted-foreground" />
+          </a>
+          <a href="/issues" class="flex items-center justify-between py-1.5 text-xs text-foreground hover:text-primary transition-colors">
+            <span class="flex items-center gap-2">
+              <CircleDot className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>Issues</span>
+            </span>
+            <ArrowRight className="h-3 w-3 text-muted-foreground" />
+          </a>
+          <a href="/stars" class="flex items-center justify-between py-1.5 text-xs text-foreground hover:text-primary transition-colors">
+            <span class="flex items-center gap-2">
+              <Star className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>Your Stars</span>
+            </span>
+            <ArrowRight className="h-3 w-3 text-muted-foreground" />
+          </a>
+          <a href="/explore" class="flex items-center justify-between py-1.5 text-xs text-foreground hover:text-primary transition-colors">
+            <span class="flex items-center gap-2">
+              <Compass className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>Explore Repositories</span>
+            </span>
+            <ArrowRight className="h-3 w-3 text-muted-foreground" />
+          </a>
+        </div>
+      </aside>
+
+      <!-- Main Column: Activity & Inbox -->
+      <main class="lg:col-span-8 space-y-6">
+        <!-- Inbox Section (if any) -->
+        {inboxItems.length > 0 && (
+          <div class="rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm overflow-hidden shadow-sm">
+            <div class="p-4 border-b border-border/80 bg-muted/30 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <Inbox className="h-4 w-4 text-foreground" />
+                <h2 class="text-sm font-bold text-foreground">Review Inbox</h2>
+                <span class="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.2 text-xs font-semibold text-primary">
+                  {inboxItems.length}
+                </span>
               </div>
             </div>
-          )
-        }
+            <div class="divide-y divide-border/60">
+              {inboxItems.map((item) => (
+                <a
+                  href={`/${item.repository.owner}/${item.repository.name}/pulls/${item.number}`}
+                  class="flex items-center justify-between gap-4 p-4 hover:bg-accent/40 transition-colors group"
+                >
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="text-xs font-semibold text-muted-foreground">
+                        {item.repository.owner}/{item.repository.name}
+                      </span>
+                      <span class="text-xs text-muted-foreground font-mono">#{item.number}</span>
+                    </div>
+                    <h3 class="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                      {item.title}
+                    </h3>
+                  </div>
+                  <span class="text-xs text-muted-foreground flex-shrink-0">
+                    {timeAgo(item.updatedAt)}
+                  </span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
-        <!-- Recent Activity Feed -->
-        <div class="space-y-4">
-          <h2 class="text-xl font-semibold text-foreground flex items-center gap-2">
-            Activity Feed
-          </h2>
-          <Card className="bg-card/80 border-border backdrop-blur-sm">
-            <CardContent className="p-0">
-              {
-                activities.length > 0 ? (
-                  <div class="divide-y divide-white/5">
-                    {activities.map((activity) => {
-                      const style = getActivityIcon(
-                        activity.type,
-                        activity.action,
-                      );
-                      const payload = activity.payload
-                        ? JSON.parse(activity.payload)
-                        : {};
-                      return (
-                        <div class="flex gap-4 p-5 hover:bg-accent/50 transition-colors">
-                          <UserAvatar user={activity.user} className="w-8 h-8" client:load />
-                          <div class="min-w-0 flex-1">
-                            <p class="text-sm text-muted-foreground">
-                              <a
-                                href={`/${activity.user.username}`}
-                                class="font-medium text-foreground hover:text-blue-400 hover:underline transition-colors"
-                              >
-                                {activity.user.username}
-                              </a>{" "}
-                              <span class="text-muted-foreground">
-                                {(() => {
-                                  switch (activity.type) {
-                                    case "create_repo":
-                                      return "created a repository";
-                                    case "star":
-                                      return "starred";
-                                    case "fork":
-                                      return "forked";
-                                    case "follow":
-                                      return "started following";
-                                    case "issue":
-                                      return `opened issue #${payload.number || ""} in`;
-                                    case "open_pr":
-                                      return `opened pull request #${payload.number || ""} in`;
-                                    default:
-                                      return `${activity.action} ${activity.type}`;
-                                  }
-                                })()}
-                              </span>{" "}
-                              {activity.repository && (
-                                <a
-                                  href={`/${activity.repository.ownerId}/${activity.repository.name}`}
-                                  class="font-medium text-foreground hover:text-blue-400 hover:underline transition-colors"
-                                >
-                                  {activity.repository.name}
-                                </a>
-                              )}
-                              {!activity.repository &&
-                                activity.type === "follow" && (
-                                  <a
-                                    href={`/${payload.targetUsername}`}
-                                    class="font-medium text-foreground hover:text-blue-400 hover:underline transition-colors"
-                                  >
-                                    {payload.targetUsername}
-                                  </a>
-                                )}
-                            </p>
-                            <p class="text-xs text-muted-foreground mt-1">
-                              {timeAgo(activity.createdAt)}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
+        <!-- Activity Feed Section -->
+        <div class="rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm overflow-hidden shadow-sm">
+          <div class="p-4 border-b border-border/80 bg-muted/30 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-foreground" />
+              <h2 class="text-sm font-bold text-foreground">Recent Activity</h2>
+            </div>
+            <a href="/explore" class="text-xs font-medium text-primary hover:underline">
+              Explore feed
+            </a>
+          </div>
+
+          {activities.length > 0 ? (
+            <div class="divide-y divide-border/60">
+              {activities.map((activity) => {
+                const payload = activity.payload ? JSON.parse(activity.payload) : {};
+                return (
+                  <div class="flex items-start gap-3.5 p-4 hover:bg-accent/40 transition-colors">
+                    {activity.user?.avatarUrl ? (
+                      <img
+                        src={activity.user.avatarUrl}
+                        alt={activity.user.username}
+                        class="h-7 w-7 rounded-full border border-border object-cover flex-shrink-0 mt-0.5"
+                      />
+                    ) : (
+                      <div class="h-7 w-7 rounded-full bg-secondary border border-border flex items-center justify-center text-xs font-semibold text-foreground flex-shrink-0 mt-0.5">
+                        {activity.user?.username?.[0]?.toUpperCase() || "?"}
+                      </div>
+                    )}
+                    <div class="flex-1 min-w-0">
+                      <p class="text-xs sm:text-sm text-muted-foreground leading-snug">
+                        <a
+                          href={`/${activity.user?.username}`}
+                          class="font-semibold text-foreground hover:text-primary transition-colors"
+                        >
+                          @{activity.user?.username}
+                        </a>{" "}
+                        <span>
+                          {activity.type === "create_repo" && "created repository"}
+                          {activity.type === "star" && "starred"}
+                          {activity.type === "fork" && "forked"}
+                          {activity.type === "follow" && "started following"}
+                          {activity.type === "issue" && `opened issue #${payload.number || ""} in`}
+                          {activity.type === "open_pr" && `opened pull request #${payload.number || ""} in`}
+                          {!["create_repo", "star", "fork", "follow", "issue", "open_pr"].includes(activity.type) && `${activity.action || ""} ${activity.type}`}
+                        </span>{" "}
+                        {activity.repository && (
+                          <a
+                            href={`/${activity.repository.ownerId || activity.user?.username}/${activity.repository.name}`}
+                            class="font-semibold text-foreground hover:text-primary transition-colors"
+                          >
+                            {activity.repository.name}
+                          </a>
+                        )}
+                        {!activity.repository && activity.type === "follow" && (
+                          <a
+                            href={`/${payload.targetUsername}`}
+                            class="font-semibold text-foreground hover:text-primary transition-colors"
+                          >
+                            @{payload.targetUsername}
+                          </a>
+                        )}
+                      </p>
+                      <p class="text-[11px] text-muted-foreground mt-1">
+                        {timeAgo(activity.createdAt)}
+                      </p>
+                    </div>
                   </div>
-                ) : (
-                  <div class="text-center py-12">
-                    <h3 class="text-lg font-medium text-foreground mb-2">Discover interesting projects</h3>
-                    <p class="text-muted-foreground mb-6 text-sm">Follow users and star repositories to see activity here.</p>
-                    <a href="/explore">
-                      <Button variant="outline" className="border-border text-muted-foreground">
-                        Explore OpenCodeHub
-                      </Button>
-                    </a>
-                  </div>
-                )
-              }
-            </CardContent>
-          </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <div class="text-center py-16 px-4">
+              <div class="w-12 h-12 rounded-full bg-secondary/80 border border-border flex items-center justify-center mx-auto mb-3 text-muted-foreground">
+                <Compass className="h-6 w-6" />
+              </div>
+              <h3 class="text-base font-semibold text-foreground mb-1">No recent activity</h3>
+              <p class="text-sm text-muted-foreground max-w-sm mx-auto mb-6">
+                Follow developers and star repositories to see updates on your timeline.
+              </p>
+              <a
+                href="/explore"
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-foreground text-background text-sm font-medium hover:bg-foreground/90 transition-colors shadow-sm"
+              >
+                <Compass className="h-4 w-4" />
+                Explore community
+              </a>
+            </div>
+          )}
         </div>
-      </div>
+      </main>
     </div>
   </div>
 </BaseLayout>
@@ -521,14 +377,27 @@ function getActivityText(activity: any) {
   import { realtime } from "@/lib/realtime-client";
   import { toast } from "sonner";
 
+  // Repos search
+  const searchInput = document.getElementById("sidebar-repo-search") as HTMLInputElement;
+  const repoItems = document.querySelectorAll(".sidebar-repo-item");
+  searchInput?.addEventListener("input", () => {
+    const q = searchInput.value.toLowerCase().trim();
+    repoItems.forEach((item) => {
+      const el = item as HTMLElement;
+      const name = el.dataset.name || "";
+      if (!q || name.includes(q)) {
+        el.style.display = "flex";
+      } else {
+        el.style.display = "none";
+      }
+    });
+  });
+
   // Connect to realtime events
   realtime.connect();
 
-  // Listen for inbox updates
   realtime.on("inbox:refresh", (data: any) => {
-    // Only show if connected message passed explicitly or if it's a real update
     if (data.connected) return;
-
     toast.message("Inbox Updated", {
       description: "New items available in your inbox.",
       action: {
@@ -538,14 +407,12 @@ function getActivityText(activity: any) {
     });
   });
 
-  // Listen for PR updates
   realtime.on("pr:updated", (data: any) => {
     toast.info(`PR Updated: #${data.prNumber} ${data.title}`, {
       description: "Pull request has been updated.",
     });
   });
 
-  // Listen for notifications
   realtime.on("notification:new", (data: any) => {
     toast.success(data.title, {
       description: data.body,

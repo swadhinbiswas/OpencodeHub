@@ -2,7 +2,18 @@
 import { resolveOrgOwners } from "@/lib/repo-owner";
 import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
+import {
+  GitPullRequest,
+  GitMerge,
+  CircleDot,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  ArrowRight,
+  Filter,
+  Plus
+} from "lucide-react";
 
 const db = getDatabase();
 
@@ -12,6 +23,10 @@ const sort = Astro.url.searchParams.get("sort") || "newest";
 
 // Fetch pull requests from public repos
 let pullRequests: any[] = [];
+let openCount = 0;
+let mergedCount = 0;
+let closedCount = 0;
+
 try {
   const rawPRs = await db.query.pullRequests.findMany({
     where: filter === "closed" 
@@ -39,6 +54,20 @@ try {
   pullRequests = (await resolveOrgOwners(rawPRs)).filter(pr => 
     pr.repository?.visibility === "public"
   );
+
+  // Fetch counts for badges
+  const allPublicPRs = await db.query.pullRequests.findMany({
+    columns: { state: true },
+    with: {
+      repository: {
+        columns: { visibility: true }
+      }
+    }
+  });
+  const publicOnly = allPublicPRs.filter(p => p.repository?.visibility === "public");
+  openCount = publicOnly.filter(p => p.state === "open").length;
+  mergedCount = publicOnly.filter(p => p.state === "merged").length;
+  closedCount = publicOnly.filter(p => p.state === "closed").length;
 } catch (e) {
   console.error("Error fetching pull requests:", e);
 }
@@ -56,213 +85,195 @@ function timeAgo(date: string | number | Date) {
 }
 ---
 
-<BaseLayout title="Pull Requests - OpenCodeHub">
-  <div class="container py-8 max-w-5xl">
+<BaseLayout title="Pull Requests · OpenCodeHub">
+  <div class="container max-w-[1280px] mx-auto py-8 px-4 sm:px-6">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border mb-6">
       <div>
-        <h1 class="text-3xl font-bold text-foreground flex items-center gap-3">
-          <div class="p-2 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 border border-primary/30">
-            <svg class="h-7 w-7 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
-            </svg>
-          </div>
-          Pull Requests
+        <h1 class="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2.5">
+          <GitPullRequest className="h-6 w-6 text-foreground" />
+          <span>Pull Requests</span>
         </h1>
-        <p class="text-muted-foreground mt-2">Browse pull requests across all public repositories</p>
+        <p class="text-sm text-muted-foreground mt-1">Browse and review pull requests across all public repositories</p>
       </div>
     </div>
 
-    <!-- Filters -->
-    <div class="relative mb-6">
-      <div class="absolute -inset-[1px] bg-gradient-to-r from-primary/20 via-transparent to-secondary/20 rounded-xl opacity-50"></div>
-      <div class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm p-4">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <!-- Filter Tabs -->
-          <div class="flex items-center gap-1">
-            <a
-              href="/pulls?filter=open"
-              class:list={[
-                "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                filter === "open"
-                  ? "bg-success/20 text-success border border-success/30"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              ]}
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
-              </svg>
-              Open
-            </a>
-            <a
-              href="/pulls?filter=merged"
-              class:list={[
-                "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                filter === "merged"
-                  ? "bg-primary/20 text-primary border border-primary/30"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              ]}
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
-              </svg>
-              Merged
-            </a>
-            <a
-              href="/pulls?filter=closed"
-              class:list={[
-                "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                filter === "closed"
-                  ? "bg-destructive/20 text-destructive border border-destructive/30"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              ]}
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-              Closed
-            </a>
-            <a
-              href="/pulls?filter=all"
-              class:list={[
-                "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                filter === "all"
-                  ? "bg-primary/20 text-primary border border-primary/30"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              ]}
-            >
-              All
-            </a>
-          </div>
+    <!-- Filter Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+      <!-- State Filter Pills -->
+      <div class="inline-flex items-center gap-1 p-1 rounded-lg border border-border/80 bg-card/60 backdrop-blur-sm self-start">
+        <a
+          href="/pulls?filter=open"
+          class:list={[
+            "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors",
+            filter === "open"
+              ? "bg-secondary text-foreground font-semibold shadow-sm"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+          ]}
+        >
+          <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+          <span>Open</span>
+          <span class="ml-0.5 rounded-full bg-muted px-1.5 py-0.2 text-[11px] font-semibold text-muted-foreground">
+            {openCount}
+          </span>
+        </a>
+        <a
+          href="/pulls?filter=merged"
+          class:list={[
+            "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors",
+            filter === "merged"
+              ? "bg-secondary text-foreground font-semibold shadow-sm"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+          ]}
+        >
+          <span class="h-2 w-2 rounded-full bg-purple-500"></span>
+          <span>Merged</span>
+          <span class="ml-0.5 rounded-full bg-muted px-1.5 py-0.2 text-[11px] font-semibold text-muted-foreground">
+            {mergedCount}
+          </span>
+        </a>
+        <a
+          href="/pulls?filter=closed"
+          class:list={[
+            "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors",
+            filter === "closed"
+              ? "bg-secondary text-foreground font-semibold shadow-sm"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+          ]}
+        >
+          <span class="h-2 w-2 rounded-full bg-red-500"></span>
+          <span>Closed</span>
+          <span class="ml-0.5 rounded-full bg-muted px-1.5 py-0.2 text-[11px] font-semibold text-muted-foreground">
+            {closedCount}
+          </span>
+        </a>
+        <a
+          href="/pulls?filter=all"
+          class:list={[
+            "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors",
+            filter === "all"
+              ? "bg-secondary text-foreground font-semibold shadow-sm"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+          ]}
+        >
+          <span>All</span>
+        </a>
+      </div>
 
-          <!-- Sort -->
-          <div class="flex items-center gap-2">
-            <span class="text-sm text-muted-foreground">Sort:</span>
-            <select
-              id="sort-select"
-              class="rounded-lg border border-border bg-secondary/50 px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-primary/50"
-            >
-              <option value="newest" selected={sort === "newest"}>Newest</option>
-              <option value="oldest" selected={sort === "oldest"}>Oldest</option>
-            </select>
-          </div>
-        </div>
+      <!-- Sort Selection -->
+      <div class="flex items-center gap-2 self-end sm:self-center">
+        <label for="sort-select" class="text-xs text-muted-foreground font-medium">Sort:</label>
+        <select
+          id="sort-select"
+          class="h-8 rounded-md border border-border/70 bg-card px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
+        >
+          <option value="newest" selected={sort === "newest"}>Newest</option>
+          <option value="oldest" selected={sort === "oldest"}>Oldest</option>
+        </select>
       </div>
     </div>
 
-    <!-- Pull Requests List -->
-    <div class="relative">
-      <div class="absolute -inset-[1px] bg-gradient-to-r from-primary/20 via-transparent to-secondary/20 rounded-xl opacity-50"></div>
-      <div class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden">
-        {pullRequests.length > 0 ? (
-          <div class="divide-y divide-border">
-            {pullRequests.map((pr) => (
+    <!-- Pull Requests List Card -->
+    <div class="rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm overflow-hidden shadow-sm">
+      {pullRequests.length > 0 ? (
+        <div class="divide-y divide-border/60">
+          {pullRequests.map((pr) => {
+            const ownerName = pr.repository?.owner?.username || "unknown";
+            const repoName = pr.repository?.name || "repo";
+            return (
               <a
-                href={`/${pr.repository?.owner?.username}/${pr.repository?.name}/pulls/${pr.number}`}
-                class="block p-4 hover:bg-accent/50 transition-colors group"
+                href={`/${ownerName}/${repoName}/pulls/${pr.number}`}
+                class="group flex items-start gap-3.5 p-4 hover:bg-accent/40 transition-colors"
               >
-                <div class="flex items-start gap-3">
-                  <!-- Status Icon -->
-                  <div class:list={[
-                    "p-2 rounded-lg mt-0.5",
-                    pr.state === "open" 
-                      ? "bg-success/10 text-success" 
-                      : pr.state === "merged"
-                        ? "bg-primary/10 text-primary"
-                        : "bg-destructive/10 text-destructive"
-                  ]}>
-                    {pr.state === "open" ? (
-                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
-                      </svg>
-                    ) : pr.state === "merged" ? (
-                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
-                      </svg>
-                    ) : (
-                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                      </svg>
-                    )}
-                  </div>
+                <!-- Status Icon -->
+                <div class="mt-0.5 flex-shrink-0">
+                  {pr.state === "open" ? (
+                    <div class="h-6 w-6 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20" title="Open pull request">
+                      <GitPullRequest className="h-3.5 w-3.5" />
+                    </div>
+                  ) : pr.state === "merged" ? (
+                    <div class="h-6 w-6 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20" title="Merged pull request">
+                      <GitMerge className="h-3.5 w-3.5" />
+                    </div>
+                  ) : (
+                    <div class="h-6 w-6 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center border border-red-500/20" title="Closed pull request">
+                      <XCircle className="h-3.5 w-3.5" />
+                    </div>
+                  )}
+                </div>
 
-                  <div class="flex-1 min-w-0">
-                    <!-- Repo & Number -->
-                    <div class="flex items-center gap-2 mb-1">
-                      <span class="text-xs text-muted-foreground font-medium">
-                        {pr.repository?.owner?.username}/{pr.repository?.name}
-                      </span>
-                      <span class="text-muted-foreground/80">#{pr.number}</span>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-baseline gap-2 flex-wrap mb-1">
+                    <span class="text-xs font-semibold text-muted-foreground hover:text-foreground">
+                      {ownerName}/{repoName}
+                    </span>
+                    <span class="text-xs text-muted-foreground/80 font-mono">#{pr.number}</span>
+                  </div>
+                  
+                  <h3 class="text-sm font-semibold text-foreground group-hover:text-primary transition-colors leading-snug break-words">
+                    {pr.title}
+                  </h3>
+
+                  <!-- Branches & Meta Info -->
+                  <div class="flex items-center gap-2.5 mt-2 flex-wrap text-xs text-muted-foreground">
+                    <div class="flex items-center gap-1 font-mono text-[11px] bg-secondary/80 text-foreground px-2 py-0.5 rounded border border-border/50">
+                      <span>{pr.headBranch}</span>
+                      <ArrowRight className="h-2.5 w-2.5 text-muted-foreground" />
+                      <span>{pr.baseBranch}</span>
                     </div>
-                    <h3 class="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-                      {pr.title}
-                    </h3>
-                    
-                    <!-- Branch Info -->
-                    <div class="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                      <span class="px-2 py-0.5 rounded bg-secondary/50 font-mono">
-                        {pr.headBranch}
-                      </span>
-                      <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
-                      </svg>
-                      <span class="px-2 py-0.5 rounded bg-secondary/50 font-mono">
-                        {pr.baseBranch}
-                      </span>
-                    </div>
-                    
-                    <!-- Meta -->
-                    <div class="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                      <span>
-                        opened {timeAgo(pr.createdAt)} by {pr.author?.username || "unknown"}
-                      </span>
-                      {pr.state === "merged" && pr.mergedAt && (
-                        <span class="text-primary">
+
+                    <span>·</span>
+
+                    <span>
+                      opened {timeAgo(pr.createdAt)} by <span class="text-foreground font-medium">@{pr.author?.username || "unknown"}</span>
+                    </span>
+
+                    {pr.state === "merged" && pr.mergedAt && (
+                      <>
+                        <span>·</span>
+                        <span class="text-purple-400 font-medium">
                           merged {timeAgo(pr.mergedAt)}
                         </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <!-- Avatar -->
-                  <div class="hidden sm:block">
-                    {pr.author?.avatarUrl ? (
-                      <img
-                        src={pr.author.avatarUrl}
-                        alt={pr.author.username}
-                        class="w-8 h-8 rounded-full ring-2 ring-border"
-                      />
-                    ) : (
-                      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-xs font-bold text-primary-foreground ring-2 ring-border">
-                        {pr.author?.username?.[0]?.toUpperCase() || "?"}
-                      </div>
+                      </>
                     )}
                   </div>
                 </div>
+
+                <!-- Author Avatar -->
+                <div class="hidden sm:block flex-shrink-0">
+                  {pr.author?.avatarUrl ? (
+                    <img
+                      src={pr.author.avatarUrl}
+                      alt={pr.author.username}
+                      class="h-7 w-7 rounded-full border border-border/80 object-cover"
+                    />
+                  ) : (
+                    <div class="h-7 w-7 rounded-full bg-secondary border border-border/80 flex items-center justify-center text-xs font-medium text-foreground">
+                      {pr.author?.username?.[0]?.toUpperCase() || "?"}
+                    </div>
+                  )}
+                </div>
               </a>
-            ))}
+            );
+          })}
+        </div>
+      ) : (
+        <div class="text-center py-16 px-4">
+          <div class="w-12 h-12 rounded-full bg-secondary/80 border border-border flex items-center justify-center mx-auto mb-3 text-muted-foreground">
+            <GitPullRequest className="h-6 w-6" />
           </div>
-        ) : (
-          <div class="text-center py-16">
-            <div class="relative inline-block mb-4">
-              <svg class="h-16 w-16 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
-              </svg>
-              <div class="absolute inset-0 bg-primary blur-2xl opacity-20"></div>
-            </div>
-            <h3 class="text-lg font-semibold text-foreground mb-2">No pull requests found</h3>
-            <p class="text-muted-foreground">
-              {filter === "open" 
-                ? "No open pull requests at the moment." 
-                : filter === "merged"
-                  ? "No merged pull requests yet."
-                  : filter === "closed"
-                    ? "No closed pull requests."
-                    : "No pull requests have been created yet."}
-            </p>
-          </div>
-        )}
-      </div>
+          <h3 class="text-base font-semibold text-foreground mb-1">No pull requests found</h3>
+          <p class="text-sm text-muted-foreground max-w-sm mx-auto">
+            {filter === "open" 
+              ? "There are no open pull requests in public repositories right now." 
+              : filter === "merged"
+                ? "No merged pull requests yet."
+                : filter === "closed"
+                  ? "No closed pull requests."
+                  : "No pull requests have been created yet."}
+          </p>
+        </div>
+      )}
     </div>
   </div>
 </BaseLayout>

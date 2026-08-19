@@ -1,0 +1,248 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { Header } from "../components/layout/Header";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import { 
+  Globe, 
+  Star, 
+  Users, 
+  TrendingUp, 
+  Zap, 
+  Server, 
+  GitFork, 
+  ShieldCheck, 
+  Network, 
+  ArrowRight,
+  Sparkles,
+  Layers,
+  Code2
+} from "lucide-react";
+import { verifyToken } from "../lib/auth";
+import { getDb } from "../lib/db";
+import { instances, cachedRepos, communityUsers } from "../lib/db/schema";
+import { sql, desc } from "drizzle-orm";
+
+const token = Astro.cookies.get("community_session")?.value;
+const user = token ? await verifyToken(token) : null;
+
+const db = getDb() as any;
+const instancesCount = await db.select({ count: sql<number>`count(*)` }).from(instances).then((res: any) => res[0].count).catch(() => 0);
+const reposCount = await db.select({ count: sql<number>`count(*)` }).from(cachedRepos).then((res: any) => res[0].count).catch(() => 0);
+const usersCount = await db.select({ count: sql<number>`count(*)` }).from(communityUsers).then((res: any) => res[0].count).catch(() => 0);
+
+// Fetch a few featured repos for the hero showcase
+const featuredRepos = await db.query.cachedRepos.findMany({
+  orderBy: [desc(cachedRepos.starCount), desc(cachedRepos.updatedAt)],
+  limit: 3,
+  with: { instance: true }
+}).catch(() => []);
+---
+<BaseLayout title="OpenCodeHub Community — Decentralized Code Aggregator">
+  <Header client:load user={user} />
+  <main class="space-y-16 sm:space-y-24">
+    
+    <!-- Hero Section -->
+    <section class="relative overflow-hidden pt-12 pb-20 sm:pt-20 sm:pb-28">
+      {/* Ambient background glow */}
+      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-gradient-to-tr from-primary/20 via-indigo-500/15 to-purple-600/10 blur-[120px] pointer-events-none -z-10"></div>
+      
+      <div class="container px-4 sm:px-8 text-center space-y-8 max-w-4xl mx-auto">
+        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-medium backdrop-blur-sm shadow-sm animate-in fade-in zoom-in duration-500">
+          <Zap className="h-3.5 w-3.5 fill-primary" />
+          <span>Decentralized &amp; Self-Hosted Hub</span>
+        </div>
+
+        <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight leading-[1.15] text-foreground">
+          Discover Open Source Beyond <br />
+          <span class="bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
+            Centralized Platforms
+          </span>
+        </h1>
+
+        <p class="text-base sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+          Aggregating public repositories, developers, and code from self-hosted OpenCodeHub nodes worldwide. Explore, star, follow, and federate without lock-in.
+        </p>
+
+        <!-- CTA Action Buttons -->
+        <div class="flex flex-wrap justify-center items-center gap-4 pt-2">
+          <a href="/explore">
+            <Button size="lg" className="gap-2 shadow-lg shadow-primary/25 bg-primary hover:bg-primary/90 text-sm font-semibold h-11 px-6">
+              <Globe className="h-4 w-4" />
+              Explore Repositories
+            </Button>
+          </a>
+          <a href="/instances/submit">
+            <Button size="lg" variant="outline" className="gap-2 border-border/80 hover:bg-card text-sm font-medium h-11 px-6">
+              <Server className="h-4 w-4 text-primary" />
+              Submit Your Node
+            </Button>
+          </a>
+        </div>
+
+        <!-- Live Global Metrics -->
+        <div class="grid grid-cols-3 gap-3 sm:gap-6 pt-10 max-w-2xl mx-auto">
+          <div class="rounded-2xl border border-border/50 bg-card/50 backdrop-blur-md p-4 sm:p-6 text-center hover:border-primary/40 transition-colors shadow-sm">
+            <div class="text-2xl sm:text-4xl font-extrabold text-foreground tracking-tight flex items-center justify-center gap-1">
+              <span class="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+                {instancesCount || 0}
+              </span>
+            </div>
+            <div class="text-xs sm:text-sm font-medium text-muted-foreground mt-1 flex items-center justify-center gap-1">
+              <Server className="h-3 w-3 text-primary" />
+              Active Nodes
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-border/50 bg-card/50 backdrop-blur-md p-4 sm:p-6 text-center hover:border-primary/40 transition-colors shadow-sm">
+            <div class="text-2xl sm:text-4xl font-extrabold text-foreground tracking-tight">
+              <span class="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                {reposCount || 0}
+              </span>
+            </div>
+            <div class="text-xs sm:text-sm font-medium text-muted-foreground mt-1 flex items-center justify-center gap-1">
+              <Code2 className="h-3 w-3 text-indigo-400" />
+              Public Repos
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-border/50 bg-card/50 backdrop-blur-md p-4 sm:p-6 text-center hover:border-primary/40 transition-colors shadow-sm">
+            <div class="text-2xl sm:text-4xl font-extrabold text-foreground tracking-tight">
+              <span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                {usersCount || 0}
+              </span>
+            </div>
+            <div class="text-xs sm:text-sm font-medium text-muted-foreground mt-1 flex items-center justify-center gap-1">
+              <Users className="h-3 w-3 text-purple-400" />
+              Community Users
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Why Federated / Features Grid -->
+    <section class="container px-4 sm:px-8">
+      <div class="text-center space-y-3 mb-12 max-w-2xl mx-auto">
+        <h2 class="text-2xl sm:text-3xl font-bold tracking-tight">Why the OpenCodeHub Network?</h2>
+        <p class="text-sm sm:text-base text-muted-foreground">
+          A truly open collaboration hub designed for self-hosters, sovereign developers, and private organizations.
+        </p>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-6">
+        <div class="rounded-2xl border border-border/50 bg-card/40 p-6 space-y-4 hover:border-primary/30 transition-all hover:-translate-y-1 shadow-sm">
+          <div class="h-12 w-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+            <Network className="h-6 w-6" />
+          </div>
+          <h3 class="text-lg font-bold">Federated Discovery</h3>
+          <p class="text-sm text-muted-foreground leading-relaxed">
+            Run your own instance on bare-metal or cloud. Submit your URL once, and your public projects become discoverable globally while remaining entirely on your server.
+          </p>
+        </div>
+
+        <div class="rounded-2xl border border-border/50 bg-card/40 p-6 space-y-4 hover:border-primary/30 transition-all hover:-translate-y-1 shadow-sm">
+          <div class="h-12 w-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
+            <Star className="h-6 w-6" />
+          </div>
+          <h3 class="text-lg font-bold">Global Social Graph</h3>
+          <p class="text-sm text-muted-foreground leading-relaxed">
+            Star repositories, follow profiles, and track contributions across different nodes. Your activity seamlessly aggregates into your unified Community dashboard.
+          </p>
+        </div>
+
+        <div class="rounded-2xl border border-border/50 bg-card/40 p-6 space-y-4 hover:border-primary/30 transition-all hover:-translate-y-1 shadow-sm">
+          <div class="h-12 w-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
+            <ShieldCheck className="h-6 w-6" />
+          </div>
+          <h3 class="text-lg font-bold">Privacy &amp; Sovereignty</h3>
+          <p class="text-sm text-muted-foreground leading-relaxed">
+            Only explicit <code>visibility=public</code> projects are indexed. Private repositories and credentials never leave your local infrastructure.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- How Federation Works (4-step visual flow) -->
+    <section class="container px-4 sm:px-8">
+      <div class="rounded-3xl border border-border/60 bg-card/60 backdrop-blur-xl p-8 sm:p-12 relative overflow-hidden">
+        <div class="absolute -right-20 -bottom-20 w-80 h-80 bg-primary/10 blur-[100px] pointer-events-none"></div>
+
+        <div class="space-y-3 mb-10 text-center sm:text-left">
+          <Badge variant="outline" className="text-xs uppercase tracking-wider">Simple Architecture</Badge>
+          <h2 class="text-2xl sm:text-3xl font-bold tracking-tight">How It Works</h2>
+          <p class="text-sm text-muted-foreground max-w-xl">
+            From submitting your URL to global synchronization, the process is zero-configuration and automated.
+          </p>
+        </div>
+
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div class="space-y-3 relative">
+            <div class="h-10 w-10 rounded-xl bg-primary text-primary-foreground font-bold flex items-center justify-center text-sm shadow-md shadow-primary/20">
+              1
+            </div>
+            <h4 class="font-semibold text-base">Submit Node</h4>
+            <p class="text-xs text-muted-foreground leading-relaxed">
+              Paste your instance URL (e.g. <code>https://code.example.com</code>) at the submission portal.
+            </p>
+          </div>
+
+          <div class="space-y-3 relative">
+            <div class="h-10 w-10 rounded-xl bg-indigo-500 text-white font-bold flex items-center justify-center text-sm shadow-md shadow-indigo-500/20">
+              2
+            </div>
+            <h4 class="font-semibold text-base">Verification</h4>
+            <p class="text-xs text-muted-foreground leading-relaxed">
+              Our edge worker probes <code>/api/instance</code> to verify health and discover supported features.
+            </p>
+          </div>
+
+          <div class="space-y-3 relative">
+            <div class="h-10 w-10 rounded-xl bg-purple-500 text-white font-bold flex items-center justify-center text-sm shadow-md shadow-purple-500/20">
+              3
+            </div>
+            <h4 class="font-semibold text-base">Continuous Sync</h4>
+            <p class="text-xs text-muted-foreground leading-relaxed">
+              Public repos, owner profiles, stars, and tags are cached in Turso and refreshed periodically.
+            </p>
+          </div>
+
+          <div class="space-y-3 relative">
+            <div class="h-10 w-10 rounded-xl bg-pink-500 text-white font-bold flex items-center justify-center text-sm shadow-md shadow-pink-500/20">
+              4
+            </div>
+            <h4 class="font-semibold text-base">Collaborate</h4>
+            <p class="text-xs text-muted-foreground leading-relaxed">
+              Clone directly via <code>httpCloneUrl</code>, star locally, and open cross-node pull requests.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bottom CTA Banner -->
+    <section class="container px-4 sm:px-8 pb-12">
+      <div class="rounded-3xl border border-primary/20 bg-gradient-to-r from-primary/10 via-indigo-500/10 to-purple-600/10 p-8 sm:p-12 text-center space-y-6 max-w-4xl mx-auto">
+        <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Ready to Connect Your Instance?</h2>
+        <p class="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto">
+          Join the federated network today. It only takes 5 seconds to submit your URL and get listed.
+        </p>
+        <div class="flex flex-wrap justify-center gap-3">
+          <a href="/instances/submit">
+            <Button size="lg" className="gap-2 bg-primary hover:bg-primary/90 shadow-md shadow-primary/20">
+              <Sparkles className="h-4 w-4" />
+              Submit Instance Now
+            </Button>
+          </a>
+          <a href="/explore">
+            <Button size="lg" variant="outline">
+              Explore Network
+            </Button>
+          </a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</BaseLayout>

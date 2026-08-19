@@ -1,0 +1,65 @@
+---
+import { Github, Globe, Server, Sparkles, Heart } from "lucide-react";
+---
+<footer class="border-t border-border/40 bg-card/40 backdrop-blur-sm mt-auto">
+  <div class="container px-4 py-12">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
+      <!-- Brand & Mission -->
+      <div class="md:col-span-2 space-y-4">
+        <div class="flex items-center gap-2">
+          <div class="h-8 w-8 rounded-lg bg-gradient-to-br from-primary via-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-primary/20">
+            <Github className="h-4 w-4" />
+          </div>
+          <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
+            OpenCodeHub Community
+          </span>
+        </div>
+        <p class="text-sm text-muted-foreground max-w-md leading-relaxed">
+          The decentralized aggregator for self-hosted OpenCodeHub instances. Discover public repositories, connect with developers, and build across federated nodes without central gatekeepers.
+        </p>
+        <div class="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            Federation Active
+          </span>
+          <span>·</span>
+          <span>Powered by Turso & Astro</span>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <div class="space-y-3">
+        <h4 class="text-sm font-semibold text-foreground tracking-wider uppercase">Platform</h4>
+        <ul class="space-y-2 text-sm text-muted-foreground">
+          <li><a href="/explore" class="hover:text-primary transition-colors flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" /> Explore Repos</a></li>
+          <li><a href="/instances" class="hover:text-primary transition-colors flex items-center gap-1.5"><Server className="h-3.5 w-3.5" /> Federated Instances</a></li>
+          <li><a href="/instances/submit" class="hover:text-primary transition-colors flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5" /> Submit Instance</a></li>
+          <li><a href="/dashboard" class="hover:text-primary transition-colors">User Dashboard</a></li>
+        </ul>
+      </div>
+
+      <!-- Resources & Docs -->
+      <div class="space-y-3">
+        <h4 class="text-sm font-semibold text-foreground tracking-wider uppercase">Open Source</h4>
+        <ul class="space-y-2 text-sm text-muted-foreground">
+          <li><a href="https://github.com/swadhinbiswas/OpencodeHub" target="_blank" rel="noreferrer" class="hover:text-primary transition-colors flex items-center gap-1.5"><Github className="h-3.5 w-3.5" /> GitHub Repo</a></li>
+          <li><a href="/instances/submit" class="hover:text-primary transition-colors">Self-Host Docs</a></li>
+          <li><a href="/api/instances" class="hover:text-primary transition-colors">Public JSON API</a></li>
+          <li><a href="/auth/login" class="hover:text-primary transition-colors">Sign In / Register</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Bottom Bar -->
+    <div class="border-t border-border/40 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
+      <div>
+        © {new Date().getFullYear()} OpenCodeHub Community. Built for the federated future.
+      </div>
+      <div class="flex items-center gap-1">
+        <span>Crafted with</span>
+        <Heart className="h-3.5 w-3.5 text-rose-500 fill-rose-500" />
+        <span>for open source self-hosters</span>
+      </div>
+    </div>
+  </div>
+</footer>

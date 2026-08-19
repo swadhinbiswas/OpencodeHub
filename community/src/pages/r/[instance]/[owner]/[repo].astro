@@ -1,0 +1,282 @@
+---
+import BaseLayout from "../../../../layouts/BaseLayout.astro";
+import { Header } from "../../../../components/layout/Header";
+import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
+import { Button } from "../../../../components/ui/button";
+import { Badge } from "../../../../components/ui/badge";
+import { 
+  Star, 
+  GitFork, 
+  Copy, 
+  ExternalLink, 
+  Code, 
+  BookOpen, 
+  ArrowLeft, 
+  Terminal, 
+  Globe, 
+  Check,
+  ShieldAlert,
+  Server
+} from "lucide-react";
+import { verifyToken } from "../../../../lib/auth";
+import { getDb } from "../../../../lib/db";
+import { eq, and } from "drizzle-orm";
+import { cachedRepos, instances, stars } from "../../../../lib/db/schema";
+
+const token = Astro.cookies.get("community_session")?.value;
+const user = token ? await verifyToken(token) : null;
+const { instance, owner, repo } = Astro.params;
+const fullName = `${owner}/${repo}`;
+
+const db = getDb() as any;
+
+// Find the instance first
+const instanceData = await db.query.instances.findFirst({
+  where: eq(instances.name, instance as string)
+}).catch(() => null);
+
+// Then find the repo
+let repoData = null;
+if (instanceData) {
+  repoData = await db.query.cachedRepos.findFirst({
+    where: and(
+      eq(cachedRepos.instanceId, instanceData.id),
+      eq(cachedRepos.fullName, fullName)
+    )
+  }).catch(() => null);
+}
+
+// Check if current user has starred this repo
+let isStarred = false;
+if (user && repoData) {
+  const existingStar = await db.query.stars.findFirst({
+    where: and(
+      eq(stars.userId, user.sub),
+      eq(stars.repoId, repoData.id)
+    )
+  }).catch(() => null);
+  isStarred = !!existingStar;
+}
+
+const starCount = repoData?.starCount ?? 0;
+const forkCount = repoData?.forkCount ?? 0;
+const httpCloneUrl = repoData?.httpCloneUrl ?? `https://${instance}/${fullName}.git`;
+const language = repoData?.language ?? "Unknown";
+const description = repoData?.description ?? "No description provided.";
+---
+<BaseLayout title={`${fullName} — OpenCodeHub Community`}>
+  <Header client:load user={user} />
+  
+  <main class="container px-4 sm:px-8 py-8 sm:py-12 space-y-8 max-w-5xl mx-auto">
+    
+    <!-- Breadcrumbs -->
+    <div class="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+      <a href="/explore" class="hover:text-foreground">Explore</a>
+      <span>/</span>
+      {instanceData ? (
+        <a href={`/instances/${instanceData.id}`} class="hover:text-foreground flex items-center gap-1">
+          <Server className="h-3 w-3 text-primary" />
+          {instance}
+        </a>
+      ) : (
+        <span>{instance}</span>
+      )}
+      <span>/</span>
+      <a href={`/u/${owner}`} class="hover:text-foreground">@{owner}</a>
+      <span>/</span>
+      <span class="text-foreground font-semibold">{repo}</span>
+    </div>
+
+    <!-- Repository Header -->
+    <div class="rounded-3xl border border-border/60 bg-card/60 backdrop-blur-xl p-6 sm:p-8 space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div class="space-y-2">
+          <div class="flex items-center gap-3 flex-wrap">
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2">
+              <BookOpen className="h-7 w-7 text-primary shrink-0" />
+              {fullName}
+            </h1>
+            <Badge variant="outline" className="text-xs uppercase font-semibold">
+              {repoData?.visibility || "public"}
+            </Badge>
+          </div>
+
+          <p class="text-sm sm:text-base text-muted-foreground max-w-2xl leading-relaxed">
+            {description}
+          </p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-2 shrink-0">
+          <Button 
+            id="star-btn"
+            variant="outline" 
+            size="sm" 
+            className={`gap-1.5 text-xs font-semibold ${isStarred ? "bg-amber-500/15 text-amber-400 border-amber-500/40" : ""}`}
+            data-repo-id={repoData?.id} 
+            data-full-name={fullName}
+          >
+            <Star className={`h-4 w-4 ${isStarred ? "text-amber-400 fill-amber-400" : "text-amber-400"}`} />
+            <span id="star-label">{isStarred ? "Starred" : "Star"}</span>
+          </Button>
+
+          <a href={`${instanceData?.siteUrl || `https://${instance}`}/${fullName}`} target="_blank" rel="noreferrer">
+            <Button size="sm" className="gap-1.5 text-xs font-semibold bg-primary hover:bg-primary/90">
+              <ExternalLink className="h-3.5 w-3.5" />
+              View Origin
+            </Button>
+          </a>
+        </div>
+      </div>
+
+      <!-- Quick Git Clone Bar -->
+      <div class="rounded-xl border border-border/60 bg-muted/30 p-3 flex items-center justify-between gap-3 text-xs">
+        <div class="flex items-center gap-2 text-muted-foreground font-mono overflow-x-auto">
+          <Terminal className="h-4 w-4 text-primary shrink-0" />
+          <span class="text-foreground shrink-0 select-all font-medium">git clone {httpCloneUrl}</span>
+        </div>
+        <button 
+          id="copy-clone-btn"
+          class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card border border-border/60 hover:bg-accent text-foreground text-xs font-medium transition-colors"
+          data-clone-url={`git clone ${httpCloneUrl}`}
+        >
+          <Copy className="h-3.5 w-3.5" />
+          <span>Copy</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Content & Sidebar -->
+    <div class="grid lg:grid-cols-3 gap-8">
+      
+      <!-- Left: Instructions & Docs -->
+      <div class="lg:col-span-2 space-y-6">
+        <Card className="border-border/60 bg-card/50">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-primary" />
+              About This Federated Project
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm text-muted-foreground leading-relaxed">
+            <p>
+              This repository is hosted natively on the <b>{instance}</b> node and aggregated to the community catalog via federated metadata caching.
+            </p>
+            <p>
+              To browse source files, commits, issues, and pull requests directly, click the <b>View Origin</b> button above to visit the home node.
+            </p>
+          </CardContent>
+        </Card>
+
+        <!-- Contribution Card -->
+        <Card className="border-border/60 bg-card/50">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <GitFork className="h-4 w-4 text-indigo-400" />
+              How to Fork &amp; Contribute
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-xs sm:text-sm text-muted-foreground leading-relaxed">
+            <ol class="space-y-2.5 list-decimal list-inside">
+              <li>Clone the repository using standard Git: <code class="bg-muted px-1.5 py-0.5 rounded font-mono text-xs">git clone {httpCloneUrl}</code></li>
+              <li>Make your changes locally and commit them to a new branch.</li>
+              <li>Push the branch to your own self-hosted OpenCodeHub node.</li>
+              <li>Submit a cross-node federated pull request to <code class="bg-muted px-1.5 py-0.5 rounded font-mono text-xs">@{owner}</code>.</li>
+            </ol>
+          </CardContent>
+        </Card>
+      </div>
+
+      <!-- Right: Meta Info -->
+      <div class="space-y-6">
+        <Card className="border-border/60 bg-card/50">
+          <CardContent className="p-5 space-y-4">
+            <h3 class="text-sm font-bold text-foreground">Project Details</h3>
+            
+            <div class="space-y-3 text-xs">
+              <div class="flex justify-between items-center py-1 border-b border-border/40">
+                <span class="text-muted-foreground flex items-center gap-1.5"><Code className="h-3.5 w-3.5 text-primary" /> Primary Language</span>
+                <span class="font-semibold text-foreground">{language}</span>
+              </div>
+              <div class="flex justify-between items-center py-1 border-b border-border/40">
+                <span class="text-muted-foreground flex items-center gap-1.5"><Star className="h-3.5 w-3.5 text-amber-400" /> Stars</span>
+                <span class="font-semibold text-foreground">{starCount}</span>
+              </div>
+              <div class="flex justify-between items-center py-1 border-b border-border/40">
+                <span class="text-muted-foreground flex items-center gap-1.5"><GitFork className="h-3.5 w-3.5" /> Forks</span>
+                <span class="font-semibold text-foreground">{forkCount}</span>
+              </div>
+              <div class="flex justify-between items-center py-1">
+                <span class="text-muted-foreground flex items-center gap-1.5"><Server className="h-3.5 w-3.5 text-purple-400" /> Host Node</span>
+                <span class="font-semibold text-foreground">{instance}</span>
+              </div>
+            </div>
+
+            <div class="pt-2">
+              <a href={`${instanceData?.siteUrl || `https://${instance}`}/${fullName}`} target="_blank" rel="noreferrer" class="w-full block">
+                <Button variant="outline" className="w-full text-xs gap-1.5">
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Open on {instance}
+                </Button>
+              </a>
+            </div>
+          </CardContent>
+        </Card>
+
+        <!-- Social Disclaimer -->
+        <div class="rounded-2xl border border-border/60 bg-muted/20 p-4 text-[11px] text-muted-foreground leading-relaxed space-y-1">
+          <div class="font-semibold text-foreground">Community Social Actions:</div>
+          <p>
+            Stars registered on this hub are stored in the federated catalog. To star directly on the origin server, sign into that node.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    import { toast } from "sonner";
+
+    // Copy Clone command
+    const copyBtn = document.getElementById('copy-clone-btn');
+    copyBtn?.addEventListener('click', () => {
+      const text = copyBtn.dataset.cloneUrl || "";
+      navigator.clipboard.writeText(text);
+      toast.success("Command copied to clipboard!");
+    });
+
+    // Star Toggle
+    const starBtn = document.getElementById('star-btn');
+    const starLabel = document.getElementById('star-label');
+
+    starBtn?.addEventListener('click', async () => {
+      const repoId = starBtn.dataset.repoId;
+      const fullName = starBtn.dataset.fullName;
+
+      try {
+        const res = await fetch('/api/stars', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ repoId, fullName })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          const starred = data.data?.starred;
+          if (starLabel) starLabel.textContent = starred ? "Starred" : "Star";
+          starBtn.classList.toggle("bg-amber-500/15", starred);
+          starBtn.classList.toggle("text-amber-400", starred);
+          starBtn.classList.toggle("border-amber-500/40", starred);
+          toast.success(starred ? `Starred ${fullName}` : `Unstarred ${fullName}`);
+        } else if (res.status === 401) {
+          toast.error("Please sign in to star repositories");
+        } else {
+          toast.error(data.error || "Failed to update star");
+        }
+      } catch (err) {
+        toast.error("Network error");
+      }
+    });
+  </script>
+</BaseLayout>

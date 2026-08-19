@@ -13,6 +13,33 @@ OpenCodeHub is a self-hosted Git platform. You can run it via **Docker** (recomm
 | **Disk** | 10GB | 50GB SSD |
 | **OS** | Linux (Ubuntu/Debian) | Linux |
 
+## CLI Installation (`opencodehub-cli`)
+
+Install the official OpenCodeHub CLI (`och`) to manage stacks, pull requests, and merge queues from your terminal:
+
+```bash
+# via npm
+npm install -g opencodehub-cli
+
+# via bun
+bun add -g opencodehub-cli
+
+# via pnpm
+pnpm add -g opencodehub-cli
+
+# via yarn
+yarn global add opencodehub-cli
+```
+
+Verify your installation:
+
+```bash
+och --version
+och --help
+```
+
+---
+
 ## 1-Click Installation (Recommended)
 
 ```bash

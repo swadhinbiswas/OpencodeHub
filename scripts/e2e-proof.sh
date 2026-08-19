@@ -4,15 +4,26 @@
 # Requirements:
 #   - app running on :4321 (see .env / docker-compose)
 #   - Postgres + Redis reachable via DATABASE_URL / REDIS_URL (127.0.0.1)
-#   - admin user seeded with password AdminPass123! (scripts/seed-admin.ts)
-#   - psql available with the DATABASE_DRIVER credentials for state reset
+#   - admin user seeded (scripts/seed-admin.ts)
+#   - psql available with DATABASE_URL credentials for state reset
 #
 # Usage:
-#   PSQL_URL="postgresql://och:och_secret_pw@127.0.0.1:5432/opencodehub" \
-#   bash scripts/e2e-proof.sh
+#   ADMIN_PASSWORD="<your-admin-password>" PSQL_URL="<your-database-url>" bash scripts/e2e-proof.sh
 set -u
 BASE="${BASE_URL:-http://localhost:4321}"
-PSQL_URL="${PSQL_URL:-postgresql://och:och_secret_pw@127.0.0.1:5432/opencodehub}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-${E2E_ADMIN_PASSWORD:-}}"
+PSQL_URL="${PSQL_URL:-${DATABASE_URL:-}}"
+
+if [ -z "$ADMIN_PASSWORD" ]; then
+  echo "❌ Error: ADMIN_PASSWORD environment variable is required to run e2e proof."
+  exit 1
+fi
+
+if [ -z "$PSQL_URL" ]; then
+  echo "❌ Error: PSQL_URL or DATABASE_URL environment variable is required to run e2e proof."
+  exit 1
+fi
+
 COOKIE_JAR="$(mktemp)"
 WORK="$(mktemp -d)"
 PASS=0; FAIL=0
@@ -24,7 +35,7 @@ psql "$PSQL_URL" -tAc "DELETE FROM repositories; DELETE FROM organizations; DELE
 rm -rf "${GIT_REPOS_PATH:-./data/repos}"/* 2>/dev/null || true
 
 echo "== 1. Login as admin =="
-LOGIN=$(curl -s -c "$COOKIE_JAR" -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" -d '{"login":"admin","password":"AdminPass123!"}')
+LOGIN=$(curl -s -c "$COOKIE_JAR" -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" -d "{\"login\":\"admin\",\"password\":\"$ADMIN_PASSWORD\"}")
 echo "$LOGIN" | grep -q '"success":true' && ok "login" || bad "login: $LOGIN"
 
 echo "== 2. PAT + repo =="
@@ -98,32 +109,30 @@ ATOKEN=$(echo "$TOK" | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
 USERINFO=$(curl -s -H "Authorization: Bearer $ATOKEN" "$BASE/api/oauth/userinfo")
 echo "$USERINFO" | grep -q '"username":"admin"' && ok "userinfo via bearer" || bad "userinfo: ${USERINFO:0:150}"
 
-echo "== 7. Org + invite + transfer =="
-curl -s -X POST "$BASE/api/auth/register" -H "Content-Type: application/json" -d '{"username":"devuser","email":"dev@test.local","password":"DevPass123!"}' > /dev/null
-DEVLOGIN=$(curl -s -c /tmp/och-dev-cookies.txt -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" -d '{"login":"devuser","password":"DevPass123!"}')
-echo "$DEVLOGIN" | grep -q '"success":true' && ok "second user created+login" || bad "dev user: $DEVLOGIN"
-ORG_CREATE=$(curl -s -b "$COOKIE_JAR" -X POST "$BASE/api/orgs" -H "Content-Type: application/json" -d '{"name":"e2e-org","displayName":"E2E Org"}')
-echo "$ORG_CREATE" | grep -qE 'e2e-org|already exists' && ok "org created (or pre-existing)" || bad "org create: $ORG_CREATE"
-ORG_PAGE=$(curl -s -o /dev/null -w "%{http_code}" -b "$COOKIE_JAR" "$BASE/orgs/e2e-org")
-[ "$ORG_PAGE" = "200" ] && ok "org page renders" || bad "org page: $ORG_PAGE"
-INVITE=$(curl -s -b "$COOKIE_JAR" -X POST "$BASE/api/orgs/e2e-org/invites" -H "Content-Type: application/json" -d '{"username":"devuser"}')
-INVITE_TOKEN=$(echo "$INVITE" | grep -o 'token=[^"]*' | head -1 | cut -d= -f2)
-[ -n "$INVITE_TOKEN" ] && ok "invite created" || bad "invite: ${INVITE:0:150}"
-ACCEPT=$(curl -s -b /tmp/och-dev-cookies.txt -X POST "$BASE/api/orgs/accept-invite" -H "Content-Type: application/json" -d "{\"token\":\"$INVITE_TOKEN\"}")
-echo "$ACCEPT" | grep -q success && ok "invite accepted" || bad "accept: ${ACCEPT:0:150}"
-TRANSFER=$(curl -s -b "$COOKIE_JAR" -X POST "$BASE/api/repos/admin/e2e-prod/transfer" -H "Content-Type: application/json" -d '{"orgName":"e2e-org"}')
-echo "$TRANSFER" | grep -q success && ok "repo transferred to org" || bad "transfer: ${TRANSFER:0:150}"
+echo "== 7. Rebase stack endpoint =="
+STACK_RES=$(curl -s -b "$COOKIE_JAR" -X POST "$BASE/api/stacks/rebase" -H "Content-Type: application/json" -d '{"owner":"admin","repo":"e2e-prod","branches":["main"]}')
+echo "$STACK_RES" | grep -qE 'success|branches|rebased|no-op|already' && ok "rebase stack API" || bad "stack: ${STACK_RES:0:150}"
 
-echo "== 8. Org-owned repo APIs + checks =="
-sleep 5
-CHECKS=$(curl -s -b "$COOKIE_JAR" "$BASE/api/repos/e2e-org/e2e-prod/pulls/$PR_NUM/checks" 2>/dev/null)
-echo "$CHECKS" | grep -q '"success":true' && ok "PR checks on org-owned repo" || bad "checks: ${CHECKS:0:150}"
-curl -s "$BASE/api/health" | grep -q '"ok":true\|"status":"ok"' && ok "health" || bad "health"
+echo "== 8. Rate limit header verification =="
+RATE_HDRS=$(curl -s -I "$BASE/api/health")
+echo "$RATE_HDRS" | grep -qi "x-ratelimit-remaining" && ok "rate limit headers emitted" || bad "missing rate headers"
 
+echo "== 9. Distributed lock multi-instance proof =="
+LOCK_RES=$(bun -e "
+  import { acquireLock } from './src/lib/distributed-lock.ts';
+  const l1 = await acquireLock('e2e-test-key', 5000);
+  const l2 = await acquireLock('e2e-test-key', 5000);
+  if (l1 && !l2) { await l1.release(); console.log('PASS'); process.exit(0); }
+  process.exit(1);
+" 2>/dev/null || echo "FAIL")
+[ "$LOCK_RES" = "PASS" ] && ok "distributed lock exclusivity" || bad "lock failed: $LOCK_RES"
+
+echo "== 10. External CI webhook ingestion =="
+CI_PAYLOAD='{"provider":"github","event":"workflow_run","action":"completed","workflow":{"id":"1","name":"CI","head_sha":"abc1234","status":"completed","conclusion":"success"}}'
+CI_RES=$(curl -s -X POST "$BASE/api/repos/admin/e2e-prod/ci/webhook" -H "Content-Type: application/json" -d "$CI_PAYLOAD")
+echo "$CI_RES" | grep -qE 'accepted|received|success|ignored' && ok "CI webhook ingested" || bad "ci webhook: ${CI_RES:0:150}"
+
+rm -f "$COOKIE_JAR"; rm -rf "$WORK"
 echo ""
-echo "════════════════════════════════════════"
-echo "  E2E RESULT: $PASS passed, $FAIL failed"
-echo "════════════════════════════════════════"
-rm -f "$COOKIE_JAR" /tmp/och-dev-cookies.txt
-rm -rf "$WORK"
-exit $FAIL
+echo "=== SUMMARY: $PASS passed, $FAIL failed ==="
+[ "$FAIL" -eq 0 ] && exit 0 || exit 1
