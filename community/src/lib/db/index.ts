@@ -1,25 +1,27 @@
 import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import * as schema from "./schema";
-import { mkdirSync } from "node:fs";
-import { resolve, dirname } from "node:path";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
 export function getDb() {
   if (_db) return _db;
 
-  const url = process.env.TURSO_DATABASE_URL || "file:./data/community.db";
+  const url = process.env.TURSO_DATABASE_URL;
   const authToken = process.env.TURSO_AUTH_TOKEN;
 
-  // Ensure the directory exists for file: URLs
-  if (url.startsWith("file:")) {
-    const filePath = url.replace("file:", "");
-    const abs = resolve(filePath);
-    try { mkdirSync(dirname(abs), { recursive: true }); } catch {}
+  if (!url) {
+    throw new Error(
+      "TURSO_DATABASE_URL is required. Set it in your .env to a Turso database URL.\n" +
+      "Example: TURSO_DATABASE_URL=libsql://your-db-name-your-org.turso.io"
+    );
   }
 
-  const client = createClient({ url, authToken });
+  const client = createClient({
+    url,
+    authToken: authToken || undefined,
+  });
+
   _db = drizzle(client, { schema });
   return _db;
 }
