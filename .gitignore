@@ -80,3 +80,4 @@ playwright-report/
 
 # Astro build cache
 .astro/
+.mimocode

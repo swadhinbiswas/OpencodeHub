@@ -1,3 +1,7 @@
+---
+title: "Air-gapped Environments"
+---
+
 # Air-gapped Environments
 
 OpenCodeHub can be deployed in fully offline, air-gapped networks.

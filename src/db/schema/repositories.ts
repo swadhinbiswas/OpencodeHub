@@ -40,10 +40,14 @@ export const repositories = pgTable(
     size: integer("size").default(0).notNull(), // Size in KB
     isFork: boolean("is_fork").default(false),
     forkedFromId: text("forked_from_id").references((): any => repositories.id),
+    forkedFromUrl: text("forked_from_url"), // External instance this fork came from
+    allowExternalPulls: boolean("allow_external_pulls").default(false), // Accept PRs from external instances
     isArchived: boolean("is_archived").default(false),
     isTemplate: boolean("is_template").default(false),
     isMirror: boolean("is_mirror").default(false),
     mirrorUrl: text("mirror_url"),
+    mirrorToken: text("mirror_token"), // Encrypted upstream auth token for private mirrors
+    mirrorUsername: text("mirror_username"), // Upstream username for basic-auth (federation push-back)
     lastMirrorSyncAt: timestamp("last_mirror_sync_at"),
     mirrorSyncStatus: text("mirror_sync_status"), // pending, syncing, success, failed
     hasIssues: boolean("has_issues").default(true),

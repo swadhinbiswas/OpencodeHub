@@ -193,3 +193,144 @@ function isIPv4Address(s: string): boolean {
 function isIPv6Address(s: string): boolean {
   return s.includes(":");
 }
+
+/**
+ * Validate a git clone/fetch URL (https, ssh, git, or scp-style
+ * `git@host:path` URLs) for server-side clone SSRF protection.
+ * Returns { valid: true } or { valid: false, reason: string }.
+ *
+ * When `allowPrivate` is true, localhost/private ranges are permitted. This is
+ * ONLY intended for federation between trusted instances (e.g. two instances
+ * on a private network or during local two-instance testing) and should be
+ * gated on an explicit env flag by callers.
+ */
+export async function validateGitCloneUrl(
+  url: string,
+  allowPrivate = false,
+): Promise<{ valid: true } | { valid: false; reason: string }> {
+  let hostname: string | null = null;
+  let scheme = "";
+
+  // scp-style: user@host:path (git@github.com:owner/repo.git)
+  const scpMatch = url.match(/^([^@/]+)@([^:/]+):(?:.+)$/);
+  if (scpMatch && !url.includes("://")) {
+    hostname = scpMatch[2];
+    scheme = "ssh";
+  } else {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return { valid: false, reason: "Invalid URL format" };
+    }
+    scheme = parsed.protocol.replace(":", "");
+    if (!["http", "https", "ssh", "git"].includes(scheme)) {
+      return {
+        valid: false,
+        reason: `Scheme "${parsed.protocol}" is not allowed. Only HTTP, HTTPS, SSH and git URLs are supported.`,
+      };
+    }
+    hostname = parsed.hostname.toLowerCase();
+  }
+
+  if (!hostname) {
+    return { valid: false, reason: "Missing hostname" };
+  }
+
+  // Block known-bad hostnames (localhost, cloud metadata, etc.)
+  if (BLOCKED_HOSTNAMES.has(hostname)) {
+    if (allowPrivate && (hostname === "localhost" || hostname === "localhost.localdomain" || hostname === "ip6-localhost" || hostname === "ip6-loopback")) {
+      return { valid: true };
+    }
+    return { valid: false, reason: `Hostname "${hostname}" is not allowed` };
+  }
+
+  // If hostname is already an IP, check it directly
+  if (isIPv4Address(hostname)) {
+    if (isIPv4Private(hostname)) {
+      if (allowPrivate && isIPv4Loopback(hostname)) {
+        return { valid: true };
+      }
+      return {
+        valid: false,
+        reason: `IP address "${hostname}" is in a private/reserved range`,
+      };
+    }
+    return { valid: true };
+  }
+
+  if (isIPv6Address(hostname)) {
+    if (isIPv6Private(hostname)) {
+      if (allowPrivate && isIPv6Loopback(hostname)) {
+        return { valid: true };
+      }
+      return {
+        valid: false,
+        reason: `IPv6 address "${hostname}" is in a private/reserved range`,
+      };
+    }
+    return { valid: true };
+  }
+
+  // Resolve hostname to IP(s) and check each
+  try {
+    const addresses = await dns
+      .resolve4(hostname)
+      .catch(() => [] as string[]);
+    const addresses6 = await dns
+      .resolve6(hostname)
+      .catch(() => [] as string[]);
+    const allAddresses = [...addresses, ...addresses6];
+
+    if (allAddresses.length === 0) {
+      return {
+        valid: false,
+        reason: `Unable to resolve hostname "${hostname}"`,
+      };
+    }
+
+    for (const addr of addresses) {
+      if (isIPv4Private(addr)) {
+        if (allowPrivate && isIPv4Loopback(addr)) {
+          continue;
+        }
+        return {
+          valid: false,
+          reason: `Hostname "${hostname}" resolves to private IP "${addr}"`,
+        };
+      }
+    }
+
+    for (const addr of addresses6) {
+      if (isIPv6Private(addr)) {
+        if (allowPrivate && isIPv6Loopback(addr)) {
+          continue;
+        }
+        return {
+          valid: false,
+          reason: `Hostname "${hostname}" resolves to private IPv6 "${addr}"`,
+        };
+      }
+    }
+  } catch (err) {
+    logger.warn(
+      { hostname, err },
+      "DNS resolution failed for git clone URL",
+    );
+    return {
+      valid: false,
+      reason: `DNS resolution failed for "${hostname}"`,
+    };
+  }
+
+  return { valid: true };
+}
+
+function isIPv4Loopback(ip: string): boolean {
+  return ip === "127.0.0.1" || ip.startsWith("127.");
+}
+
+function isIPv6Loopback(ip: string): boolean {
+  const lower = ip.toLowerCase().replace(/^\[|\]$/g, "");
+  return lower === "::1" || lower === "0:0:0:0:0:0:0:1";
+}

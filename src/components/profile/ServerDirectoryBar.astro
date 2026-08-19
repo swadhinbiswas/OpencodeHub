@@ -1,0 +1,89 @@
+---
+import { getDatabase, schema } from "@/db";
+import { asc, desc, eq } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { Users, Building2, ShieldCheck } from "lucide-react";
+
+interface Props {
+  currentUsername?: string;
+}
+
+const { currentUsername } = Astro.props;
+const db = getDatabase() as NodePgDatabase<typeof schema>;
+
+let allUsers: any[] = [];
+let allOrgs: any[] = [];
+
+try {
+  allUsers = await db.query.users.findMany({
+    where: eq(schema.users.isActive, true),
+    orderBy: [desc(schema.users.createdAt)],
+  });
+
+  allOrgs = await db.query.organizations.findMany({
+    orderBy: [asc(schema.organizations.name)],
+  });
+} catch (e) {
+  // Graceful fallback
+}
+
+const userCount = allUsers.length;
+const orgCount = allOrgs.length;
+---
+
+{ (userCount > 0 || orgCount > 0) && (
+  <div class="border-b border-border bg-card/60 backdrop-blur-sm px-4 py-2 text-xs text-muted-foreground">
+    <div class="container max-w-[1280px] mx-auto flex items-center justify-between gap-4 overflow-x-auto no-scrollbar">
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <span class="inline-flex items-center gap-1.5 font-semibold text-foreground px-2 py-0.5 rounded-full bg-primary/10 text-[11px] border border-primary/20">
+          <ShieldCheck className="h-3 w-3 text-primary" />
+          Self-Hosted Server
+        </span>
+        <span class="hidden sm:inline text-muted-foreground/80">•</span>
+        <span class="hidden sm:inline">
+          {userCount} member{userCount === 1 ? "" : "s"} · {orgCount} organization{orgCount === 1 ? "" : "s"}:
+        </span>
+      </div>
+
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <!-- Users Pills -->
+        {allUsers.map((u) => {
+          const isActive = u.username === currentUsername;
+          return (
+            <a
+              href={`/${u.username}`}
+              title={`${u.displayName || u.username} (@${u.username})`}
+              class:list={[
+                "inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-all border",
+                isActive
+                  ? "bg-foreground text-background font-semibold border-foreground"
+                  : "bg-secondary/60 hover:bg-secondary text-foreground/80 hover:text-foreground border-border/80"
+              ]}
+            >
+              {u.avatarUrl ? (
+                <img src={u.avatarUrl} alt={u.username} class="w-3.5 h-3.5 rounded-full object-cover" />
+              ) : (
+                <span class="w-3.5 h-3.5 rounded-full bg-primary/20 text-primary text-[9px] font-bold flex items-center justify-center">
+                  {u.username[0].toUpperCase()}
+                </span>
+              )}
+              <span>@{u.username}</span>
+            </a>
+          );
+        })}
+
+        <!-- Orgs Pills -->
+        {allOrgs.map((org) => (
+          <a
+            href={`/orgs/${org.name}`}
+            title={`Organization: ${org.displayName || org.name}`}
+            class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-secondary/40 hover:bg-secondary text-muted-foreground hover:text-foreground border border-border/60 transition-all"
+          >
+            <Building2 className="h-3 w-3 text-muted-foreground" />
+            <span>{org.displayName || org.name}</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </div>
+)}

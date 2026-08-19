@@ -12,6 +12,9 @@ import {
   Tag,
   Package,
   GitBranch,
+  GitMerge,
+  CircleDot,
+  BookOpen
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { RepoActions } from "@/components/repo/RepoActions";
@@ -43,6 +46,7 @@ interface Props {
     | "issues"
     | "pulls"
     | "actions"
+    | "merge-queue"
     | "releases"
     | "packages"
     | "branches"
@@ -85,13 +89,13 @@ const tabs = [
   {
     id: "issues",
     label: "Issues",
-    icon: FileText,
+    icon: CircleDot,
     href: `/${repo.owner}/${repo.name}/issues`,
     count: repo.openIssueCount,
   },
   {
     id: "pulls",
-    label: "Pull Requests",
+    label: "Pull requests",
     icon: GitPullRequest,
     href: `/${repo.owner}/${repo.name}/pulls`,
     count: repo.openPrCount,
@@ -101,6 +105,12 @@ const tabs = [
     label: "Actions",
     icon: PlayCircle,
     href: `/${repo.owner}/${repo.name}/actions`,
+  },
+  {
+    id: "merge-queue",
+    label: "Merge Queue",
+    icon: GitMerge,
+    href: `/${repo.owner}/${repo.name}/merge-queue`,
   },
   {
     id: "releases",
@@ -153,163 +163,73 @@ const tabs = [
 ];
 ---
 
-<div class="mb-6 -mx-4 px-4 sm:mx-0 sm:px-0">
-  <div class="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-primary/5 via-background to-muted/20 shadow-sm backdrop-blur-xl">
-    <!-- Decorative glow -->
-    <div class="absolute -top-24 -right-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-50 pointer-events-none" />
-    <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl opacity-50 pointer-events-none" />
-
-  <!-- Top Section: Repo Name & Action Buttons -->
-  <div
-    class="relative flex flex-col lg:flex-row lg:items-start justify-between gap-4 py-8 px-6 border-b border-border/50"
-  >
-    <!-- Repo Info -->
-    <div class="space-y-4 max-w-3xl">
-      <!-- Repo Name -->
-      <div class="flex items-center gap-3 flex-wrap">
-        <a
-          href={`/${repo.owner}`}
-          class="text-xl text-muted-foreground hover:text-foreground hover:underline transition-colors"
-        >
-          {repo.owner}
-        </a>
-        <span class="text-xl text-muted-foreground">/</span>
-        <a
-          href={`/${repo.owner}/${repo.name}`}
-          class="text-xl font-bold hover:text-primary hover:underline transition-colors"
-        >
-          {repo.name}
-        </a>
-        <Badge
-          variant="secondary"
-          className="rounded-full px-2.5 font-normal text-muted-foreground border-muted-foreground/30"
-        >
-          {repo.visibility}
-        </Badge>
-      </div>
-
-      <!-- Description -->
-      {
-        repo.description && (
-          <p class="text-base text-foreground/80 leading-relaxed">
-            {repo.description}
-          </p>
-        )
-      }
-
-      <!-- Metadata Row -->
-      <div
-        class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground"
+<div class="border-b border-border bg-card/40 backdrop-blur-md mb-6 -mx-4 px-4 sm:-mx-6 sm:px-6">
+  <!-- Top Section: Repo Name, Visibility & Action Buttons -->
+  <div class="max-w-[1280px] mx-auto py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <!-- Repo Name Breadcrumb -->
+    <div class="flex items-center gap-2.5 flex-wrap min-w-0">
+      <BookOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+      
+      <a
+        href={`/${repo.owner}`}
+        class="text-lg sm:text-xl text-[#58a6ff] hover:underline font-normal"
       >
-        {
-          repo.website && (
-            <a
-              href={repo.website}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="flex items-center gap-1.5 hover:text-primary transition-colors"
-            >
-              <svg
-                class="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                />
-              </svg>
-              {repo.website}
-            </a>
-          )
-        }
-        {
-          repo.license && (
-            <div class="flex items-center gap-1.5">
-              <svg
-                class="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"
-                />
-              </svg>
-              {repo.license} license
-            </div>
-          )
-        }
-        {repo.updatedAt && <div>Updated {timeAgo(repo.updatedAt)}</div>}
-      </div>
+        {repo.owner}
+      </a>
+      
+      <span class="text-lg sm:text-xl text-muted-foreground font-light">/</span>
+      
+      <a
+        href={`/${repo.owner}/${repo.name}`}
+        class="text-lg sm:text-xl text-[#58a6ff] hover:underline font-bold"
+      >
+        {repo.name}
+      </a>
 
-      {/* Topics */}
-      {
-        repo.topics && (repo.topics as unknown[]).length > 0 && (
-          <div class="flex flex-wrap gap-2">
-            {(repo.topics as any[]).map((topic: any) => (
-              <Badge
-                variant="secondary"
-                className="rounded-full hover:bg-primary/20 hover:text-primary cursor-pointer transition-colors"
-              >
-                <a href={`/topics/${topic}`}>{topic}</a>
-              </Badge>
-            ))}
-          </div>
-        )
-      }
+      <span class="px-2 py-0.5 rounded-full text-xs font-medium border border-border text-muted-foreground">
+        {repo.visibility || "Public"}
+      </span>
     </div>
 
-    <!-- Action Buttons -->
-    <RepoActions
-      client:load
-      owner={repo.owner}
-      repo={repo.name}
-      watchers={repo.watchers || 0}
-      forks={repo.forks || 0}
-      stars={repo.stars || 0}
-      isLoggedIn={isLoggedIn}
-    />
+    <!-- Action Buttons (Watch, Fork, Star) -->
+    <div class="flex-shrink-0">
+      <RepoActions
+        client:load
+        owner={repo.owner}
+        repo={repo.name}
+        watchers={repo.watchers || 0}
+        forks={repo.forks || 0}
+        stars={repo.stars || 0}
+        isLoggedIn={isLoggedIn}
+      />
+    </div>
   </div>
 
-  <!-- Navigation Tabs -->
-  <div class="overflow-x-auto -mx-4 px-4 pt-4">
-    <nav class="flex gap-1 min-w-max border-b border-transparent">
-      {
-        tabs.map((tab) => (
+  <!-- Navigation Tabs (GitHub Authentic Underline Tabs) -->
+  <div class="max-w-[1280px] mx-auto overflow-x-auto no-scrollbar">
+    <nav class="flex items-center gap-1 sm:gap-2 border-t border-border/40 pt-1 -mb-px">
+      {tabs.map((tab) => {
+        const isActive = activeTab === tab.id;
+        return (
           <a
             href={tab.href}
             class:list={[
-              "inline-flex items-center gap-2 px-4 py-2.5 rounded-t-lg text-sm font-medium border-b-2 transition-all",
-              activeTab === tab.id
-                ? "border-primary text-foreground bg-muted/40"
-                : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30",
+              "flex items-center gap-2 py-2.5 px-3 sm:px-3.5 text-xs sm:text-sm font-medium border-b-2 transition-all whitespace-nowrap",
+              isActive
+                ? "border-[#fd8c73] text-foreground font-semibold"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
             ]}
           >
             <tab.icon className="h-4 w-4" />
-            {tab.label}
+            <span>{tab.label}</span>
             {tab.count !== undefined && tab.count > 0 && (
-              <span
-                class:list={[
-                  "rounded-full px-2 py-0.5 text-xs font-medium",
-                  activeTab === tab.id
-                    ? "bg-primary/10 text-primary"
-                    : "bg-muted text-muted-foreground",
-                ]}
-              >
+              <span class="rounded-full bg-secondary px-1.5 py-0.2 text-[10px] font-semibold text-muted-foreground">
                 {tab.count}
               </span>
             )}
           </a>
-        ))
-      }
+        );
+      })}
     </nav>
-  </div>
   </div>
 </div>

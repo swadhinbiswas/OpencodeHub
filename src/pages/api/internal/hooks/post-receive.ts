@@ -127,6 +127,48 @@ export const POST: APIRoute = async ({ request, url }) => {
     logger.error({ err }, "Failed to parse commits");
   }
 
+  // Log push activity so real git commits count as contributions
+  try {
+    const { logActivity } = await import("@/lib/activity");
+    const pusher = (body as any).pusher;
+    let pusherUser = null;
+    if (pusher && pusher !== "system" && pusher !== "internal-bot" && pusher !== "git-user") {
+      pusherUser = await db.query.users.findFirst({
+        where: eq(schema.users.id, pusher),
+        columns: { id: true },
+      });
+      if (!pusherUser) {
+        pusherUser = await db.query.users.findFirst({
+          where: eq(schema.users.username, pusher),
+          columns: { id: true },
+        });
+      }
+    }
+    if (pusherUser?.id) {
+      await logActivity(
+        pusherUser.id,
+        "push",
+        "pushed",
+        "commit",
+        body.newrev,
+        repo.id,
+        {
+          repoName: repo.name,
+          refName: cleanRef,
+          commitCount: commits.length,
+          messages: commits.slice(0, 5).map((c) => c.message),
+        },
+        "branch",
+        cleanRef.replace("refs/heads/", ""),
+      );
+      logger.info({ userId: pusherUser.id, repoId: repo.id, commits: commits.length }, "Push activity logged");
+    } else {
+      logger.warn({ pusher }, "Could not resolve pusher user for activity logging");
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to log push activity");
+  }
+
   // Trigger Webhooks
   try {
     const { triggerWebhooks } = await import("@/lib/webhooks");

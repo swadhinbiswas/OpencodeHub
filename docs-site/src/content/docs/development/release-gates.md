@@ -1,3 +1,7 @@
+---
+title: "Release Gates"
+---
+
 # Release Gates
 
 This document outlines the required gates that must be passed before any code can be merged into the default branch.

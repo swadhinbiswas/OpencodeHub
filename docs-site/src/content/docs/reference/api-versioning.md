@@ -1,3 +1,7 @@
+---
+title: "API Versioning"
+---
+
 # API Versioning
 
 OpenCodeHub provides a stable REST API and GraphQL endpoint. 

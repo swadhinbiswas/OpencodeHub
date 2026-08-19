@@ -190,7 +190,7 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request, locals 
         id: reviewId,
         pullRequestId: pr.id,
         reviewerId: user.id,
-        state,
+        state: state.toLowerCase(),
         body: body || "Review submitted",
         commitSha,
         submittedAt: now

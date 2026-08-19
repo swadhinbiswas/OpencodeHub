@@ -1,3 +1,7 @@
+---
+title: "Backup and Restore"
+---
+
 # Backup and Restore
 
 This guide covers how to back up and restore an OpenCodeHub instance.

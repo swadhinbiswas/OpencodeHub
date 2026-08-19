@@ -50,74 +50,89 @@
   }
 
   .dark {
-    /* Premium Design System - OpenCodeHub Landing (Default Dark) */
-    --background: 227 45% 5%;
-    --foreground: 228 33% 92%;
-    --card: 229 40% 12%;
-    --card-foreground: 228 33% 92%;
-    --popover: 229 40% 12%;
-    --popover-foreground: 228 33% 92%;
-    --primary: 233 100% 74%;
-    --primary-foreground: 227 45% 5%;
-    --secondary: 229 30% 18%;
-    --secondary-foreground: 228 33% 92%;
-    --muted: 229 40% 12%;
-    --muted-foreground: 216 11% 65%;
-    --accent: 229 30% 18%;
-    --accent-foreground: 228 33% 92%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 0 0% 100% / 0.06;
-    --input: 229 40% 12%;
-    --ring: 233 100% 74%;
+    /* Ryoku Minimalist High-Contrast Black & White Theme */
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 0 0% 14%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 50.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 0 0% 98%;
+    --radius: 0.375rem;
     --success: 142 70% 58%;
-    --hero-gradient: radial-gradient(ellipse at top center, hsl(229 40% 18%) 0%, hsl(227 45% 5%) 60%);
+    --hero-gradient: radial-gradient(ellipse at top center, hsl(0 0% 10%) 0%, hsl(0 0% 4%) 60%);
     --glass-blur: 20px;
-    --glass-bg: rgba(18, 23, 42, 0.6);
+    --glass-bg: rgba(10, 10, 12, 0.75);
+
+    /* Chart Tokens */
+    --chart-1: 0 0% 80%;
+    --chart-2: 0 0% 60%;
+    --chart-3: 0 0% 40%;
+    --chart-4: 0 0% 70%;
+    --chart-5: 0 0% 50%;
 
     /* Sidebar Tokens */
-    --sidebar-background: 229 40% 12%;
-    --sidebar-foreground: 228 33% 92%;
-    --sidebar-primary: 233 100% 74%;
-    --sidebar-primary-foreground: 227 45% 5%;
-    --sidebar-accent: 229 40% 16%;
-    --sidebar-accent-foreground: 228 33% 92%;
-    --sidebar-border: 0 0% 100% / 0.06;
-    --sidebar-ring: 233 100% 74%;
+    --sidebar-background: 0 0% 6%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 0 0% 98%;
+    --sidebar-primary-foreground: 0 0% 9%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 18%;
+    --sidebar-ring: 0 0% 98%;
   }
 
   /* GitHub Dark Theme */
   [data-theme="github-dark"] {
     --background: 216 28% 7%;
-    --foreground: 210 17% 82%;
+    --foreground: 210 17% 92%;
     --card: 215 22% 10%;
-    --card-foreground: 210 17% 82%;
+    --card-foreground: 210 17% 92%;
     --popover: 215 22% 10%;
-    --popover-foreground: 210 17% 82%;
+    --popover-foreground: 210 17% 92%;
     --primary: 212 92% 63%;
     --primary-foreground: 0 0% 100%;
     --secondary: 215 16% 18%;
-    --secondary-foreground: 210 17% 82%;
+    --secondary-foreground: 210 17% 92%;
     --muted: 215 22% 14%;
-    --muted-foreground: 212 9% 53%;
+    --muted-foreground: 212 9% 60%;
     --accent: 215 16% 18%;
-    --accent-foreground: 210 17% 82%;
+    --accent-foreground: 210 17% 92%;
     --destructive: 354 70% 54%;
     --destructive-foreground: 0 0% 100%;
-    --border: 215 14% 34%;
-    --input: 215 14% 34%;
+    --border: 215 14% 28%;
+    --input: 215 14% 28%;
     --ring: 212 92% 63%;
     --hero-gradient: radial-gradient(ellipse at top center, hsl(215 22% 14%) 0%, hsl(216 28% 7%) 60%);
-    --glass-bg: rgba(13, 17, 23, 0.6);
+    --glass-bg: rgba(13, 17, 23, 0.75);
+
+    /* Chart Tokens */
+    --chart-1: 212 92% 63%;
+    --chart-2: 216 78% 42%;
+    --chart-3: 0 70% 54%;
+    --chart-4: 111 72% 45%;
+    --chart-5: 20 100% 58%;
 
     /* Sidebar Tokens */
     --sidebar-background: 215 22% 10%;
-    --sidebar-foreground: 210 17% 82%;
+    --sidebar-foreground: 210 17% 92%;
     --sidebar-primary: 212 92% 63%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 215 22% 14%;
-    --sidebar-accent-foreground: 210 17% 82%;
-    --sidebar-border: 215 14% 34%;
+    --sidebar-accent-foreground: 210 17% 92%;
+    --sidebar-border: 215 14% 28%;
     --sidebar-ring: 212 92% 63%;
   }
 
@@ -144,6 +159,13 @@
     --ring: 326 100% 74%;
     --hero-gradient: radial-gradient(ellipse at top center, hsl(231 15% 25%) 0%, hsl(231 15% 18%) 60%);
     --glass-bg: rgba(40, 42, 54, 0.6);
+
+    /* Chart Tokens */
+    --chart-1: 326 100% 74%;
+    --chart-2: 265 89% 78%;
+    --chart-3: 135 94% 65%;
+    --chart-4: 31 100% 71%;
+    --chart-5: 0 100% 67%;
 
     /* Sidebar Tokens */
     --sidebar-background: 231 15% 20%;
@@ -180,6 +202,13 @@
     --hero-gradient: radial-gradient(ellipse at top center, hsl(247 23% 15%) 0%, hsl(249 22% 12%) 60%);
     --glass-bg: rgba(25, 23, 36, 0.6);
 
+    /* Chart Tokens */
+    --chart-1: 343 35% 65%;
+    --chart-2: 198 80% 60%;
+    --chart-3: 114 50% 58%;
+    --chart-4: 34 100% 73%;
+    --chart-5: 247 70% 70%;
+
     /* Sidebar Tokens */
     --sidebar-background: 247 23% 15%;
     --sidebar-foreground: 248 19% 89%;
@@ -214,6 +243,13 @@
     --ring: 263 70% 74%;
     --hero-gradient: radial-gradient(ellipse at top center, hsl(235 18% 20%) 0%, hsl(235 18% 14%) 60%);
     --glass-bg: rgba(26, 27, 38, 0.6);
+
+    /* Chart Tokens */
+    --chart-1: 263 70% 74%;
+    --chart-2: 219 73% 68%;
+    --chart-3: 168 85% 62%;
+    --chart-4: 44 91% 68%;
+    --chart-5: 347 70% 68%;
 
     /* Sidebar Tokens */
     --sidebar-background: 235 18% 16%;

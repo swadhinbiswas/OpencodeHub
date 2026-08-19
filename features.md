@@ -4,6 +4,14 @@ Last updated: February 19, 2026
 Canonical source: `doc/feature_audit.md`
 
 ## Recently completed
+- Cross-instance federation:
+  - `GET /api/instance` — instance metadata probe (product, name, siteUrl, version, capabilities)
+  - `POST /api/repos/{owner}/{repo}/external-pulls` — cross-instance PR creation (fetch head from a fork on another instance)
+  - `POST /api/repos/{owner}/{repo}/federation/push-upstream` — push a fork branch back to the upstream instance
+  - `POST /api/repos/{owner}/{repo}/federation/open-pull` — open a cross-instance PR from the fork side
+  - `GET|POST /api/repos/{owner}/{repo}/settings/federation` — `allowExternalPulls` toggle
+  - Import flow detects OpenCodeHub peers, records `forkedFromUrl` + `mirrorUsername`/mirror PAT, enables push-upstream and cross-instance PRs
+  - SSRF protection on all server-side fetches via `validateGitCloneUrl` with `FEDERATION_ALLOW_LOCALHOST` opt-in for local/private testing
 - Local free-model AI support (`local` provider, Ollama/OpenAI-compatible) with configurable `localBaseUrl` and key.
 - External-agent (Greptile-like) callback and async AI review flow documented and supported.
 - PR dependency APIs:

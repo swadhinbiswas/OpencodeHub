@@ -126,6 +126,14 @@ async function onRequestInner(
 
   // Continue to next middleware/route
   const startTime = performance.now();
+
+  // Generate the CSP nonce BEFORE rendering so it can be embedded in the
+  // page's inline scripts (Astro island hydration, FOUC theme script, CSRF
+  // interceptor, etc.) via HTML post-processing below.
+  const cspNonce = randomBytes(16).toString("base64");
+  context.locals.cspNonce = cspNonce;
+  const cspHeader = `default-src 'self'; script-src 'self' 'nonce-${cspNonce}' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https:;`;
+
   const response = await next();
   const durationMs = performance.now() - startTime;
   const durationSec = durationMs / 1000;
@@ -160,12 +168,29 @@ async function onRequestInner(
 
   // Add Content-Security-Policy header with nonce-based script-src
   if (!response.headers.has("Content-Security-Policy")) {
-    const cspNonce = randomBytes(16).toString("base64");
-    context.locals.cspNonce = cspNonce;
-    response.headers.set(
-      "Content-Security-Policy",
-      `default-src 'self'; script-src 'self' 'nonce-${cspNonce}' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https:;`,
-    );
+    const contentType = response.headers.get("content-type") || "";
+    // For HTML pages, inject the nonce into every inline <script> tag so the
+    // strict script-src (no 'unsafe-inline') doesn't block Astro island
+    // hydration, the theme FOUC script, CSRF interceptor, etc.
+    if (contentType.includes("text/html")) {
+      const html = await response.text();
+      const patched = html.replace(
+        /<script(?![^>]*\bsrc\s*=)([^>]*)>/g,
+        (match, attrs) => {
+          if (/\snonce\s*=/.test(attrs)) return match;
+          return `<script${attrs} nonce="${cspNonce}">`;
+        },
+      );
+      const headers = new Headers(response.headers);
+      headers.set("Content-Security-Policy", cspHeader);
+      headers.delete("content-length");
+      return new Response(patched, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
+    }
+    response.headers.set("Content-Security-Policy", cspHeader);
   }
 
   return response;

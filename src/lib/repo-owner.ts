@@ -77,6 +77,7 @@ export async function attachOwnerNames<T extends { ownerId: string; ownerType?: 
  * synthetic `owner.username` on any org-owned repo found at the top level
  * or nested under `item.repository` (the `with: { owner: true }` relation
  * is null for org repos).
+>>>>>>> origin/main
  */
 export async function resolveOrgOwners<T>(items: T[]): Promise<T[]> {
   const candidates: any[] = [];

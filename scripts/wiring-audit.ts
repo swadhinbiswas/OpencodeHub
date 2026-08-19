@@ -147,8 +147,8 @@ function auditSchemaColumns(): Finding[] {
     while ((tm = tableRe.exec(content)) !== null) {
       const tableName = tm[1];
       const block = extractTableBlock(content, tm.index + tm[0].length - 1);
-      // column definitions: name: pgType(...) — skip relation-style calls
-      const colRe = /^\s{2}([A-Za-z_$][\w$]*):\s+(?!one\(|many\()([a-zA-Z]+)\(/gm;
+      // column definitions: name: pgType(...) — skip relation-style calls and index definitions
+      const colRe = /^\s{2}([A-Za-z_$][\w$]*):\s+(?!one\(|many\(|index\(|primaryKey\()([a-zA-Z]+)\(/gm;
       let cm: RegExpExecArray | null;
       while ((cm = colRe.exec(block)) !== null) {
         const colName = cm[1];
