@@ -36,6 +36,27 @@
       "when": 1786400000000,
       "tag": "0004_drop_owner_fk",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787121876158,
+      "tag": "0005_add_mirror_token",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787123339529,
+      "tag": "0006_add_federation_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787125181115,
+      "tag": "0007_add_mirror_username",
+      "breakpoints": true
     }
   ]
 }

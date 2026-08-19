@@ -75,6 +75,9 @@ const repo = {
   hasActions: repoData.hasActions ?? false,
   isArchived: repoData.isArchived ?? false,
   isTemplate: repoData.isTemplate ?? false,
+  isFork: repoData.isFork ?? false,
+  forkedFromUrl: repoData.forkedFromUrl || repoData.mirrorUrl || null,
+  allowExternalPulls: repoData.allowExternalPulls ?? false,
 };
 ---
 

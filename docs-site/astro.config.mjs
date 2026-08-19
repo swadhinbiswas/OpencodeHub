@@ -74,6 +74,7 @@ export default defineConfig({
             { label: "Developer Metrics", slug: "features/developer-metrics" },
             { label: "Notifications", slug: "features/notifications" },
             { label: "Slack Integration", slug: "features/slack-integration" },
+            { label: "Federation & Cross-Instance PRs", slug: "features/federation" },
             { label: "CLI Workflows", slug: "features/cli" },
           ],
         },

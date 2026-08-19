@@ -1,0 +1,386 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect("/login");
+}
+---
+
+<BaseLayout title="Import a repository">
+  <div class="container max-w-3xl py-10">
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold tracking-tight">Import a repository</h1>
+      <p class="text-muted-foreground">
+        Bring in an existing repository from GitHub, GitLab, Bitbucket, or any
+        other Git service. You can keep it in sync with the source automatically.
+      </p>
+    </div>
+
+    <div
+      id="error-container"
+      class="hidden mb-6 rounded-md bg-destructive/15 p-4 text-destructive border border-destructive/50"
+    >
+      <div class="flex items-start gap-4">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="h-5 w-5"
+          ><circle cx="12" cy="12" r="10"></circle><path d="m15 9-6 6"
+          ></path><path d="m9 9 6 6"></path></svg
+        >
+        <div>
+          <h5
+            id="error-title"
+            class="font-medium leading-none tracking-tight mb-1"
+          >
+            Error
+          </h5>
+          <div id="error-desc" class="text-sm opacity-90"></div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="success-container"
+      class="hidden mb-6 rounded-md bg-emerald-500/15 p-4 text-emerald-600 border border-emerald-500/40"
+    >
+      <div class="flex items-start gap-4">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="h-5 w-5"
+          ><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"
+          ></path></svg
+        >
+        <div>
+          <h5
+            id="success-title"
+            class="font-medium leading-none tracking-tight mb-1"
+          >
+            Import started
+          </h5>
+          <div id="success-desc" class="text-sm opacity-90"></div>
+        </div>
+      </div>
+    </div>
+
+    <form id="import-repo-form" class="space-y-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>Source repository</CardTitle>
+          <CardDescription>
+            Paste the URL of the repository you want to import.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div class="space-y-2">
+            <Label htmlFor="sourceUrl">Source URL *</Label>
+            <Input
+              id="sourceUrl"
+              name="sourceUrl"
+              placeholder="https://github.com/owner/repository or owner/repository"
+              required
+            />
+            <p class="text-sm text-muted-foreground">
+              Supports https://, git@host:path, ssh:// URLs, and the
+              owner/repository shorthand (GitHub).
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <Label htmlFor="authToken"
+              >Access token <span class="text-muted-foreground">(optional)</span
+              ></Label
+            >
+            <Input
+              id="authToken"
+              name="authToken"
+              type="password"
+              placeholder="Personal access token for private repositories"
+              autoComplete="off"
+            />
+            <p class="text-sm text-muted-foreground">
+              Only needed for private repositories. Use an https:// URL. The
+              token is stored encrypted and used only for mirror syncs.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Repository details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div class="space-y-2">
+            <Label htmlFor="name"
+              >Repository name <span class="text-muted-foreground">(optional)</span
+              ></Label
+            >
+            <div class="flex items-center gap-2">
+              <div
+                class="flex items-center gap-2 rounded-md border px-3 py-2 bg-muted/50"
+              >
+                <span class="font-medium">{user.username}</span>
+              </div>
+              <span class="text-muted-foreground">/</span>
+              <Input
+                id="name"
+                name="name"
+                placeholder="repository-name"
+                pattern="[a-zA-Z0-9._\-]+"
+                title="Only letters, numbers, dots, hyphens, and underscores are allowed."
+                className="w-full md:w-[300px]"
+              />
+            </div>
+            <p class="text-sm text-muted-foreground">
+              Defaults to the source repository's name.
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <Label htmlFor="description"
+              >Description <span class="text-muted-foreground">(optional)</span
+              ></Label
+            >
+            <Textarea
+              id="description"
+              name="description"
+              placeholder="Short description of your repository"
+            />
+          </div>
+
+          <div class="space-y-4">
+            <Label>Visibility</Label>
+            <div class="space-y-4">
+              <div class="flex items-start space-x-3">
+                <input
+                  type="radio"
+                  id="public"
+                  name="visibility"
+                  value="public"
+                  checked
+                  class="mt-1 h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                />
+                <div class="space-y-1">
+                  <label
+                    for="public"
+                    class="font-medium leading-none cursor-pointer"
+                  >
+                    Public
+                  </label>
+                  <p class="text-sm text-muted-foreground">
+                    Anyone on the internet can see this repository.
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-start space-x-3">
+                <input
+                  type="radio"
+                  id="private"
+                  name="visibility"
+                  value="private"
+                  class="mt-1 h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                />
+                <div class="space-y-1">
+                  <label
+                    for="private"
+                    class="font-medium leading-none cursor-pointer"
+                  >
+                    Private
+                  </label>
+                  <p class="text-sm text-muted-foreground">
+                    Only you can see and commit to this repository.
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-start space-x-3">
+                <input
+                  type="radio"
+                  id="internal"
+                  name="visibility"
+                  value="internal"
+                  class="mt-1 h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                />
+                <div class="space-y-1">
+                  <label
+                    for="internal"
+                    class="font-medium leading-none cursor-pointer"
+                  >
+                    Internal
+                  </label>
+                  <p class="text-sm text-muted-foreground">
+                    Anyone logged in can see this repository.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Sync with the source</CardTitle>
+          <CardDescription>
+            Keep this repository up to date with the upstream repository.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div class="flex items-start space-x-3">
+            <input
+              type="checkbox"
+              id="mirror"
+              name="mirror"
+              checked
+              class="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+            />
+            <div class="space-y-1">
+              <label
+                for="mirror"
+                class="font-medium leading-none cursor-pointer"
+              >
+                Automatically sync with the source repository
+              </label>
+              <p class="text-sm text-muted-foreground">
+                Pulls new commits from the upstream on a schedule. You can
+                disable this later in repository settings.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div class="flex justify-end gap-4">
+        <button
+          type="button"
+          onclick="window.history.back()"
+          class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+        >
+          Cancel
+        </button>
+        <Button type="submit" id="submit-btn"> Import repository </Button>
+      </div>
+    </form>
+  </div>
+</BaseLayout>
+
+<script>
+  const form = document.getElementById(
+    "import-repo-form",
+  ) as HTMLFormElement | null;
+  const submitBtn = document.getElementById(
+    "submit-btn",
+  ) as HTMLButtonElement | null;
+  const errorContainer = document.getElementById(
+    "error-container",
+  ) as HTMLDivElement | null;
+  const errorTitle = document.getElementById(
+    "error-title",
+  ) as HTMLElement | null;
+  const errorDesc = document.getElementById("error-desc") as HTMLElement | null;
+  const successContainer = document.getElementById(
+    "success-container",
+  ) as HTMLDivElement | null;
+  const successDesc = document.getElementById(
+    "success-desc",
+  ) as HTMLElement | null;
+
+  if (form && submitBtn) {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      if (errorContainer) errorContainer.classList.add("hidden");
+      if (successContainer) successContainer.classList.add("hidden");
+
+      submitBtn.disabled = true;
+      const originalText = submitBtn.innerText;
+      submitBtn.innerText = "Importing...";
+
+      try {
+        const formData = new FormData(form);
+        const data = {
+          sourceUrl: formData.get("sourceUrl"),
+          name: formData.get("name") || undefined,
+          description: formData.get("description") || undefined,
+          visibility: formData.get("visibility"),
+          mirror: formData.get("mirror") === "on",
+          authToken: formData.get("authToken") || undefined,
+          hasIssues: true,
+          hasWiki: false,
+          hasActions: true,
+        };
+
+        const response = await fetch("/api/repos/import", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error?.message || "Failed to import repository");
+        }
+
+        if (successContainer && successDesc) {
+          successContainer.classList.remove("hidden");
+          successDesc.innerText =
+            result.data.url || result.data.fullName || "Repository imported";
+          // Redirect after a moment so the user sees the confirmation
+          setTimeout(() => {
+            window.location.href = result.data.url;
+          }, 800);
+        } else {
+          window.location.href = result.data.url;
+        }
+      } catch (error) {
+        console.error("Error importing repository:", error);
+
+        if (errorContainer && errorTitle && errorDesc) {
+          errorContainer.classList.remove("hidden");
+          errorTitle.innerText = "Error importing repository";
+          errorDesc.innerText =
+            error instanceof Error ? error.message : "An error occurred";
+          errorContainer.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        } else {
+          alert(error instanceof Error ? error.message : "An error occurred");
+        }
+
+        submitBtn.disabled = false;
+        submitBtn.innerText = originalText;
+      }
+    });
+  }
+</script>

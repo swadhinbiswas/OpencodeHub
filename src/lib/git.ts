@@ -1288,7 +1288,12 @@ export async function mergeBranch(
 
     const workGit = createSimpleGit({ baseDir: tempDir });
     await workGit.checkout(base);
-    await workGit.fetch("origin", head, ["--depth=1"]);
+    // --single-branch clones restrict the fetch refspec to the base branch, so
+    // a bare `fetch origin <head>` only writes FETCH_HEAD and never creates
+    // `refs/remotes/origin/<head>`; use an explicit refspec instead. The clone
+    // is `--shared`, so objects are already local and no --depth is needed
+    // (shallow fetches would make the head look like unrelated history).
+    await workGit.fetch("origin", `refs/heads/${head}:refs/remotes/origin/${head}`);
 
     const commitMsg = message || `Merge pull request from ${head} into ${base}`;
 
@@ -1695,19 +1700,29 @@ export async function commitFile(
   const git = getGit(repoPath);
 
   // We need to use plumbing commands because it's a bare repo
+  const resolvedRepoPath = resolve(repoPath);
   const tempIndexFile = join(
-    repoPath,
+    resolvedRepoPath,
     `temp_index_${Date.now()}_${Math.random().toString(36).substring(7)}`,
   );
 
   try {
     // 1. Read the tree of the branch into a temporary index
     // We set GIT_INDEX_FILE environment variable for these commands
-    const env = { ...process.env, GIT_INDEX_FILE: tempIndexFile };
+    const env = {
+      ...getSanitizedGitEnv(dirname(repoPath)),
+      GIT_INDEX_FILE: tempIndexFile,
+    };
 
     // Get the tree of the current branch/commit
-    // If branch doesn't exist (empty repo), we might start fresh, but assuming branch exists
-    await git.env(env).raw(["read-tree", branch]);
+    // If branch doesn't exist (empty repo), start with an empty index
+    let branchExists = true;
+    try {
+      await git.env(env).raw(["read-tree", branch]);
+    } catch (e) {
+      branchExists = false;
+      await git.env(env).raw(["read-tree", "--empty"]);
+    }
 
     // 2. Hash the new object using spawn to pipe content
     const hashObjectOutput = await new Promise<string>((resolve, reject) => {
@@ -1745,17 +1760,18 @@ export async function commitFile(
     const treeSha = writeTreeOutput.trim();
 
     // 5. Create new commit
-    // We need the parent commit
-    const parentSha = (await git.revparse([branch])).trim();
+    // We need the parent commit (if the branch has commits yet)
+    let parentSha = "";
+    try {
+      parentSha = (await git.revparse([branch])).trim();
+    } catch (e) {
+      // Branch has no commits yet (empty repo) — this will be the root commit
+      parentSha = "";
+    }
 
-    const commitTreeArgs = [
-      "commit-tree",
-      treeSha,
-      "-p",
-      parentSha,
-      "-m",
-      message,
-    ];
+    const commitTreeArgs = parentSha
+      ? ["commit-tree", treeSha, "-p", parentSha, "-m", message]
+      : ["commit-tree", treeSha, "-m", message];
 
     // Set author/committer
     const commitEnv = {

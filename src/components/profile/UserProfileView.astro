@@ -1,0 +1,926 @@
+---
+import { getDatabase, schema } from "@/db";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { resolveRepoPath } from "@/lib/git-storage";
+import { getFileContent } from "@/lib/git";
+import { renderMarkdown } from "@/lib/markdown";
+import {
+  BookOpen,
+  BookMarked,
+  LayoutGrid,
+  Package,
+  Star,
+  Users,
+  Building2,
+  MapPin,
+  Clock,
+  Mail,
+  Link as LinkIcon,
+  Heart,
+  GitFork,
+  Search,
+  Check,
+  Plus
+} from "lucide-react";
+
+interface Props {
+  user: typeof schema.users.$inferSelect;
+  tab?: string;
+  isLanding?: boolean;
+}
+
+const { user, tab = "overview", isLanding = false } = Astro.props;
+const db = getDatabase() as NodePgDatabase<typeof schema>;
+const currentUser = Astro.locals.user;
+const isOwner = currentUser?.id === user.id;
+
+// Window for the contribution graph (last 365 days)
+const activityStart = new Date();
+activityStart.setDate(activityStart.getDate() - 364);
+activityStart.setHours(0, 0, 0, 0);
+
+// 1. Fetch Follow Stats
+const [followersResult] = await db
+  .select({ count: sql`count(*)` })
+  .from(schema.userFollowers)
+  .where(eq(schema.userFollowers.followeeId, user.id));
+const followersCount = Number(followersResult?.count) || 0;
+
+const [followingResult] = await db
+  .select({ count: sql`count(*)` })
+  .from(schema.userFollowers)
+  .where(eq(schema.userFollowers.followerId, user.id));
+const followingCount = Number(followingResult?.count) || 0;
+
+// 2. Check if following
+let isFollowing = false;
+if (currentUser && !isOwner) {
+  const existing = await db.query.userFollowers.findFirst({
+    where: and(
+      eq(schema.userFollowers.followerId, currentUser.id),
+      eq(schema.userFollowers.followeeId, user.id),
+    ),
+  });
+  isFollowing = !!existing;
+}
+
+// 3. Fetch Repositories
+let repoConditions = [eq(schema.repositories.ownerId, user.id)];
+if (!isOwner) {
+  repoConditions.push(eq(schema.repositories.visibility, "public"));
+}
+
+const repos = await db.query.repositories.findMany({
+  where: and(...repoConditions),
+  orderBy: [desc(schema.repositories.starCount), desc(schema.repositories.updatedAt)],
+});
+
+const pinnedRepos = repos.slice(0, 6);
+
+// 4. Fetch Starred Repositories
+let starCount = 0;
+let starredRepos: any[] = [];
+try {
+  const stars = await db.query.repositoryStars.findMany({
+    where: eq(schema.repositoryStars.userId, user.id),
+    with: {
+      repository: {
+        with: {
+          owner: true,
+        },
+      },
+    },
+  });
+  starCount = stars.length;
+  starredRepos = stars.map((s) => s.repository).filter(Boolean);
+} catch (e) {
+  // Graceful fallback if stars query fails
+}
+
+// 5. Fetch contribution count and day-by-day mapping
+let contributionCount = 0;
+let activityByDay = new Map<string, number>();
+try {
+  const [result] = await db
+    .select({ count: sql`count(*)` })
+    .from(schema.activities)
+    .where(
+      and(
+        eq(schema.activities.userId, user.id),
+        sql`${schema.activities.createdAt} >= ${activityStart}`,
+      ),
+    );
+  contributionCount = Number(result?.count) || 0;
+
+  const activityRows = await db
+    .select({
+      createdAt: schema.activities.createdAt,
+    })
+    .from(schema.activities)
+    .where(
+      and(
+        eq(schema.activities.userId, user.id),
+        sql`${schema.activities.createdAt} >= ${activityStart}`,
+      ),
+    );
+  for (const row of activityRows) {
+    const day = new Date(row.createdAt).toISOString().slice(0, 10);
+    activityByDay.set(day, (activityByDay.get(day) || 0) + 1);
+  }
+} catch {
+  // Fallback
+}
+
+// 6. Fetch recent activity timeline
+let recentActivity: any[] = [];
+try {
+  recentActivity = await db.query.activities.findMany({
+    where: eq(schema.activities.userId, user.id),
+    orderBy: [desc(schema.activities.createdAt)],
+    limit: 6,
+  });
+} catch {}
+
+// 7. Fetch profile README from {username}/{username} repo or default
+let profileReadmeHtml = "";
+let hasSpecialRepo = false;
+try {
+  const profileRepo = await db.query.repositories.findFirst({
+    where: and(
+      eq(schema.repositories.ownerId, user.id),
+      eq(schema.repositories.name, user.username),
+    ),
+  });
+  if (profileRepo) {
+    hasSpecialRepo = true;
+    const localPath = await resolveRepoPath(profileRepo.diskPath);
+    const fileData = await getFileContent(
+      localPath,
+      "README.md",
+      profileRepo.defaultBranch || "main",
+    );
+    if (fileData?.content) {
+      profileReadmeHtml = await renderMarkdown(fileData.content);
+    }
+  }
+} catch {}
+
+// If no special repo README exists, provide a default profile readme card showcasing the user's projects and bio
+if (!profileReadmeHtml) {
+  const fallbackMarkdown = `
+### Hi there, I'm ${user.displayName || user.username} 👋
+
+${user.bio ? `> ${user.bio}` : `> Developer on OpenCodeHub.`}
+
+#### 🚀 Pinned Projects & Highlights
+| Project | Description | Stack |
+| :--- | :--- | :--- |
+${repos.slice(0, 4).map(r => `| [**${r.name}**](/${user.username}/${r.name}) | ${r.description || 'Public repository on OpenCodeHub'} | \`${r.language || 'Code'}\` |`).join('\n') || '| *No repositories created yet* | Create a new repository to get started | `Git` |'}
+
+___
+*Self-hosted Git profile powered by **OpenCodeHub**.*
+  `;
+  profileReadmeHtml = await renderMarkdown(fallbackMarkdown);
+}
+
+// 8. Fetch User Organizations
+let userOrgs: any[] = [];
+try {
+  const orgMembers = await db.query.organizationMembers.findMany({
+    where: eq(schema.organizationMembers.userId, user.id),
+    with: {
+      organization: true,
+    },
+  });
+  userOrgs = orgMembers.map((m) => m.organization).filter(Boolean);
+} catch {}
+
+// Language colors (GitHub style)
+const langColors: Record<string, string> = {
+  JavaScript: "bg-[#f1e05a]",
+  TypeScript: "bg-[#3178c6]",
+  Python: "bg-[#3572A5]",
+  Rust: "bg-[#dea584]",
+  Go: "bg-[#00ADD8]",
+  Java: "bg-[#b07219]",
+  Ruby: "bg-[#701516]",
+  "C++": "bg-[#f34b7d]",
+  C: "bg-[#555555]",
+  PHP: "bg-[#4F5D95]",
+  HTML: "bg-[#e34c26]",
+  CSS: "bg-[#563d7c]",
+  Vue: "bg-[#41b883]",
+  Astro: "bg-[#ff5a03]",
+  Shell: "bg-[#89e051]",
+  Dockerfile: "bg-[#384d54]",
+};
+
+// Build 52-week x 7-day contribution grid
+function levelForCount(c: number): number {
+  if (c === 0) return 0;
+  if (c === 1) return 1;
+  if (c <= 3) return 2;
+  if (c <= 6) return 3;
+  return 4;
+}
+
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+const weeks: { date: string; level: number; count: number }[][] = [];
+const cursor = new Date(activityStart);
+while (cursor <= today) {
+  const week: { date: string; level: number; count: number }[] = [];
+  for (let d = 0; d < 7; d++) {
+    const iso = cursor.toISOString().slice(0, 10);
+    const count = activityByDay.get(iso) || 0;
+    week.push({
+      date: iso,
+      level: levelForCount(count),
+      count,
+    });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  weeks.push(week);
+}
+const contributionWeeks = weeks.slice(Math.max(0, weeks.length - 52));
+
+// Month labels helper
+const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function timeAgo(date: string | number | Date) {
+  if (!date) return "";
+  const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  if (seconds < 2592000) return `${Math.floor(seconds / 86400)}d ago`;
+  if (seconds < 31536000) return `${Math.floor(seconds / 2592000)}mo ago`;
+  return `${Math.floor(seconds / 31536000)}y ago`;
+}
+
+const currentYear = new Date().getFullYear();
+---
+
+<div class="bg-background text-foreground min-h-screen">
+  <!-- GitHub Sub-Navbar Tabs -->
+  <div class="border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-30">
+    <div class="container max-w-[1280px] mx-auto px-4 sm:px-6">
+      <div class="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar pt-2">
+        <a
+          href={isLanding ? "/?tab=overview" : `/${user.username}?tab=overview`}
+          class:list={[
+            "flex items-center gap-2 py-3 px-3 sm:px-4 text-sm font-medium border-b-2 transition-all whitespace-nowrap",
+            tab === "overview"
+              ? "border-[#fd8c73] text-foreground font-semibold"
+              : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+          ]}
+        >
+          <BookOpen className="h-4 w-4 text-muted-foreground" />
+          <span>Overview</span>
+        </a>
+
+        <a
+          href={isLanding ? "/?tab=repositories" : `/${user.username}?tab=repositories`}
+          class:list={[
+            "flex items-center gap-2 py-3 px-3 sm:px-4 text-sm font-medium border-b-2 transition-all whitespace-nowrap",
+            tab === "repositories"
+              ? "border-[#fd8c73] text-foreground font-semibold"
+              : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+          ]}
+        >
+          <BookMarked className="h-4 w-4 text-muted-foreground" />
+          <span>Repositories</span>
+          <span class="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+            {repos.length}
+          </span>
+        </a>
+
+        <a
+          href={isLanding ? "/?tab=projects" : `/${user.username}?tab=projects`}
+          class:list={[
+            "flex items-center gap-2 py-3 px-3 sm:px-4 text-sm font-medium border-b-2 transition-all whitespace-nowrap",
+            tab === "projects"
+              ? "border-[#fd8c73] text-foreground font-semibold"
+              : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+          ]}
+        >
+          <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+          <span>Projects</span>
+        </a>
+
+        <a
+          href={isLanding ? "/?tab=packages" : `/${user.username}?tab=packages`}
+          class:list={[
+            "flex items-center gap-2 py-3 px-3 sm:px-4 text-sm font-medium border-b-2 transition-all whitespace-nowrap",
+            tab === "packages"
+              ? "border-[#fd8c73] text-foreground font-semibold"
+              : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+          ]}
+        >
+          <Package className="h-4 w-4 text-muted-foreground" />
+          <span>Packages</span>
+        </a>
+
+        <a
+          href={isLanding ? "/?tab=stars" : `/${user.username}?tab=stars`}
+          class:list={[
+            "flex items-center gap-2 py-3 px-3 sm:px-4 text-sm font-medium border-b-2 transition-all whitespace-nowrap",
+            tab === "stars"
+              ? "border-[#fd8c73] text-foreground font-semibold"
+              : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+          ]}
+        >
+          <Star className="h-4 w-4 text-muted-foreground" />
+          <span>Stars</span>
+          <span class="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+            {starCount}
+          </span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Profile Container -->
+  <div class="container max-w-[1280px] mx-auto py-8 px-4 sm:px-6">
+    <div class="flex flex-col lg:flex-row gap-8 items-start">
+      
+      <!-- ========================================== -->
+      <!-- LEFT SIDEBAR (PROFILE DOSSIER)             -->
+      <!-- ========================================== -->
+      <aside class="w-full lg:w-[296px] flex-shrink-0 space-y-6">
+        <!-- Avatar & Status -->
+        <div class="flex flex-row lg:flex-col items-center lg:items-start gap-4 lg:gap-0">
+          <div class="relative group">
+            <div class="w-24 h-24 sm:w-32 sm:h-32 lg:w-[296px] lg:h-[296px] rounded-full overflow-hidden border-2 border-border/80 bg-secondary shadow-lg">
+              {user.avatarUrl ? (
+                <img src={user.avatarUrl} alt={user.username} class="w-full h-full object-cover" />
+              ) : (
+                <div class="w-full h-full flex items-center justify-center bg-secondary text-5xl lg:text-8xl font-semibold text-muted-foreground">
+                  {user.username[0].toUpperCase()}
+                </div>
+              )}
+            </div>
+            
+            <!-- Status Badge Emoji -->
+            <div 
+              title="Set status"
+              class="absolute bottom-1 right-1 lg:bottom-4 lg:right-4 w-7 h-7 lg:w-9 lg:h-9 bg-card rounded-full border border-border flex items-center justify-center text-sm lg:text-base shadow-md cursor-pointer hover:scale-110 transition-transform"
+            >
+              💭
+            </div>
+          </div>
+
+          <!-- Name & Username (Mobile layout inline) -->
+          <div class="flex-1 min-w-0 lg:mt-4">
+            <h1 class="text-xl sm:text-2xl lg:text-[26px] font-bold text-foreground leading-tight tracking-tight">
+              {user.displayName || user.username}
+            </h1>
+            <div class="flex items-center gap-2 text-muted-foreground font-light text-base lg:text-xl">
+              <span>{user.username}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons (Follow / Edit Profile / Sponsor) -->
+        <div class="flex flex-col sm:flex-row lg:flex-col gap-2">
+          {isOwner ? (
+            <a
+              href="/settings/profile"
+              class="w-full py-1.5 px-4 rounded-md border border-border bg-secondary/80 hover:bg-secondary text-sm font-medium text-foreground text-center transition-colors shadow-sm"
+            >
+              Edit profile
+            </a>
+          ) : currentUser ? (
+            <div class="flex gap-2 w-full">
+              <button
+                id="follow-btn"
+                data-username={user.username}
+                data-following={isFollowing.toString()}
+                class:list={[
+                  "flex-1 py-1.5 px-4 rounded-md text-sm font-medium transition-colors shadow-sm",
+                  isFollowing
+                    ? "border border-border bg-secondary hover:bg-accent text-foreground"
+                    : "bg-[#238636] hover:bg-[#2ea043] text-white border border-[#238636]"
+                ]}
+              >
+                {isFollowing ? "Unfollow" : "Follow"}
+              </button>
+
+              <a
+                href={`mailto:${user.email}?subject=Sponsor`}
+                class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-secondary/60 hover:bg-secondary text-sm font-medium text-pink-400 hover:text-pink-300 transition-colors"
+                title="Sponsor this developer"
+              >
+                <Heart className="h-4 w-4 fill-pink-500/20 text-pink-500" />
+                <span>Sponsor</span>
+              </a>
+            </div>
+          ) : (
+            <div class="flex gap-2 w-full">
+              <a
+                href="/login"
+                class="flex-1 py-1.5 px-4 rounded-md bg-[#238636] hover:bg-[#2ea043] text-white text-sm font-medium text-center transition-colors shadow-sm"
+              >
+                Follow
+              </a>
+              <a
+                href="/login"
+                class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-secondary/60 hover:bg-secondary text-sm font-medium text-pink-400 transition-colors"
+              >
+                <Heart className="h-4 w-4 fill-pink-500/20 text-pink-500" />
+                <span>Sponsor</span>
+              </a>
+            </div>
+          )}
+        </div>
+
+        <!-- Bio text -->
+        {user.bio && (
+          <p class="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
+            {user.bio}
+          </p>
+        )}
+
+        <!-- Followers / Following -->
+        {(followersCount > 0 || followingCount > 0) && (
+        <div class="flex items-center gap-2 text-sm text-muted-foreground">
+          <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          <a href="#" class="hover:text-primary transition-colors">
+            <strong class="text-foreground font-semibold">{followersCount}</strong> followers
+          </a>
+          <span>·</span>
+          <a href="#" class="hover:text-primary transition-colors">
+            <strong class="text-foreground font-semibold">{followingCount}</strong> following
+          </a>
+        </div>
+        )}
+
+        <!-- Metadata Stack -->
+        <div class="space-y-2.5 text-sm text-foreground/80 border-t border-border pt-4">
+          <!-- Organization / Company -->
+          {user.company && (
+          <div class="flex items-center gap-2.5">
+            <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <a href="#" class="hover:text-primary transition-colors font-medium">
+              {user.company}
+            </a>
+          </div>
+          )}
+
+          <!-- Location -->
+          {user.location && (
+          <div class="flex items-center gap-2.5">
+            <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <span>{user.location}</span>
+          </div>
+          )}
+
+          <!-- Local Time -->
+          <div class="flex items-center gap-2.5 text-muted-foreground text-xs" id="local-time">
+            <Clock className="h-4 w-4 flex-shrink-0" />
+            <span>Local time: <span id="local-time-value">…</span></span>
+          </div>
+
+          <!-- Email -->
+          {user.email && (
+            <div class="flex items-center gap-2.5">
+              <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <a href={`mailto:${user.email}`} class="hover:text-primary transition-colors truncate">
+                {user.email}
+              </a>
+            </div>
+          )}
+
+          <!-- Website -->
+          {user.website && (
+          <div class="flex items-center gap-2.5">
+            <LinkIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <a
+              href={user.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="hover:text-primary transition-colors truncate text-[#58a6ff]"
+            >
+              {user.website.replace(/^https?:\/\//, "")}
+            </a>
+          </div>
+          )}
+        </div>
+
+        <!-- Organizations -->
+        {userOrgs.length > 0 && (
+          <div class="border-t border-border pt-4 space-y-3">
+            <h3 class="text-sm font-semibold text-foreground">Organizations</h3>
+            <div class="flex flex-wrap gap-2">
+              {userOrgs.map((org) => (
+                <a
+                  href={`/orgs/${org.name}`}
+                  title={org.displayName || org.name}
+                  class="w-8 h-8 rounded-md border border-border/80 bg-secondary flex items-center justify-center overflow-hidden hover:border-primary transition-colors"
+                >
+                  {org.avatarUrl ? (
+                    <img src={org.avatarUrl} alt={org.name} class="w-full h-full object-cover" />
+                  ) : (
+                    <span class="text-xs font-bold text-muted-foreground">
+                      {org.name[0].toUpperCase()}
+                    </span>
+                  )}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <!-- Report Link -->
+        <div class="border-t border-border pt-4 text-xs text-muted-foreground">
+          <a href="#" class="hover:text-red-400 transition-colors">
+            Block or report user
+          </a>
+        </div>
+      </aside>
+
+      <!-- ========================================== -->
+      <!-- RIGHT MAIN CONTENT COLUMN                  -->
+      <!-- ========================================== -->
+      <main class="flex-1 min-w-0 space-y-8 w-full">
+        
+        {/* OVERVIEW TAB */}
+        {tab === "overview" && (
+          <div class="space-y-8">
+            
+            <!-- 1. Profile README Card -->
+            <div class="border border-border/90 bg-card/60 backdrop-blur-sm rounded-lg overflow-hidden shadow-sm">
+              <div class="px-4 py-2 border-b border-border/80 bg-secondary/40 flex items-center justify-between text-xs text-muted-foreground">
+                <span class="font-mono">{user.username} / readme.md</span>
+                <span class="text-[11px] text-muted-foreground/60">Markdown</span>
+              </div>
+              <div class="p-6 markdown-body prose dark:prose-invert max-w-none text-foreground">
+                <div set:html={profileReadmeHtml} />
+              </div>
+            </div>
+
+            <!-- 2. Pinned Repositories -->
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <h2 class="text-sm font-semibold text-foreground">Pinned</h2>
+                {isOwner && (
+                  <a
+                    href={`/${user.username}?tab=repositories`}
+                    class="text-xs text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    Customize your pins
+                  </a>
+                )}
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {pinnedRepos.map((repo) => (
+                  <div class="flex flex-col border border-border/80 bg-card/40 backdrop-blur-sm rounded-md p-4 hover:border-border transition-all shadow-sm">
+                    <div class="flex items-center gap-2 mb-1.5">
+                      <BookOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <a
+                        href={`/${user.username}/${repo.name}`}
+                        class="text-[14px] font-semibold text-[#58a6ff] hover:underline truncate"
+                      >
+                        {repo.name}
+                      </a>
+                      <span class="px-2 py-0.5 rounded-full text-[11px] font-medium border border-border text-muted-foreground whitespace-nowrap ml-auto">
+                        {repo.visibility}
+                      </span>
+                    </div>
+
+                    <p class="text-[12px] text-muted-foreground mb-4 flex-1 line-clamp-2 leading-relaxed">
+                      {repo.description || "No description provided."}
+                    </p>
+
+                    <div class="flex items-center gap-4 text-[12px] text-muted-foreground mt-auto">
+                      {repo.language && (
+                        <div class="flex items-center gap-1.5">
+                          <span
+                            class={`h-2.5 w-2.5 rounded-full ${langColors[repo.language] || "bg-gray-400"}`}
+                          />
+                          <span>{repo.language}</span>
+                        </div>
+                      )}
+
+                      <span class="flex items-center gap-1">
+                        <Star className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span>{repo.starCount || 0}</span>
+                      </span>
+
+                      <span class="flex items-center gap-1">
+                        <GitFork className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span>{repo.forkCount || 0}</span>
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <!-- 3. 365-Day Contribution Calendar Heatmap -->
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-foreground">
+                  {contributionCount > 0 ? `${contributionCount.toLocaleString()} contributions in the last year` : "Contributions in the last year"}
+                </h2>
+                <div class="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>Contribution settings</span>
+                </div>
+              </div>
+
+              <div class="flex flex-col lg:flex-row gap-4 items-start">
+                <!-- Heatmap Grid Card -->
+                <div class="flex-1 border border-border/80 bg-card/40 backdrop-blur-sm rounded-lg p-4 overflow-x-auto shadow-sm">
+                  <div class="min-w-[680px]">
+                    <!-- Month headers -->
+                    <div class="flex text-[10px] text-muted-foreground pl-7 mb-1.5 justify-between pr-2">
+                      {monthNames.map((m) => (
+                        <span>{m}</span>
+                      ))}
+                    </div>
+
+                    <!-- Grid -->
+                    <div class="flex gap-1">
+                      <!-- Day Labels -->
+                      <div class="flex flex-col justify-between text-[9px] text-muted-foreground pr-1.5 py-0.5 leading-none h-[88px]">
+                        <span>Mon</span>
+                        <span>Wed</span>
+                        <span>Fri</span>
+                      </div>
+
+                      <!-- Weeks columns -->
+                      <div class="flex gap-1 flex-1">
+                        {contributionWeeks.map((week) => (
+                          <div class="flex flex-col gap-1">
+                            {week.map((cell) => {
+                              // Level color classes for dark monochrome / emerald
+                              let cellClass = "bg-[#161b22] border border-white/5";
+                              if (cell.level === 1) cellClass = "bg-[#0e4429] border-[#006d32]/30";
+                              if (cell.level === 2) cellClass = "bg-[#006d32] border-[#26a641]/30";
+                              if (cell.level === 3) cellClass = "bg-[#26a641] border-[#39d353]/30";
+                              if (cell.level === 4) cellClass = "bg-[#39d353] border-[#39d353]";
+
+                              return (
+                                <div
+                                  title={`${cell.count} contribution${cell.count === 1 ? '' : 's'} on ${cell.date}`}
+                                  class={`w-2.5 h-2.5 rounded-[2px] cursor-pointer hover:ring-1 hover:ring-primary ${cellClass}`}
+                                />
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <!-- Legend & Activity footer -->
+                    <div class="flex items-center justify-between text-[11px] text-muted-foreground mt-3 pt-2 border-t border-border/40">
+                      <a href="#" class="hover:text-primary transition-colors text-[11px]">
+                        Learn how we count contributions
+                      </a>
+                      <div class="flex items-center gap-1.5 text-[10px]">
+                        <span>Less</span>
+                        <div class="w-2.5 h-2.5 rounded-[2px] bg-[#161b22] border border-white/5" />
+                        <div class="w-2.5 h-2.5 rounded-[2px] bg-[#0e4429]" />
+                        <div class="w-2.5 h-2.5 rounded-[2px] bg-[#006d32]" />
+                        <div class="w-2.5 h-2.5 rounded-[2px] bg-[#26a641]" />
+                        <div class="w-2.5 h-2.5 rounded-[2px] bg-[#39d353]" />
+                        <span>More</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Year Selectors -->
+                <div class="flex lg:flex-col gap-1 w-full lg:w-28 flex-shrink-0">
+                  <button class="w-full text-left px-3 py-1.5 rounded-md text-xs font-semibold bg-[#58a6ff] text-black">
+                    {currentYear}
+                  </button>
+                  <button class="w-full text-left px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-secondary transition-colors">
+                    {currentYear - 1}
+                  </button>
+                  <button class="w-full text-left px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-secondary transition-colors">
+                    {currentYear - 2}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. Contribution Activity Timeline -->
+            <div class="space-y-4 pt-2">
+              <h2 class="text-sm font-semibold text-foreground">Contribution Activity</h2>
+              {recentActivity.length > 0 ? (
+                <div class="space-y-3">
+                  {recentActivity.map((act) => {
+                    let payload: any = {};
+                    try {
+                      payload = act.payload ? JSON.parse(act.payload) : {};
+                    } catch {}
+                    const repoName = payload?.repoName || payload?.name || (act.repositoryId ? (repos.find(r => r.id === act.repositoryId)?.name) : "");
+                    const commitCount = payload?.commitCount;
+                    const verb = act.action === "pushed" ? "pushed" : (act.action || act.type.replace("_", " "));
+                    return (
+                      <div class="flex items-start gap-3 text-sm py-2 border-b border-border/60">
+                        <div class="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-muted-foreground flex-shrink-0 mt-0.5">
+                          <BookOpen className="h-3.5 w-3.5" />
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-foreground text-xs sm:text-sm">
+                            <span class="font-medium text-foreground">{verb}</span>
+                            {commitCount ? (
+                              <span class="ml-1"> {commitCount} commit{commitCount === 1 ? "" : "s"} to</span>
+                            ) : null}
+                            {repoName && (
+                              <a href={`/${user.username}/${repoName}`} class="text-[#58a6ff] hover:underline ml-1">
+                                {repoName}
+                              </a>
+                            )}
+                          </p>
+                          <span class="text-[11px] text-muted-foreground">{timeAgo(act.createdAt)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div class="text-xs text-muted-foreground py-4 border border-dashed border-border/80 rounded-md text-center">
+                  No recent public activity recorded this week.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* REPOSITORIES TAB */}
+        {tab === "repositories" && (
+          <div class="space-y-4">
+            <!-- Search & Filters Bar -->
+            <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between pb-4 border-b border-border">
+              <div class="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Find a repository..."
+                  class="w-full pl-9 pr-4 py-1.5 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+
+              <div class="flex items-center gap-2">
+                <select class="px-3 py-1.5 rounded-md border border-border bg-secondary/80 text-xs font-medium text-foreground focus:outline-none">
+                  <option>Type: All</option>
+                  <option>Public</option>
+                  <option>Private</option>
+                </select>
+
+                <select class="px-3 py-1.5 rounded-md border border-border bg-secondary/80 text-xs font-medium text-foreground focus:outline-none">
+                  <option>Language: All</option>
+                  <option>TypeScript</option>
+                  <option>Python</option>
+                  <option>Rust</option>
+                </select>
+
+                {isOwner && (
+                  <a
+                    href="/new"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#238636] hover:bg-[#2ea043] text-white text-xs font-semibold transition-colors shadow-sm"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>New</span>
+                  </a>
+                )}
+              </div>
+            </div>
+
+            <!-- Repositories List -->
+            <div class="divide-y divide-border">
+              {repos.map((repo) => (
+                <div class="py-5 flex items-start justify-between gap-4">
+                  <div class="space-y-2 flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <a
+                        href={`/${user.username}/${repo.name}`}
+                        class="text-lg font-semibold text-[#58a6ff] hover:underline truncate"
+                      >
+                        {repo.name}
+                      </a>
+                      <span class="px-2 py-0.5 rounded-full text-[11px] font-medium border border-border text-muted-foreground">
+                        {repo.visibility}
+                      </span>
+                    </div>
+
+                    {repo.description && (
+                      <p class="text-sm text-muted-foreground line-clamp-2 max-w-2xl">
+                        {repo.description}
+                      </p>
+                    )}
+
+                    <div class="flex items-center gap-4 text-xs text-muted-foreground pt-1">
+                      {repo.language && (
+                        <div class="flex items-center gap-1.5">
+                          <span class={`h-2.5 w-2.5 rounded-full ${langColors[repo.language] || "bg-gray-400"}`} />
+                          <span>{repo.language}</span>
+                        </div>
+                      )}
+
+                      {(repo.starCount || 0) > 0 && (
+                        <span class="flex items-center gap-1">
+                          <Star className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span>{repo.starCount}</span>
+                        </span>
+                      )}
+
+                      <span>Updated {timeAgo(repo.updatedAt)}</span>
+                    </div>
+                  </div>
+
+                  <!-- Star Button -->
+                  <button class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md border border-border bg-secondary/60 hover:bg-secondary text-xs font-medium text-foreground transition-colors">
+                    <Star className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>Star</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* STARS TAB */}
+        {tab === "stars" && (
+          <div class="space-y-4">
+            <h2 class="text-base font-semibold text-foreground pb-2 border-b border-border">
+              Starred Repositories ({starredRepos.length})
+            </h2>
+            {starredRepos.length > 0 ? (
+              <div class="divide-y divide-border">
+                {starredRepos.map((repo) => (
+                  <div class="py-4 flex items-start justify-between gap-4">
+                    <div class="space-y-1">
+                      <a
+                        href={`/${repo.owner?.username || user.username}/${repo.name}`}
+                        class="text-base font-semibold text-[#58a6ff] hover:underline"
+                      >
+                        {repo.owner?.username || user.username}/{repo.name}
+                      </a>
+                      <p class="text-sm text-muted-foreground">
+                        {repo.description || "No description provided."}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div class="py-12 text-center text-muted-foreground text-sm border border-dashed border-border rounded-lg">
+                No starred repositories yet.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* PROJECTS & PACKAGES TAB */}
+        {(tab === "projects" || tab === "packages") && (
+          <div class="py-16 text-center border border-dashed border-border rounded-lg space-y-2">
+            <h3 class="text-base font-semibold text-foreground">No {tab} found</h3>
+            <p class="text-xs text-muted-foreground max-w-sm mx-auto">
+              There are no public {tab} configured for this profile yet.
+            </p>
+          </div>
+        )}
+
+      </main>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Follow / Unfollow client handler
+  const followBtn = document.getElementById("follow-btn");
+  if (followBtn) {
+    followBtn.addEventListener("click", async () => {
+      const username = followBtn.getAttribute("data-username");
+      const isFollowing = followBtn.getAttribute("data-following") === "true";
+
+      try {
+        const method = isFollowing ? "DELETE" : "POST";
+        const res = await fetch(`/api/user/follow/${username}`, { method });
+        if (res.ok) {
+          window.location.reload();
+        }
+      } catch (err) {
+        console.error("Failed to toggle follow status:", err);
+      }
+    });
+  }
+
+  // Real local time for the profile owner
+  const localTimeValue = document.getElementById("local-time-value");
+  if (localTimeValue) {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const fmt = new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: timezone,
+    });
+    localTimeValue.textContent = fmt.format(new Date());
+  }
+</script>

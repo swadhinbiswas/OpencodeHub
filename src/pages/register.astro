@@ -11,106 +11,102 @@ Astro.response.headers.append("Set-Cookie", cookie);
 ---
 
 <BaseLayout title="Sign up for OpenCodeHub">
-  <div class="flex min-h-[calc(100vh-4rem)] items-center justify-center py-12">
-    <div class="w-full max-w-md">
+  <div class="flex min-h-[calc(100vh-8rem)] items-center justify-center py-12 px-4">
+    <div class="w-full max-w-sm space-y-6">
       <!-- Logo -->
-      <div class="text-center mb-8">
+      <div class="text-center space-y-2">
         <a href="/" class="inline-flex items-center gap-2">
-          <div class="p-2 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600">
-            <svg class="h-8 w-8 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+          <div class="p-2 rounded-lg bg-foreground text-background">
+            <svg class="h-6 w-6 fill-current" viewBox="0 0 24 24">
+              <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
             </svg>
           </div>
-          <span class="text-2xl font-bold text-foreground">OpenCodeHub</span>
+          <span class="text-xl font-bold text-foreground tracking-tight">OpenCodeHub</span>
         </a>
+        <h1 class="text-xl font-semibold text-foreground">Create your account</h1>
       </div>
 
       <!-- Register Card -->
-      <div class="relative">
-        <div class="absolute -inset-[1px] bg-gradient-to-r from-green-500/30 via-cyan-500/20 to-purple-500/30 rounded-2xl blur-sm"></div>
-        <div class="relative rounded-2xl border border-border bg-card/90 backdrop-blur-xl p-8">
-          <div class="text-center mb-6">
-            <h1 class="text-2xl font-bold text-foreground mb-2">Create an account</h1>
-            <p class="text-muted-foreground text-sm">Join OpenCodeHub and start building</p>
+      <div class="rounded-xl border border-border bg-card/60 backdrop-blur-xl p-6 sm:p-7 shadow-sm">
+        <form id="register-form" class="space-y-4">
+          <div class="space-y-1.5">
+            <label for="username" class="block text-xs font-medium text-muted-foreground">
+              Username
+            </label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              placeholder="johndoe"
+              required
+              minlength="2"
+              maxlength="39"
+              autofocus
+              class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground focus:ring-1 focus:ring-foreground transition-all"
+            />
+            <p class="text-[11px] text-muted-foreground">Only letters, numbers, and hyphens.</p>
           </div>
 
-          <form id="register-form" class="space-y-5">
-            <div class="space-y-2">
-              <label for="username" class="block text-sm font-medium text-muted-foreground">
-                Username
-              </label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                placeholder="johndoe"
-                required
-                minlength="2"
-                maxlength="39"
-                class="w-full rounded-lg border border-border bg-secondary px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-green-500/50 focus:ring-2 focus:ring-green-500/20 transition-all"
-              />
-              <p class="text-xs text-muted-foreground">Only letters, numbers, and hyphens.</p>
-            </div>
+          <div class="space-y-1.5">
+            <label for="email" class="block text-xs font-medium text-muted-foreground">
+              Email address
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="you@example.com"
+              required
+              class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground focus:ring-1 focus:ring-foreground transition-all"
+            />
+          </div>
 
-            <div class="space-y-2">
-              <label for="email" class="block text-sm font-medium text-muted-foreground">
-                Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="you@example.com"
-                required
-                class="w-full rounded-lg border border-border bg-secondary px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-green-500/50 focus:ring-2 focus:ring-green-500/20 transition-all"
-              />
-            </div>
+          <div class="space-y-1.5">
+            <label for="password" class="block text-xs font-medium text-muted-foreground">
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              placeholder="At least 8 characters"
+              required
+              minlength="8"
+              class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground focus:ring-1 focus:ring-foreground transition-all"
+            />
+          </div>
 
-            <div class="space-y-2">
-              <label for="password" class="block text-sm font-medium text-muted-foreground">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                placeholder="At least 8 characters"
-                required
-                minlength="8"
-                class="w-full rounded-lg border border-border bg-secondary px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-green-500/50 focus:ring-2 focus:ring-green-500/20 transition-all"
-              />
-              <p class="text-xs text-muted-foreground">Must be at least 8 characters long.</p>
-            </div>
+          <div
+            id="error-message"
+            class="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-md p-2.5 hidden"
+            role="alert"
+          >
+          </div>
 
-            <div id="error-message" class="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-3 hidden" role="alert"></div>
+          <input type="hidden" name="_csrf" id="csrf-token" value={token} />
 
-            <input type="hidden" name="_csrf" id="csrf-token" value={token} />
+          <button
+            type="submit"
+            id="submit-btn"
+            class="w-full py-2 px-4 rounded-md bg-[#238636] hover:bg-[#2ea043] text-white font-semibold text-sm shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#238636]"
+          >
+            Create account
+          </button>
+        </form>
 
-            <button
-              type="submit"
-              class="w-full py-3 px-4 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-foreground font-medium shadow-lg shadow-green-500/25 hover:shadow-green-500/40 transition-all focus:outline-none focus:ring-2 focus:ring-green-500/50"
-            >
-              Create account
-            </button>
-          </form>
+        <p class="text-[11px] text-muted-foreground text-center mt-4">
+          By creating an account, you agree to our{" "}
+          <a href="#" class="text-muted-foreground hover:text-foreground underline">Terms</a> and{" "}
+          <a href="#" class="text-muted-foreground hover:text-foreground underline">Privacy Policy</a>
+        </p>
+      </div>
 
-
-
-          <!-- Terms -->
-          <p class="text-xs text-muted-foreground text-center mt-4">
-            By creating an account, you agree to our{" "}
-            <a href="#" class="text-muted-foreground hover:text-foreground transition-colors">Terms</a> and{" "}
-            <a href="#" class="text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</a>
-          </p>
-
-          <!-- Footer -->
-          <p class="text-center text-sm text-muted-foreground mt-6">
-            Already have an account?{" "}
-            <a href="/login" class="text-green-400 hover:text-green-300 font-medium transition-colors">
-              Sign in
-            </a>
-          </p>
-        </div>
+      <!-- Footer Callout -->
+      <div class="rounded-xl border border-border bg-card/40 p-4 text-center text-xs text-muted-foreground">
+        Already have an account?{" "}
+        <a href="/login" class="text-[#58a6ff] hover:underline font-medium">
+          Sign in
+        </a>
       </div>
     </div>
   </div>
@@ -119,6 +115,7 @@ Astro.response.headers.append("Set-Cookie", cookie);
 <script>
   const form = document.getElementById("register-form") as HTMLFormElement;
   const errorMessage = document.getElementById("error-message");
+  const submitBtn = document.getElementById("submit-btn");
 
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -127,6 +124,10 @@ Astro.response.headers.append("Set-Cookie", cookie);
 
     const formData = new FormData(form);
     const data = Object.fromEntries(formData);
+
+    const originalBtnText = submitBtn!.textContent;
+    submitBtn!.textContent = "Creating account...";
+    submitBtn!.setAttribute("disabled", "true");
 
     try {
       const csrfToken = (document.getElementById("csrf-token") as HTMLInputElement)?.value || "";
@@ -146,10 +147,14 @@ Astro.response.headers.append("Set-Cookie", cookie);
       } else {
         errorMessage?.classList.remove("hidden");
         errorMessage!.textContent = result.error?.message || "Failed to create account";
+        submitBtn!.textContent = originalBtnText;
+        submitBtn!.removeAttribute("disabled");
       }
     } catch (error) {
       errorMessage?.classList.remove("hidden");
       errorMessage!.textContent = "An unexpected error occurred";
+      submitBtn!.textContent = originalBtnText;
+      submitBtn!.removeAttribute("disabled");
     }
   });
 </script>

@@ -6,10 +6,10 @@
 import { getDatabase, schema } from "@/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
-import simpleGit, { SimpleGit } from "simple-git";
-import path from "path";
-
-const REPOS_BASE_PATH = process.env.REPOS_PATH || path.join(process.cwd(), "data", "repos");
+import type { SimpleGit } from "simple-git";
+import { decryptWorkflowSecret, isEncryptedWorkflowSecret } from "./workflow-secret-crypto";
+import { createSimpleGit } from "./git";
+import { resolveRepoPath } from "./git-storage";
 
 interface SyncResult {
     success: boolean;
@@ -50,6 +50,29 @@ async function ensureUpstreamRemote(git: SimpleGit, mirrorUrl: string): Promise<
 }
 
 /**
+ * Build a fetch URL for a mirror, embedding the (decrypted) auth token into
+ * the URL transiently for https remotes when the repo has a mirrorToken.
+ */
+export function buildFetchUrl(mirrorUrl: string, mirrorToken: string | null | undefined): string {
+    if (!mirrorToken) return mirrorUrl;
+    if (!mirrorUrl.startsWith("https://")) return mirrorUrl;
+
+    const token = isEncryptedWorkflowSecret(mirrorToken)
+        ? decryptWorkflowSecret(mirrorToken)
+        : mirrorToken;
+
+    const parsed = new URL(mirrorUrl);
+    const host = parsed.hostname;
+    let username = "oauth2";
+    if (host === "github.com" || host === "bitbucket.org") {
+        username = "x-access-token";
+    }
+    parsed.username = username;
+    parsed.password = token;
+    return parsed.toString();
+}
+
+/**
  * Sync a single mirrored repository with its upstream
  */
 export async function syncMirrorRepository(repoId: string): Promise<SyncResult> {
@@ -68,7 +91,7 @@ export async function syncMirrorRepository(repoId: string): Promise<SyncResult> 
         return { success: false, refsUpdated: 0, error: "Not a mirror repository" };
     }
 
-    const repoPath = path.join(REPOS_BASE_PATH, repo.diskPath);
+    const repoPath = await resolveRepoPath(repo.diskPath);
 
     try {
         // Mark as syncing
@@ -77,19 +100,19 @@ export async function syncMirrorRepository(repoId: string): Promise<SyncResult> 
             .set({ mirrorSyncStatus: "syncing" })
             .where(eq(schema.repositories.id, repoId));
 
-        const git: SimpleGit = simpleGit(repoPath);
-        await ensureUpstreamRemote(git, repo.mirrorUrl);
+        const git: SimpleGit = createSimpleGit({ baseDir: repoPath });
+                await ensureUpstreamRemote(git, repo.mirrorUrl);
 
         // Mirror upstream refs directly into local heads/tags.
         logger.info({ repoId, mirrorUrl: repo.mirrorUrl }, "Starting mirror sync");
 
-        const fetchResult = await git.raw([
-            "fetch",
-            "upstream",
-            "+refs/heads/*:refs/heads/*",
-            "+refs/tags/*:refs/tags/*",
-            "--prune",
-        ]);
+        // When a token is stored, fetch from the authenticated URL directly so
+        // the secret never persists in the remote's git config.
+        const fetchArgs = repo.mirrorToken
+            ? ["fetch", buildFetchUrl(repo.mirrorUrl, repo.mirrorToken), "+refs/heads/*:refs/heads/*", "+refs/tags/*:refs/tags/*", "--prune"]
+            : ["fetch", "upstream", "+refs/heads/*:refs/heads/*", "+refs/tags/*:refs/tags/*", "--prune"];
+
+        const fetchResult = await git.raw(fetchArgs);
 
         // Approximate updated refs from fetch output lines.
         const refsUpdated = fetchResult
@@ -234,10 +257,10 @@ export async function initializeMirror(repoId: string, mirrorUrl: string): Promi
         return { success: false, refsUpdated: 0, error: "Repository not found" };
     }
 
-    const repoPath = path.join(REPOS_BASE_PATH, repo.diskPath);
+    const repoPath = await resolveRepoPath(repo.diskPath);
 
     try {
-        const git: SimpleGit = simpleGit(repoPath);
+        const git: SimpleGit = createSimpleGit({ baseDir: repoPath });
 
         await ensureUpstreamRemote(git, mirrorUrl);
 
@@ -266,9 +289,9 @@ export async function disableMirror(repoId: string): Promise<{ success: boolean;
     });
     if (!repo) return { success: false, error: "Repository not found" };
 
-    const repoPath = path.join(REPOS_BASE_PATH, repo.diskPath);
+    const repoPath = await resolveRepoPath(repo.diskPath);
     try {
-        const git: SimpleGit = simpleGit(repoPath);
+        const git: SimpleGit = createSimpleGit({ baseDir: repoPath });
         const remotes = await git.getRemotes(true);
         if (remotes.some((remote) => remote.name === "upstream")) {
             await git.removeRemote("upstream");

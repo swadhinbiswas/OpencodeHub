@@ -36,6 +36,9 @@ interface RepoSettingsProps {
         hasActions: boolean;
         isArchived: boolean;
         isTemplate: boolean;
+        isFork?: boolean;
+        forkedFromUrl?: string | null;
+        allowExternalPulls?: boolean;
     };
 }
 
@@ -44,6 +47,8 @@ export default function RepoSettings({ repo }: RepoSettingsProps) {
     const [branches, setBranches] = useState<string[]>([]);
     const [orgs, setOrgs] = useState<Array<{ id: string; name: string }>>([]);
     const [transferTarget, setTransferTarget] = useState("");
+    const [allowExternalPulls, setAllowExternalPulls] = useState(!!repo.allowExternalPulls);
+    const [savingFederation, setSavingFederation] = useState(false);
 
     useEffect(() => {
         // Load organizations the user can transfer to (WS3-05)
@@ -159,6 +164,24 @@ export default function RepoSettings({ repo }: RepoSettingsProps) {
             setTimeout(() => window.location.reload(), 500);
         } catch (err: any) {
             toast.error(err.message || "Failed to update archive status");
+        }
+    }
+
+    async function handleFederationToggle() {
+        setSavingFederation(true);
+        try {
+            const res = await fetch(`/api/repos/${repo.owner}/${repo.name}/settings/federation`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ allowExternalPulls }),
+            });
+            if (!res.ok) throw new Error("Failed to update federation settings");
+
+            toast.success("Federation settings updated");
+        } catch (err: any) {
+            toast.error(err.message || "Failed to update federation settings");
+        } finally {
+            setSavingFederation(false);
         }
     }
 
@@ -352,6 +375,47 @@ export default function RepoSettings({ repo }: RepoSettingsProps) {
                         Sync with git
                     </Button>
                 </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Federation</CardTitle>
+                    <CardDescription>
+                        Cross-instance contributions from peer OpenCodeHub instances.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {repo.isFork && repo.forkedFromUrl && (
+                        <div className="flex items-center justify-between rounded-lg border border-border p-4">
+                            <div>
+                                <h4 className="font-medium">Forked from</h4>
+                                <p className="text-sm text-muted-foreground break-all">
+                                    {repo.forkedFromUrl}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                    <div className="flex items-center justify-between rounded-lg border border-border p-4">
+                        <div>
+                            <h4 className="font-medium">Allow external pull requests</h4>
+                            <p className="text-sm text-muted-foreground">
+                                Accept pull requests whose head branch lives on a fork hosted by
+                                another OpenCodeHub instance.
+                            </p>
+                        </div>
+                        <input
+                            type="checkbox"
+                            checked={allowExternalPulls}
+                            onChange={(e) => setAllowExternalPulls(e.target.checked)}
+                            className="accent-primary h-4 w-4"
+                        />
+                    </div>
+                </CardContent>
+                <CardFooter className="border-t px-6 py-4">
+                    <Button variant="outline" onClick={handleFederationToggle} disabled={savingFederation}>
+                        {savingFederation ? "Saving..." : "Save federation settings"}
+                    </Button>
+                </CardFooter>
             </Card>
 
             <Card className="border-red-200">

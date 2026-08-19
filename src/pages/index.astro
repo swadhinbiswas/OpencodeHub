@@ -1,181 +1,76 @@
 ---
 import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import { eq, count } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { BookOpen, Star } from "lucide-react";
-import HeroSection from "@/components/home/HeroSection";
-import FeaturesSection from "@/components/home/FeaturesSection";
-import FeatureDemosSection from "@/components/home/FeatureDemosSection";
-import BackgroundGrid from "@/components/ui/BackgroundGrid.astro";
+import UserProfileView from "@/components/profile/UserProfileView.astro";
+import ServerDirectoryBar from "@/components/profile/ServerDirectoryBar.astro";
 
-// Fetch public repositories for the landing page
-const db = getDatabase();
-let recentRepos: any[] = [];
-let stats = {
-  repos: 0,
-  users: 0,
-  commits: 0,
-};
+const db = getDatabase() as NodePgDatabase<typeof schema>;
+const tab = Astro.url.searchParams.get("tab") || "overview";
+
+// 1. Determine the primary profile to display on the landing page
+let primaryUser: typeof schema.users.$inferSelect | null = null;
 
 try {
-  // Get recent public repos
-  recentRepos = await db.query.repositories.findMany({
-    where: eq(schema.repositories.visibility, "public"),
-    orderBy: (repositories, { desc }) => [desc(repositories.updatedAt)],
-    limit: 6,
-    with: {
-      owner: {
-        columns: { id: true, username: true, avatarUrl: true },
-      },
-    },
-  });
+  // If a user is logged in, show their profile (GitHub-style landing)
+  const loggedInUser = Astro.locals.user;
 
-  // Org-owned repos have a null `owner` relation — resolve org names
-  const orgIds = (recentRepos as any[])
-    .filter((r) => r.ownerType === "organization")
-    .map((r) => r.ownerId);
-  if (orgIds.length > 0) {
-    const orgs = await db.query.organizations.findMany({
-      where: (t, { inArray }) => inArray(t.id, orgIds),
-      columns: { id: true, name: true },
+  if (loggedInUser) {
+    primaryUser = loggedInUser as any;
+  } else {
+    // Anonymous visitors: prefer the first admin, then first active user
+    const adminUser = await db.query.users.findFirst({
+      where: eq(schema.users.isAdmin, true),
+      orderBy: [asc(schema.users.createdAt)],
     });
-    const orgNameById = new Map(orgs.map((o) => [o.id, o.name]));
-    recentRepos = recentRepos.map((r: any) =>
-      r.ownerType === "organization"
-        ? { ...r, owner: { username: orgNameById.get(r.ownerId) ?? "org" } }
-        : r,
-    );
+
+    if (adminUser) {
+      primaryUser = adminUser;
+    } else {
+      // Find any first user
+      const firstUser = await db.query.users.findFirst({
+        where: eq(schema.users.isActive, true),
+        orderBy: [asc(schema.users.createdAt)],
+      });
+      primaryUser = firstUser || null;
+    }
   }
-
-  // Get basic stats
-  const dbTyped = db as NodePgDatabase<typeof schema>;
-  const [repoCountResult] = await dbTyped.select({ count: count() }).from(schema.repositories).limit(1);
-  const repoCount = Number(repoCountResult?.count) || 0;
-
-  const [userCountResult] = await dbTyped.select({ count: count() }).from(schema.users).limit(1);
-  const userCount = Number(userCountResult?.count) || 0;
-
-  stats.repos = repoCount;
-  stats.users = userCount;
 } catch (e) {
-  console.error("Failed to fetch data:", e);
+  console.error("Error resolving landing page user profile:", e);
+}
+
+// Fallback if the database has no users yet — generic placeholder so a fresh
+// install still renders a coherent profile instead of showing a fabricated person.
+if (!primaryUser) {
+  primaryUser = {
+    id: "placeholder-user",
+    username: "welcome",
+    displayName: "Welcome to OpenCodeHub",
+    email: "",
+    bio: "Your self-hosted Git platform. Create an account to get started.",
+    company: "",
+    location: "",
+    website: "",
+    avatarUrl: "",
+    isAdmin: false,
+    isActive: true,
+    emailVerified: true,
+    twoFactorEnabled: false,
+    twoFactorSecret: null,
+    passwordHash: null,
+    lastLoginAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    aiConfig: null,
+  };
 }
 ---
 
-<BaseLayout title="OpenCodeHub - Your Self-Hosted Git Platform">
-  <BackgroundGrid />
-  <!-- Hero Section with Aceternity UI Components -->
-  <HeroSection client:load />
+<BaseLayout title={`${primaryUser.displayName || primaryUser.username} - OpenCodeHub`}>
+  <!-- Server-wide discovery bar for all users and organizations -->
+  <ServerDirectoryBar currentUsername={primaryUser.username} />
 
-  <!-- Trending Repositories Section -->
-  {
-    recentRepos.length > 0 && (
-      <section class="container py-12 sm:py-24 relative">
-        <div class="absolute inset-0 bg-primary/5 [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] pointer-events-none rounded-[3rem] my-10"></div>
-        <div class="relative flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 sm:mb-12 gap-4">
-          <div>
-            <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-              Trending Repositories
-            </h2>
-            <p class="text-sm sm:text-base text-muted-foreground mt-2">Discover popular projects from the community</p>
-          </div>
-          <a
-            href="/explore"
-            class="group inline-flex items-center gap-2 text-sm font-medium text-primary bg-primary/10 px-4 py-2 rounded-full hover:bg-primary/20 transition-all duration-300"
-          >
-            View all
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right transition-transform group-hover:translate-x-1"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-          </a>
-        </div>
-        <div class="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 relative">
-          {recentRepos.map((repo: any) => (
-            <div class="group relative rounded-2xl border border-border bg-background/50 backdrop-blur-md p-4 sm:p-6 transition-all duration-500 hover:border-primary/50 hover:bg-accent/50 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:shadow-primary/20 overflow-hidden">
-              <div class="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-
-              <div class="relative z-10 flex items-center justify-between mb-4 sm:mb-5">
-                <div class="flex items-center gap-2 sm:gap-3 min-w-0">
-                  <div class="p-1.5 sm:p-2 rounded-lg bg-primary/10 text-primary border border-primary/20 group-hover:scale-110 transition-transform duration-500 flex-shrink-0">
-                    <BookOpen className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </div>
-                  <a
-                    href={`/${repo.owner.username}/${repo.name}`}
-                    class="font-semibold text-sm sm:text-lg text-foreground hover:text-primary transition-colors truncate"
-                  >
-                    {repo.owner.username}/{repo.name}
-                  </a>
-                </div>
-                <div class="flex items-center gap-1.5 text-muted-foreground bg-secondary/50 px-2 sm:px-2.5 py-1 rounded-full border border-border/50 group-hover:border-yellow-500/30 group-hover:text-yellow-500 transition-colors flex-shrink-0">
-                  <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                  <span class="text-[10px] sm:text-xs font-semibold">{repo.starCount}</span>
-                </div>
-              </div>
-              <p class="relative z-10 text-xs sm:text-sm text-muted-foreground line-clamp-2 mb-4 sm:mb-6 min-h-[2.5rem] sm:min-h-[2.5rem]">
-                {repo.description || "No description provided."}
-              </p>
-              <div class="relative z-10 flex items-center justify-between text-[10px] sm:text-xs font-medium text-muted-foreground border-t border-border/50 pt-3 sm:pt-4">
-                {repo.language ? (
-                  <div class="flex items-center gap-1.5 sm:gap-2 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md bg-secondary/50 border border-border/50">
-                    <span class="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-primary animate-pulse-slow" />
-                    {repo.language}
-                  </div>
-                ) : <div></div>}
-                <div class="flex items-center gap-1">
-                   <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock sm:w-3 sm:h-3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                  {new Date(repo.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-    )
-  }
-
-  <!-- Interactive Feature Demonstrations -->
-  <FeatureDemosSection client:load />
-
-  <!-- Features Section with Aceternity UI Components -->
-  <FeaturesSection client:load />
-
-  <!-- Footer CTA -->
-  <section class="container py-12 sm:py-20 border-t border-border">
-    <div
-      class="relative rounded-2xl border border-border bg-gradient-to-br from-primary/10 via-transparent to-purple-500/10 p-8 sm:p-12 overflow-hidden"
-    >
-      <!-- Background decorations -->
-      <div
-        class="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full blur-[100px] pointer-events-none"
-      >
-      </div>
-      <div
-        class="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/20 rounded-full blur-[80px] pointer-events-none"
-      >
-      </div>
-
-      <div class="relative z-10 text-center max-w-2xl mx-auto">
-        <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 text-foreground">
-          Ready to ship faster?
-        </h2>
-        <p class="text-sm sm:text-base text-muted-foreground mb-6 sm:mb-8">
-          Join thousands of developers using OpenCodeHub to streamline their
-          workflow with stacked PRs, AI reviews, and smart merge queues.
-        </p>
-        <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-          <a
-            href="/register"
-            class="inline-flex items-center justify-center rounded-lg bg-primary px-6 sm:px-8 py-3 sm:py-3.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all shadow-md shadow-primary/20"
-          >
-            Get Started Free
-          </a>
-          <a
-            href="https://github.com/swadhinbiswas/OpencodeHub"
-            class="inline-flex items-center justify-center rounded-lg border border-border bg-secondary/50 px-6 sm:px-8 py-3 sm:py-3.5 text-sm font-medium text-foreground hover:bg-secondary transition-all"
-          >
-            Star on GitHub
-          </a>
-        </div>
-      </div>
-    </div>
-  </section>
+  <!-- GitHub-Authentic User Profile View -->
+  <UserProfileView user={primaryUser} tab={tab} isLanding={true} />
 </BaseLayout>

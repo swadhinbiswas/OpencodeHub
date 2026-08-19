@@ -1,3 +1,7 @@
+---
+title: "Horizontal Scaling"
+---
+
 # Horizontal Scaling
 
 OpenCodeHub is designed to be scaled horizontally to handle high traffic and large workloads.

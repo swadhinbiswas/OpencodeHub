@@ -19,7 +19,7 @@ import { RegisterUserSchema } from "@/lib/validation";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { initRepository } from "@/lib/git";
-import { initRepoInStorage, finalizeRepoInit, isCloudStorage } from "@/lib/git-storage";
+import { initRepoInStorage, getDiskPath, finalizeRepoInit, isCloudStorage } from "@/lib/git-storage";
 import { withErrorHandler } from "@/lib/errors";
 
 const registerSchema = z.object({
@@ -136,7 +136,7 @@ export const POST: APIRoute = withErrorHandler(async ({ request, cookies }) => {
         description: `${username}'s profile`,
         visibility: "public",
         defaultBranch: "main",
-        diskPath: `repos/${username}/${profileRepoName}.git`,
+        diskPath: await getDiskPath(username, profileRepoName),
         httpCloneUrl: "",
         sshCloneUrl: "",
         createdAt: timestamp2,
