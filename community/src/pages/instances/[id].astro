@@ -1,0 +1,227 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { Header } from "../../components/layout/Header";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { 
+  Globe, 
+  Star, 
+  GitFork, 
+  ExternalLink, 
+  ArrowLeft, 
+  RefreshCw, 
+  Server, 
+  Copy, 
+  BookOpen,
+  Activity,
+  Code2
+} from "lucide-react";
+import { verifyToken } from "../../lib/auth";
+import { getDb } from "../../lib/db";
+import { eq, desc } from "drizzle-orm";
+import { instances, cachedRepos } from "../../lib/db/schema";
+
+const token = Astro.cookies.get("community_session")?.value;
+const user = token ? await verifyToken(token) : null;
+const { id } = Astro.params;
+
+const db = getDb() as any;
+
+// Fetch Instance Details
+const instance = await db.query.instances.findFirst({
+  where: eq(instances.id, id as string)
+}).catch(() => null);
+
+// Fetch Repositories for this instance
+const repos = await db.query.cachedRepos.findMany({
+  where: eq(cachedRepos.instanceId, id as string),
+  orderBy: [desc(cachedRepos.starCount), desc(cachedRepos.updatedAt)],
+  limit: 50
+}).catch(() => []);
+
+let capabilitiesList: string[] = [];
+try {
+  if (instance?.capabilities) {
+    capabilitiesList = typeof instance.capabilities === "string" ? JSON.parse(instance.capabilities) : instance.capabilities;
+  }
+} catch {}
+---
+<BaseLayout title={`${instance?.name || 'Instance'} — OpenCodeHub Community`}>
+  <Header client:load user={user} />
+  
+  <main class="container px-4 sm:px-8 py-8 sm:py-12 space-y-8">
+    
+    <a href="/instances" class="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+      <ArrowLeft className="h-3.5 w-3.5" /> Back to all instances
+    </a>
+
+    {!instance ? (
+      <div class="rounded-3xl border border-dashed border-border/80 bg-card/40 p-12 text-center space-y-3">
+        <h2 class="text-xl font-bold">Instance Not Found</h2>
+        <p class="text-xs text-muted-foreground">The requested node ID does not exist in the community database.</p>
+        <div class="pt-2">
+          <a href="/instances"><Button size="sm">Browse Nodes</Button></a>
+        </div>
+      </div>
+    ) : (
+      <>
+        <!-- Instance Hero Header -->
+        <div class="rounded-3xl border border-border/60 bg-card/60 backdrop-blur-xl p-6 sm:p-8 space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+              <div class="h-14 w-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                <Server className="h-7 w-7" />
+              </div>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+                    {instance.name}
+                  </h1>
+                  <span class={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                    instance.status === "online" 
+                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
+                      : "bg-destructive/10 text-destructive border-destructive/20"
+                  }`}>
+                    <span class={`h-1.5 w-1.5 rounded-full ${instance.status === "online" ? "bg-emerald-400 animate-pulse" : "bg-destructive"}`}></span>
+                    <span class="capitalize">{instance.status || "pending"}</span>
+                  </span>
+                </div>
+                <a href={instance.siteUrl} target="_blank" class="text-xs sm:text-sm text-muted-foreground hover:underline inline-flex items-center gap-1 mt-1">
+                  {instance.siteUrl} <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-2 shrink-0">
+              <Button id="sync-btn" variant="outline" size="sm" className="gap-1.5 text-xs font-medium">
+                <RefreshCw className="h-3.5 w-3.5" id="sync-icon" />
+                Sync Node
+              </Button>
+              <a href={instance.siteUrl} target="_blank" rel="noreferrer">
+                <Button size="sm" className="gap-1.5 text-xs font-semibold bg-primary hover:bg-primary/90">
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Visit Instance
+                </Button>
+              </a>
+            </div>
+          </div>
+
+          <!-- Metadata Badges -->
+          <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-border/50 text-xs">
+            {instance.version && (
+              <Badge variant="outline" className="font-mono text-[11px]">
+                v{instance.version}
+              </Badge>
+            )}
+            {capabilitiesList.map((cap: string) => (
+              <Badge variant="secondary" className="text-[11px] uppercase font-semibold">
+                {cap}
+              </Badge>
+            ))}
+            <span class="text-muted-foreground ml-auto text-xs flex items-center gap-1.5">
+              <Activity className="h-3.5 w-3.5 text-indigo-400" />
+              Last Synced: {instance.lastSyncAt ? new Date(instance.lastSyncAt).toLocaleString() : 'Never'}
+            </span>
+          </div>
+        </div>
+
+        <!-- Repositories Grid -->
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-xl font-bold flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-primary" />
+              Public Repositories ({repos.length})
+            </h2>
+          </div>
+
+          {repos.length === 0 ? (
+            <div class="rounded-2xl border border-dashed border-border/80 bg-card/30 p-10 text-center space-y-2">
+              <p class="text-sm font-semibold text-foreground">No repositories indexed yet</p>
+              <p class="text-xs text-muted-foreground">Click "Sync Node" above to fetch the latest public repositories from this server.</p>
+            </div>
+          ) : (
+            <div class="grid md:grid-cols-2 gap-4">
+              {repos.map((r: any) => (
+                <div class="rounded-2xl border border-border/60 bg-card/50 p-5 hover:border-primary/40 transition-all shadow-sm space-y-3">
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0">
+                      <a href={`/r/${instance.name}/${r.fullName}`} class="font-bold text-base text-primary hover:underline truncate block">
+                        {r.fullName}
+                      </a>
+                      <p class="text-xs text-muted-foreground mt-1 line-clamp-2">
+                        {r.description || "No description provided."}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] uppercase font-semibold shrink-0">
+                      {r.visibility || "public"}
+                    </Badge>
+                  </div>
+
+                  <div class="flex items-center justify-between pt-2 border-t border-border/40 text-xs text-muted-foreground">
+                    <div class="flex items-center gap-3">
+                      {r.language && <span class="font-medium text-foreground">{r.language}</span>}
+                      <span class="flex items-center gap-1"><Star className="h-3 w-3 text-amber-400 fill-amber-400" /> {r.starCount || 0}</span>
+                      <span class="flex items-center gap-1"><GitFork className="h-3 w-3" /> {r.forkCount || 0}</span>
+                    </div>
+
+                    <div class="flex items-center gap-1.5">
+                      <button 
+                        class="clone-btn text-[11px] font-medium px-2 py-1 rounded border border-border/60 hover:bg-accent transition-colors"
+                        data-clone-url={r.httpCloneUrl}
+                      >
+                        Copy Clone URL
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </>
+    )}
+  </main>
+
+  <script define:vars={{ id }}>
+    import { toast } from "sonner";
+
+    // Clone URL
+    document.querySelectorAll('.clone-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const url = (e.currentTarget as HTMLButtonElement).dataset.cloneUrl;
+        if (url) {
+          navigator.clipboard.writeText(url);
+          toast.success("Clone URL copied to clipboard!");
+        }
+      });
+    });
+
+    // In-place Sync Button
+    const syncBtn = document.getElementById('sync-btn');
+    const syncIcon = document.getElementById('sync-icon');
+
+    syncBtn?.addEventListener('click', async () => {
+      syncBtn.setAttribute('disabled', 'true');
+      syncIcon?.classList.add('animate-spin');
+      toast.info("Triggering background sync...");
+
+      try {
+        const res = await fetch(`/api/instances/sync?id=${id}`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          toast.success(`Synced successfully! ${data.data?.count || 0} repos updated.`);
+          setTimeout(() => window.location.reload(), 800);
+        } else {
+          toast.error(data.error?.message || "Sync failed");
+        }
+      } catch (err) {
+        toast.error("Network error triggering sync");
+      } finally {
+        syncBtn.removeAttribute('disabled');
+        syncIcon?.classList.remove('animate-spin');
+      }
+    });
+  </script>
+</BaseLayout>

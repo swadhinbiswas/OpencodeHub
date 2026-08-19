@@ -1,29 +1,31 @@
 "use client";
+
 import { motion } from "framer-motion";
 import {
     AlertCircle,
     CheckCircle2,
+    CircleDot,
     MessageSquare,
-    User,
     Tag,
     Calendar,
-    Clock,
     Link2,
     GitBranch,
-    MoreHorizontal,
+    GitPullRequest,
     Edit3,
-    Pin,
-    Lock,
-    Trash2,
     Layers,
     CheckSquare,
     ListTodo,
-    Users
+    Users,
+    Plus,
+    Layout,
+    ArrowUpRight,
+    Lock,
+    Send,
+    Loader2
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { marked } from "marked";
 import DOMPurify from "isomorphic-dompurify";
-import { formatDistanceToNow } from "date-fns";
 
 interface Issue {
     id: string;
@@ -43,6 +45,7 @@ interface Issue {
         avatarUrl?: string;
     };
     assignees?: Array<{
+        id?: string;
         username: string;
         avatarUrl?: string;
     }>;
@@ -70,29 +73,55 @@ interface Props {
     repoName: string;
     canLink?: boolean;
     canEdit?: boolean;
+    currentUser?: {
+        id: string;
+        username: string;
+        avatarUrl?: string;
+    };
 }
 
-function timeAgo(date: string): string {
+interface Comment {
+    id: string;
+    body: string;
+    createdAt: string;
+    author: {
+        id: string;
+        username: string;
+        displayName?: string;
+        avatarUrl?: string;
+    };
+}
+
+function formatTimeAgo(dateString: string): string {
+    if (!dateString) return "";
+    const date = new Date(dateString);
     const now = new Date();
-    const past = new Date(date);
-    const diffMs = now.getTime() - past.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-
-    if (diffMins < 1) return 'just now';
-    if (diffMins < 60) return `${diffMins} minutes ago`;
-
+    const diffMs = now.getTime() - date.getTime();
+    const diffSecs = Math.max(0, Math.floor(diffMs / 1000));
+    
+    if (diffSecs < 60) return "just now";
+    const diffMins = Math.floor(diffSecs / 60);
+    if (diffMins < 60) return `${diffMins} ${diffMins === 1 ? "minute" : "minutes"} ago`;
     const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours} hours ago`;
-
+    if (diffHours < 24) return `${diffHours} ${diffHours === 1 ? "hour" : "hours"} ago`;
     const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 30) return `${diffDays} days ago`;
-
+    if (diffDays < 30) return `${diffDays} ${diffDays === 1 ? "day" : "days"} ago`;
     const diffMonths = Math.floor(diffDays / 30);
-    return `${diffMonths} months ago`;
+    if (diffMonths < 12) return `${diffMonths} ${diffMonths === 1 ? "month" : "months"} ago`;
+    const diffYears = Math.floor(diffMonths / 12);
+    return `${diffYears} ${diffYears === 1 ? "year" : "years"} ago`;
 }
 
-export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canLink, canEdit }: Props) {
-    const [showMenu, setShowMenu] = useState(false);
+export default function IssueDetail({
+    issue,
+    bodyHtml,
+    repoOwner,
+    repoName,
+    canLink = false,
+    canEdit = false,
+    currentUser
+}: Props) {
+    const [issueState, setIssueState] = useState<"open" | "closed">(issue.state);
     const [collaborators, setCollaborators] = useState<Array<{ id: string; username: string }>>([]);
     const [linkedPRs, setLinkedPRs] = useState<Array<{
         id: string;
@@ -100,6 +129,7 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
         pullRequest: { number: number; title: string; state: string };
     }>>([]);
     const [loadingLinks, setLoadingLinks] = useState(true);
+
     const [crossRepoLinks, setCrossRepoLinks] = useState<Array<{
         id: string;
         linkType: string;
@@ -110,11 +140,105 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
     const [crossRepoTarget, setCrossRepoTarget] = useState("");
     const [crossRepoType, setCrossRepoType] = useState("relates");
     const [crossRepoError, setCrossRepoError] = useState<string | null>(null);
-    const [isEditing, setIsEditing] = useState(false);
+    const [isLinking, setIsLinking] = useState(false);
+
+    // Editing Issue Title/Body
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editTitle, setEditTitle] = useState(issue.title);
+    const [isEditingBody, setIsEditingBody] = useState(false);
     const [editBody, setEditBody] = useState(issue.body);
+    const [currentBodyHtml, setCurrentBodyHtml] = useState(bodyHtml);
     const [saving, setSaving] = useState(false);
 
+    // Comments State
+    const [comments, setComments] = useState<Comment[]>([]);
+    const [loadingComments, setLoadingComments] = useState(true);
+    const [newComment, setNewComment] = useState("");
+    const [commentTab, setCommentTab] = useState<"write" | "preview">("write");
+    const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+    const [isTogglingState, setIsTogglingState] = useState(false);
+
+    // Fetch Comments
+    const fetchComments = async () => {
+        try {
+            const res = await fetch(`/api/repos/${repoOwner}/${repoName}/issues/${issue.number}/comments`);
+            if (res.ok) {
+                const data = await res.json();
+                setComments(data.data || []);
+            }
+        } catch (e) {
+            console.error("Failed to fetch comments", e);
+        } finally {
+            setLoadingComments(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchComments();
+    }, [repoOwner, repoName, issue.number]);
+
+    // Load Linked PRs & Collaborators
+    useEffect(() => {
+        let isMounted = true;
+
+        async function loadLinks() {
+            try {
+                const res = await fetch(`/api/repos/${repoOwner}/${repoName}/issues/${issue.number}/linked-prs`);
+                if (!res.ok) throw new Error("Failed to load linked PRs");
+                const data = await res.json();
+                if (isMounted) {
+                    setLinkedPRs(data.links || []);
+                }
+            } catch (e) {
+                if (isMounted) setLinkedPRs([]);
+            } finally {
+                if (isMounted) setLoadingLinks(false);
+            }
+        }
+
+        loadLinks();
+
+        if (canEdit) {
+            fetch(`/api/repos/${repoOwner}/${repoName}/collaborators`)
+                .then((r) => (r.ok ? r.json() : null))
+                .then((data) => {
+                    if (isMounted) setCollaborators(data?.data?.collaborators || data?.collaborators || []);
+                })
+                .catch(() => {});
+        }
+
+        return () => {
+            isMounted = false;
+        };
+    }, [repoOwner, repoName, issue.number, canEdit]);
+
+    // Load Cross Repo Links
+    useEffect(() => {
+        let isMounted = true;
+
+        async function loadCrossRepoLinks() {
+            try {
+                const res = await fetch(`/api/repos/${repoOwner}/${repoName}/issues/${issue.number}/cross-repo-links`);
+                if (!res.ok) throw new Error("Failed to load linked issues");
+                const data = await res.json();
+                if (isMounted) {
+                    setCrossRepoLinks(data.links || []);
+                }
+            } catch (e) {
+                if (isMounted) setCrossRepoLinks([]);
+            } finally {
+                if (isMounted) setLoadingCrossRepo(false);
+            }
+        }
+
+        loadCrossRepoLinks();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [repoOwner, repoName, issue.number]);
+
+    // Convert to Epic
     async function convertToEpic() {
         if (!confirm("Are you sure you want to convert this issue to an Epic?")) return;
 
@@ -136,7 +260,32 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
         }
     }
 
-    // Assignees (WS2-01): toggle a user's assignment on the issue
+    // Toggle Issue State (Open / Closed)
+    async function handleToggleIssueState() {
+        const nextState = issueState === "open" ? "closed" : "open";
+        setIsTogglingState(true);
+        try {
+            const res = await fetch(`/api/repos/${repoOwner}/${repoName}/issues/${issue.number}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ state: nextState })
+            });
+
+            if (res.ok) {
+                setIssueState(nextState);
+                fetchComments();
+            } else {
+                const data = await res.json().catch(() => null);
+                alert(data?.error?.message || "Failed to update issue status");
+            }
+        } catch (e) {
+            alert("Failed to update issue status");
+        } finally {
+            setIsTogglingState(false);
+        }
+    }
+
+    // Assignee Toggle
     async function handleAssigneeToggle(assigneeId: string) {
         if (!assigneeId) return;
         const currentIds = (issue.assignees || []).map((a: any) => a.id || a.username);
@@ -161,76 +310,11 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
         }
     }
 
-    useEffect(() => {
-        let isMounted = true;
-
-        async function loadLinks() {
-            try {
-                const res = await fetch(`/api/repos/${repoOwner}/${repoName}/issues/${issue.number}/linked-prs`);                if (!res.ok) throw new Error("Failed to load linked PRs");
-                const data = await res.json();
-                if (isMounted) {
-                    setLinkedPRs(data.links || []);
-                }
-            } catch (e) {
-                if (isMounted) {
-                    setLinkedPRs([]);
-                }
-            } finally {
-                if (isMounted) {
-                    setLoadingLinks(false);
-                }
-            }
-        }
-
-        loadLinks();
-
-        // Load collaborators for the assignee dropdown (WS2-01)
-        if (canEdit) {
-            fetch(`/api/repos/${repoOwner}/${repoName}/collaborators`)
-                .then((r) => (r.ok ? r.json() : null))
-                .then((data) => {
-                    if (isMounted) setCollaborators(data?.data?.collaborators || data?.collaborators || []);
-                })
-                .catch(() => {});
-        }
-
-        return () => {
-            isMounted = false;
-        };
-    }, [repoOwner, repoName, issue.number]);
-
-    useEffect(() => {
-        let isMounted = true;
-
-        async function loadCrossRepoLinks() {
-            try {
-                const res = await fetch(`/api/repos/${repoOwner}/${repoName}/issues/${issue.number}/cross-repo-links`);
-                if (!res.ok) throw new Error("Failed to load linked issues");
-                const data = await res.json();
-                if (isMounted) {
-                    setCrossRepoLinks(data.links || []);
-                }
-            } catch (e) {
-                if (isMounted) {
-                    setCrossRepoLinks([]);
-                }
-            } finally {
-                if (isMounted) {
-                    setLoadingCrossRepo(false);
-                }
-            }
-        }
-
-        loadCrossRepoLinks();
-
-        return () => {
-            isMounted = false;
-        };
-    }, [repoOwner, repoName, issue.number]);
-
+    // Link Cross-Repo Issue
     async function handleCrossRepoLink() {
         if (!crossRepoTarget.trim()) return;
         setCrossRepoError(null);
+        setIsLinking(true);
         try {
             const res = await fetch(`/api/repos/${repoOwner}/${repoName}/issues/${issue.number}/cross-repo-links`, {
                 method: "POST",
@@ -248,415 +332,745 @@ export default function IssueDetail({ issue, bodyHtml, repoOwner, repoName, canL
             setCrossRepoTarget("");
         } catch (e: any) {
             setCrossRepoError(e.message || "Failed to link issue");
+        } finally {
+            setIsLinking(false);
         }
     }
 
-    async function handleSave() {
+    // Save Title
+    async function handleSaveTitle() {
+        if (!editTitle.trim()) return;
         setSaving(true);
         try {
             const res = await fetch(`/api/repos/${repoOwner}/${repoName}/issues/${issue.number}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ title: editTitle, description: editBody }),
+                body: JSON.stringify({ title: editTitle.trim() }),
             });
-            if (!res.ok) throw new Error("Failed to update issue");
-            setIsEditing(false);
-            window.location.reload();
+            if (!res.ok) throw new Error("Failed to update title");
+            issue.title = editTitle.trim();
+            setIsEditingTitle(false);
         } catch (e) {
-            alert("Failed to save changes");
+            alert("Failed to save title");
         } finally {
             setSaving(false);
         }
     }
 
+    // Save Body
+    async function handleSaveBody() {
+        setSaving(true);
+        try {
+            const res = await fetch(`/api/repos/${repoOwner}/${repoName}/issues/${issue.number}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ description: editBody }),
+            });
+            if (!res.ok) throw new Error("Failed to update description");
+            const rendered = marked.parse(editBody || "") as string;
+            setCurrentBodyHtml(DOMPurify.sanitize(rendered));
+            issue.body = editBody;
+            setIsEditingBody(false);
+        } catch (e) {
+            alert("Failed to save description");
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    // Submit New Comment
+    async function handleSubmitComment() {
+        if (!newComment.trim()) return;
+        setIsSubmittingComment(true);
+        try {
+            const res = await fetch(`/api/repos/${repoOwner}/${repoName}/issues/${issue.number}/comments`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ body: newComment.trim() })
+            });
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => null);
+                throw new Error(data?.error?.message || "Failed to add comment");
+            }
+
+            const data = await res.json();
+            if (data.data) {
+                setComments((prev) => [...prev, data.data]);
+            } else {
+                fetchComments();
+            }
+            setNewComment("");
+            setCommentTab("write");
+        } catch (e: any) {
+            alert(e.message || "Failed to post comment");
+        } finally {
+            setIsSubmittingComment(false);
+        }
+    }
+
+    // Participants Set
+    const participants = Array.from(
+        new Set([
+            issue.author.username,
+            ...(issue.assignees?.map((a) => a.username) || []),
+            ...comments.map((c) => c.author?.username).filter(Boolean)
+        ])
+    );
+
     return (
-        <div className="max-w-6xl mx-auto">
-            {/* Title Section */}
-            <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-8 pb-6 border-b border-border"
-            >
-                <div className="flex items-start justify-between gap-4 mb-4">
-                    <div className="flex items-center gap-3 flex-1">
-                        {isEditing ? (
-                            <input
-                                type="text"
-                                value={editTitle}
-                                onChange={(e) => setEditTitle(e.target.value)}
-                                className="flex-1 text-2xl md:text-3xl font-bold text-foreground bg-background border border-border rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-ring"
-                            />
-                        ) : (
-                            <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                                {issue.title}
-                            </h1>
-                        )}
-                        <span className="text-2xl md:text-3xl text-muted-foreground font-light">
-                            #{issue.number}
-                        </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        {/* Convert to Epic Button */}
-                        {issue.type !== 'epic' && (
-                            <button
-                                onClick={convertToEpic}
-                                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-500/30 bg-purple-500/10 text-sm text-purple-300 hover:bg-purple-500/20 transition-all"
-                            >
-                                <Layers className="h-4 w-4" />
-                                convert to Epic
-                            </button>
-                        )}
-
-                        {/* Edit Button */}
-                        {isEditing ? (
-                            <div className="flex items-center gap-2">
+        <div className="w-full space-y-6">
+            {/* Header Section */}
+            <div className="pb-5 border-b border-border space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    {/* Title */}
+                    <div className="flex-1 min-w-0">
+                        {isEditingTitle ? (
+                            <div className="flex items-center gap-2 max-w-2xl">
+                                <input
+                                    type="text"
+                                    value={editTitle}
+                                    onChange={(e) => setEditTitle(e.target.value)}
+                                    className="flex-1 text-xl sm:text-2xl font-bold text-foreground bg-background border border-border rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                />
                                 <button
-                                    onClick={() => { setIsEditing(false); setEditTitle(issue.title); setEditBody(issue.body); }}
-                                    className="px-4 py-2 rounded-lg border border-border bg-secondary text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
+                                    onClick={handleSaveTitle}
+                                    disabled={saving}
+                                    className="px-3.5 py-1.5 rounded-md bg-[#238636] hover:bg-[#2ea043] text-white text-xs font-semibold shadow-xs disabled:opacity-50"
+                                >
+                                    Save
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setIsEditingTitle(false);
+                                        setEditTitle(issue.title);
+                                    }}
+                                    className="px-3 py-1.5 rounded-md border border-border bg-card text-xs font-medium text-muted-foreground hover:text-foreground"
                                 >
                                     Cancel
                                 </button>
-                                <button
-                                    onClick={handleSave}
-                                    disabled={saving}
-                                    className="px-4 py-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-all"
-                                >
-                                    {saving ? "Saving..." : "Save"}
-                                </button>
                             </div>
                         ) : (
-                            <motion.button
-                                onClick={() => setIsEditing(true)}
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-secondary text-sm text-muted-foreground hover:bg-secondary/80 transition-all"
-                            >
-                                <Edit3 className="h-4 w-4" />
-                                Edit
-                            </motion.button>
+                            <div className="flex items-baseline gap-2.5 flex-wrap">
+                                <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight break-words">
+                                    {issue.title}
+                                </h1>
+                                <span className="text-2xl sm:text-3xl text-muted-foreground font-light">
+                                    #{issue.number}
+                                </span>
+                            </div>
                         )}
                     </div>
-                </div>
 
-                {/* Status & Type Badges */}
-                <div className="flex items-center gap-2">
-                    {issue.status ? (
-                        <motion.div
-                            initial={{ scale: 0.9 }}
-                            animate={{ scale: 1 }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-medium text-foreground border"
-                            style={{
-                                backgroundColor: `${issue.status.color}20`,
-                                borderColor: `${issue.status.color}40`,
-                                color: issue.status.color
-                            }}
+                    {/* Action CTAs */}
+                    <div className="flex items-center gap-2 flex-shrink-0 self-start">
+                        {canEdit && !isEditingTitle && (
+                            <button
+                                onClick={() => setIsEditingTitle(true)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-card text-xs font-medium text-foreground hover:bg-accent transition-colors shadow-xs"
+                            >
+                                <Edit3 className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span>Edit</span>
+                            </button>
+                        )}
+                        <a
+                            href={`/${repoOwner}/${repoName}/issues/new`}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-[#238636] hover:bg-[#2ea043] text-white text-xs sm:text-sm font-medium transition-colors shadow-xs"
                         >
-                            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: issue.status.color }} />
-                            {issue.status.name}
-                        </motion.div>
-                    ) : (
-                        <motion.div
-                            initial={{ scale: 0.9 }}
-                            animate={{ scale: 1 }}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-medium ${issue.state === "open"
-                                ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                                : "bg-purple-500/20 text-purple-400 border border-purple-500/30"
-                                }`}
-                        >
-                            {issue.state === "open" ? (
-                                <AlertCircle className="h-4 w-4" />
-                            ) : (
-                                <CheckCircle2 className="h-4 w-4" />
-                            )}
-                            {issue.state === "open" ? "Open" : "Closed"}
-                        </motion.div>
-                    )}
-
-                    <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-medium border ${issue.type === 'epic'
-                        ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
-                        : issue.type === 'task'
-                            ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                            : "bg-gray-500/10 text-muted-foreground border-gray-500/20"
-                        }`}>
-                        {issue.type === 'epic' && <Layers className="h-3.5 w-3.5" />}
-                        {issue.type === 'task' && <CheckSquare className="h-3.5 w-3.5" />}
-                        {issue.type === 'issue' && <AlertCircle className="h-3.5 w-3.5" />}
-                        <span className="capitalize">{issue.type}</span>
+                            <Plus className="h-4 w-4" />
+                            <span>New issue</span>
+                        </a>
                     </div>
                 </div>
 
-                <span className="text-muted-foreground">
-                    <span className="font-medium text-foreground hover:text-cyan-400 cursor-pointer transition-colors">
-                        {issue.author.username}
-                    </span>
-                    {" "}opened this issue {timeAgo(issue.createdAt)}
-                </span>
-            </motion.div>
+                {/* Status Badge & Subtitle Bar */}
+                <div className="flex items-center gap-3 flex-wrap text-xs sm:text-sm text-muted-foreground">
+                    {/* State Badge */}
+                    <div
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-semibold text-xs text-white shadow-xs ${
+                            issueState === "open" ? "bg-[#238636]" : "bg-[#8957e5]"
+                        }`}
+                    >
+                        {issueState === "open" ? (
+                            <>
+                                <CircleDot className="h-3.5 w-3.5" />
+                                <span>Open</span>
+                            </>
+                        ) : (
+                            <>
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                <span>Closed</span>
+                            </>
+                        )}
+                    </div>
+
+                    {/* Type Badge */}
+                    {issue.type === "epic" ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                            <Layers className="h-3 w-3" />
+                            Epic
+                        </span>
+                    ) : issue.type === "task" ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                            <CheckSquare className="h-3 w-3" />
+                            Task
+                        </span>
+                    ) : null}
+
+                    {/* Subtitle Details */}
+                    <div>
+                        <span className="font-semibold text-foreground">@{issue.author.username}</span>
+                        {" "}opened this issue {formatTimeAgo(issue.createdAt)} · {comments.length} comment{comments.length === 1 ? "" : "s"}
+                    </div>
+                </div>
+            </div>
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8">
-                {/* Left Column - Issue Body & Comments */}
-                <div className="space-y-6">
-                    {isEditing ? (
-                        <div>
-                            <textarea
-                                value={editBody}
-                                onChange={(e) => setEditBody(e.target.value)}
-                                className="w-full min-h-[300px] p-4 rounded-lg border border-border bg-background text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                                placeholder="Write your issue body in Markdown..."
-                            />
-                            <p className="text-xs text-muted-foreground mt-2">Markdown is supported.</p>
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8 items-start">
+                {/* Left Column - Conversation Timeline */}
+                <div className="space-y-6 relative before:absolute before:left-[19px] before:top-5 before:bottom-5 before:w-[2px] before:bg-border/60">
+                    {/* 1. Original Issue Description Post */}
+                    <div className="flex items-start gap-4 relative z-10">
+                        {/* Author Avatar */}
+                        <div className="flex-shrink-0">
+                            {issue.author.avatarUrl ? (
+                                <img
+                                    src={issue.author.avatarUrl}
+                                    alt={issue.author.username}
+                                    className="h-10 w-10 rounded-full border border-border/80 object-cover bg-secondary"
+                                />
+                            ) : (
+                                <div className="h-10 w-10 rounded-full bg-secondary border border-border/80 flex items-center justify-center font-bold text-sm text-foreground">
+                                    {issue.author.username?.[0]?.toUpperCase() || "?"}
+                                </div>
+                            )}
                         </div>
-                    ) : (
-                        <div className="prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+
+                        {/* Comment Card */}
+                        <div className="flex-1 min-w-0 rounded-lg border border-border/80 bg-card/60 backdrop-blur-sm overflow-hidden shadow-xs">
+                            {/* Card Header */}
+                            <div className="bg-muted/30 border-b border-border/70 px-4 py-2.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-semibold text-foreground">@{issue.author.username}</span>
+                                    <span>commented {formatTimeAgo(issue.createdAt)}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="rounded-full border border-border/70 bg-secondary/80 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                                        Author
+                                    </span>
+                                    {canEdit && !isEditingBody && (
+                                        <button
+                                            onClick={() => setIsEditingBody(true)}
+                                            className="text-muted-foreground hover:text-foreground p-1 transition-colors"
+                                            title="Edit description"
+                                        >
+                                            <Edit3 className="h-3.5 w-3.5" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Card Body */}
+                            <div className="p-4 text-sm text-foreground leading-relaxed">
+                                {isEditingBody ? (
+                                    <div className="space-y-3">
+                                        <textarea
+                                            value={editBody}
+                                            onChange={(e) => setEditBody(e.target.value)}
+                                            className="w-full min-h-[160px] p-3 rounded-md border border-border bg-background text-foreground text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                            placeholder="Write your issue description in Markdown..."
+                                        />
+                                        <div className="flex items-center justify-end gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    setIsEditingBody(false);
+                                                    setEditBody(issue.body);
+                                                }}
+                                                className="px-3 py-1.5 rounded-md border border-border bg-card text-xs font-medium text-muted-foreground hover:text-foreground"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                onClick={handleSaveBody}
+                                                disabled={saving}
+                                                className="px-3.5 py-1.5 rounded-md bg-[#238636] hover:bg-[#2ea043] text-white text-xs font-semibold shadow-xs disabled:opacity-50"
+                                            >
+                                                {saving ? "Saving..." : "Update comment"}
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : currentBodyHtml ? (
+                                    <div
+                                        className="prose dark:prose-invert max-w-none text-sm text-foreground/90 leading-relaxed break-words"
+                                        dangerouslySetInnerHTML={{ __html: currentBodyHtml }}
+                                    />
+                                ) : (
+                                    <p className="text-muted-foreground italic">No description provided.</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 2. Comments Thread */}
+                    {comments.map((comment) => {
+                        const commentHtml = DOMPurify.sanitize(marked.parse(comment.body || "") as string);
+                        const isAuthor = comment.author?.username === issue.author.username;
+                        const isRepoOwner = comment.author?.username === repoOwner;
+
+                        return (
+                            <div key={comment.id} className="flex items-start gap-4 relative z-10">
+                                {/* Author Avatar */}
+                                <div className="flex-shrink-0">
+                                    {comment.author?.avatarUrl ? (
+                                        <img
+                                            src={comment.author.avatarUrl}
+                                            alt={comment.author.username}
+                                            className="h-10 w-10 rounded-full border border-border/80 object-cover bg-secondary"
+                                        />
+                                    ) : (
+                                        <div className="h-10 w-10 rounded-full bg-secondary border border-border/80 flex items-center justify-center font-bold text-sm text-foreground">
+                                            {comment.author?.username?.[0]?.toUpperCase() || "?"}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Comment Box */}
+                                <div className="flex-1 min-w-0 rounded-lg border border-border/80 bg-card/60 backdrop-blur-sm overflow-hidden shadow-xs">
+                                    {/* Header */}
+                                    <div className="bg-muted/30 border-b border-border/70 px-4 py-2.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="font-semibold text-foreground">
+                                                @{comment.author?.displayName || comment.author?.username}
+                                            </span>
+                                            <span>commented {formatTimeAgo(comment.createdAt)}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            {isAuthor && (
+                                                <span className="rounded-full border border-border/70 bg-secondary/80 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                                                    Author
+                                                </span>
+                                            )}
+                                            {isRepoOwner && (
+                                                <span className="rounded-full border border-border/70 bg-secondary/80 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                                                    Owner
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Content */}
+                                    <div className="p-4 text-sm text-foreground leading-relaxed">
+                                        <div
+                                            className="prose dark:prose-invert max-w-none text-sm text-foreground/90 leading-relaxed break-words"
+                                            dangerouslySetInnerHTML={{ __html: commentHtml }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    {/* State change timeline marker if closed */}
+                    {issueState === "closed" && (
+                        <div className="flex items-center gap-3 pl-2 py-2 relative z-10">
+                            <div className="h-8 w-8 rounded-full bg-[#8957e5] text-white flex items-center justify-center border-2 border-background shadow-xs">
+                                <CheckCircle2 className="h-4 w-4" />
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                                <span className="font-semibold text-foreground">This issue</span> was closed.
+                            </span>
+                        </div>
                     )}
+
+                    {/* 3. Add Comment Composer */}
+                    <div className="flex items-start gap-4 relative z-10 pt-2">
+                        {/* Current User Avatar */}
+                        <div className="flex-shrink-0">
+                            {currentUser?.avatarUrl ? (
+                                <img
+                                    src={currentUser.avatarUrl}
+                                    alt={currentUser.username}
+                                    className="h-10 w-10 rounded-full border border-border/80 object-cover bg-secondary"
+                                />
+                            ) : (
+                                <div className="h-10 w-10 rounded-full bg-secondary border border-border/80 flex items-center justify-center font-bold text-sm text-foreground">
+                                    {currentUser?.username?.[0]?.toUpperCase() || "?"}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Composer Card */}
+                        <div className="flex-1 min-w-0 rounded-lg border border-border/80 bg-card/60 backdrop-blur-sm overflow-hidden shadow-xs">
+                            {/* Tab Bar */}
+                            <div className="bg-muted/30 border-b border-border/70 px-4 py-1.5 flex items-center gap-2">
+                                <button
+                                    onClick={() => setCommentTab("write")}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                                        commentTab === "write"
+                                            ? "bg-secondary text-foreground font-semibold shadow-xs"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                                >
+                                    Write
+                                </button>
+                                <button
+                                    onClick={() => setCommentTab("preview")}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                                        commentTab === "preview"
+                                            ? "bg-secondary text-foreground font-semibold shadow-xs"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                                >
+                                    Preview
+                                </button>
+                            </div>
+
+                            {/* Editor Area */}
+                            <div className="p-3">
+                                {commentTab === "write" ? (
+                                    <textarea
+                                        value={newComment}
+                                        onChange={(e) => setNewComment(e.target.value)}
+                                        placeholder="Leave a comment..."
+                                        className="w-full min-h-[120px] p-2 text-sm bg-transparent border-0 focus:outline-none resize-y text-foreground placeholder:text-muted-foreground"
+                                    />
+                                ) : (
+                                    <div className="min-h-[120px] p-2 text-sm">
+                                        {newComment.trim() ? (
+                                            <div
+                                                className="prose dark:prose-invert max-w-none text-sm text-foreground/90 leading-relaxed break-words"
+                                                dangerouslySetInnerHTML={{
+                                                    __html: DOMPurify.sanitize(marked.parse(newComment) as string)
+                                                }}
+                                            />
+                                        ) : (
+                                            <span className="text-xs text-muted-foreground italic">Nothing to preview</span>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer / Actions Bar */}
+                            <div className="bg-muted/20 border-t border-border/70 px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
+                                <span className="text-[11px] text-muted-foreground">
+                                    Markdown is supported
+                                </span>
+
+                                <div className="flex items-center gap-2">
+                                    {canEdit && (
+                                        <button
+                                            onClick={handleToggleIssueState}
+                                            disabled={isTogglingState}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-secondary text-xs font-medium text-foreground hover:bg-accent transition-colors shadow-xs disabled:opacity-50"
+                                        >
+                                            {isTogglingState ? (
+                                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                            ) : issueState === "open" ? (
+                                                <>
+                                                    <CheckCircle2 className="h-3.5 w-3.5 text-purple-400" />
+                                                    <span>Close issue</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <CircleDot className="h-3.5 w-3.5 text-emerald-500" />
+                                                    <span>Reopen issue</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
+
+                                    <button
+                                        onClick={handleSubmitComment}
+                                        disabled={isSubmittingComment || !newComment.trim()}
+                                        className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-md bg-[#238636] hover:bg-[#2ea043] text-white text-xs sm:text-sm font-semibold transition-colors shadow-xs disabled:opacity-50"
+                                    >
+                                        {isSubmittingComment ? (
+                                            <>
+                                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                <span>Commenting...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Send className="h-3.5 w-3.5" />
+                                                <span>Comment</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Right Sidebar */}
-                <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.15 }}
-                    className="space-y-6"
-                >
-                    <div className="relative">
-                        <div className="absolute -inset-[1px] bg-gradient-to-b from-emerald-500/10 to-transparent rounded-xl opacity-50" />
-                        <div className="relative rounded-xl border border-border bg-card/60 p-4">
-                            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
-                                <Link2 className="h-4 w-4 text-emerald-400" />
-                                Linked Issues
-                            </h3>
-                            {loadingCrossRepo ? (
-                                <div className="text-xs text-muted-foreground">Loading...</div>
-                            ) : crossRepoLinks.length === 0 ? (
-                                <div className="text-xs text-muted-foreground">No linked issues</div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {crossRepoLinks.map((link) => (
-                                        <a
-                                            key={link.id}
-                                            href={`/${link.repository.owner}/${link.repository.name}/issues/${link.issue.number}`}
-                                            className="flex items-start justify-between gap-3 rounded-lg border border-white/5 bg-secondary px-3 py-2 text-xs text-muted-foreground hover:bg-secondary/80"
-                                        >
-                                            <span>
-                                                {link.repository.owner}/{link.repository.name}#{link.issue.number} {link.issue.title}
-                                            </span>
-                                            <span className="text-[10px] uppercase text-muted-foreground">
-                                                {link.linkType}
-                                            </span>
-                                        </a>
-                                    ))}
-                                </div>
-                            )}
-                            {canLink && (
-                                <div className="mt-3 space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            value={crossRepoTarget}
-                                            onChange={(e) => setCrossRepoTarget(e.target.value)}
-                                            placeholder="owner/repo#123"
-                                            className="flex-1 rounded-md border border-border bg-secondary px-2 py-1 text-xs text-foreground"
-                                        />
-                                        <select
-                                            value={crossRepoType}
-                                            onChange={(e) => setCrossRepoType(e.target.value)}
-                                            className="rounded-md border border-border bg-secondary px-2 py-1 text-xs text-foreground"
-                                        >
-                                            <option value="relates">Relates</option>
-                                            <option value="blocks">Blocks</option>
-                                            <option value="blocked_by">Blocked by</option>
-                                            <option value="duplicates">Duplicates</option>
-                                        </select>
-                                    </div>
-                                    <button
-                                        onClick={handleCrossRepoLink}
-                                        className="w-full rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300 hover:bg-emerald-500/20"
-                                    >
-                                        Link issue
-                                    </button>
-                                    {crossRepoError && (
-                                        <div className="text-xs text-red-400">{crossRepoError}</div>
-                                    )}
-                                </div>
-                            )}
+                <div className="space-y-5 text-xs">
+                    {/* Assignees Section */}
+                    <div className="pb-4 border-b border-border/70 space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="font-semibold text-foreground flex items-center gap-1.5">
+                                <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                                Assignees
+                            </span>
                         </div>
-                    </div>
-                    <div className="relative">
-                        <div className="absolute -inset-[1px] bg-gradient-to-b from-cyan-500/10 to-transparent rounded-xl opacity-50" />
-                        <div className="relative rounded-xl border border-border bg-card/60 p-4">
-                            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
-                                <GitBranch className="h-4 w-4 text-cyan-400" />
-                                Linked Pull Requests
-                            </h3>
-                            {loadingLinks ? (
-                                <div className="text-xs text-muted-foreground">Loading...</div>
-                            ) : linkedPRs.length === 0 ? (
-                                <div className="text-xs text-muted-foreground">No linked pull requests</div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {linkedPRs.map((link) => (
-                                        <a
-                                            key={link.id}
-                                            href={`/${repoOwner}/${repoName}/pulls/${link.pullRequest.number}`}
-                                            className="flex items-start justify-between gap-3 rounded-lg border border-white/5 bg-secondary px-3 py-2 text-xs text-muted-foreground hover:bg-secondary/80"
-                                        >
-                                            <span>
-                                                #{link.pullRequest.number} {link.pullRequest.title}
-                                            </span>
-                                            <span className="text-[10px] uppercase text-muted-foreground">
-                                                {link.linkType}
-                                            </span>
-                                        </a>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    {/* Labels */}
-                    {issue.labels && issue.labels.length > 0 && (
-                        <div className="relative">
-                            <div className="absolute -inset-[1px] bg-gradient-to-b from-purple-500/10 to-transparent rounded-xl opacity-50" />
-                            <div className="relative rounded-xl border border-border bg-card/60 p-4">
-                                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
-                                    <Tag className="h-4 w-4 text-purple-400" />
-                                    Labels
-                                </h3>
-                                <div className="flex flex-wrap gap-2">
-                                    {issue.labels.map((label, i) => (
-                                        <span
-                                            key={i}
-                                            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
-                                            style={{
-                                                backgroundColor: `${label.color}20`,
-                                                color: label.color,
-                                                border: `1px solid ${label.color}40`
-                                            }}
-                                        >
-                                            {label.name}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
-                    {/* Assignees (WS2-01) */}
-                    {((issue.assignees && issue.assignees.length > 0) || canEdit) && (
-                        <div className="relative">
-                            <div className="relative rounded-xl border border-border bg-card/60 p-4">
-                                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
-                                    <Users className="h-4 w-4 text-cyan-400" />
-                                    Assignees
-                                </h3>
-                                <div className="flex flex-wrap gap-2 mb-3">
-                                    {issue.assignees && issue.assignees.length > 0 ? (                                        issue.assignees.map((a: any) => (
-                                            <span
-                                                key={a.id || a.username}
-                                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/80"
-                                            >
-                                                <span className="h-4 w-4 rounded-full bg-muted flex items-center justify-center text-[9px] font-semibold">
+                        {issue.assignees && issue.assignees.length > 0 ? (
+                            <div className="space-y-1.5">
+                                {issue.assignees.map((a: any) => (
+                                    <div key={a.id || a.username} className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2">
+                                            {a.avatarUrl ? (
+                                                <img src={a.avatarUrl} alt={a.username} className="h-5 w-5 rounded-full object-cover" />
+                                            ) : (
+                                                <div className="h-5 w-5 rounded-full bg-secondary border border-border/70 flex items-center justify-center text-[10px] font-bold text-foreground">
                                                     {a.username?.[0]?.toUpperCase()}
-                                                </span>
-                                                {a.username}
-                                                {canEdit && (
-                                                    <button
-                                                        className="opacity-60 hover:opacity-100 ml-0.5"
-                                                        onClick={() => handleAssigneeToggle(a.id || a.username)}
-                                                        title="Unassign"
-                                                    >
-                                                        ×
-                                                    </button>
-                                                )}
-                                            </span>
-                                        ))
-                                    ) : (
-                                        <span className="text-xs text-muted-foreground">No one assigned</span>
-                                    )}
-                                </div>
-                                {canEdit && (
-                                    <select
-                                        className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
-                                        value=""
-                                        onChange={(e) => handleAssigneeToggle(e.target.value)}
+                                                </div>
+                                            )}
+                                            <span className="text-foreground font-medium">@{a.username}</span>
+                                        </div>
+                                        {canEdit && (
+                                            <button
+                                                onClick={() => handleAssigneeToggle(a.id || a.username)}
+                                                className="text-muted-foreground hover:text-foreground text-sm leading-none"
+                                                title="Unassign"
+                                            >
+                                                ×
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-muted-foreground">No one assigned</p>
+                        )}
+
+                        {canEdit && collaborators.length > 0 && (
+                            <select
+                                className="w-full h-7 rounded-md border border-border/70 bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 mt-1"
+                                value=""
+                                onChange={(e) => handleAssigneeToggle(e.target.value)}
+                            >
+                                <option value="">Assign someone...</option>
+                                {collaborators.map((c) => (
+                                    <option key={c.id || c.username} value={c.id || c.username}>
+                                        {c.username}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+
+                    {/* Labels Section */}
+                    <div className="pb-4 border-b border-border/70 space-y-2">
+                        <div className="flex items-center justify-between">
+                            <span className="font-semibold text-foreground flex items-center gap-1.5">
+                                <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                                Labels
+                            </span>
+                        </div>
+                        {issue.labels && issue.labels.length > 0 ? (
+                            <div className="flex flex-wrap gap-1.5">
+                                {issue.labels.map((l, idx) => (
+                                    <span
+                                        key={idx}
+                                        className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border"
+                                        style={{
+                                            backgroundColor: `${l.color}15`,
+                                            borderColor: `${l.color}40`,
+                                            color: l.color
+                                        }}
                                     >
-                                        <option value="">Assign user…</option>
-                                        {collaborators.map((c: any) => (
-                                            <option key={c.id || c.username} value={c.id || c.username}>
-                                                {c.username}
-                                            </option>
-                                        ))}
+                                        {l.name}
+                                    </span>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-muted-foreground">None yet</p>
+                        )}
+                    </div>
+
+                    {/* Projects Section */}
+                    <div className="pb-4 border-b border-border/70 space-y-2">
+                        <span className="font-semibold text-foreground flex items-center gap-1.5">
+                            <Layout className="h-3.5 w-3.5 text-muted-foreground" />
+                            Projects
+                        </span>
+                        <p className="text-muted-foreground">None yet</p>
+                    </div>
+
+                    {/* Milestone Section */}
+                    <div className="pb-4 border-b border-border/70 space-y-2">
+                        <span className="font-semibold text-foreground flex items-center gap-1.5">
+                            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                            Milestone
+                        </span>
+                        <p className="text-muted-foreground">No milestone</p>
+                    </div>
+
+                    {/* Linked Pull Requests */}
+                    <div className="pb-4 border-b border-border/70 space-y-2">
+                        <span className="font-semibold text-foreground flex items-center gap-1.5">
+                            <GitPullRequest className="h-3.5 w-3.5 text-muted-foreground" />
+                            Linked Pull Requests
+                        </span>
+                        {loadingLinks ? (
+                            <p className="text-muted-foreground">Loading...</p>
+                        ) : linkedPRs.length > 0 ? (
+                            <div className="space-y-1.5">
+                                {linkedPRs.map((link) => (
+                                    <a
+                                        key={link.id}
+                                        href={`/${repoOwner}/${repoName}/pulls/${link.pullRequest.number}`}
+                                        className="flex items-center justify-between gap-2 p-1.5 rounded-md hover:bg-accent/60 transition-colors group"
+                                    >
+                                        <span className="text-foreground font-medium group-hover:text-primary transition-colors truncate">
+                                            #{link.pullRequest.number} {link.pullRequest.title}
+                                        </span>
+                                        <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                    </a>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-muted-foreground">No linked pull requests</p>
+                        )}
+                    </div>
+
+                    {/* Linked Issues */}
+                    <div className="pb-4 border-b border-border/70 space-y-2.5">
+                        <span className="font-semibold text-foreground flex items-center gap-1.5">
+                            <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+                            Linked Issues
+                        </span>
+                        {loadingCrossRepo ? (
+                            <p className="text-muted-foreground">Loading...</p>
+                        ) : crossRepoLinks.length > 0 ? (
+                            <div className="space-y-1.5">
+                                {crossRepoLinks.map((link) => (
+                                    <a
+                                        key={link.id}
+                                        href={`/${link.repository.owner}/${link.repository.name}/issues/${link.issue.number}`}
+                                        className="flex items-start justify-between gap-2 p-1.5 rounded-md hover:bg-accent/60 transition-colors group"
+                                    >
+                                        <span className="text-foreground font-medium group-hover:text-primary transition-colors truncate">
+                                            {link.repository.owner}/{link.repository.name}#{link.issue.number} {link.issue.title}
+                                        </span>
+                                        <span className="text-[10px] uppercase font-semibold text-muted-foreground flex-shrink-0">
+                                            {link.linkType}
+                                        </span>
+                                    </a>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-muted-foreground">No linked issues</p>
+                        )}
+
+                        {canLink && (
+                            <div className="space-y-1.5 pt-1">
+                                <div className="space-y-1.5">
+                                    <input
+                                        type="text"
+                                        placeholder="owner/repo#123"
+                                        value={crossRepoTarget}
+                                        onChange={(e) => setCrossRepoTarget(e.target.value)}
+                                        className="w-full h-7 rounded-md border border-border/70 bg-card px-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
+                                    />
+                                    <select
+                                        value={crossRepoType}
+                                        onChange={(e) => setCrossRepoType(e.target.value)}
+                                        className="w-full h-7 rounded-md border border-border/70 bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
+                                    >
+                                        <option value="relates">Relates</option>
+                                        <option value="blocks">Blocks</option>
+                                        <option value="blocked_by">Blocked by</option>
+                                        <option value="cloned_from">Cloned from</option>
                                     </select>
+                                </div>
+                                {crossRepoError && (
+                                    <p className="text-[11px] text-destructive">{crossRepoError}</p>
+                                )}
+                                <button
+                                    onClick={handleCrossRepoLink}
+                                    disabled={isLinking || !crossRepoTarget.trim()}
+                                    className="w-full h-7 rounded-md border border-border bg-secondary hover:bg-accent text-foreground text-xs font-medium transition-colors disabled:opacity-50"
+                                >
+                                    {isLinking ? "Linking..." : "Link issue"}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Sub-tasks / Epics (if applicable) */}
+                    {(issue.type === "epic" || (issue.children && issue.children.length > 0)) && (
+                        <div className="pb-4 border-b border-border/70 space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="font-semibold text-foreground flex items-center gap-1.5">
+                                    <ListTodo className="h-3.5 w-3.5 text-muted-foreground" />
+                                    {issue.type === "epic" ? "Child Issues" : "Sub-tasks"}
+                                </span>
+                                {issue.children && issue.children.length > 0 && (
+                                    <span className="text-[11px] text-muted-foreground font-mono">
+                                        {issue.children.filter((c) => c.state === "closed").length}/{issue.children.length}
+                                    </span>
                                 )}
                             </div>
-                        </div>
-                    )}
-
-                    {/* Sub-tasks / Child Issues */}
-                    {(issue.type === 'epic' || (issue.children && issue.children.length > 0)) && (
-                        <div className="relative">
-                            <div className="absolute -inset-[1px] bg-gradient-to-b from-purple-500/10 to-transparent rounded-xl opacity-50" />
-                            <div className="relative rounded-xl border border-border bg-card/60 p-4">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                        <ListTodo className="h-4 w-4 text-purple-400" />
-                                        {issue.type === 'epic' ? 'Child Issues' : 'Sub-tasks'}
-                                    </h3>
-                                    {issue.children && issue.children.length > 0 && (
-                                        <span className="text-xs bg-secondary/80 px-2 py-0.5 rounded-full text-muted-foreground">
-                                            {issue.children.filter(c => c.state === 'closed').length} / {issue.children.length}
-                                        </span>
-                                    )}
-                                </div>
-
-                                {/* Progress Bar */}
-                                {issue.children && issue.children.length > 0 && (
-                                    <div className="h-1.5 w-full bg-secondary/80 rounded-full mb-3 overflow-hidden">
+                            {issue.children && issue.children.length > 0 && (
+                                <div className="space-y-1.5">
+                                    <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
                                         <div
-                                            className="h-full bg-purple-500 transition-all duration-500"
+                                            className="h-full bg-purple-500 transition-all duration-300"
                                             style={{
-                                                width: `${(issue.children.filter(c => c.state === 'closed').length / issue.children.length) * 100}%`
+                                                width: `${(issue.children.filter((c) => c.state === "closed").length / issue.children.length) * 100}%`
                                             }}
                                         />
                                     </div>
-                                )}
-
-                                <div className="space-y-1">
-                                    {issue.children && issue.children.map(child => (
-                                        <a
-                                            key={child.number}
-                                            href={`/${repoOwner}/${repoName}/issues/${child.number}`}
-                                            className="flex items-start gap-2 p-2 rounded-lg hover:bg-accent transition-colors group"
-                                        >
-                                            <div className="mt-0.5">
-                                                {child.state === "open" ? (
-                                                    <AlertCircle className="h-3.5 w-3.5 text-green-500" />
-                                                ) : (
-                                                    <CheckCircle2 className="h-3.5 w-3.5 text-purple-500" />
-                                                )}
-                                            </div>
-                                            <div className="text-sm min-w-0">
-                                                <div className="text-muted-foreground group-hover:text-cyan-400 truncate transition-colors">
-                                                    {child.title}
-                                                </div>
-                                            </div>
-                                        </a>
-                                    ))}
-
-                                    {issue.type === 'epic' && (
-                                        <a
-                                            href={`/${repoOwner}/${repoName}/issues/new?parent=${issue.number}`}
-                                            className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent text-sm text-muted-foreground hover:text-cyan-400 transition-colors mt-2 border border-dashed border-border hover:border-cyan-500/30 justify-center"
-                                        >
-                                            <ListTodo className="h-3.5 w-3.5" />
-                                            Add sub-task
-                                        </a>
-                                    )}
+                                    <div className="space-y-1 pt-1">
+                                        {issue.children.map((child) => (
+                                            <a
+                                                key={child.number}
+                                                href={`/${repoOwner}/${repoName}/issues/${child.number}`}
+                                                className="flex items-center justify-between gap-2 text-muted-foreground hover:text-foreground py-0.5 truncate"
+                                            >
+                                                <span className="truncate">#{child.number} {child.title}</span>
+                                                <span className="text-[10px] font-semibold uppercase">{child.state}</span>
+                                            </a>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     )}
-                </motion.div>
+
+                    {/* Participants Section */}
+                    <div className="space-y-2">
+                        <span className="font-semibold text-foreground">
+                            {participants.length} participant{participants.length === 1 ? "" : "s"}
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                            {participants.map((username) => (
+                                <a
+                                    key={username}
+                                    href={`/u/${username}`}
+                                    className="h-6 w-6 rounded-full bg-secondary border border-border/80 flex items-center justify-center text-[10px] font-bold text-foreground hover:border-primary transition-colors"
+                                    title={username}
+                                >
+                                    {username?.[0]?.toUpperCase()}
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Epic Conversion Option if not epic */}
+                    {canEdit && issue.type !== "epic" && (
+                        <div className="pt-2">
+                            <button
+                                onClick={convertToEpic}
+                                className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md border border-purple-500/30 bg-purple-500/10 text-xs font-medium text-purple-400 hover:bg-purple-500/20 transition-colors"
+                            >
+                                <Layers className="h-3.5 w-3.5" />
+                                <span>Convert to Epic</span>
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

@@ -1,8 +1,10 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
+import Logo from "@/components/ui/Logo.astro";
 import { getDatabase } from "@/db";
 import { passwordResetTokens } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { Lock, AlertCircle, CheckCircle2, ArrowLeft, Loader2 } from "lucide-react";
 
 const { token } = Astro.params;
 
@@ -16,116 +18,110 @@ const resetToken = await db.query.passwordResetTokens.findFirst({
 });
 
 const isValid = resetToken && new Date(resetToken.expiresAt) > new Date();
-
-if (!isValid) {
-  // If token is invalid, we can either redirect or show an error state
-  // For better UX, let's show an error state on the page
-}
 ---
 
-<BaseLayout title="Set New Password">
-  <div class="min-h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-    <div class="sm:mx-auto sm:w-full sm:max-w-md">
-      <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-        Set new password
-      </h2>
-    </div>
+<BaseLayout title="Set New Password · OpenCodeHub">
+  <div class="flex min-h-[calc(100vh-8rem)] items-center justify-center py-12 px-4">
+    <div class="w-full max-w-sm space-y-6">
+      <!-- Header -->
+      <div class="text-center space-y-2">
+        <a href="/" class="inline-flex items-center gap-2.5 hover:opacity-90 transition-opacity">
+          <Logo class="h-9 w-9 text-foreground" />
+          <span class="text-xl font-bold text-foreground tracking-tight">OpenCodeHub</span>
+        </a>
+        <h1 class="text-xl font-semibold text-foreground tracking-tight">Set new password</h1>
+        <p class="text-xs text-muted-foreground">
+          Choose a strong new password for your account.
+        </p>
+      </div>
 
-    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-      <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+      <!-- Card -->
+      <div class="rounded-xl border border-border/80 bg-card/60 backdrop-blur-xl p-6 sm:p-7 shadow-sm">
         {
           !isValid ? (
-            <div class="rounded-md bg-red-50 p-4">
-              <div class="flex">
-                <div class="flex-shrink-0">
-                  <svg
-                    class="h-5 w-5 text-red-400"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fill-rule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                      clip-rule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <div class="ml-3">
-                  <h3 class="text-sm font-medium text-red-800">
-                    Invalid or expired link
-                  </h3>
-                  <div class="mt-2 text-sm text-red-700">
-                    <p>
-                      This password reset link is invalid or has expired. Please
-                      request a new one.
+            <div class="space-y-4">
+              <div class="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-xs text-red-400">
+                <div class="flex items-start gap-2.5">
+                  <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p class="font-semibold text-foreground">Invalid or expired link</p>
+                    <p class="text-muted-foreground mt-0.5">
+                      This password reset link is invalid or has expired. Please request a new one.
                     </p>
-                  </div>
-                  <div class="mt-4">
-                    <div class="-mx-2 -my-1.5 flex">
-                      <a
-                        href="/password-reset"
-                        class="bg-red-50 px-2 py-1.5 rounded-md text-sm font-medium text-red-800 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-red-50 focus:ring-red-600"
-                      >
-                        Request new link
-                      </a>
-                    </div>
                   </div>
                 </div>
               </div>
+
+              <a
+                href="/password-reset"
+                class="w-full py-2 px-4 rounded-md bg-[#238636] hover:bg-[#2ea043] text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-1.5 text-center"
+              >
+                <span>Request new link</span>
+              </a>
             </div>
           ) : (
-            <form class="space-y-6" id="new-password-form">
+            <form class="space-y-4" id="new-password-form">
               <input type="hidden" name="token" value={token} />
 
-              <div>
-                <label
-                  for="password"
-                  class="block text-sm font-medium text-gray-700"
-                >
+              <div class="space-y-1.5">
+                <label for="password" class="block text-xs font-medium text-muted-foreground">
                   New Password
                 </label>
-                <div class="mt-1">
+                <div class="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                   <input
                     id="password"
                     name="password"
                     type="password"
                     required
                     minlength="8"
-                    class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    placeholder="At least 8 characters"
+                    autofocus
+                    class="w-full rounded-md border border-border bg-background pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
                   />
                 </div>
               </div>
 
-              <div>
-                <label
-                  for="confirmPassword"
-                  class="block text-sm font-medium text-gray-700"
-                >
+              <div class="space-y-1.5">
+                <label for="confirmPassword" class="block text-xs font-medium text-muted-foreground">
                   Confirm Password
                 </label>
-                <div class="mt-1">
+                <div class="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                   <input
                     id="confirmPassword"
                     name="confirmPassword"
                     type="password"
                     required
                     minlength="8"
-                    class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    placeholder="Repeat new password"
+                    class="w-full rounded-md border border-border bg-background pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
                   />
                 </div>
               </div>
 
-              <div>
-                <button
-                  type="submit"
-                  class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-foreground bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  Reset Password
-                </button>
+              <div id="error-message" class="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-md p-2.5 hidden">
               </div>
+
+              <button
+                type="submit"
+                id="submit-btn"
+                class="w-full py-2 px-4 rounded-md bg-[#238636] hover:bg-[#2ea043] text-white font-semibold text-sm shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/40 flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                <span id="btn-text">Reset Password</span>
+                <Loader2 id="btn-spinner" className="h-4 w-4 animate-spin hidden" />
+              </button>
             </form>
           )
         }
+      </div>
+
+      <!-- Footer Link -->
+      <div class="rounded-xl border border-border bg-card/40 p-4 text-center text-xs text-muted-foreground shadow-xs">
+        <a href="/login" class="font-semibold text-foreground hover:underline inline-flex items-center gap-1">
+          <ArrowLeft className="h-3 w-3" />
+          <span>Back to Sign in</span>
+        </a>
       </div>
     </div>
   </div>
@@ -133,16 +129,29 @@ if (!isValid) {
 
 <script>
   const form = document.getElementById("new-password-form") as HTMLFormElement;
+  const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+  const btnText = document.getElementById("btn-text");
+  const btnSpinner = document.getElementById("btn-spinner");
+  const errorMsg = document.getElementById("error-message");
 
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const formData = new FormData(form);
     const data = Object.fromEntries(formData);
 
+    if (errorMsg) errorMsg.classList.add("hidden");
+
     if (data.password !== data.confirmPassword) {
-      alert("Passwords do not match");
+      if (errorMsg) {
+        errorMsg.textContent = "Passwords do not match";
+        errorMsg.classList.remove("hidden");
+      }
       return;
     }
+
+    if (submitBtn) submitBtn.disabled = true;
+    btnText?.classList.add("hidden");
+    btnSpinner?.classList.remove("hidden");
 
     try {
       const response = await fetch("/api/auth/reset-password", {
@@ -154,17 +163,24 @@ if (!isValid) {
       });
 
       if (response.ok) {
-        alert(
-          "Password reset successfully. You can now login with your new password."
-        );
-        window.location.href = "/login";
+        window.location.href = "/login?reset=success";
       } else {
-        const error = await response.json();
-        alert(error.message || "Failed to reset password");
+        const error = await response.json().catch(() => null);
+        if (errorMsg) {
+          errorMsg.textContent = error?.message || "Failed to reset password";
+          errorMsg.classList.remove("hidden");
+        }
       }
     } catch (error) {
       console.error("Error resetting password:", error);
-      alert("An error occurred while resetting password");
+      if (errorMsg) {
+        errorMsg.textContent = "An error occurred while resetting password";
+        errorMsg.classList.remove("hidden");
+      }
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
+      btnText?.classList.remove("hidden");
+      btnSpinner?.classList.add("hidden");
     }
   });
 </script>

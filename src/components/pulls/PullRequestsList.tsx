@@ -276,45 +276,45 @@ export default function PullRequestsList({ pullRequests, openCount, closedCount,
                 className="flex flex-col lg:flex-row lg:items-center justify-between gap-4"
             >
                 {/* Search Input */}
-                <div className="relative flex-1 max-w-xl">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <div className="relative flex-1 max-w-xl group">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-foreground transition-colors" />
                     <input
                         type="search"
                         placeholder="Search all pull requests..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full rounded-lg border border-border bg-card pl-10 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all"
+                        className="w-full h-9 rounded-md border border-border/70 bg-card/60 pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 focus:bg-background transition-all"
                     />
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                     <motion.a
                         href={`/${repoOwner}/${repoName}/labels`}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-all"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-card text-xs font-medium text-foreground hover:bg-accent transition-colors shadow-sm"
                     >
-                        <Tag className="h-4 w-4" />
-                        Labels
+                        <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span>Labels</span>
                     </motion.a>
                     <motion.a
                         href={`/${repoOwner}/${repoName}/milestones`}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-all"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-card text-xs font-medium text-foreground hover:bg-accent transition-colors shadow-sm"
                     >
-                        <Calendar className="h-4 w-4" />
-                        Milestones
+                        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span>Milestones</span>
                     </motion.a>
                     <motion.a
                         href={`/${repoOwner}/${repoName}/compare`}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:opacity-90 transition-all"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-[#238636] hover:bg-[#2ea043] text-white text-xs sm:text-sm font-medium transition-colors shadow-sm"
                     >
                         <Plus className="h-4 w-4" />
-                        New Pull Request
+                        <span>New Pull Request</span>
                     </motion.a>
                 </div>
             </motion.div>

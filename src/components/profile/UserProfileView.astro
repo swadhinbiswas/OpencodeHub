@@ -41,130 +41,158 @@ activityStart.setDate(activityStart.getDate() - 364);
 activityStart.setHours(0, 0, 0, 0);
 
 // 1. Fetch Follow Stats
-const [followersResult] = await db
-  .select({ count: sql`count(*)` })
-  .from(schema.userFollowers)
-  .where(eq(schema.userFollowers.followeeId, user.id));
-const followersCount = Number(followersResult?.count) || 0;
+let followersCount = 0;
+let followingCount = 0;
 
-const [followingResult] = await db
-  .select({ count: sql`count(*)` })
-  .from(schema.userFollowers)
-  .where(eq(schema.userFollowers.followerId, user.id));
-const followingCount = Number(followingResult?.count) || 0;
+if (user.id !== "placeholder-user") {
+  try {
+    const [followersResult] = await db
+      .select({ count: sql`count(*)` })
+      .from(schema.userFollowers)
+      .where(eq(schema.userFollowers.followeeId, user.id));
+    followersCount = Number(followersResult?.count) || 0;
+
+    const [followingResult] = await db
+      .select({ count: sql`count(*)` })
+      .from(schema.userFollowers)
+      .where(eq(schema.userFollowers.followerId, user.id));
+    followingCount = Number(followingResult?.count) || 0;
+  } catch (e) {
+    // Graceful fallback if database query fails
+  }
+}
 
 // 2. Check if following
 let isFollowing = false;
-if (currentUser && !isOwner) {
-  const existing = await db.query.userFollowers.findFirst({
-    where: and(
-      eq(schema.userFollowers.followerId, currentUser.id),
-      eq(schema.userFollowers.followeeId, user.id),
-    ),
-  });
-  isFollowing = !!existing;
+if (currentUser && !isOwner && user.id !== "placeholder-user") {
+  try {
+    const existing = await db.query.userFollowers.findFirst({
+      where: and(
+        eq(schema.userFollowers.followerId, currentUser.id),
+        eq(schema.userFollowers.followeeId, user.id),
+      ),
+    });
+    isFollowing = !!existing;
+  } catch (e) {
+    // Graceful fallback
+  }
 }
 
 // 3. Fetch Repositories
-let repoConditions = [eq(schema.repositories.ownerId, user.id)];
-if (!isOwner) {
-  repoConditions.push(eq(schema.repositories.visibility, "public"));
-}
+let repos: any[] = [];
+if (user.id !== "placeholder-user") {
+  try {
+    let repoConditions = [eq(schema.repositories.ownerId, user.id)];
+    if (!isOwner) {
+      repoConditions.push(eq(schema.repositories.visibility, "public"));
+    }
 
-const repos = await db.query.repositories.findMany({
-  where: and(...repoConditions),
-  orderBy: [desc(schema.repositories.starCount), desc(schema.repositories.updatedAt)],
-});
+    repos = await db.query.repositories.findMany({
+      where: and(...repoConditions),
+      orderBy: [desc(schema.repositories.starCount), desc(schema.repositories.updatedAt)],
+    });
+  } catch (e) {
+    // Graceful fallback if database query fails
+  }
+}
 
 const pinnedRepos = repos.slice(0, 6);
 
 // 4. Fetch Starred Repositories
 let starCount = 0;
 let starredRepos: any[] = [];
-try {
-  const stars = await db.query.repositoryStars.findMany({
-    where: eq(schema.repositoryStars.userId, user.id),
-    with: {
-      repository: {
-        with: {
-          owner: true,
+if (user.id !== "placeholder-user") {
+  try {
+    const stars = await db.query.repositoryStars.findMany({
+      where: eq(schema.repositoryStars.userId, user.id),
+      with: {
+        repository: {
+          with: {
+            owner: true,
+          },
         },
       },
-    },
-  });
-  starCount = stars.length;
-  starredRepos = stars.map((s) => s.repository).filter(Boolean);
-} catch (e) {
-  // Graceful fallback if stars query fails
+    });
+    starCount = stars.length;
+    starredRepos = stars.map((s) => s.repository).filter(Boolean);
+  } catch (e) {
+    // Graceful fallback if stars query fails
+  }
 }
 
 // 5. Fetch contribution count and day-by-day mapping
 let contributionCount = 0;
 let activityByDay = new Map<string, number>();
-try {
-  const [result] = await db
-    .select({ count: sql`count(*)` })
-    .from(schema.activities)
-    .where(
-      and(
-        eq(schema.activities.userId, user.id),
-        sql`${schema.activities.createdAt} >= ${activityStart}`,
-      ),
-    );
-  contributionCount = Number(result?.count) || 0;
+if (user.id !== "placeholder-user") {
+  try {
+    const [result] = await db
+      .select({ count: sql`count(*)` })
+      .from(schema.activities)
+      .where(
+        and(
+          eq(schema.activities.userId, user.id),
+          sql`${schema.activities.createdAt} >= ${activityStart}`,
+        ),
+      );
+    contributionCount = Number(result?.count) || 0;
 
-  const activityRows = await db
-    .select({
-      createdAt: schema.activities.createdAt,
-    })
-    .from(schema.activities)
-    .where(
-      and(
-        eq(schema.activities.userId, user.id),
-        sql`${schema.activities.createdAt} >= ${activityStart}`,
-      ),
-    );
-  for (const row of activityRows) {
-    const day = new Date(row.createdAt).toISOString().slice(0, 10);
-    activityByDay.set(day, (activityByDay.get(day) || 0) + 1);
+    const activityRows = await db
+      .select({
+        createdAt: schema.activities.createdAt,
+      })
+      .from(schema.activities)
+      .where(
+        and(
+          eq(schema.activities.userId, user.id),
+          sql`${schema.activities.createdAt} >= ${activityStart}`,
+        ),
+      );
+    for (const row of activityRows) {
+      const day = new Date(row.createdAt).toISOString().slice(0, 10);
+      activityByDay.set(day, (activityByDay.get(day) || 0) + 1);
+    }
+  } catch {
+    // Fallback
   }
-} catch {
-  // Fallback
 }
 
 // 6. Fetch recent activity timeline
 let recentActivity: any[] = [];
-try {
-  recentActivity = await db.query.activities.findMany({
-    where: eq(schema.activities.userId, user.id),
-    orderBy: [desc(schema.activities.createdAt)],
-    limit: 6,
-  });
-} catch {}
+if (user.id !== "placeholder-user") {
+  try {
+    recentActivity = await db.query.activities.findMany({
+      where: eq(schema.activities.userId, user.id),
+      orderBy: [desc(schema.activities.createdAt)],
+      limit: 6,
+    });
+  } catch {}
+}
 
 // 7. Fetch profile README from {username}/{username} repo or default
 let profileReadmeHtml = "";
 let hasSpecialRepo = false;
-try {
-  const profileRepo = await db.query.repositories.findFirst({
-    where: and(
-      eq(schema.repositories.ownerId, user.id),
-      eq(schema.repositories.name, user.username),
-    ),
-  });
-  if (profileRepo) {
-    hasSpecialRepo = true;
-    const localPath = await resolveRepoPath(profileRepo.diskPath);
-    const fileData = await getFileContent(
-      localPath,
-      "README.md",
-      profileRepo.defaultBranch || "main",
-    );
-    if (fileData?.content) {
-      profileReadmeHtml = await renderMarkdown(fileData.content);
+if (user.id !== "placeholder-user") {
+  try {
+    const profileRepo = await db.query.repositories.findFirst({
+      where: and(
+        eq(schema.repositories.ownerId, user.id),
+        eq(schema.repositories.name, user.username),
+      ),
+    });
+    if (profileRepo) {
+      hasSpecialRepo = true;
+      const localPath = await resolveRepoPath(profileRepo.diskPath);
+      const fileData = await getFileContent(
+        localPath,
+        "README.md",
+        profileRepo.defaultBranch || "main",
+      );
+      if (fileData?.content) {
+        profileReadmeHtml = await renderMarkdown(fileData.content);
+      }
     }
-  }
-} catch {}
+  } catch {}
+}
 
 // If no special repo README exists, provide a default profile readme card showcasing the user's projects and bio
 if (!profileReadmeHtml) {
@@ -186,15 +214,17 @@ ___
 
 // 8. Fetch User Organizations
 let userOrgs: any[] = [];
-try {
-  const orgMembers = await db.query.organizationMembers.findMany({
-    where: eq(schema.organizationMembers.userId, user.id),
-    with: {
-      organization: true,
-    },
-  });
-  userOrgs = orgMembers.map((m) => m.organization).filter(Boolean);
-} catch {}
+if (user.id !== "placeholder-user") {
+  try {
+    const orgMembers = await db.query.organizationMembers.findMany({
+      where: eq(schema.organizationMembers.userId, user.id),
+      with: {
+        organization: true,
+      },
+    });
+    userOrgs = orgMembers.map((m) => m.organization).filter(Boolean);
+  } catch {}
+}
 
 // Language colors (GitHub style)
 const langColors: Record<string, string> = {

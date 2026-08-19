@@ -140,7 +140,7 @@ const formattedIssue = {
 >
   <RepoHeader repo={repoForHeader as any} activeTab="issues" />
 
-  <div class="container py-8">
+  <div class="container max-w-[1280px] mx-auto py-6 px-4 sm:px-6">
     <IssueDetail
       client:load
       issue={formattedIssue}
@@ -149,6 +149,11 @@ const formattedIssue = {
       repoName={repoName!}
       canLink={canLink}
       canEdit={canLink}
+      currentUser={currentUser ? {
+        id: currentUser.id,
+        username: currentUser.username,
+        avatarUrl: currentUser.avatarUrl || undefined,
+      } : undefined}
     />
   </div>
 </BaseLayout>

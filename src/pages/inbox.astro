@@ -1,18 +1,15 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import { Button } from "@/components/ui/button";
 import { getDatabase, schema } from "@/db";
-import { eq, desc, and, or, ne } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import {
   Inbox as InboxIcon,
   GitPullRequest,
   Clock,
   CheckCircle2,
   Eye,
-  Filter,
-  Search,
   Layers,
-  Bot,
+  Sparkles
 } from "lucide-react";
 
 const user = Astro.locals.user;
@@ -29,7 +26,6 @@ let title = "Inbox";
 
 try {
   if (filter === "review") {
-    // PRs where user is requested as reviewer
     title = "Needs Your Review";
     const reviewerRequests = await db.query.pullRequestReviewers.findMany({
       where: eq(schema.pullRequestReviewers.userId, user.id),
@@ -37,18 +33,21 @@ try {
 
     const prIds = reviewerRequests.map((r) => r.pullRequestId);
     if (prIds.length > 0) {
-      prs = await db.query.pullRequests.findMany({
+      const allOpen = await db.query.pullRequests.findMany({
         where: and(eq(schema.pullRequests.state, "open")),
         orderBy: [desc(schema.pullRequests.updatedAt)],
         with: {
-          repository: true,
+          repository: {
+            with: {
+              owner: true
+            }
+          },
           author: true,
         },
       });
-      prs = prs.filter((pr) => prIds.includes(pr.id));
+      prs = allOpen.filter((pr) => prIds.includes(pr.id));
     }
   } else if (filter === "authored") {
-    // User's PRs waiting for review
     title = "Your PRs in Review";
     prs = await db.query.pullRequests.findMany({
       where: and(
@@ -57,12 +56,15 @@ try {
       ),
       orderBy: [desc(schema.pullRequests.updatedAt)],
       with: {
-        repository: true,
+        repository: {
+          with: {
+            owner: true
+          }
+        },
         author: true,
       },
     });
   } else if (filter === "approved") {
-    // Approved PRs ready to merge
     title = "Ready to Merge";
     prs = await db.query.pullRequests.findMany({
       where: and(
@@ -72,19 +74,26 @@ try {
       ),
       orderBy: [desc(schema.pullRequests.updatedAt)],
       with: {
-        repository: true,
+        repository: {
+          with: {
+            owner: true
+          }
+        },
         author: true,
       },
     });
   } else if (filter === "all") {
-    // All open PRs user is involved with
     title = "All PRs";
     prs = await db.query.pullRequests.findMany({
       where: eq(schema.pullRequests.state, "open"),
       orderBy: [desc(schema.pullRequests.updatedAt)],
       limit: 50,
       with: {
-        repository: true,
+        repository: {
+          with: {
+            owner: true
+          }
+        },
         author: true,
       },
     });
@@ -98,35 +107,46 @@ const prsWithStacks = await Promise.all(
   prs.map(async (pr) => {
     let stackInfo = null;
     try {
-      const entry = await db.query.prStackEntries.findFirst({
+      const stackEntry = await db.query.prStackEntries.findFirst({
         where: eq(schema.prStackEntries.pullRequestId, pr.id),
+        with: {
+          stack: {
+            with: {
+              entries: true,
+            },
+          },
+        },
       });
-      if (entry) {
-        const stack = await db.query.prStacks.findFirst({
-          where: eq(schema.prStacks.id, entry.stackId),
-        });
-        if (stack) {
-          const entries = await db.query.prStackEntries.findMany({
-            where: eq(schema.prStackEntries.stackId, stack.id),
-          });
-          stackInfo = {
-            id: stack.id,
-            name: stack.name,
-            count: entries.length,
-            position: entry.stackOrder,
-          };
-        }
+
+      if (stackEntry && stackEntry.stack) {
+        stackInfo = {
+          name: stackEntry.stack.name,
+          position: stackEntry.position + 1,
+          count: stackEntry.stack.entries.length,
+        };
       }
     } catch (e) {}
-    return { ...pr, stackInfo };
+
+    let reviewCount = 0;
+    try {
+      const reviews = await db.query.pullRequestReviews.findMany({
+        where: eq(schema.pullRequestReviews.pullRequestId, pr.id),
+      });
+      reviewCount = reviews.length;
+    } catch (e) {}
+
+    return {
+      ...pr,
+      stackInfo,
+      reviewCount,
+    };
   }),
 );
 
-// Get review counts
+// Counts for tabs
 const counts = {
   review: 0,
   authored: 0,
-  approved: 0,
 };
 try {
   const reviewerRequests = await db.query.pullRequestReviewers.findMany({
@@ -143,7 +163,8 @@ try {
   counts.authored = authored.length;
 } catch (e) {}
 
-function timeAgo(date: string) {
+function timeAgo(date: string | number | Date) {
+  if (!date) return "";
   const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
   if (seconds < 60) return "just now";
   if (seconds < 3600) return Math.floor(seconds / 60) + "m ago";
@@ -153,302 +174,289 @@ function timeAgo(date: string) {
 }
 ---
 
-<BaseLayout title="Inbox">
-  <div class="container py-8 max-w-5xl">
-    <div class="flex flex-col gap-6">
-      <!-- Header -->
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <InboxIcon className="h-6 w-6 text-primary" />
-          <h1 class="text-2xl font-bold">Inbox</h1>
-        </div>
-        <div class="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Filter className="mr-2 h-4 w-4" />
-            Filter
-          </Button>
-        </div>
+<BaseLayout title="Inbox · OpenCodeHub">
+  <div class="container max-w-[1280px] mx-auto py-8 px-4 sm:px-6 space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
+      <div>
+        <h1 class="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2.5">
+          <InboxIcon className="h-6 w-6 text-foreground" />
+          <span>Review Inbox</span>
+          <span class="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-muted-foreground border border-border/60">
+            {prsWithStacks.length}
+          </span>
+        </h1>
+        <p class="text-sm text-muted-foreground mt-1">
+          High-velocity cockpit for reviews, incoming changes, and mergeable PRs
+        </p>
       </div>
 
-      <!-- Navigation Tabs -->
-      <div class="flex items-center gap-2 border-b pb-4">
-        <a
-          href="/inbox?filter=review"
-          class:list={[
-            "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
-            filter === "review"
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-muted",
-          ]}
+      <div class="flex items-center gap-2 self-start sm:self-auto">
+        <button
+          onclick="document.getElementById('keyboard-shortcuts-modal')?.classList.remove('hidden')"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-card text-xs font-medium text-foreground hover:bg-accent transition-colors shadow-sm"
         >
-          <Eye className="h-4 w-4" />
-          Needs Review
-          {
-            counts.review > 0 && (
-              <span class="ml-1 bg-muted-foreground/20 px-2 py-0.5 rounded-full text-xs">
-                {counts.review}
-              </span>
-            )
-          }
-        </a>
-        <a
-          href="/inbox?filter=authored"
-          class:list={[
-            "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
-            filter === "authored"
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-muted",
-          ]}
-        >
-          <Clock className="h-4 w-4" />
-          Waiting on Others
-          {
-            counts.authored > 0 && (
-              <span class="ml-1 bg-muted-foreground/20 px-2 py-0.5 rounded-full text-xs">
-                {counts.authored}
-              </span>
-            )
-          }
-        </a>
-        <a
-          href="/inbox?filter=approved"
-          class:list={[
-            "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
-            filter === "approved"
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-muted",
-          ]}
-        >
-          <CheckCircle2 className="h-4 w-4" />
-          Ready to Merge
-        </a>
-        <a
-          href="/inbox?filter=all"
-          class:list={[
-            "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
-            filter === "all"
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-muted",
-          ]}
-        >
-          All
-        </a>
+          <span>Shortcuts</span>
+          <kbd class="px-1.5 py-0.2 bg-secondary rounded text-[10px] font-mono text-muted-foreground">?</kbd>
+        </button>
       </div>
+    </div>
 
-      <!-- PR List -->
-      <div class="space-y-2">
-        {
-          prsWithStacks.length === 0 ? (
-            <div class="text-center py-16">
-              <div class="inline-flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
-                <InboxIcon className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 class="text-lg font-medium">No pull requests</h3>
-              <p class="text-muted-foreground mt-1">
-                {filter === "review"
-                  ? "No PRs waiting for your review"
-                  : filter === "authored"
-                    ? "You have no open PRs"
-                    : "No PRs to display"}
-              </p>
-            </div>
-          ) : (
-            prsWithStacks.map((pr) => (
+    <!-- Navigation Tabs -->
+    <div class="inline-flex items-center gap-1 p-1 rounded-lg border border-border/80 bg-card/60 backdrop-blur-sm self-start">
+      <a
+        href="/inbox?filter=review"
+        class:list={[
+          "inline-flex items-center gap-2 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors",
+          filter === "review"
+            ? "bg-secondary text-foreground font-semibold shadow-sm"
+            : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+        ]}
+      >
+        <Eye className="h-3.5 w-3.5" />
+        <span>Needs Review</span>
+        {counts.review > 0 && (
+          <span class="rounded-full bg-primary/10 text-primary border border-primary/20 px-1.5 py-0.2 text-[10px] font-bold">
+            {counts.review}
+          </span>
+        )}
+      </a>
+      <a
+        href="/inbox?filter=authored"
+        class:list={[
+          "inline-flex items-center gap-2 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors",
+          filter === "authored"
+            ? "bg-secondary text-foreground font-semibold shadow-sm"
+            : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+        ]}
+      >
+        <Clock className="h-3.5 w-3.5" />
+        <span>Waiting on Others</span>
+        {counts.authored > 0 && (
+          <span class="rounded-full bg-muted px-1.5 py-0.2 text-[10px] font-semibold text-muted-foreground">
+            {counts.authored}
+          </span>
+        )}
+      </a>
+      <a
+        href="/inbox?filter=approved"
+        class:list={[
+          "inline-flex items-center gap-2 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors",
+          filter === "approved"
+            ? "bg-secondary text-foreground font-semibold shadow-sm"
+            : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+        ]}
+      >
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        <span>Ready to Merge</span>
+      </a>
+      <a
+        href="/inbox?filter=all"
+        class:list={[
+          "inline-flex items-center gap-2 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors",
+          filter === "all"
+            ? "bg-secondary text-foreground font-semibold shadow-sm"
+            : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+        ]}
+      >
+        <span>All</span>
+      </a>
+    </div>
+
+    <!-- PR List Card -->
+    <div class="rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm overflow-hidden shadow-sm">
+      {prsWithStacks.length === 0 ? (
+        <div class="text-center py-16 px-4">
+          <div class="w-12 h-12 rounded-full bg-secondary/80 border border-border flex items-center justify-center mx-auto mb-3 text-muted-foreground">
+            <InboxIcon className="h-6 w-6" />
+          </div>
+          <h3 class="text-base font-semibold text-foreground mb-1">No pull requests</h3>
+          <p class="text-sm text-muted-foreground max-w-sm mx-auto">
+            {filter === "review"
+              ? "You have no pull requests waiting for your review. Great job!"
+              : filter === "authored"
+                ? "You have no open pull requests."
+                : "No pull requests to display in this view."}
+          </p>
+        </div>
+      ) : (
+        <div class="divide-y divide-border/60">
+          {prsWithStacks.map((pr) => {
+            const ownerName = pr.repository?.owner?.username || "repo";
+            const repoName = pr.repository?.name || "";
+            return (
               <a
                 data-pr-item
-                href={`/${pr.repository?.name}/pulls/${pr.number}`}
-                class="flex items-start gap-4 p-4 rounded-lg border transition-all hover:bg-muted/50 hover:shadow-md group cursor-pointer"
+                href={`/${ownerName}/${repoName}/pulls/${pr.number}`}
+                class="group flex items-start gap-3.5 p-4 hover:bg-accent/40 transition-colors"
               >
-                {/* PR Icon */}
-                <div
-                  class:list={[
-                    "flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center",
-                    pr.isDraft
-                      ? "bg-gray-500/10 text-muted-foreground"
-                      : "bg-green-500/10 text-green-500",
-                  ]}
-                >
-                  <GitPullRequest className="h-5 w-5" />
+                <!-- PR Icon -->
+                <div class="mt-0.5 flex-shrink-0">
+                  <div
+                    class:list={[
+                      "h-6 w-6 rounded-full flex items-center justify-center border",
+                      pr.isDraft
+                        ? "bg-muted/40 text-muted-foreground border-border"
+                        : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+                    ]}
+                  >
+                    <GitPullRequest className="h-3.5 w-3.5" />
+                  </div>
                 </div>
 
-                {/* Content */}
+                <!-- Content -->
                 <div class="flex-1 min-w-0">
-                  <div class="flex items-start justify-between gap-2">
-                    <div>
-                      <div class="flex items-center gap-2">
-                        <span class="font-medium group-hover:text-primary transition-colors">
-                          {pr.title}
-                        </span>
-                        {pr.isDraft && (
-                          <span class="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
-                            Draft
-                          </span>
-                        )}
-                        {pr.stackInfo && (
-                          <span class="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-                            <Layers className="h-3 w-3" />
-                            {pr.stackInfo.position}/{pr.stackInfo.count}
-                          </span>
-                        )}
-                      </div>
-                      <div class="text-sm text-muted-foreground mt-1">
-                        <span class="font-medium">{pr.repository?.name}</span>
-                        <span class="mx-1">•</span>
-                        <span>#{pr.number}</span>
-                        <span class="mx-1">•</span>
-                        <span>opened by {pr.author?.username}</span>
-                      </div>
-                    </div>
-                    <span class="text-xs text-muted-foreground whitespace-nowrap">
-                      {timeAgo(pr.updatedAt)}
+                  <div class="flex items-baseline gap-2 flex-wrap mb-1">
+                    <span class="text-xs font-semibold text-muted-foreground">
+                      {ownerName}/{repoName}
                     </span>
+                    <span class="text-xs text-muted-foreground/80 font-mono">#{pr.number}</span>
+                    {pr.isDraft && (
+                      <span class="text-[10px] bg-secondary text-muted-foreground px-1.5 py-0.2 rounded border border-border/50">
+                        Draft
+                      </span>
+                    )}
+                    {pr.stackInfo && (
+                      <span class="inline-flex items-center gap-1 text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-1.5 py-0.2 rounded font-semibold">
+                        <Layers className="h-2.5 w-2.5" />
+                        Stack {pr.stackInfo.position}/{pr.stackInfo.count}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Stats */}
-                  <div class="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                    <span class="text-green-600">+{pr.additions || 0}</span>
-                    <span class="text-red-600">-{pr.deletions || 0}</span>
-                    <span>{pr.changedFiles || 0} files</span>
+                  <h3 class="text-sm font-semibold text-foreground group-hover:text-primary transition-colors leading-snug break-words">
+                    {pr.title}
+                  </h3>
+
+                  <div class="flex items-center gap-3 mt-2 flex-wrap text-xs text-muted-foreground">
+                    <span>opened by @{pr.author?.username || "unknown"}</span>
+                    <span>·</span>
+                    <span>updated {timeAgo(pr.updatedAt)}</span>
                     {pr.reviewCount > 0 && (
-                      <span>{pr.reviewCount} reviews</span>
+                      <>
+                        <span>·</span>
+                        <span>{pr.reviewCount} reviews</span>
+                      </>
                     )}
                   </div>
                 </div>
+
+                <!-- Author Avatar -->
+                <div class="hidden sm:block flex-shrink-0">
+                  {pr.author?.avatarUrl ? (
+                    <img
+                      src={pr.author.avatarUrl}
+                      alt={pr.author.username}
+                      class="h-7 w-7 rounded-full border border-border/80 object-cover"
+                    />
+                  ) : (
+                    <div class="h-7 w-7 rounded-full bg-secondary border border-border/80 flex items-center justify-center text-xs font-medium text-foreground">
+                      {pr.author?.username?.[0]?.toUpperCase() || "?"}
+                    </div>
+                  )}
+                </div>
               </a>
-            ))
-          )
-        }
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   </div>
 
-  <!-- Keyboard Shortcuts Help Modal -->
+  <!-- Keyboard Shortcuts Modal -->
   <div
     id="keyboard-shortcuts-modal"
-    class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+    class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4"
   >
-    <div
-      class="bg-background border rounded-lg shadow-lg p-6 max-w-md w-full mx-4"
-    >
-      <h3 class="text-lg font-semibold mb-4">Keyboard Shortcuts</h3>
-      <div class="space-y-2 text-sm">
-        <div class="flex justify-between">
-          <kbd class="px-2 py-1 bg-muted rounded text-xs">j</kbd>
+    <div class="bg-card border border-border rounded-xl shadow-xl p-6 max-w-sm w-full space-y-4">
+      <h3 class="text-base font-bold text-foreground">Keyboard Shortcuts</h3>
+      <div class="space-y-2 text-xs text-muted-foreground divide-y divide-border/40">
+        <div class="flex justify-between py-1.5">
+          <kbd class="px-2 py-0.5 bg-secondary rounded text-[11px] font-mono text-foreground">j</kbd>
           <span>Next PR</span>
         </div>
-        <div class="flex justify-between">
-          <kbd class="px-2 py-1 bg-muted rounded text-xs">k</kbd>
+        <div class="flex justify-between py-1.5">
+          <kbd class="px-2 py-0.5 bg-secondary rounded text-[11px] font-mono text-foreground">k</kbd>
           <span>Previous PR</span>
         </div>
-        <div class="flex justify-between">
-          <kbd class="px-2 py-1 bg-muted rounded text-xs">o</kbd>
-          <span>Open selected PR</span>
+        <div class="flex justify-between py-1.5">
+          <kbd class="px-2 py-0.5 bg-secondary rounded text-[11px] font-mono text-foreground">o / Enter</kbd>
+          <span>Open PR</span>
         </div>
-        <div class="flex justify-between">
-          <kbd class="px-2 py-1 bg-muted rounded text-xs">r</kbd>
+        <div class="flex justify-between py-1.5">
+          <kbd class="px-2 py-0.5 bg-secondary rounded text-[11px] font-mono text-foreground">r</kbd>
           <span>Refresh</span>
         </div>
-        <div class="flex justify-between">
-          <kbd class="px-2 py-1 bg-muted rounded text-xs">?</kbd>
-          <span>Show this help</span>
-        </div>
-        <div class="flex justify-between">
-          <kbd class="px-2 py-1 bg-muted rounded text-xs">Esc</kbd>
-          <span>Close dialog</span>
+        <div class="flex justify-between py-1.5">
+          <kbd class="px-2 py-0.5 bg-secondary rounded text-[11px] font-mono text-foreground">Esc</kbd>
+          <span>Close</span>
         </div>
       </div>
       <button
         onclick="document.getElementById('keyboard-shortcuts-modal').classList.add('hidden')"
-        class="mt-4 w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+        class="w-full py-2 bg-foreground text-background text-xs font-semibold rounded-md hover:bg-foreground/90 transition-colors"
       >
-        Got it
+        Close
       </button>
     </div>
   </div>
+</BaseLayout>
 
-  <!-- Keyboard hint -->
-  <div
-    class="fixed bottom-4 right-4 text-xs text-muted-foreground bg-background border rounded-lg px-3 py-2 shadow-lg"
-  >
-    Press <kbd class="px-1.5 py-0.5 bg-muted rounded text-xs mx-0.5">?</kbd> for keyboard
-    shortcuts
-  </div>
+<script>
+  function initInboxKeyboardShortcuts() {
+    let selectedIndex = 0;
+    const prItems = document.querySelectorAll("[data-pr-item]");
 
-  <script>
-    // Keyboard shortcut handler
-    function initInboxKeyboardShortcuts() {
-      let selectedIndex = 0;
-      const prItems = document.querySelectorAll("[data-pr-item]");
+    if (prItems.length === 0) return;
 
-      if (prItems.length === 0) return;
-
-      // Highlight the first item
-      const highlightPR = (index: number) => {
-        prItems.forEach((item, i) => {
-          if (i === index) {
-            item.classList.add("ring-2", "ring-primary", "bg-primary/5");
-            item.scrollIntoView({ block: "nearest", behavior: "smooth" });
-          } else {
-            item.classList.remove("ring-2", "ring-primary", "bg-primary/5");
-          }
-        });
-      };
-
-      // Initialize
-      highlightPR(0);
-
-      // Add keyboard listener
-      document.addEventListener("keydown", (e) => {
-        const target = e.target as HTMLElement;
-        // Don't trigger if user is typing in an input
-        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
-          return;
-        }
-
-        switch (e.key.toLowerCase()) {
-          case "j": // Next PR
-            e.preventDefault();
-            selectedIndex = Math.min(selectedIndex + 1, prItems.length - 1);
-            highlightPR(selectedIndex);
-            break;
-
-          case "k": // Previous PR
-            e.preventDefault();
-            selectedIndex = Math.max(selectedIndex - 1, 0);
-            highlightPR(selectedIndex);
-            break;
-
-          case "o": // Open PR
-          case "enter":
-            e.preventDefault();
-            (prItems[selectedIndex] as HTMLElement)?.click();
-            break;
-
-          case "r": // Refresh
-            e.preventDefault();
-            window.location.reload();
-            break;
-
-          case "?": // Show help
-            e.preventDefault();
-            document
-              .getElementById("keyboard-shortcuts-modal")
-              ?.classList.toggle("hidden");
-            break;
-
-          case "escape":
-            e.preventDefault();
-            document
-              .getElementById("keyboard-shortcuts-modal")
-              ?.classList.add("hidden");
-            break;
+    const highlightPR = (index: number) => {
+      prItems.forEach((item, i) => {
+        if (i === index) {
+          item.classList.add("bg-accent/70");
+          item.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        } else {
+          item.classList.remove("bg-accent/70");
         }
       });
+    };
 
-      console.log("✅ Inbox keyboard shortcuts active");
-    }
+    highlightPR(0);
 
-    // Auto-init on page load
-    initInboxKeyboardShortcuts();
-  </script>
-</BaseLayout>
+    document.addEventListener("keydown", (e) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+
+      switch (e.key.toLowerCase()) {
+        case "j":
+          e.preventDefault();
+          selectedIndex = Math.min(selectedIndex + 1, prItems.length - 1);
+          highlightPR(selectedIndex);
+          break;
+        case "k":
+          e.preventDefault();
+          selectedIndex = Math.max(selectedIndex - 1, 0);
+          highlightPR(selectedIndex);
+          break;
+        case "o":
+        case "enter":
+          e.preventDefault();
+          (prItems[selectedIndex] as HTMLElement)?.click();
+          break;
+        case "r":
+          e.preventDefault();
+          window.location.reload();
+          break;
+        case "?":
+          e.preventDefault();
+          document.getElementById("keyboard-shortcuts-modal")?.classList.toggle("hidden");
+          break;
+        case "escape":
+          e.preventDefault();
+          document.getElementById("keyboard-shortcuts-modal")?.classList.add("hidden");
+          break;
+      }
+    });
+  }
+
+  initInboxKeyboardShortcuts();
+</script>

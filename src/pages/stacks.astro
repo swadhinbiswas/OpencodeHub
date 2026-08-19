@@ -4,6 +4,7 @@ import { getDatabase, schema } from "@/db";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { desc, eq, inArray } from "drizzle-orm";
 import StackCard from "@/components/dashboard/StackCard.astro";
+import { Layers, ArrowLeft } from "lucide-react";
 
 const user = Astro.locals.user;
 if (!user) {
@@ -71,60 +72,51 @@ if (prIds.length > 0) {
 }
 ---
 
-<BaseLayout title={`Your Stacks - OpenCodeHub`}>
-    <div class="container py-8 max-w-5xl mx-auto">
-        <div class="flex items-center justify-between mb-8">
+<BaseLayout title="Your Stacks · OpenCodeHub">
+    <div class="container max-w-[1280px] mx-auto py-8 px-4 sm:px-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border mb-6">
             <div>
-                <h1 class="text-2xl font-bold text-foreground mb-2">Your Stacks</h1>
-                <p class="text-muted-foreground">
-                    Manage and visualize your stacked pull requests.
+                <h1 class="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2.5">
+                    <Layers className="h-6 w-6 text-foreground" />
+                    <span>Your Stacks</span>
+                    <span class="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-muted-foreground border border-border/60">
+                        {stacks.length}
+                    </span>
+                </h1>
+                <p class="text-sm text-muted-foreground mt-1">
+                    Manage and visualize your stacked pull requests
                 </p>
             </div>
             <a
                 href="/dashboard"
-                class="px-4 py-2 rounded-lg bg-secondary hover:bg-secondary/80 text-sm text-muted-foreground transition-colors"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-card text-xs font-medium text-foreground hover:bg-accent transition-colors shadow-sm self-start sm:self-auto"
             >
-                Back to Dashboard
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Dashboard</span>
             </a>
         </div>
 
         {
             stacks.length > 0 ? (
-                <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
+                <div class="grid gap-6 md:grid-cols-2">
                     {stacks.map((stack) => (
                         <StackCard stack={stack} />
                     ))}
                 </div>
             ) : (
-                <div class="text-center py-20 bg-card/50 rounded-xl border border-border">
-                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-500/10 text-blue-400 mb-4">
-                        <svg
-                            class="w-8 h-8"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                            />
-                        </svg>
+                <div class="text-center py-16 px-4 rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm shadow-sm">
+                    <div class="w-12 h-12 rounded-full bg-secondary/80 border border-border flex items-center justify-center mx-auto mb-3 text-muted-foreground">
+                        <Layers className="h-6 w-6" />
                     </div>
-                    <h3 class="text-lg font-medium text-foreground mb-2">
+                    <h3 class="text-base font-semibold text-foreground mb-1">
                         No active stacks
                     </h3>
-                    <p class="text-muted-foreground max-w-sm mx-auto mb-6">
-                        Create stacked pull requests to see them visualized
-                        here.
+                    <p class="text-sm text-muted-foreground max-w-sm mx-auto mb-4">
+                        Create stacked pull requests with the OpenCodeHub CLI to manage dependent changes cleanly.
                     </p>
-                    <a
-                        href="https://docs.opencodehub.space/features/stacked-prs/"
-                        class="text-blue-400 hover:text-blue-300 text-sm"
-                    >
-                        Learn how to create stacks &rarr;
-                    </a>
+                    <code class="px-2 py-1 bg-secondary rounded text-xs font-mono text-foreground">
+                        och stack create &lt;branch&gt;
+                    </code>
                 </div>
             )
         }

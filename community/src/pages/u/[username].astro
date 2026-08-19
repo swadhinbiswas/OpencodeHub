@@ -1,0 +1,233 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { Header } from "../../components/layout/Header";
+import { Card, CardContent } from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { 
+  Star, GitFork, BookOpen, Globe, ExternalLink, ArrowLeft, 
+  UserPlus, Server, MapPin, Link as LinkIcon, Building, 
+  Users, Calendar, Clock 
+} from "lucide-react";
+import { verifyToken } from "../../lib/auth";
+import { getDb } from "../../lib/db";
+import { eq, desc, and, sql, count } from "drizzle-orm";
+import { cachedUsers, cachedRepos, follows } from "../../lib/db/schema";
+
+const token = Astro.cookies.get("community_session")?.value;
+const user = token ? await verifyToken(token) : null;
+const { username } = Astro.params;
+
+const db = getDb() as any;
+
+const profile = await db.query.cachedUsers.findFirst({
+  where: eq(cachedUsers.username, username as string),
+  with: { instance: true },
+}).catch(() => null);
+
+const repos = await db.query.cachedRepos.findMany({
+  where: eq(cachedRepos.ownerUsername, username as string),
+  orderBy: [desc(cachedRepos.starCount), desc(cachedRepos.updatedAt)],
+  with: { instance: true },
+}).catch(() => []);
+
+// Follower/following counts
+const [followersCount, followingCount] = await Promise.all([
+  db.select({ count: sql<number>`count(*)` }).from(follows).where(eq(follows.followeeId, username as string)).then((r: any) => r[0]?.count || 0).catch(() => 0),
+  db.select({ count: sql<number>`count(*)` }).from(follows).where(eq(follows.followerId, username as string)).then((r: any) => r[0]?.count || 0).catch(() => 0),
+]);
+
+let isFollowing = false;
+if (user) {
+  const followRecord = await db.query.follows.findFirst({
+    where: and(eq(follows.followerId, user.sub), eq(follows.followeeId, username as string)),
+  }).catch(() => null);
+  isFollowing = !!followRecord;
+}
+
+// Activity heatmap from repo updatedAt (proxy)
+const matrix = Array(84).fill(0);
+const now = new Date();
+repos.forEach((r: any) => {
+  if (!r.updatedAt) return;
+  const diffDays = Math.floor(Math.abs(now.getTime() - new Date(r.updatedAt).getTime()) / 86400000);
+  if (diffDays < 84) matrix[83 - diffDays] += 1;
+});
+
+// Aggregate stats
+const totalStars = repos.reduce((sum: number, r: any) => sum + (r.starCount || 0), 0);
+const totalForks = repos.reduce((sum: number, r: any) => sum + (r.forkCount || 0), 0);
+const languages = [...new Set(repos.map((r: any) => r.language).filter(Boolean))];
+
+const langColors: Record<string, string> = {
+  TypeScript: "#3178c6", JavaScript: "#f1e05a", Python: "#3572A5", Go: "#00ADD8",
+  Rust: "#dea584", Java: "#b07219", "C++": "#f34b7d", C: "#555555", Ruby: "#701516",
+  PHP: "#4F5D95", Swift: "#F05138", Kotlin: "#A97BFF", Dart: "#00B4AB",
+  Shell: "#89e051", HTML: "#e34c26", CSS: "#563d7c", Vue: "#41b883",
+};
+
+const displayName = profile?.displayName || username;
+const avatarUrl = profile?.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${username}`;
+const instanceUrl = profile?.instance?.url ? `${profile.instance.url}/${username}` : null;
+---
+<BaseLayout title={`${displayName} (@${username}) — Community`}>
+  <Header client:load user={user} />
+  
+  <main class="container px-4 sm:px-8 py-8 sm:py-12 space-y-8 max-w-5xl mx-auto">
+    <a href="/explore" class="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+      <ArrowLeft className="h-3.5 w-3.5" /> Back to Explore
+    </a>
+
+    <!-- Profile Hero -->
+    <div class="rounded-3xl border border-border/60 bg-card/60 backdrop-blur-xl p-6 sm:p-8">
+      <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
+        <img src={avatarUrl} alt={displayName} class="h-24 w-24 rounded-3xl bg-muted border-2 border-border/80 shadow-md object-cover shrink-0" />
+        <div class="flex-1 space-y-3">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">{displayName}</h1>
+              <div class="text-sm font-medium text-muted-foreground">@{username}</div>
+            </div>
+            <div class="flex items-center gap-2 justify-center sm:justify-start">
+              <Button id="follow-btn" size="sm" className={`gap-1.5 text-xs font-semibold ${isFollowing ? "bg-muted text-muted-foreground hover:bg-destructive/10 hover:text-destructive" : "bg-primary hover:bg-primary/90"}`} data-username={username}>
+                <UserPlus className="h-3.5 w-3.5" />
+                <span id="follow-label">{isFollowing ? "Following" : "Follow"}</span>
+              </Button>
+              {instanceUrl && <a href={instanceUrl} target="_blank" rel="noreferrer"><Button size="sm" variant="outline" className="gap-1.5 text-xs"><ExternalLink className="h-3.5 w-3.5" /> Visit</Button></a>}
+            </div>
+          </div>
+          <p class="text-sm text-muted-foreground max-w-xl leading-relaxed">{profile?.bio || "Decentralized developer on the OpenCodeHub federated mesh."}</p>
+          <div class="flex flex-wrap items-center justify-center sm:justify-start gap-4 pt-1 text-xs text-muted-foreground">
+            {profile?.instance?.name && <span class="inline-flex items-center gap-1.5"><Server className="h-3.5 w-3.5 text-primary" />{profile.instance.name}</span>}
+            {profile?.location && <span class="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{profile.location}</span>}
+            {profile?.company && <span class="flex items-center gap-1"><Building className="h-3.5 w-3.5" />{profile.company}</span>}
+            {profile?.website && <a href={profile.website} target="_blank" class="flex items-center gap-1 hover:text-primary"><LinkIcon className="h-3.5 w-3.5" />Website</a>}
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats Bar -->
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-6 pt-6 border-t border-border/50">
+        <div class="text-center p-2 rounded-lg bg-muted/30"><div class="text-lg font-bold">{repos.length}</div><div class="text-[10px] text-muted-foreground">Repos</div></div>
+        <div class="text-center p-2 rounded-lg bg-muted/30"><div class="text-lg font-bold">{totalStars}</div><div class="text-[10px] text-muted-foreground">Stars</div></div>
+        <div class="text-center p-2 rounded-lg bg-muted/30"><div class="text-lg font-bold">{totalForks}</div><div class="text-[10px] text-muted-foreground">Forks</div></div>
+        <div class="text-center p-2 rounded-lg bg-muted/30"><div class="text-lg font-bold">{followersCount}</div><div class="text-[10px] text-muted-foreground">Followers</div></div>
+        <div class="text-center p-2 rounded-lg bg-muted/30"><div class="text-lg font-bold">{followingCount}</div><div class="text-[10px] text-muted-foreground">Following</div></div>
+      </div>
+    </div>
+
+    <!-- 2-Col Layout -->
+    <div class="grid lg:grid-cols-3 gap-8">
+      <div class="lg:col-span-2 space-y-4">
+        <h2 class="text-xl font-bold flex items-center gap-2"><BookOpen className="h-5 w-5 text-primary" /> Repositories ({repos.length})</h2>
+        <div class="space-y-3.5">
+          {repos.length === 0 ? (
+            <div class="rounded-2xl border border-dashed border-border/80 bg-card/30 p-8 text-center text-xs text-muted-foreground">No repositories indexed for this profile yet.</div>
+          ) : (
+            repos.map((repo: any) => {
+              const lc = langColors[repo.language] || "#888";
+              return (
+                <div class="rounded-2xl border border-border/60 bg-card/50 p-5 hover:border-primary/40 hover:bg-card/80 transition-all shadow-sm space-y-2">
+                  <div class="flex items-center justify-between gap-2">
+                    <a href={`/r/${repo.instance?.name || "node"}/${repo.fullName}`} class="font-bold text-base text-primary hover:underline">{repo.name}</a>
+                    <Badge variant="outline" className="text-[10px] uppercase font-semibold">{repo.visibility || "public"}</Badge>
+                  </div>
+                  <p class="text-xs text-muted-foreground line-clamp-2">{repo.description || "No description provided."}</p>
+                  <div class="flex items-center justify-between pt-2 text-xs text-muted-foreground">
+                    <div class="flex items-center gap-3">
+                      {repo.language && <span class="flex items-center gap-1.5 font-medium text-foreground"><span class="h-2.5 w-2.5 rounded-full" style={`background-color:${lc}`}></span>{repo.language}</span>}
+                      <span class="flex items-center gap-1"><Star className="h-3 w-3 text-amber-400 fill-amber-400" /> {repo.starCount || 0}</span>
+                      <span class="flex items-center gap-1"><GitFork className="h-3 w-3" /> {repo.forkCount || 0}</span>
+                    </div>
+                    {repo.updatedAt && <span class="flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(repo.updatedAt).toLocaleDateString()}</span>}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="space-y-6">
+        <!-- Activity Heatmap -->
+        <Card className="border-border/60 bg-card/50">
+          <CardContent className="p-5 space-y-3">
+            <h3 class="text-sm font-bold flex items-center justify-between"><span>Activity</span><span class="text-[11px] font-normal text-muted-foreground">Last 12 weeks</span></h3>
+            <div class="grid grid-cols-7 gap-1.5">
+              {matrix.map((count) => {
+                const bg = count >= 3 ? "bg-emerald-500" : count === 2 ? "bg-emerald-500/70" : count === 1 ? "bg-emerald-500/40" : "bg-muted/60";
+                return <div class={`h-3.5 rounded-sm ${bg} transition-colors hover:ring-2 hover:ring-primary`} title={`${count} activities`} />;
+              })}
+            </div>
+            <div class="flex items-center justify-between pt-2 text-[10px] text-muted-foreground">
+              <span>Less</span>
+              <div class="flex items-center gap-1">
+                <span class="h-2.5 w-2.5 rounded-sm bg-muted/60"></span>
+                <span class="h-2.5 w-2.5 rounded-sm bg-emerald-500/40"></span>
+                <span class="h-2.5 w-2.5 rounded-sm bg-emerald-500/70"></span>
+                <span class="h-2.5 w-2.5 rounded-sm bg-emerald-500"></span>
+              </div>
+              <span>More</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <!-- Languages -->
+        {languages.length > 0 && (
+          <Card className="border-border/60 bg-card/50">
+            <CardContent className="p-5 space-y-3">
+              <h3 class="text-sm font-bold">Languages</h3>
+              <div class="space-y-2">
+                {languages.slice(0, 8).map((lang: string) => (
+                  <div class="flex items-center gap-2 text-xs">
+                    <span class="h-2.5 w-2.5 rounded-full shrink-0" style={`background-color:${langColors[lang] || "#888"}`}></span>
+                    <span class="font-medium text-foreground">{lang}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <!-- Instance -->
+        {profile?.instance && (
+          <Card className="border-border/60 bg-card/50">
+            <CardContent className="p-5 space-y-3">
+              <h3 class="text-sm font-bold">Home Instance</h3>
+              <a href={`/instances/${profile.instance.id}`} class="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/40 transition-colors border border-border/40">
+                <div class="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center"><Server className="h-5 w-5 text-primary" /></div>
+                <div class="min-w-0">
+                  <div class="text-sm font-semibold truncate">{profile.instance.name}</div>
+                  <div class="text-[11px] text-muted-foreground truncate">{profile.instance.siteUrl}</div>
+                </div>
+              </a>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  </main>
+
+  <script>
+    import { toast } from "sonner";
+    const followBtn = document.getElementById('follow-btn');
+    const followLabel = document.getElementById('follow-label');
+    followBtn?.addEventListener('click', async () => {
+      const username = followBtn.dataset.username;
+      try {
+        const res = await fetch('/api/follows', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ followeeType: 'user', followeeId: username }) });
+        const data = await res.json();
+        if (data.success) {
+          const f = data.data?.following;
+          if (followLabel) followLabel.textContent = f ? "Following" : "Follow";
+          followBtn.classList.toggle("bg-muted", f);
+          followBtn.classList.toggle("text-muted-foreground", f);
+          followBtn.classList.toggle("bg-primary", !f);
+          followBtn.classList.toggle("text-primary-foreground", !f);
+          toast.success(f ? `Followed @${username}` : `Unfollowed @${username}`);
+        } else { toast.error(data.error?.message || "Failed"); }
+      } catch { toast.error("Network error"); }
+    });
+  </script>
+</BaseLayout>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Folder, File, ChevronRight, ChevronDown, GitCommit, X, GitBranch, RefreshCw, XCircle, AlertTriangle, Layout, Search, Settings, Home, Activity, Loader2 } from "lucide-react";
 import Editor from "@monaco-editor/react";
 import { cn } from "@/lib/utils";
+import { Logo } from "@/components/ui/Logo";
 
 interface WebIDEProps {
     owner: string;
@@ -251,7 +252,7 @@ export function WebIDE({ owner, repo, defaultBranch, initialBranch, initialFile,
             {/* VS Code Title Bar */}
             <div className="h-8 w-full bg-[#3c3c3c] flex items-center px-3 border-b border-[#2d2d2d] shrink-0 text-xs">
                 <div className="flex items-center gap-1 text-muted-foreground">
-                    <img src="/logo.svg" alt="logo" className="h-4 w-4 mr-2 opacity-90 brightness-200" />
+                    <Logo className="h-4 w-4 mr-2 text-[#cccccc]" />
                     <span className="cursor-default hover:bg-secondary/80 px-2 py-1 rounded transition-colors">File</span>
                     <span className="cursor-default hover:bg-secondary/80 px-2 py-1 rounded transition-colors">Edit</span>
                     <span className="cursor-default hover:bg-secondary/80 px-2 py-1 rounded transition-colors">Selection</span>
@@ -479,7 +480,7 @@ export function WebIDE({ owner, repo, defaultBranch, initialBranch, initialFile,
                             />
                         ) : (
                             <div className="w-full h-full flex flex-col items-center justify-center text-[#858585] select-none bg-[#1e1e1e]">
-                                <img src="/logo.svg" alt="logo" className="h-24 w-24 mb-6 opacity-5 grayscale" />
+                                <Logo className="h-24 w-24 mb-6 opacity-10 text-[#858585]" />
                                 <div className="flex gap-12 text-sm text-[#858585]">
                                     <div className="flex flex-col gap-3">
                                         <div className="font-semibold text-[#cccccc]">Start</div>

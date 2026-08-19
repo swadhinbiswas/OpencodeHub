@@ -1,0 +1,130 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { Header } from "../../components/layout/Header";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Github, Sparkles, Lock, Mail, User } from "lucide-react";
+import { verifyToken } from "../../lib/auth";
+
+const token = Astro.cookies.get("community_session")?.value;
+const user = token ? await verifyToken(token) : null;
+if (user) {
+  return Astro.redirect("/dashboard");
+}
+---
+<BaseLayout title="Create Account — OpenCodeHub Community">
+  <Header client:load user={user} />
+  
+  <main class="container px-4 py-16 max-w-md mx-auto my-auto space-y-6">
+    <div class="text-center space-y-2">
+      <div class="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary via-indigo-500 to-purple-600 flex items-center justify-center text-white mx-auto shadow-lg shadow-primary/25">
+        <Sparkles className="h-6 w-6" />
+      </div>
+      <h1 class="text-2xl font-extrabold tracking-tight text-foreground">
+        Join the Network
+      </h1>
+      <p class="text-xs text-muted-foreground">
+        Create your Community account to star, follow, and connect nodes.
+      </p>
+    </div>
+
+    <Card className="border-border/60 bg-card/60 backdrop-blur-xl shadow-xl">
+      <CardContent className="pt-6">
+        <form id="register-form" class="space-y-4">
+          <div class="space-y-2">
+            <Label htmlFor="username" className="text-xs font-semibold">Username</Label>
+            <div class="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                id="username" 
+                placeholder="octocat" 
+                required 
+                className="pl-9 bg-card/50 border-border/60 focus:border-primary h-10 text-sm" 
+              />
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <Label htmlFor="email" className="text-xs font-semibold">Email Address</Label>
+            <div class="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                id="email" 
+                type="email" 
+                placeholder="you@example.com" 
+                required 
+                className="pl-9 bg-card/50 border-border/60 focus:border-primary h-10 text-sm" 
+              />
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <Label htmlFor="password" className="text-xs font-semibold">Password</Label>
+            <div class="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                id="password" 
+                type="password" 
+                placeholder="••••••••" 
+                required 
+                className="pl-9 bg-card/50 border-border/60 focus:border-primary h-10 text-sm" 
+              />
+            </div>
+          </div>
+
+          <Button type="submit" className="w-full h-10 bg-primary hover:bg-primary/90 text-sm font-semibold shadow-md shadow-primary/20" id="submit-btn">
+            <Sparkles className="h-4 w-4 mr-2" />
+            Create Account
+          </Button>
+
+          <p class="text-xs text-center text-muted-foreground pt-2">
+            Already have an account?{" "}
+            <a href="/auth/login" class="text-primary font-semibold hover:underline">
+              Sign in
+            </a>
+          </p>
+        </form>
+      </CardContent>
+    </Card>
+  </main>
+
+  <script>
+    import { toast } from "sonner";
+    
+    const form = document.getElementById("register-form") as HTMLFormElement;
+    const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const username = (document.getElementById("username") as HTMLInputElement).value.trim();
+      const email = (document.getElementById("email") as HTMLInputElement).value.trim();
+      const password = (document.getElementById("password") as HTMLInputElement).value;
+      
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<span class="inline-flex items-center gap-2"><svg class="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Creating account...</span>`;
+
+      try {
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, email, password }),
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          toast.success("Account created successfully!");
+          setTimeout(() => window.location.href = "/dashboard", 600);
+        } else {
+          toast.error(data.error || "Failed to create account");
+        }
+      } catch (error: any) {
+        toast.error(error.message || "An error occurred during registration");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<svg class="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg> Create Account`;
+      }
+    });
+  </script>
+</BaseLayout>

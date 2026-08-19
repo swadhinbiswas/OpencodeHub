@@ -15,6 +15,12 @@ vi.mock("@/db", () => ({
   }),
 }));
 
+vi.mock("@/lib/redis", () => ({
+  redis: {
+    ping: vi.fn(async () => "PONG"),
+  },
+}));
+
 vi.mock("@/lib/distributed-lock", () => ({
   get isDistributedLocking() {
     return state.distributedLocking;

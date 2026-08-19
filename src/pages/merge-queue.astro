@@ -17,6 +17,7 @@ import {
     ArrowUp,
     ArrowDown,
     RefreshCw,
+    ArrowRight
 } from "lucide-react";
 
 const user = Astro.locals.user;
@@ -71,7 +72,6 @@ interface QueueItemWithDetails {
 
 let queueItems: QueueItemWithDetails[] = [];
 let isPaused = false;
-let lastProcessedAt: string | null = null;
 
 try {
     const query = repoFilter
@@ -97,52 +97,42 @@ try {
     });
     const mqItems = await resolveOrgOwners(items);
 
-    // Calculate estimated merge times and add stack info
     let currentPosition = 1;
-    const avgCiTime = 10; // minutes
-
     for (const item of mqItems) {
-        const estimatedMerge = new Date(
-            Date.now() + currentPosition * avgCiTime * 60 * 1000,
-        );
-
-        // Check if PR is part of a stack
-        let stackInfo = undefined;
-        try {
-            const stackEntry = await db.query.prStackEntries.findFirst({
-                where: eq(
-                    schema.prStackEntries.pullRequestId,
-                    item.pullRequestId,
-                ),
-            });
-            if (stackEntry) {
-                const stack = await db.query.prStacks.findFirst({
-                    where: eq(schema.prStacks.id, stackEntry.stackId),
+        let stackInfo;
+        if (item.pullRequest?.id) {
+            try {
+                const stackEntry = await db.query.prStackEntries.findFirst({
+                    where: eq(schema.prStackEntries.pullRequestId, item.pullRequest.id),
+                    with: {
+                        stack: {
+                            with: {
+                                entries: true,
+                            },
+                        },
+                    },
                 });
-                const entries = await db.query.prStackEntries.findMany({
-                    where: eq(
-                        schema.prStackEntries.stackId,
-                        stackEntry.stackId,
-                    ),
-                });
-                if (stack) {
+                if (stackEntry?.stack) {
                     stackInfo = {
-                        id: stack.id,
-                        name: stack.name || "Unnamed Stack",
-                        position: stackEntry.stackOrder,
-                        total: entries.length,
+                        id: stackEntry.stack.id,
+                        name: stackEntry.stack.name,
+                        position: stackEntry.position + 1,
+                        total: stackEntry.stack.entries.length,
                     };
                 }
-            }
-        } catch (e) {}
+            } catch (e) {}
+        }
+
+        const estimatedMinutes = currentPosition * 5;
+        const estimatedMerge = new Date(Date.now() + estimatedMinutes * 60 * 1000);
 
         queueItems.push({
             id: item.id,
             position: currentPosition,
             status: item.status,
-            priority: item.priority ?? 0,
+            priority: item.priority,
             mergeMethod: item.mergeMethod || "merge",
-            addedAt: item.addedAt?.toISOString() ?? new Date().toISOString(),
+            addedAt: item.createdAt ? new Date(item.createdAt).toISOString() : new Date().toISOString(),
             pr: item.pullRequest
                 ? {
                       number: item.pullRequest.number,
@@ -162,7 +152,7 @@ try {
                   }
                 : null,
             stackInfo,
-            ciStatus: "pending", // Would come from CI system
+            ciStatus: "pending",
             estimatedMerge,
         });
 
@@ -172,47 +162,6 @@ try {
     console.error("Failed to fetch merge queue:", e);
 }
 
-function getStatusIcon(status: string) {
-    switch (status) {
-        case "pending":
-            return {
-                icon: Clock,
-                color: "text-yellow-400",
-                bg: "bg-yellow-500/10",
-            };
-        case "running_ci":
-            return {
-                icon: Loader2,
-                color: "text-blue-400",
-                bg: "bg-blue-500/10",
-            };
-        case "ready":
-            return {
-                icon: CheckCircle2,
-                color: "text-green-400",
-                bg: "bg-green-500/10",
-            };
-        case "merging":
-            return {
-                icon: GitMerge,
-                color: "text-purple-400",
-                bg: "bg-purple-500/10",
-            };
-        case "failed":
-            return {
-                icon: XCircle,
-                color: "text-red-400",
-                bg: "bg-red-500/10",
-            };
-        default:
-            return {
-                icon: Clock,
-                color: "text-muted-foreground",
-                bg: "bg-gray-500/10",
-            };
-    }
-}
-
 function formatTime(date: Date | string) {
     const d = date instanceof Date ? date : new Date(date);
     return d.toLocaleTimeString("en-US", {
@@ -220,335 +169,226 @@ function formatTime(date: Date | string) {
         minute: "2-digit",
     });
 }
-
-function timeAgo(date: string) {
-    const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-    if (seconds < 60) return "just now";
-    if (seconds < 3600) return Math.floor(seconds / 60) + "m ago";
-    if (seconds < 86400) return Math.floor(seconds / 3600) + "h ago";
-    return Math.floor(seconds / 86400) + "d ago";
-}
 ---
 
-<BaseLayout title="Merge Queue">
-    <div class="container py-8 max-w-5xl">
-        <div class="flex flex-col gap-6">
-            <!-- Header -->
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div
-                        class="p-2 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30"
-                    >
-                        <GitMerge className="h-6 w-6 text-purple-400" />
-                    </div>
-                    <div>
-                        <h1 class="text-2xl font-bold text-foreground">
-                            Merge Queue
-                        </h1>
-                        <p class="text-sm text-muted-foreground">
-                            {queueItems.length}
-                            {queueItems.length === 1 ? "PR" : "PRs"} in queue
-                        </p>
-                    </div>
-                </div>
+<BaseLayout title="Merge Queue · OpenCodeHub">
+    <div class="container max-w-[1280px] mx-auto py-8 px-4 sm:px-6">
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2.5">
+                    <GitMerge className="h-6 w-6 text-foreground" />
+                    <span>Merge Queue</span>
+                    <span class="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-muted-foreground border border-border/60">
+                        {queueItems.length}
+                    </span>
+                </h1>
+                <p class="text-sm text-muted-foreground mt-1">
+                    Automated serial merge queue with speculative CI execution
+                </p>
+            </div>
 
-                <div class="flex items-center gap-3">
-                    <!-- Repo Filter -->
-                    {
-                        userRepos.length > 1 && (
-                            <select
-                                id="repo-filter"
-                                class="bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-muted-foreground"
+            <div class="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
+                {userRepos.length > 1 && (
+                    <select
+                        id="repo-filter"
+                        class="h-8 bg-card border border-border/70 rounded-md px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
+                    >
+                        <option value="">All Repositories</option>
+                        {userRepos.map((repo) => (
+                            <option
+                                value={repo.id}
+                                selected={repoFilter === repo.id}
                             >
-                                <option value="">All Repositories</option>
-                                {userRepos.map((repo) => (
-                                    <option
-                                        value={repo.id}
-                                        selected={repoFilter === repo.id}
-                                    >
-                                        {repo.fullName || repo.name}
-                                    </option>
-                                ))}
-                            </select>
-                        )
-                    }
+                                {repo.fullName || repo.name}
+                            </option>
+                        ))}
+                    </select>
+                )}
 
-                    <!-- Pause/Resume -->
-                    <button
-                        id="toggle-queue-btn"
-                        class:list={[
-                            "flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors border",
-                            isPaused
-                                ? "bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20"
-                                : "bg-yellow-500/10 border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/20",
-                        ]}
-                    >
-                        {
-                            isPaused ? (
-                                <>
-                                    <Play className="h-4 w-4" />
-                                    Resume Queue
-                                </>
-                            ) : (
-                                <>
-                                    <Pause className="h-4 w-4" />
-                                    Pause Queue
-                                </>
-                            )
-                        }
-                    </button>
-
-                    <!-- Refresh -->
-                    <button
-                        onclick="window.location.reload()"
-                        class="p-2 rounded-lg bg-secondary border border-border text-muted-foreground hover:bg-secondary/80 transition-colors"
-                    >
-                        <RefreshCw className="h-4 w-4" />
-                    </button>
-                </div>
+                <button
+                    onclick="window.location.reload()"
+                    class="p-1.5 rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shadow-sm"
+                    title="Refresh queue"
+                >
+                    <RefreshCw className="h-4 w-4" />
+                </button>
             </div>
+        </div>
 
-            <!-- Queue Status Banner -->
-            {
-                isPaused && (
-                    <div class="flex items-center gap-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
-                        <AlertCircle className="h-5 w-5 text-yellow-400" />
-                        <span class="text-sm text-yellow-300">
-                            Queue is paused. No PRs will be merged until
-                            resumed.
-                        </span>
+        <!-- Queue Status Banner (if paused) -->
+        {isPaused && (
+            <div class="flex items-center gap-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-6 text-amber-300">
+                <AlertCircle className="h-4 w-4 text-amber-400 flex-shrink-0" />
+                <span class="text-xs font-medium">
+                    Merge queue is paused. No pull requests will merge until resumed.
+                </span>
+            </div>
+        )}
+
+        <!-- Queue Items Card -->
+        <div class="rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm overflow-hidden shadow-sm mb-6">
+            {queueItems.length === 0 ? (
+                <div class="text-center py-16 px-4">
+                    <div class="w-12 h-12 rounded-full bg-secondary/80 border border-border flex items-center justify-center mx-auto mb-3 text-muted-foreground">
+                        <GitMerge className="h-6 w-6" />
                     </div>
-                )
-            }
-
-            <!-- Queue Items -->
-            <div class="relative">
-                <div
-                    class="absolute -inset-[1px] bg-gradient-to-r from-purple-500/20 via-transparent to-pink-500/20 rounded-xl opacity-50"
-                >
+                    <h3 class="text-base font-semibold text-foreground mb-1">Queue is empty</h3>
+                    <p class="text-sm text-muted-foreground max-w-sm mx-auto mb-3">
+                        No pull requests are currently waiting to be merged.
+                    </p>
+                    <p class="text-xs text-muted-foreground font-mono">
+                        Add PRs via CLI with <code class="px-1.5 py-0.5 bg-secondary rounded text-foreground font-mono">och queue add &lt;pr&gt;</code>
+                    </p>
                 </div>
-                <div
-                    class="relative rounded-xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden"
-                >
-                    {
-                        queueItems.length === 0 ? (
-                            <div class="text-center py-16">
-                                <div class="relative inline-block mb-4">
-                                    <GitMerge className="h-16 w-16 text-purple-400" />
-                                    <div class="absolute inset-0 bg-purple-500 blur-2xl opacity-20" />
+            ) : (
+                <div class="divide-y divide-border/60">
+                    {queueItems.map((item) => (
+                        <div
+                            class="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-accent/40 transition-colors"
+                            data-queue-item={item.id}
+                        >
+                            <div class="flex items-start sm:items-center gap-3.5 min-w-0">
+                                <!-- Position Badge -->
+                                <div class="w-6 h-6 rounded-full bg-secondary border border-border flex items-center justify-center text-xs font-bold text-foreground flex-shrink-0">
+                                    {item.position}
                                 </div>
-                                <h3 class="text-lg font-semibold text-foreground mb-2">
-                                    Queue is empty
-                                </h3>
-                                <p class="text-muted-foreground">
-                                    No PRs are waiting to be merged.
-                                </p>
-                                <p class="text-sm text-muted-foreground mt-2">
-                                    Add PRs to the queue with{" "}
-                                    <code class="px-1.5 py-0.5 bg-secondary/80 rounded text-purple-300">
-                                        och queue add &lt;pr&gt;
-                                    </code>
-                                </p>
-                            </div>
-                        ) : (
-                            <div class="divide-y divide-white/5">
-                                {queueItems.map((item, index) => {
-                                    const StatusIcon = getStatusIcon(
-                                        item.status,
-                                    ).icon;
-                                    const statusColor = getStatusIcon(
-                                        item.status,
-                                    ).color;
-                                    const statusBg = getStatusIcon(
-                                        item.status,
-                                    ).bg;
 
-                                    return (
-                                        <div
-                                            class="group flex items-center gap-4 p-4 transition-all hover:bg-accent/50"
-                                            data-queue-item={item.id}
-                                        >
-                                            {/* Position */}
-                                            <div class="flex-shrink-0 w-8 h-8 rounded-full bg-secondary/80 flex items-center justify-center text-sm font-bold text-foreground">
-                                                {item.position}
-                                            </div>
-
-                                            {/* Status Icon */}
-                                            <div
-                                                class={`flex-shrink-0 p-2 rounded-lg ${statusBg}`}
-                                            >
-                                                <StatusIcon
-                                                    className={`h-5 w-5 ${statusColor} ${item.status === "running_ci" ? "animate-spin" : ""}`}
-                                                />
-                                            </div>
-
-                                            {/* PR Info */}
-                                            <div class="flex-1 min-w-0">
-                                                <div class="flex items-center gap-2">
-                                                    <span class="font-medium text-foreground truncate">
-                                                        {item.pr?.title ||
-                                                            "Unknown PR"}
-                                                    </span>
-                                                    {item.stackInfo && (
-                                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-purple-500/10 text-purple-300 border border-purple-500/30">
-                                                            <Layers className="h-3 w-3" />
-                                                            {
-                                                                item.stackInfo
-                                                                    .position
-                                                            }
-                                                            /
-                                                            {
-                                                                item.stackInfo
-                                                                    .total
-                                                            }
-                                                        </span>
-                                                    )}
-                                                    <span class="px-1.5 py-0.5 rounded text-xs bg-secondary/80 text-muted-foreground">
-                                                        {item.mergeMethod}
-                                                    </span>
-                                                </div>
-                                                <div class="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-                                                    <span class="flex items-center gap-1">
-                                                        #{item.pr?.number}
-                                                    </span>
-                                                    <span>
-                                                        {item.pr?.headBranch} →{" "}
-                                                        {item.pr?.baseBranch}
-                                                    </span>
-                                                    {item.pr?.author && (
-                                                        <span class="flex items-center gap-1">
-                                                            {item.pr.author
-                                                                .avatarUrl ? (
-                                                                <img
-                                                                    src={
-                                                                        item.pr
-                                                                            .author
-                                                                            .avatarUrl
-                                                                    }
-                                                                    alt=""
-                                                                    class="h-4 w-4 rounded-full"
-                                                                />
-                                                            ) : (
-                                                                <div class="h-4 w-4 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-[8px] font-bold text-foreground">
-                                                                    {item.pr.author.username[0]?.toUpperCase()}
-                                                                </div>
-                                                            )}
-                                                            {
-                                                                item.pr.author
-                                                                    .username
-                                                            }
-                                                        </span>
-                                                    )}
-                                                    {item.pr?.additions !==
-                                                        undefined && (
-                                                        <span>
-                                                            <span class="text-green-400">
-                                                                +
-                                                                {
-                                                                    item.pr
-                                                                        .additions
-                                                                }
-                                                            </span>
-                                                            <span class="mx-1">
-                                                                /
-                                                            </span>
-                                                            <span class="text-red-400">
-                                                                -
-                                                                {
-                                                                    item.pr
-                                                                        .deletions
-                                                                }
-                                                            </span>
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {/* Estimated Merge Time */}
-                                            <div class="flex-shrink-0 text-right">
-                                                <div class="text-sm text-muted-foreground">
-                                                    ETA
-                                                </div>
-                                                <div class="text-sm font-medium text-foreground">
-                                                    {item.estimatedMerge
-                                                        ? formatTime(
-                                                              item.estimatedMerge,
-                                                          )
-                                                        : "-"}
-                                                </div>
-                                            </div>
-
-                                            {/* Actions */}
-                                            <div class="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                {item.priority < 10 && (
-                                                    <button
-                                                        class="p-1.5 rounded hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors"
-                                                        title="Increase priority"
-                                                        data-action="priority-up"
-                                                    >
-                                                        <ArrowUp className="h-4 w-4" />
-                                                    </button>
-                                                )}
-                                                {item.priority > 0 && (
-                                                    <button
-                                                        class="p-1.5 rounded hover:bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors"
-                                                        title="Decrease priority"
-                                                        data-action="priority-down"
-                                                    >
-                                                        <ArrowDown className="h-4 w-4" />
-                                                    </button>
-                                                )}
-                                                <button
-                                                    class="p-1.5 rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-400 transition-colors"
-                                                    title="Remove from queue"
-                                                    data-action="remove"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
-                                            </div>
+                                <!-- Status Icon -->
+                                <div class="flex-shrink-0">
+                                    {item.status === "ready" ? (
+                                        <div class="h-6 w-6 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20" title="Ready to merge">
+                                            <CheckCircle2 className="h-3.5 w-3.5" />
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        )
-                    }
-                </div>
-            </div>
+                                    ) : item.status === "running_ci" ? (
+                                        <div class="h-6 w-6 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20" title="Running speculative CI">
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        </div>
+                                    ) : item.status === "failed" ? (
+                                        <div class="h-6 w-6 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center border border-red-500/20" title="Merge build failed">
+                                            <XCircle className="h-3.5 w-3.5" />
+                                        </div>
+                                    ) : (
+                                        <div class="h-6 w-6 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20" title="Pending in queue">
+                                            <Clock className="h-3.5 w-3.5" />
+                                        </div>
+                                    )}
+                                </div>
 
-            <!-- Queue Legend -->
-            <div
-                class="flex items-center justify-center gap-6 text-xs text-muted-foreground"
-            >
-                <div class="flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5 text-yellow-400" />
-                    <span>Pending</span>
+                                <!-- PR Info -->
+                                <div class="min-w-0">
+                                    <div class="flex items-baseline gap-2 flex-wrap mb-1">
+                                        <span class="text-xs text-muted-foreground font-mono">#{item.pr?.number}</span>
+                                        <h3 class="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                                            {item.pr?.title || "PR"}
+                                        </h3>
+                                        {item.stackInfo && (
+                                            <span class="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[11px] bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                                                <Layers className="h-3 w-3" />
+                                                Stack {item.stackInfo.position}/{item.stackInfo.total}
+                                            </span>
+                                        )}
+                                        <span class="px-1.5 py-0.2 rounded text-[10px] bg-secondary font-mono text-muted-foreground">
+                                            {item.mergeMethod}
+                                        </span>
+                                    </div>
+
+                                    <div class="flex items-center gap-2.5 flex-wrap text-xs text-muted-foreground">
+                                        <div class="flex items-center gap-1 font-mono text-[11px] bg-secondary/80 text-foreground px-2 py-0.5 rounded border border-border/50">
+                                            <span>{item.pr?.headBranch}</span>
+                                            <ArrowRight className="h-2.5 w-2.5 text-muted-foreground" />
+                                            <span>{item.pr?.baseBranch}</span>
+                                        </div>
+
+                                        {item.pr?.author && (
+                                            <>
+                                                <span>·</span>
+                                                <span>@{item.pr.author.username}</span>
+                                            </>
+                                        )}
+
+                                        {item.pr?.additions !== undefined && (
+                                            <>
+                                                <span>·</span>
+                                                <span class="text-emerald-500 font-mono">+{item.pr.additions}</span>
+                                                <span class="text-red-500 font-mono">-{item.pr.deletions}</span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ETA & Action Controls -->
+                            <div class="flex items-center gap-4 self-end sm:self-center flex-shrink-0">
+                                <div class="text-right">
+                                    <div class="text-[10px] uppercase font-bold text-muted-foreground">ETA</div>
+                                    <div class="text-xs font-semibold text-foreground font-mono">
+                                        {item.estimatedMerge ? formatTime(item.estimatedMerge) : "—"}
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {item.priority < 10 && (
+                                        <button
+                                            class="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                                            title="Increase priority"
+                                            data-action="priority-up"
+                                        >
+                                            <ArrowUp className="h-3.5 w-3.5" />
+                                        </button>
+                                    )}
+                                    {item.priority > 0 && (
+                                        <button
+                                            class="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                                            title="Decrease priority"
+                                            data-action="priority-down"
+                                        >
+                                            <ArrowDown className="h-3.5 w-3.5" />
+                                        </button>
+                                    )}
+                                    <button
+                                        class="p-1 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors"
+                                        title="Remove from queue"
+                                        data-action="remove"
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
-                <div class="flex items-center gap-1.5">
-                    <Loader2 className="h-3.5 w-3.5 text-blue-400" />
-                    <span>Running CI</span>
-                </div>
-                <div class="flex items-center gap-1.5">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />
-                    <span>Ready</span>
-                </div>
-                <div class="flex items-center gap-1.5">
-                    <GitMerge className="h-3.5 w-3.5 text-purple-400" />
-                    <span>Merging</span>
-                </div>
-                <div class="flex items-center gap-1.5">
-                    <XCircle className="h-3.5 w-3.5 text-red-400" />
-                    <span>Failed</span>
-                </div>
+            )}
+        </div>
+
+        <!-- Legend Footer -->
+        <div class="flex items-center justify-center gap-6 text-xs text-muted-foreground flex-wrap">
+            <div class="flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5 text-amber-400" />
+                <span>Pending</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <Loader2 className="h-3.5 w-3.5 text-blue-400" />
+                <span>Running CI</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Ready</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <GitMerge className="h-3.5 w-3.5 text-purple-400" />
+                <span>Merging</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <XCircle className="h-3.5 w-3.5 text-red-400" />
+                <span>Failed</span>
             </div>
         </div>
     </div>
 </BaseLayout>
 
 <script>
-    // Repo filter handler
-    const repoFilter = document.getElementById(
-        "repo-filter",
-    ) as HTMLSelectElement;
+    const repoFilter = document.getElementById("repo-filter") as HTMLSelectElement;
     repoFilter?.addEventListener("change", (e) => {
         const repo = (e.target as HTMLSelectElement).value;
         const url = new URL(window.location.href);
@@ -560,69 +400,52 @@ function timeAgo(date: string) {
         window.location.href = url.toString();
     });
 
-    // Queue item actions
     document.querySelectorAll("[data-queue-item]").forEach((item) => {
         const itemId = item.getAttribute("data-queue-item");
 
-        item.querySelector('[data-action="remove"]')?.addEventListener(
-            "click",
-            async (e) => {
-                e.stopPropagation();
-                if (confirm("Remove this PR from the merge queue?")) {
-                    try {
-                        const res = await fetch(`/api/merge-queue/${itemId}`, {
-                            method: "DELETE",
-                        });
-                        if (res.ok) window.location.reload();
-                    } catch (e) {
-                        console.error("Failed to remove from queue");
-                    }
-                }
-            },
-        );
-
-        item.querySelector('[data-action="priority-up"]')?.addEventListener(
-            "click",
-            async (e) => {
-                e.stopPropagation();
+        item.querySelector('[data-action="remove"]')?.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            if (confirm("Remove this pull request from the merge queue?")) {
                 try {
-                    const res = await fetch(
-                        `/api/merge-queue/${itemId}/priority`,
-                        {
-                            method: "PATCH",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ direction: "up" }),
-                        },
-                    );
+                    const res = await fetch(`/api/merge-queue/${itemId}`, {
+                        method: "DELETE",
+                    });
                     if (res.ok) window.location.reload();
                 } catch (e) {
-                    console.error("Failed to update priority");
+                    console.error("Failed to remove from queue");
                 }
-            },
-        );
+            }
+        });
 
-        item.querySelector('[data-action="priority-down"]')?.addEventListener(
-            "click",
-            async (e) => {
-                e.stopPropagation();
-                try {
-                    const res = await fetch(
-                        `/api/merge-queue/${itemId}/priority`,
-                        {
-                            method: "PATCH",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ direction: "down" }),
-                        },
-                    );
-                    if (res.ok) window.location.reload();
-                } catch (e) {
-                    console.error("Failed to update priority");
-                }
-            },
-        );
+        item.querySelector('[data-action="priority-up"]')?.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            try {
+                const res = await fetch(`/api/merge-queue/${itemId}/priority`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ direction: "up" }),
+                });
+                if (res.ok) window.location.reload();
+            } catch (e) {
+                console.error("Failed to update priority");
+            }
+        });
+
+        item.querySelector('[data-action="priority-down"]')?.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            try {
+                const res = await fetch(`/api/merge-queue/${itemId}/priority`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ direction: "down" }),
+                });
+                if (res.ok) window.location.reload();
+            } catch (e) {
+                console.error("Failed to update priority");
+            }
+        });
     });
 
-    // Auto-refresh every 30 seconds
     setInterval(() => {
         window.location.reload();
     }, 30000);
