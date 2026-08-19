@@ -1,0 +1,49 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { Header } from "../../components/layout/Header";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { Globe, Star, GitFork, ExternalLink, ArrowLeft } from "lucide-react";
+const { id } = Astro.params;
+---
+<BaseLayout title={`Instance ${id} — Community`}>
+  <Header client:load />
+  <main class="container px-4 py-8 space-y-6">
+    <a href="/instances" class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" />Back to instances</a>
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div><h1 class="text-2xl font-bold flex items-center gap-2"><Globe className="h-5 w-5" />Instance {id}</h1><p class="text-sm text-muted-foreground">Public repos aggregated from this node • Live via /api/repos?visibility=public</p></div>
+      <Button variant="outline" onclick={`window.open('/api/instances/sync?id=${id}', '_blank')`}>Sync now</Button>
+    </div>
+    <div id="repos" class="grid md:grid-cols-2 gap-4">
+      <Card><CardContent class="p-6 text-center text-sm text-muted-foreground">Loading public repos… <br/><span class="text-xs">Fetching <code>/api/repos?visibility=public</code> from this instance and caching in Turso</span></CardContent></Card>
+    </div>
+    <Card class="bg-muted/30"><CardContent class="p-4 text-xs text-muted-foreground"><b>Clone:</b> Use <code>httpCloneUrl</code> from any repo card. <b>Contribute:</b> You need your own node — push to your instance and open a cross-instance PR to this repo's owner.</CardContent></Card>
+  </main>
+  <script define:vars={{ id }}>
+    (async () => {
+      const el = document.getElementById('repos');
+      try {
+        const res = await fetch(`/api/instances/sync?id=${id}`, { method: 'POST' });
+        const data = await res.json();
+        if (data.success && data.data?.repos?.length) {
+          el.innerHTML = data.data.repos.map(r => `
+            <div class="rounded-xl border bg-card p-5 hover:shadow-md transition-shadow">
+              <div class="flex items-center gap-2"><span class="font-semibold text-primary">${r.fullName}</span><span class="text-xs border rounded-full px-2 py-0.5">${r.visibility}</span></div>
+              <p class="text-sm text-muted-foreground mt-1 line-clamp-2">${r.description || 'No description'}</p>
+              <div class="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
+                ${r.language ? `<span>${r.language}</span>` : ''}
+                <span class="flex items-center gap-1">★ ${r.starCount}</span>
+                <span class="flex items-center gap-1">⎇ ${r.forkCount}</span>
+              </div>
+              <div class="flex gap-2 mt-3">
+                <button onclick="navigator.clipboard.writeText('${r.httpCloneUrl}'); alert('Copied: ' + '${r.httpCloneUrl}')" class="text-xs border rounded-md px-3 py-1.5 hover:bg-accent">Copy clone URL</button>
+                <button onclick="fetch('/api/stars',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({repoId:'${r.id}', fullName:'${r.fullName}'})}).then(()=>alert('Starred ${r.fullName} locally'))" class="text-xs bg-primary text-primary-foreground rounded-md px-3 py-1.5">Star</button>
+              </div>
+            </div>
+          `).join('');
+        } else { el.innerHTML = `<div class="col-span-2 rounded-xl border p-6 text-center text-sm text-muted-foreground">No public repos found — is the instance online and does it have public repos?</div>`; }
+      } catch (e) { el.innerHTML = `<div class="col-span-2 rounded-xl border p-6 text-center text-sm text-destructive">Failed to sync: ${e}</div>`; }
+    })();
+  </script>
+</BaseLayout>

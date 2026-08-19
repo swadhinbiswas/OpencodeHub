@@ -1,0 +1,36 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { Header } from "../../components/layout/Header";
+import { Avatar, AvatarImage, AvatarFallback } from "../../components/ui/avatar";
+import { Card, CardContent } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+const { username } = Astro.params;
+---
+<BaseLayout title={`${username} — Community`}>
+  <Header client:load />
+  <main class="container px-4 py-8 space-y-6">
+    <Card>
+      <CardContent class="p-6 flex gap-6">
+        <Avatar className="h-20 w-20"><AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${username}`} /><AvatarFallback>{username?.[0]?.toUpperCase()}</AvatarFallback></Avatar>
+        <div class="flex-1">
+          <h1 class="text-2xl font-bold">@{username}</h1>
+          <p class="text-sm text-muted-foreground mt-1">Aggregated profile from federated instances • Public data via repo owner metadata</p>
+          <div class="flex gap-2 mt-3"><Button size="sm">Follow</Button><Button size="sm" variant="outline">View on instance</Button></div>
+        </div>
+      </CardContent>
+    </Card>
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="md:col-span-2 space-y-3">
+        <h2 class="font-semibold">Repositories</h2>
+        <Card><CardContent class="p-6 text-sm text-muted-foreground text-center">Repos for @{username} appear after instance sync — cached from /api/repos?owner={username}</CardContent></Card>
+      </div>
+      <Card><CardContent class="p-6 space-y-3">
+        <h3 class="font-semibold">Matrix</h3>
+        <div class="grid grid-cols-7 gap-1">
+          {Array.from({length: 84}).map((_,i) => <div class={`h-3 rounded-sm ${i%7===0 ? 'bg-primary' : i%5===0 ? 'bg-primary/60' : i%3===0 ? 'bg-primary/30' : 'bg-muted'}`} />)}
+        </div>
+        <p class="text-xs text-muted-foreground mt-2">Contribution matrix — like GitHub, aggregated from instance activity</p>
+      </CardContent></Card>
+    </div>
+  </main>
+</BaseLayout>

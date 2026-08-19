@@ -1,0 +1,61 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { Header } from "../../components/layout/Header";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+---
+<BaseLayout title="Submit Instance — Community">
+  <Header client:load />
+  <main class="container px-4 py-8 max-w-xl mx-auto space-y-6">
+    <div><h1 class="text-2xl font-bold">Submit your instance</h1><p class="text-sm text-muted-foreground">Anyone who self-hosts OpenCodeHub can submit their URL. We'll verify and aggregate.</p></div>
+    <Card>
+      <CardHeader><CardTitle>Instance URL</CardTitle><CardDescription>Must be a reachable OpenCodeHub instance (we probe <code>/api/instance</code>)</CardDescription></CardHeader>
+      <CardContent>
+        <form id="submit-form" class="space-y-4">
+          <div class="space-y-2">
+            <Label htmlFor="url">Instance URL</Label>
+            <Input id="url" name="url" placeholder="https://code.example.com" required type="url" />
+            <p class="text-xs text-muted-foreground">Example: https://opencodehub.example.com — we fetch <code>/api/instance</code> and then <code>/api/repos?visibility=public</code></p>
+          </div>
+          <Button type="submit" class="w-full" id="submit-btn">Verify & Submit</Button>
+          <div id="result" class="text-sm hidden rounded-md border p-3"></div>
+        </form>
+      </CardContent>
+    </Card>
+    <Card className="bg-muted/30">
+      <CardContent class="p-4 text-xs text-muted-foreground space-y-1">
+        <div><b>What we fetch:</b> only public repos (<code>visibility=public</code>, <code>isArchived=false</code>) and public profile fields (username, displayName, avatarUrl, bio). Private repos are never requested.</div>
+        <div><b>How to contribute:</b> To star/follow, create a Community account. To clone or propose changes, you need your own node — clone via <code>httpCloneUrl</code> and open a cross-instance PR from your instance.</div>
+      </CardContent>
+    </Card>
+  </main>
+  <script>
+    const form = document.getElementById('submit-form') as HTMLFormElement;
+    const btn = document.getElementById('submit-btn') as HTMLButtonElement;
+    const result = document.getElementById('result') as HTMLDivElement;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const url = (document.getElementById('url') as HTMLInputElement).value.trim();
+      if (!url) return;
+      btn.disabled = true; btn.textContent = "Verifying..."; result.classList.add('hidden');
+      try {
+        const res = await fetch('/api/instances/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+        const data = await res.json();
+        result.classList.remove('hidden');
+        if (res.ok && data.success) {
+          result.className = 'text-sm rounded-md border p-3 bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300';
+          result.textContent = `✓ Verified ${data.data.name} (${data.data.siteUrl}) — ${data.data.repoCount ?? 0} public repos will appear in Explore.`;
+        } else {
+          result.className = 'text-sm rounded-md border p-3 bg-destructive/10 border-destructive/20 text-destructive';
+          result.textContent = data.error?.message || data.message || 'Verification failed';
+        }
+      } catch (err: any) {
+        result.classList.remove('hidden');
+        result.className = 'text-sm rounded-md border p-3 bg-destructive/10 border-destructive/20 text-destructive';
+        result.textContent = err.message || 'Network error';
+      } finally { btn.disabled = false; btn.textContent = "Verify & Submit"; }
+    });
+  </script>
+</BaseLayout>

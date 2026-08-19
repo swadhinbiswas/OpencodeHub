@@ -1,0 +1,24 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { Header } from "../../components/layout/Header";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+---
+<BaseLayout title="Sign in — Community">
+  <Header client:load />
+  <main class="container px-4 py-12 max-w-md mx-auto">
+    <Card>
+      <CardHeader><CardTitle>Welcome back</CardTitle><CardDescription>Sign in to star and follow across the community</CardDescription></CardHeader>
+      <CardContent>
+        <form class="space-y-4" onsubmit="event.preventDefault(); alert('Auth is wired to Turso community_users via /api/auth — implement JWT cookie flow in production');">
+          <div class="space-y-2"><Label htmlFor="email">Email</Label><Input id="email" type="email" placeholder="you@example.com" required /></div>
+          <div class="space-y-2"><Label htmlFor="password">Password</Label><Input id="password" type="password" required /></div>
+          <Button type="submit" class="w-full">Sign in</Button>
+          <p class="text-xs text-center text-muted-foreground">No account? <a href="/auth/register" class="text-primary underline">Create one</a></p>
+        </form>
+      </CardContent>
+    </Card>
+  </main>
+</BaseLayout>

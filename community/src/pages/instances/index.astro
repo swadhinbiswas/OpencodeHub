@@ -1,0 +1,25 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { Header } from "../../components/layout/Header";
+import { Card, CardContent } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Globe, Plus } from "lucide-react";
+---
+<BaseLayout title="Instances — Community">
+  <Header client:load />
+  <main class="container px-4 py-8 space-y-6">
+    <div class="flex items-center justify-between">
+      <div><h1 class="text-2xl font-bold flex items-center gap-2"><Globe className="h-5 w-5" />Instances</h1><p class="text-sm text-muted-foreground">All submitted OpenCodeHub nodes — federated and discoverable</p></div>
+      <a href="/instances/submit"><Button><Plus className="h-4 w-4 mr-1" />Submit URL</Button></a>
+    </div>
+    <Card><CardContent class="p-8 text-center space-y-3">
+      <div class="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto"><Globe className="h-6 w-6 text-primary" /></div>
+      <h3 class="font-semibold">No instances yet</h3>
+      <p class="text-sm text-muted-foreground max-w-md mx-auto">Be the first to submit your OpenCodeHub URL. We'll verify via <code>/api/instance</code> and start aggregating your public repos and profiles.</p>
+      <a href="/instances/submit"><Button>Submit Your Instance</Button></a>
+    </CardContent></Card>
+    <div class="rounded-lg border bg-card p-4 text-xs text-muted-foreground">
+      <b>Privacy:</b> Only <code>visibility=public</code> repos and public profile fields are fetched (via <code>GET /api/repos?visibility=public</code> and repo owner metadata). Private/internal repos are never stored. Data is cached in Turso and refreshed via Upstash-cached sync.
+    </div>
+  </main>
+</BaseLayout>

@@ -1,0 +1,47 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { Header } from "../components/layout/Header";
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { Search, Filter, Star, GitFork, BookOpen } from "lucide-react";
+---
+<BaseLayout title="Explore — Community">
+  <Header client:load />
+  <main class="container px-4 py-8 space-y-6">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold">Explore</h1>
+        <p class="text-sm text-muted-foreground">Public repositories and profiles aggregated from all submitted instances</p>
+      </div>
+      <div class="flex gap-2">
+        <div class="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Search repos, users, topics..." className="pl-9 w-64" id="search" /></div>
+        <Button variant="outline" size="icon"><Filter className="h-4 w-4" /></Button>
+      </div>
+    </div>
+    <div class="grid lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2 space-y-4">
+        <div class="flex items-center justify-between"><h2 class="font-semibold flex items-center gap-2"><BookOpen className="h-4 w-4" />Trending Repositories</h2><Badge variant="secondary">Live from instances</Badge></div>
+        <div id="repo-list" class="space-y-3">
+          <Card><CardContent class="p-6 text-center text-sm text-muted-foreground">Connect instances to see repos. <a href="/instances/submit" class="text-primary underline">Submit an instance</a> to get started.<br/><span class="text-xs">Demo: data is fetched via <code>/api/instances/sync</code> from each instance's <code>/api/repos?visibility=public</code></span></CardContent></Card>
+        </div>
+      </div>
+      <div class="space-y-4">
+        <Card><CardContent class="p-6"><h3 class="font-semibold mb-3">Top Languages</h3><div class="flex flex-wrap gap-2"><Badge>TypeScript</Badge><Badge>Go</Badge><Badge>Python</Badge><Badge>Rust</Badge><Badge>Java</Badge></div></CardContent></Card>
+        <Card><CardContent class="p-6"><h3 class="font-semibold mb-3">Recent Profiles</h3><p class="text-sm text-muted-foreground">Profiles appear after instances are synced. Each profile links to their instance's public page.</p></CardContent></Card>
+        <Card className="bg-primary/5 border-primary/20"><CardContent class="p-6 text-sm"><b>Want to contribute?</b> You need your own OpenCodeHub node. Clone via <code>httpCloneUrl</code>, push to your instance, and open a cross-instance PR. <a href="/instances" class="text-primary underline">Learn more</a></CardContent></Card>
+      </div>
+    </div>
+  </main>
+  <script>
+    const input = document.getElementById('search') as HTMLInputElement;
+    input?.addEventListener('input', () => {
+      const q = input.value.toLowerCase();
+      document.querySelectorAll('#repo-list [data-fullname]')?.forEach(el => {
+        const name = (el as HTMLElement).dataset.fullname || "";
+        (el as HTMLElement).style.display = name.toLowerCase().includes(q) ? "" : "none";
+      });
+    });
+  </script>
+</BaseLayout>

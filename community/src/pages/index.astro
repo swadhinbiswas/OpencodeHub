@@ -1,0 +1,54 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { Header } from "../components/layout/Header";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import { Github, Globe, Star, Users, TrendingUp, Zap } from "lucide-react";
+const siteUrl = Astro.url.origin;
+---
+<BaseLayout title="OpenCodeHub Community — Discover & Connect">
+  <Header client:load />
+  <main>
+    <section class="relative overflow-hidden border-b bg-gradient-to-b from-primary/5 via-background to-background">
+      <div class="container px-4 py-16 md:py-24">
+        <div class="mx-auto max-w-3xl text-center space-y-6">
+          <Badge variant="secondary" className="mx-auto"><Zap className="h-3 w-3 mr-1" /> Federated & Self-Hosted</Badge>
+          <h1 class="text-4xl md:text-5xl font-bold tracking-tight">Discover the<br /><span class="bg-gradient-to-r from-primary to-violet-500 bg-clip-text text-transparent">OpenCodeHub Community</span></h1>
+          <p class="text-lg text-muted-foreground max-w-2xl mx-auto">Aggregating public repositories and profiles from self-hosted instances worldwide. Submit your instance URL, explore trending repos, star and follow — all in one place.</p>
+          <div class="flex flex-wrap justify-center gap-3 pt-2">
+            <a href="/explore"><Button size="lg" className="gap-2"><Globe className="h-4 w-4" />Explore Repos</Button></a>
+            <a href="/instances/submit"><Button size="lg" variant="outline" className="gap-2"><Github className="h-4 w-4" />Submit Your Instance</Button></a>
+          </div>
+          <div class="grid grid-cols-3 gap-4 pt-8 max-w-lg mx-auto">
+            <div class="text-center"><div class="text-2xl font-bold">∞</div><div class="text-xs text-muted-foreground">Instances</div></div>
+            <div class="text-center"><div class="text-2xl font-bold">Public</div><div class="text-xs text-muted-foreground">Repos</div></div>
+            <div class="text-center"><div class="text-2xl font-bold">Global</div><div class="text-xs text-muted-foreground">Community</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="container px-4 py-12">
+      <div class="grid md:grid-cols-3 gap-6">
+        <Card><CardHeader><CardTitle className="flex items-center gap-2"><Globe className="h-5 w-5 text-primary" />Submit & Aggregate</CardTitle><CardDescription>Hosted OpenCodeHub? Submit your URL. We probe /api/instance, fetch public repos and profiles, and display them here.</CardDescription></CardHeader></Card>
+        <Card><CardHeader><CardTitle className="flex items-center gap-2"><Star className="h-5 w-5 text-amber-500" />Star & Follow</CardTitle><CardDescription>Star any repo and follow profiles with your Community account. Your activity is visible across the hub.</CardDescription></CardHeader></Card>
+        <Card><CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-emerald-500" />Contribute</CardTitle><CardDescription>Want to clone or contribute? Use your own node and submit a cross-instance PR via federation — no central gatekeeper.</CardDescription></CardHeader></Card>
+      </div>
+      <div class="mt-12 rounded-xl border bg-card p-6">
+        <h3 class="font-semibold mb-4">How it works</h3>
+        <ol class="grid md:grid-cols-4 gap-4 text-sm">
+          <li class="flex gap-3"><span class="h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">1</span><span><b>Submit URL</b> — paste your instance URL (e.g. https://code.example.com)</span></li>
+          <li class="flex gap-3"><span class="h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">2</span><span><b>We verify</b> — probe /api/instance &amp; fetch public repos</span></li>
+          <li class="flex gap-3"><span class="h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">3</span><span><b>We display</b> — repos, profiles, languages, stars in the hub</span></li>
+          <li class="flex gap-3"><span class="h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">4</span><span><b>You engage</b> — star, follow, clone via your node</span></li>
+        </ol>
+      </div>
+    </section>
+    <section class="border-t bg-muted/30">
+      <div class="container px-4 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-2 text-sm text-muted-foreground"><Users className="h-4 w-4" /> Built for the federated future — Turso • Upstash • Astro</div>
+        <div class="flex gap-2"><a href="/instances"><Button variant="outline" size="sm">Browse Instances</Button></a><a href="/explore"><Button size="sm">Explore</Button></a></div>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
