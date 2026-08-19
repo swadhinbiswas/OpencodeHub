@@ -49,7 +49,35 @@ export async function resolveOwnerRepo(
 /**
  * Fill in a synthetic `owner.username` for org-owned repos.
  * Queries that use `with: { owner: true }` get a null owner for org repos
- * org repos.
+ * (ownerId = org id), which crashes `repo.owner.username` renders.
+ */
+export async function attachOwnerNames<T extends { ownerId: string; ownerType?: string | null; owner?: any }>(
+  repos: T[],
+): Promise<T[]> {
+  if (repos.length === 0) return repos;
+  const orgIds = repos
+    .filter((r) => r.ownerType === "organization" && !r.owner)
+    .map((r) => r.ownerId);
+  if (orgIds.length === 0) return repos;
+  const db = getDatabase() as NodePgDatabase<typeof schema>;
+  const orgs = await db.query.organizations.findMany({
+    where: inArray(schema.organizations.id, orgIds),
+    columns: { id: true, name: true },
+  });
+  const nameById = new Map(orgs.map((o) => [o.id, o.name]));
+  return repos.map((r) =>
+    r.ownerType === "organization" && !r.owner
+      ? { ...r, owner: { username: nameById.get(r.ownerId) ?? "org" } }
+      : r,
+  );
+}
+
+/**
+ * Deep org-owner fix for list pages. Walks query results and fills a
+ * synthetic `owner.username` on any org-owned repo found at the top level
+ * or nested under `item.repository` (the `with: { owner: true }` relation
+ * is null for org repos).
+>>>>>>> origin/main
  */
 export async function resolveOrgOwners<T>(items: T[]): Promise<T[]> {
   const candidates: any[] = [];
