@@ -55,6 +55,13 @@ export const POST: APIRoute = withErrorHandler(async ({ request }) => {
     })
     .where(eq(users.id, resetToken.userId));
 
+  // Revoke all sessions — reset tokens prove account compromise recovery path
+  await db
+    .delete(schema.sessions)
+    .where(eq(schema.sessions.userId, resetToken.userId));
+  const { revokeUserSessionCache } = await import("@/lib/auth-cache");
+  revokeUserSessionCache(resetToken.userId);
+
   // Delete used token
   await db
     .delete(passwordResetTokens)

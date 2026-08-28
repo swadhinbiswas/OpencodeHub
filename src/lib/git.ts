@@ -15,6 +15,43 @@ import { tmpdir } from "os";
 import { basename, dirname, extname, join, resolve } from "path";
 import { simpleGit, SimpleGit, SimpleGitOptions } from "simple-git";
 
+// Memory-bounded operation limits (read once at module load, mirroring the
+// GIT_PROCESS_TIMEOUT pattern in src/lib/git-server.ts)
+const BLAME_MAX_LINES = Math.max(
+  1,
+  parseInt(process.env.BLAME_MAX_LINES || "20000", 10),
+);
+const DIFF_MAX_BYTES = Math.max(
+  1024,
+  parseInt(process.env.DIFF_MAX_BYTES || "2000000", 10),
+);
+const SEARCH_MAX_RESULTS = Math.max(
+  1,
+  parseInt(process.env.SEARCH_MAX_RESULTS || "500", 10),
+);
+const ACTIVITY_MAX_COMMITS = Math.max(
+  1,
+  parseInt(process.env.ACTIVITY_MAX_COMMITS || "50000", 10),
+);
+const FILE_CONTENT_MAX_BYTES = Math.max(
+  1024,
+  parseInt(process.env.FILE_CONTENT_MAX_BYTES || "1000000", 10),
+);
+
+// Truncate a string to at most maxBytes UTF-8 bytes without splitting a
+// multi-byte character (walks back over continuation bytes)
+function utf8SafeSlice(input: string, maxBytes: number): string {
+  if (Buffer.byteLength(input, "utf8") <= maxBytes) {
+    return input;
+  }
+  const buf = Buffer.from(input, "utf8");
+  let end = maxBytes;
+  while (end > 0 && (buf[end] & 0xc0) === 0x80) {
+    end--;
+  }
+  return buf.subarray(0, end).toString("utf8");
+}
+
 export interface RepoInitOptions {
   defaultBranch?: string;
   readme?: boolean;
@@ -93,6 +130,7 @@ export interface BlameInfo {
   author: string;
   email: string;
   date: Date;
+  truncated?: boolean;
 }
 
 /**
@@ -506,7 +544,12 @@ export async function getFileContent(
   repoPath: string,
   filePath: string,
   ref: string = "HEAD",
-): Promise<{ content: string; isBinary: boolean; size: number } | null> {
+): Promise<{
+  content: string;
+  isBinary: boolean;
+  size: number;
+  truncated?: boolean;
+} | null> {
   const git = getGit(repoPath);
 
   try {
@@ -516,10 +559,25 @@ export async function getFileContent(
     // Check if binary
     const isBinary = await isFileBinary(repoPath, filePath, ref);
 
+    const size = Buffer.byteLength(content, "utf8");
+
+    if (!isBinary && size > FILE_CONTENT_MAX_BYTES) {
+      logger.warn(
+        { repoPath, filePath, ref, size, max: FILE_CONTENT_MAX_BYTES },
+        "File content exceeds FILE_CONTENT_MAX_BYTES, truncating",
+      );
+      return {
+        content: utf8SafeSlice(content, FILE_CONTENT_MAX_BYTES),
+        isBinary,
+        size,
+        truncated: true,
+      };
+    }
+
     return {
       content: isBinary ? "" : content,
       isBinary,
-      size: Buffer.byteLength(content, "utf8"),
+      size,
     };
   } catch (error) {
     return null;
@@ -692,11 +750,13 @@ export async function getCommitActivity(
     }
 
     // Get just the dates of commits
+    // -n caps the scan so huge histories cannot produce unbounded output
     const output = await git.raw([
       "log",
       `--since=${since}`,
       "--date=short",
       "--format=%ad",
+      `-n${ACTIVITY_MAX_COMMITS}`,
     ]);
 
     const dates = output.trim().split("\n").filter(Boolean);
@@ -721,6 +781,7 @@ export interface SearchResult {
   file: string;
   line: number;
   content: string;
+  truncated?: boolean;
 }
 
 /**
@@ -763,6 +824,18 @@ export async function searchCode(
         line: lineNumber,
         content: content.trim(),
       });
+    }
+
+    if (results.length > SEARCH_MAX_RESULTS) {
+      const truncatedResults = results.slice(0, SEARCH_MAX_RESULTS);
+      for (const result of truncatedResults) {
+        result.truncated = true;
+      }
+      logger.warn(
+        { repoPath, query, ref, total: results.length, max: SEARCH_MAX_RESULTS },
+        "Search results exceed SEARCH_MAX_RESULTS, truncating",
+      );
+      return truncatedResults;
     }
 
     return results;
@@ -1011,6 +1084,13 @@ export async function getCommitPatchDiff(
       "-M",
       sha,
     ]);
+    if (Buffer.byteLength(output, "utf8") > DIFF_MAX_BYTES) {
+      logger.warn(
+        { repoPath, sha, max: DIFF_MAX_BYTES },
+        "Commit patch diff exceeds DIFF_MAX_BYTES, truncating",
+      );
+      return utf8SafeSlice(output, DIFF_MAX_BYTES);
+    }
     return output;
   } catch (error) {
     if (!isExpectedGitError(error)) {
@@ -1030,9 +1110,13 @@ export async function getBlame(
   const git = getGit(repoPath);
 
   try {
+    // -L 1,<cap> caps blame output upstream; git clamps the end line to EOF
+    // so this is safe for files smaller than the cap
     const output = await git.raw([
       "blame",
       "--line-porcelain",
+      "-L",
+      `1,${BLAME_MAX_LINES}`,
       ref,
       "--",
       filePath,
@@ -1070,6 +1154,26 @@ export async function getBlame(
         ...currentBlame,
         content: lineContent,
       } as BlameInfo);
+    }
+
+    // If we filled the cap, probe one line past it to detect truncation
+    if (blameLines.length >= BLAME_MAX_LINES) {
+      try {
+        await git.raw([
+          "blame",
+          "--line-porcelain",
+          "-L",
+          `${BLAME_MAX_LINES + 1},${BLAME_MAX_LINES + 1}`,
+          ref,
+          "--",
+          filePath,
+        ]);
+        for (const blameLine of blameLines) {
+          blameLine.truncated = true;
+        }
+      } catch {
+        // Probe failed: file ends at/below the cap, nothing truncated
+      }
     }
 
     return blameLines;
@@ -1165,7 +1269,7 @@ export async function compareBranches(
   repoPath: string,
   base: string,
   head: string,
-): Promise<{ commits: CommitInfo[]; diffs: DiffInfo[] }> {
+): Promise<{ commits: CommitInfo[]; diffs: DiffInfo[]; truncated?: boolean }> {
   // Verify branches exist first to avoid "ambiguous argument" errors
   const fullBase = base.startsWith("refs/") ? base : `refs/heads/${base}`;
   const fullHead = head.startsWith("refs/") ? head : `refs/heads/${head}`;
@@ -1203,8 +1307,13 @@ export async function compareBranches(
       `${fullBase}...${fullHead}`, // Triple dot finds merge base automatically
     ]);
 
+    const numstatTruncated = Buffer.byteLength(output, "utf8") > DIFF_MAX_BYTES;
+    const numstat = numstatTruncated
+      ? utf8SafeSlice(output, DIFF_MAX_BYTES)
+      : output;
+
     const diffs: DiffInfo[] = [];
-    for (const line of output.trim().split("\n").filter(Boolean)) {
+    for (const line of numstat.trim().split("\n").filter(Boolean)) {
       const parts = line.split("\t");
       if (parts.length >= 3) {
         const [additions, deletions, file] = parts;
@@ -1221,7 +1330,14 @@ export async function compareBranches(
       }
     }
 
-    return { commits, diffs };
+    if (numstatTruncated) {
+      logger.warn(
+        { repoPath, base, head, max: DIFF_MAX_BYTES },
+        "Branch comparison numstat exceeds DIFF_MAX_BYTES, truncating",
+      );
+    }
+
+    return { commits, diffs, truncated: numstatTruncated || undefined };
   } catch (error: any) {
     // Fallback for any other errors
     logger.error({ err: error }, "Error comparing branches");
@@ -1256,6 +1372,13 @@ export async function getComparePatchDiff(
       "--unified=5",
       "-M", // Detect renames
     ]);
+    if (Buffer.byteLength(output, "utf8") > DIFF_MAX_BYTES) {
+      logger.warn(
+        { repoPath, base, head, max: DIFF_MAX_BYTES },
+        "Compare patch diff exceeds DIFF_MAX_BYTES, truncating",
+      );
+      return utf8SafeSlice(output, DIFF_MAX_BYTES);
+    }
     return output;
   } catch (error: any) {
     logger.error({ err: error }, "Error getting compare patch diff");

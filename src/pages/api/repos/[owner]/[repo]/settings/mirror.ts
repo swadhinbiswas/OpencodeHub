@@ -8,10 +8,22 @@ import { canAdminRepo, canReadRepo } from "@/lib/permissions";
 import { badRequest, forbidden, notFound, parseBody, success, unauthorized } from "@/lib/api";
 import { withErrorHandler } from "@/lib/errors";
 import { disableMirror, initializeMirror } from "@/lib/mirror-sync";
+import { configurePushMirror, removePushMirror } from "@/lib/push-mirror";
 
-const configureMirrorSchema = z.object({
-  mirrorUrl: z.string().url(),
+const pushMirrorSchema = z.object({
+  enabled: z.boolean(),
+  url: z.string().url().optional(),
+  authToken: z.string().optional(),
 });
+
+const configureMirrorSchema = z
+  .object({
+    mirrorUrl: z.string().url().optional(),
+    push: pushMirrorSchema.optional(),
+  })
+  .refine((data) => data.mirrorUrl !== undefined || data.push !== undefined, {
+    message: "Provide mirrorUrl and/or push configuration",
+  });
 
 async function resolveRepository(owner: string, repoName: string) {
   const db = getDatabase() as NodePgDatabase<typeof schema>;
@@ -78,6 +90,13 @@ export const GET: APIRoute = withErrorHandler(async ({ params, request }) => {
     mirrorSyncStatus: repository.mirrorSyncStatus,
     lastMirrorSyncAt: repository.lastMirrorSyncAt,
     ...health,
+    push: {
+      enabled: repository.pushMirrorEnabled,
+      url: repository.pushMirrorUrl,
+      status: repository.pushMirrorStatus,
+      lastPushMirrorAt: repository.lastPushMirrorAt,
+      hasToken: repository.pushMirrorToken !== null && repository.pushMirrorToken !== undefined,
+    },
   });
 });
 
@@ -99,15 +118,37 @@ export const POST: APIRoute = withErrorHandler(async ({ params, request }) => {
   const parsed = await parseBody(request, configureMirrorSchema);
   if ("error" in parsed) return parsed.error;
 
-  const result = await initializeMirror(repository.id, parsed.data.mirrorUrl);
-  if (!result.success) {
-    return badRequest(result.error || "Failed to initialize mirror");
+  const payload: Record<string, unknown> = {};
+
+  if (parsed.data.mirrorUrl !== undefined) {
+    const result = await initializeMirror(repository.id, parsed.data.mirrorUrl);
+    if (!result.success) {
+      return badRequest(result.error || "Failed to initialize mirror");
+    }
+    payload.configured = true;
+    payload.refsUpdated = result.refsUpdated;
   }
 
-  return success({
-    configured: true,
-    refsUpdated: result.refsUpdated,
-  });
+  if (parsed.data.push) {
+    const { enabled, url, authToken } = parsed.data.push;
+    if (enabled && url) {
+      const result = await configurePushMirror(repository.id, { url, authToken });
+      if (!result.success) {
+        return badRequest(result.error || "Failed to configure push mirror");
+      }
+      payload.push = { configured: true };
+    } else if (!enabled) {
+      const result = await removePushMirror(repository.id);
+      if (!result.success) {
+        return badRequest(result.error || "Failed to remove push mirror");
+      }
+      payload.push = { configured: false };
+    } else {
+      return badRequest("push.url is required when enabling push mirroring");
+    }
+  }
+
+  return success(payload);
 });
 
 export const DELETE: APIRoute = withErrorHandler(async ({ params, request }) => {
@@ -130,5 +171,8 @@ export const DELETE: APIRoute = withErrorHandler(async ({ params, request }) => 
     return badRequest(result.error || "Failed to disable mirror");
   }
 
-  return success({ configured: false });
+  // Also remove any push mirror configuration (best-effort).
+  await removePushMirror(repository.id);
+
+  return success({ configured: false, push: { configured: false } });
 });

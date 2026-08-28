@@ -5,8 +5,8 @@ import { withErrorHandler } from "@/lib/errors";
 
 function isAuthorized(request: Request): boolean {
   const expected = process.env.METRICS_TOKEN;
-  // When no token is configured the endpoint stays public (e.g. air-gapped
-  // single-host installs). For production, set METRICS_TOKEN and restrict
+  // When unset, the endpoint is public only outside production (handled in
+  // GET below). In production METRICS_TOKEN must be configured; also restrict
   // network access in the reverse proxy.
   if (!expected) return true;
 
@@ -21,6 +21,18 @@ function isAuthorized(request: Request): boolean {
 }
 
 export const GET: APIRoute = withErrorHandler(async ({ request }) => {
+  // Deny by default in production: scraping metrics requires METRICS_TOKEN.
+  // Non-production stays public when unset (dev convenience).
+  if (!process.env.METRICS_TOKEN && process.env.NODE_ENV === "production") {
+    return new Response(
+      JSON.stringify({ error: "METRICS_TOKEN must be set in production" }),
+      {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
+
   if (!isAuthorized(request)) {
     return new Response("Unauthorized", { status: 401 });
   }

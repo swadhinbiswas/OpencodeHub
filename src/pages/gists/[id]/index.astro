@@ -1,0 +1,297 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDatabase } from "@/db";
+import { gists } from "@/db/schema/gists";
+import { Code, Globe, Lock, Pencil, Plus, Trash2, X } from "lucide-react";
+import { eq } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+
+const user = Astro.locals.user;
+const gistId = Astro.params.id ?? "";
+
+const db = getDatabase() as unknown as NodePgDatabase;
+const rows = await db
+  .select()
+  .from(gists)
+  .where(eq(gists.id, gistId))
+  .limit(1);
+const found = rows[0] ?? null;
+
+const isOwner = !!found && !!user && user.id === found.userId;
+
+// Secret gists are only visible to their owner
+if (!found || (!found.public && !isOwner)) {
+  return Astro.redirect("/gists");
+}
+
+const files = Array.isArray(found.files) ? found.files : [];
+const editMode = Astro.url.searchParams.get("edit") === "1" && isOwner;
+---
+
+<BaseLayout title={`${found.description || "Gist"} · OpenCodeHub`}>
+  <div class="container max-w-[920px] mx-auto py-8 px-4 sm:px-6">
+    <div class="flex items-start justify-between gap-4 pb-6 border-b border-border mb-6">
+      <div class="min-w-0">
+        {found.description ? (
+          <h1 class="text-xl font-bold text-foreground tracking-tight break-words">{found.description}</h1>
+        ) : (
+          <h1 class="text-xl font-bold text-muted-foreground tracking-tight italic">Untitled gist</h1>
+        )}
+        <div class="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+          <span class:list={[
+            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-medium",
+            found.public
+              ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+              : "bg-amber-500/10 text-amber-500 border-amber-500/20",
+          ]}>
+            {found.public ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+            {found.public ? "Public" : "Secret"}
+          </span>
+          <span>Updated {new Date(found.updatedAt).toLocaleString()}</span>
+        </div>
+      </div>
+
+      {isOwner && !editMode && (
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <a
+            href={`?edit=1`}
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-card text-xs font-medium text-foreground hover:bg-accent transition-colors shadow-sm"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Edit
+          </a>
+        </div>
+      )}
+    </div>
+
+    <!-- Edit Mode -->
+    {editMode ? (
+      <div class="rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm p-4 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-semibold text-foreground">Edit gist</h2>
+          <a href={`/gists/${gistId}`} class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label="Cancel editing" title="Cancel">
+            <X className="h-4 w-4" />
+          </a>
+        </div>
+        <form id="gist-edit-form" class="space-y-4">
+          <div>
+            <label for="edit-description" class="block text-xs font-medium text-muted-foreground mb-1">Description</label>
+            <input
+              id="edit-description"
+              type="text"
+              maxlength="500"
+              value={found.description}
+              class="w-full h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+            />
+          </div>
+
+          <label class="flex items-center gap-2 text-sm text-muted-foreground select-none cursor-pointer">
+            <input type="checkbox" id="edit-public" checked={found.public} class="h-4 w-4 rounded border-border accent-primary" />
+            <span>Public gist &mdash; visible to everyone</span>
+          </label>
+
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <span class="block text-xs font-medium text-muted-foreground">Files</span>
+              <button type="button" id="edit-add-file-btn" class="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-card text-xs font-medium text-foreground hover:bg-accent transition-colors">
+                <Plus className="h-3 w-3" />
+                Add file
+              </button>
+            </div>
+            <div id="edit-file-rows" class="space-y-3"></div>
+          </div>
+          <script is:inline type="application/json" id="gist-files-data" set:html={JSON.stringify(files.map((f) => ({ filename: f.filename, content: f.content })))} />
+
+          <div class="flex items-center justify-between pt-2 border-t border-border/60">
+            <button type="button" id="delete-gist-btn" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-destructive/30 bg-destructive/5 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors">
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete gist
+            </button>
+            <div class="flex items-center gap-2">
+              <span id="edit-error" class="hidden text-xs text-destructive"></span>
+              <button
+                type="submit"
+                id="edit-submit-btn"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+              >
+                Save changes
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    ) : (
+      <!-- View Mode -->
+      <div class="space-y-4">
+        {files.length === 0 ? (
+          <div class="rounded-xl border border-border/80 bg-card/60 p-8 text-center text-sm text-muted-foreground">
+            This gist has no files.
+          </div>
+        ) : (
+          files.map((file) => (
+            <div class="rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm overflow-hidden shadow-sm">
+              <div class="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-border/60 bg-secondary/40">
+                <div class="flex items-center gap-2 min-w-0">
+                  <Code className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                  <span class="text-xs font-mono font-medium text-foreground truncate">{file.filename}</span>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                  <button type="button" class="copy-btn inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-card text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" data-content={encodeURIComponent(file.content)}>
+                    Copy
+                  </button>
+                  <a
+                    href={`/api/gists/${gistId}/raw/${encodeURIComponent(file.filename)}`}
+                    class="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-card text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  >
+                    Raw
+                  </a>
+                </div>
+              </div>
+              <pre class="overflow-x-auto p-4 text-xs leading-relaxed font-mono text-foreground whitespace-pre-wrap break-words max-h-[480px] overflow-y-auto"><code>{file.content}</code></pre>
+            </div>
+          ))
+        )}
+      </div>
+    )}
+  </div>
+</BaseLayout>
+
+<script>
+  const editForm = document.getElementById('gist-edit-form');
+  const gistPath = window.location.pathname.replace(/\/$/, '');
+
+  if (!editForm) {
+    // View mode: copy buttons
+    document.querySelectorAll('.copy-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const content = decodeURIComponent((btn as HTMLElement).dataset.content ?? '');
+        navigator.clipboard?.writeText(content);
+        btn.textContent = 'Copied!';
+        setTimeout(() => (btn.textContent = 'Copy'), 1200);
+      });
+    });
+  } else {
+    const fileRows = document.getElementById('edit-file-rows')!;
+    const addBtn = document.getElementById('edit-add-file-btn')!;
+    const errorEl = document.getElementById('edit-error')!;
+    const submitBtn = document.getElementById('edit-submit-btn') as HTMLButtonElement;
+    const deleteBtn = document.getElementById('delete-gist-btn')!;
+
+    function showError(message: string) {
+      errorEl.textContent = message;
+      errorEl.classList.remove('hidden');
+    }
+
+    function addFileRow(filename = '', content = '') {
+      if (fileRows.children.length >= 10) return;
+      const row = document.createElement('div');
+      row.className = 'gist-edit-row rounded-lg border border-border bg-background p-3 space-y-2';
+
+      const top = document.createElement('div');
+      top.className = 'flex items-center gap-2';
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'edit-file-name flex-1 h-8 rounded-md border border-border bg-card px-2 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20';
+      input.placeholder = 'filename.ext';
+      input.maxLength = 255;
+      input.value = filename;
+
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-accent transition-colors';
+      remove.setAttribute('aria-label', 'Remove file');
+      remove.textContent = '\u00d7';
+
+      top.appendChild(input);
+      top.appendChild(remove);
+
+      const textarea = document.createElement('textarea');
+      textarea.className = 'edit-file-content w-full min-h-[96px] rounded-md border border-border bg-card px-2 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y';
+      textarea.placeholder = 'File content...';
+      textarea.value = content;
+
+      row.appendChild(top);
+      row.appendChild(textarea);
+      fileRows.appendChild(row);
+
+      remove.addEventListener('click', () => row.remove());
+    }
+
+    /* Prefill existing files from server-rendered JSON */
+    const preloadedEl = document.getElementById('gist-files-data');
+    let seeded = false;
+    try {
+      const preloaded = JSON.parse(preloadedEl?.textContent ?? '[]') as Array<{ filename?: string; content?: string }>;
+      if (Array.isArray(preloaded) && preloaded.length > 0) {
+        preloaded.forEach((f) => addFileRow(f.filename ?? '', f.content ?? ''));
+        seeded = true;
+      }
+    } catch {
+      /* ignore malformed payload */
+    }
+    if (!seeded) addFileRow();
+
+    addBtn.addEventListener('click', () => addFileRow());
+
+    editForm!.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorEl.classList.add('hidden');
+
+      const descriptionEl = document.getElementById('edit-description') as HTMLInputElement | null;
+      const publicEl = document.getElementById('edit-public') as HTMLInputElement | null;
+      const files = Array.from(document.querySelectorAll('.gist-edit-row'))
+        .map((row) => ({
+          filename: (row.querySelector('.edit-file-name') as HTMLInputElement)?.value.trim() ?? '',
+          content: (row.querySelector('.edit-file-content') as HTMLTextAreaElement)?.value ?? '',
+        }))
+        .filter((f) => f.filename.length > 0);
+
+      if (files.some((f) => f.content === '' && f.filename === '')) {
+        showError('Files cannot be empty.');
+        return;
+      }
+      if (files.length === 0) {
+        showError('A gist needs at least one file.');
+        return;
+      }
+
+      try {
+        submitBtn.setAttribute('disabled', 'true');
+        const res = await fetch(gistPath, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            description: descriptionEl?.value ?? '',
+            public: publicEl?.checked ?? false,
+            files,
+          }),
+        });
+        const json = await res.json().catch(() => null);
+        if (!res.ok) {
+          const detail =
+            json?.error?.details && Array.isArray(json.error.details) && json.error.details.length > 0
+              ? json.error.details.map((d: any) => d.message).join('; ')
+              : json?.error?.message || 'Failed to save gist.';
+          throw new Error(detail);
+        }
+        window.location.href = gistPath;
+      } catch (err) {
+        submitBtn.removeAttribute('disabled');
+        showError(err instanceof Error ? err.message : 'Failed to save gist.');
+      }
+    });
+
+    deleteBtn.addEventListener('click', async () => {
+      if (!window.confirm('Delete this gist permanently?')) return;
+      try {
+        deleteBtn.setAttribute('disabled', 'true');
+        const res = await fetch(gistPath, { method: 'DELETE' });
+        if (!res.ok && res.status !== 204) throw new Error('Failed to delete gist.');
+        window.location.href = '/gists';
+      } catch {
+        deleteBtn.removeAttribute('disabled');
+      }
+    });
+  }
+</script>

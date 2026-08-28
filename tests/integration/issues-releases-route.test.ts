@@ -24,6 +24,13 @@ const mocks = vi.hoisted(() => ({
     }),
   }),
   selectMock: vi.fn(),
+  acquireRepoMock: vi.fn().mockResolvedValue("/tmp/fake-repo.git"),
+  releaseRepoMock: vi.fn().mockResolvedValue(undefined),
+  simpleGitMock: vi.fn(() => ({
+    revparse: vi.fn().mockResolvedValue("abc123def456\n"),
+    tag: vi.fn().mockResolvedValue(undefined),
+    raw: vi.fn().mockResolvedValue(""),
+  })),
   fakeSchema: {
     users: { username: "username" },
     repositories: {
@@ -80,6 +87,15 @@ vi.mock("@/lib/errors", () => ({
 
 vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
+vi.mock("@/lib/git-storage", () => ({
+  acquireRepo: mocks.acquireRepoMock,
+  releaseRepo: mocks.releaseRepoMock,
+}));
+
+vi.mock("simple-git", () => ({
+  simpleGit: mocks.simpleGitMock,
 }));
 
 vi.mock("@/lib/email", () => ({

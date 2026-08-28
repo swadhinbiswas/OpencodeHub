@@ -3,7 +3,7 @@
  */
 import { getDatabase, schema } from "@/db";
 import { sessions, users } from "@/db/schema";
-import { parseBody, success, unauthorized } from "@/lib/api";
+import { error, parseBody, success, unauthorized } from "@/lib/api";
 import {
   createSession,
   createToken,
@@ -11,6 +11,13 @@ import {
   verifyPassword,
 } from "@/lib/auth";
 import { withErrorHandler } from "@/lib/errors";
+import {
+  clearLoginFailures,
+  ipKey,
+  isLockedOut,
+  recordLoginFailure,
+  userIpKey,
+} from "@/lib/login-lockout";
 import { logger } from "@/lib/logger";
 import { applyRateLimit } from "@/middleware/rate-limit";
 import { type APIRoute } from "astro";
@@ -38,6 +45,33 @@ export const POST: APIRoute = withErrorHandler(async ({ request, cookies }) => {
   const { login, password, totpCode } = parsed.data;
   const db = getDatabase() as NodePgDatabase<typeof schema>;
 
+  const ipAddress =
+    request.headers.get("X-Forwarded-For")?.split(",")[0].trim() ||
+    request.headers.get("X-Real-IP") ||
+    undefined;
+
+  // Brute-force lockout: check per-credentials and per-IP limits
+  const userLockKey = userIpKey(login, ipAddress);
+  const ipLockKey = ipKey(ipAddress);
+  const [userLockout, ipLockout] = await Promise.all([
+    isLockedOut(userLockKey),
+    isLockedOut(ipLockKey),
+  ]);
+
+  if (userLockout.locked || ipLockout.locked) {
+    const retryAfter = Math.max(
+      userLockout.retryAfterSecs ?? 0,
+      ipLockout.retryAfterSecs ?? 0,
+    );
+    logger.warn(
+      { login: userLockKey, ip: ipLockKey },
+      "Login blocked: too many failed attempts",
+    );
+    const response = error("RATE_LIMITED", "Too many failed attempts", 429);
+    response.headers.set("Retry-After", String(retryAfter));
+    return response;
+  }
+
   // Find user by username or email
   const user = await db.query.users.findFirst({
     where: (users, { or, eq }) =>
@@ -45,6 +79,10 @@ export const POST: APIRoute = withErrorHandler(async ({ request, cookies }) => {
   });
 
   if (!user) {
+    await Promise.all([
+      recordLoginFailure(userLockKey),
+      recordLoginFailure(ipLockKey),
+    ]);
     return unauthorized("Invalid credentials");
   }
 
@@ -55,6 +93,10 @@ export const POST: APIRoute = withErrorHandler(async ({ request, cookies }) => {
 
   // Verify password
   if (!user.passwordHash) {
+    await Promise.all([
+      recordLoginFailure(userLockKey),
+      recordLoginFailure(ipLockKey),
+    ]);
     return unauthorized("Invalid credentials");
   }
 
@@ -62,6 +104,10 @@ export const POST: APIRoute = withErrorHandler(async ({ request, cookies }) => {
 
   if (!isValid) {
     logger.warn({ user: user.username }, "Invalid password attempt");
+    await Promise.all([
+      recordLoginFailure(userLockKey),
+      recordLoginFailure(ipLockKey),
+    ]);
     return unauthorized("Invalid credentials");
   }
 
@@ -86,10 +132,11 @@ export const POST: APIRoute = withErrorHandler(async ({ request, cookies }) => {
 
   // Create session
   const userAgent = request.headers.get("User-Agent") || undefined;
-  const ipAddress =
-    request.headers.get("X-Forwarded-For")?.split(",")[0].trim() ||
-    request.headers.get("X-Real-IP") ||
-    undefined;
+
+  await Promise.all([
+    clearLoginFailures(userLockKey),
+    clearLoginFailures(ipLockKey),
+  ]);
 
   const session = await createSession(user.id, userAgent, ipAddress);
 

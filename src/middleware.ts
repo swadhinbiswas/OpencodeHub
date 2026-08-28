@@ -26,6 +26,7 @@ const CSRF_EXEMPT_PREFIXES = [
   "/api/git/", // Uses Git protocol auth
   "/api/auth/csrf-token", // The CSRF token endpoint itself
   "/api/setup", // Setup wizard has no active sessions to protect
+  "/api/packages/", // Registry push/pull clients (npm, docker) authenticate via PAT Basic/Bearer
 ];
 
 export const onRequest = defineMiddleware(async (context, next) => {
@@ -71,10 +72,17 @@ async function onRequestInner(
   try {
     const tokenPayload = await getUserFromRequest(request);
     if (tokenPayload?.userId) {
+      // Short-TTL cache absorbs the 2-queries-per-request cost of user+session
+      // lookups; revocation latency is bounded by AUTH_CACHE_TTL_MS (15s default)
+      const { cachedUserLookup, cachedSessionLookup } = await import(
+        "@/lib/auth-cache"
+      );
       const db = getDatabase();
-      const user = await db.query.users?.findFirst({
-        where: eq(schema.users.id, tokenPayload.userId),
-      });
+      const user = await cachedUserLookup(tokenPayload.userId, () =>
+        db.query.users?.findFirst({
+          where: eq(schema.users.id, tokenPayload.userId),
+        }) ?? Promise.resolve(undefined),
+      );
       if (user) {
         // Preserve fine-grained PAT scopes on locals.user so permission
         // checks (`canWriteRepo`, etc.) can enforce them.
@@ -82,10 +90,13 @@ async function onRequestInner(
         context.locals.user = user;
       }
       // Populate session for logout and other session-aware handlers
-      if (tokenPayload.sessionId) {
-        const session = await db.query.sessions?.findFirst({
-          where: eq(schema.sessions.id, tokenPayload.sessionId),
-        });
+      const sessionId = tokenPayload.sessionId;
+      if (sessionId) {
+        const session = await cachedSessionLookup(sessionId, () =>
+          db.query.sessions?.findFirst({
+            where: eq(schema.sessions.id, sessionId),
+          }) ?? Promise.resolve(undefined),
+        );
         if (session) {
           context.locals.session = session;
         }
@@ -132,7 +143,7 @@ async function onRequestInner(
   // interceptor, etc.) via HTML post-processing below.
   const cspNonce = randomBytes(16).toString("base64");
   context.locals.cspNonce = cspNonce;
-  const cspHeader = `default-src 'self'; script-src 'self' 'nonce-${cspNonce}' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https:;`;
+  const cspHeader = `default-src 'self'; script-src 'self' 'nonce-${cspNonce}' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self' https:;`;
 
   const response = await next();
   const durationMs = performance.now() - startTime;

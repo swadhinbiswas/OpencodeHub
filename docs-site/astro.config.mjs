@@ -14,6 +14,8 @@ export default defineConfig({
         replacesTitle: false,
       },
       customCss: ["./src/custom.css"],
+      defaultColorTheme: "github-dark",
+      defaultColorThemeKeep: "Always",
       components: {
         Hero: "./src/components/StarlightHero.astro",
       },

@@ -14,6 +14,7 @@ import {
   GitBranch,
   GitMerge,
   CircleDot,
+  MessageSquare,
   BookOpen
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +45,7 @@ interface Props {
   activeTab:
     | "code"
     | "issues"
+    | "discussions"
     | "pulls"
     | "actions"
     | "merge-queue"
@@ -92,6 +94,12 @@ const tabs = [
     icon: CircleDot,
     href: `/${repo.owner}/${repo.name}/issues`,
     count: repo.openIssueCount,
+  },
+  {
+    id: "discussions",
+    label: "Discussions",
+    icon: MessageSquare,
+    href: `/${repo.owner}/${repo.name}/discussions`,
   },
   {
     id: "pulls",

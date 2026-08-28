@@ -50,6 +50,11 @@ export const repositories = pgTable(
     mirrorUsername: text("mirror_username"), // Upstream username for basic-auth (federation push-back)
     lastMirrorSyncAt: timestamp("last_mirror_sync_at"),
     mirrorSyncStatus: text("mirror_sync_status"), // pending, syncing, success, failed
+    pushMirrorEnabled: boolean("push_mirror_enabled").default(false).notNull(),
+    pushMirrorUrl: text("push_mirror_url"), // Downstream remote for push mirroring (one per repo)
+    pushMirrorToken: text("push_mirror_token"), // Encrypted downstream auth token for push mirrors
+    lastPushMirrorAt: timestamp("last_push_mirror_at"),
+    pushMirrorStatus: text("push_mirror_status"), // pending, pushing, success, failed
     hasIssues: boolean("has_issues").default(true),
     hasWiki: boolean("has_wiki").default(true),
     hasActions: boolean("has_actions").default(true),

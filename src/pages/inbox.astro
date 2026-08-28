@@ -121,7 +121,7 @@ const prsWithStacks = await Promise.all(
       if (stackEntry && stackEntry.stack) {
         stackInfo = {
           name: stackEntry.stack.name,
-          position: stackEntry.position + 1,
+          position: stackEntry.stackOrder + 1,
           count: stackEntry.stack.entries.length,
         };
       }

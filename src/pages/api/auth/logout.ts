@@ -13,6 +13,10 @@ export const POST: APIRoute = withErrorHandler(async ({ cookies, locals, redirec
     try {
       const db = getDatabase() as NodePgDatabase<typeof schema>;
       await db.delete(schema.sessions).where(eq(schema.sessions.id, session.id));
+      const { invalidateAuthCache } = await import("@/lib/auth-cache");
+      if (session.userId) {
+        invalidateAuthCache(session.userId, session.id);
+      }
       logger.info({ sessionId: session.id }, "Session deleted");
     } catch (e) {
       logger.error({ err: e }, "Failed to delete session from database");
