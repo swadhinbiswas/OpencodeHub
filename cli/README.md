@@ -1,236 +1,143 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/swadhinbiswas/OpencodeHub/main/cli/assets/opencodehub-cli-logo.svg" alt="OpenCodeHub CLI" width="860" />
-</p>
-
-<h1 align="center">OpenCodeHub CLI (OCH)</h1>
+<h1 align="center">OpenCodeHub CLI (och)</h1>
 
 <p align="center">
-  Production-ready Git workflows and stack-first pull request management from your terminal.
+  <strong>Stack-first PR workflows, speculative merge queues, and terminal cockpit for OpenCodeHub.</strong>
 </p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/opencodehub-cli"><img src="https://img.shields.io/npm/v/opencodehub-cli.svg?style=flat-square" alt="npm version" /></a>
   <a href="https://www.npmjs.com/package/opencodehub-cli"><img src="https://img.shields.io/npm/dm/opencodehub-cli.svg?style=flat-square" alt="npm downloads" /></a>
-  <a href="https://github.com/swadhinbiswas/OpencodeHub/blob/main/cli/LICENSE"><img src="https://img.shields.io/npm/l/opencodehub-cli.svg?style=flat-square" alt="license" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="license" /></a>
 </p>
 
-## Why OCH
+---
 
-- Fast command-line workflows for repositories, pull requests, issues, and reviews.
-- Stack-first branch/PR flow for multi-PR delivery.
-- Secure authentication model with OS credential storage support.
-- Built-in API tooling for scripting and automation.
+## 📦 Installation
 
-## Installation
+Install `opencodehub-cli` globally with your favorite package manager:
 
 ```bash
+# npm
 npm install -g opencodehub-cli
+
+# bun
+bun add -g opencodehub-cli
+
+# pnpm
+pnpm add -g opencodehub-cli
+
+# yarn
+yarn global add opencodehub-cli
 ```
 
-Verify:
+Or execute commands on-demand without installing:
+
+```bash
+npx opencodehub-cli focus
+```
+
+Verify your installation:
 
 ```bash
 och --version
 och --help
 ```
 
-## Quick Start
+---
+
+## ⚡ Quick Start
+
+### 1. Authenticate with your OpenCodeHub Instance
 
 ```bash
-# 1) Authenticate
-och auth login --url https://git.example.com
+# Interactive login prompt
+och auth login --url https://git.yourcompany.com
 
-# 2) Inspect your setup
-och config doctor
-
-# 3) Push and open PR workflow
-cd your-repo
-och repo push
-
-# 4) Create a pull request
-och pr create --base main --title "feat: add onboarding"
+# Non-interactive / CI login
+och auth login --url https://git.yourcompany.com --token och_xxxxxxxxxxxxxxxx
 ```
 
-## Core Commands
-
-- `och auth` authentication (`login`, `logout`, `status`)
-- `och config` CLI settings and diagnostics (`list`, `set`, `doctor`)
-- `och repo` repository operations (`create`, `clone`, `push`, `list`)
-- `och pr` pull request lifecycle (`create`, `list`, `view`, `merge`, ...)
-- `och stack` stacked branch/PR workflows (`create`, `submit`, `sync`, ...)
-- `och review` code review + AI review flows
-- `och issue` issue management
-- `och ci`, `och queue`, `och metrics`, `och insights`, `och notify`, `och automate`
-- `och api` direct API requests (useful for scripts)
-
-Run `och <command> --help` for full command options.
-
-## Authentication and Security
-
-### Login
+Check configuration and credential storage health:
 
 ```bash
-och auth login --url https://git.example.com
-```
-
-For non-interactive environments:
-
-```bash
-och auth login --url https://git.example.com --token <PERSONAL_ACCESS_TOKEN>
-```
-
-### Token storage behavior
-
-- `OCH_TOKEN` env var always takes precedence.
-- macOS: Keychain (`security`)
-- Linux: Secret Service (`secret-tool`)
-- Windows: DPAPI-encrypted storage via PowerShell
-- Fallback: local CLI config storage if secure backend is unavailable
-
-### Helpful environment variables
-
-- `OCH_TOKEN`: inject token from environment
-- `OCH_HTTP_TIMEOUT_MS`: HTTP timeout in ms (default `15000`)
-- `OCH_DISABLE_KEYCHAIN=1`: disable credential backend (useful in CI/tests)
-
-## Configuration
-
-Inspect current configuration:
-
-```bash
-och config list
-och config path
 och config doctor
 ```
 
-Set values:
+### 2. Stacked PR Workflow
+
+OpenCodeHub supports Graphite-style stacked branches from your terminal:
 
 ```bash
-och config set serverUrl https://git.example.com
-och config set defaultBranch main
-och config set insecure false
-```
+# 1. Create your first stack branch
+och stack create feature/part-1
 
-## Common Workflows
+# Make edits and commit
+git commit -am "feat: part 1 implementation"
 
-### Repository lifecycle
+# 2. Create the next dependent branch on top of part-1
+och stack create feature/part-2
 
-```bash
-# Create a remote repository
-och repo create my-service --description "Internal API service"
+git commit -am "feat: part 2 implementation"
 
-# Clone repository
-och repo clone acme/my-service
-
-# Push local repository
-och repo push --branch main
-```
-
-### Pull request lifecycle
-
-```bash
-# Create PR from current branch
-och pr create --base main --title "feat: add API pagination"
-
-# List open PRs
-och pr list --state open
-
-# View PR details
-och pr view 42
-
-# Merge PR
-och pr merge 42
-```
-
-### Stack workflow
-
-```bash
-# Create first stack branch
-och stack create auth-foundation
-
-# Create subsequent branch
-och stack create auth-ui
-
-# Submit stack and create/update PRs
+# 3. Submit all branches in the stack (pushes refs & creates linked PRs)
 och stack submit
+
+# 4. Visualize the stack hierarchy
+och stack log
+
+# 5. Rebase stack when target base branch changes
+och stack sync
 ```
 
-### AI review workflow
+---
+
+## 🕹 Interactive Focus Cockpit (`och focus`)
+
+The `och focus` command opens an interactive terminal dashboard for fast daily development:
 
 ```bash
-# Trigger AI review
-och review ai 42
-
-# Wait for completion
-och review ai 42 --wait
-
-# Check latest review status
-och review status 42
+och focus
 ```
 
-### API mode for scripting
+- **Stack Cockpit**: Navigate branches, view parent/child dependencies, and submit changes.
+- **Review Inbox**: Inspect assigned reviews, view diff snippets, and submit approvals or change requests.
+- **Merge Queue Status**: Track speculative build progress and priority lanes in real time.
+- **AI Reviews**: Trigger AI review analysis directly from the terminal.
 
-```bash
-# Read current user
-och api /user
+---
 
-# Create issue via API
-och api /repos/acme/platform/issues -X POST -F title="Bug: timeout" -F body="Steps to reproduce"
-```
+## 📋 Command Reference
 
-## CI Usage Example
+| Command | Description | Example |
+|---|---|---|
+| `och auth` | Manage authentication credentials | `och auth login --url http://localhost:4321` |
+| `och stack` | Stacked PR creation, sync, log, submit | `och stack submit` |
+| `och focus` | Interactive terminal review & stack cockpit | `och focus` |
+| `och pr` | Pull request lifecycle management | `och pr create --base main --title "feat: demo"` |
+| `och queue` | Merge queue control & speculative runs | `och queue list`, `och queue add 42` |
+| `och review` | Code review and AI review trigger | `och review start 42` |
+| `och repo` | Repository operations (clone, push, create) | `och repo create my-app` |
+| `och issue` | Issue tracking & milestone management | `och issue list`, `och issue create` |
+| `och ci` | CI pipeline logs and execution control | `och ci list`, `och ci view 12` |
+| `och config` | CLI configuration & doctor check | `och config doctor` |
+| `och whoami` | Display active user profile & server URL | `och whoami` |
+| `och api` | Make direct authenticated REST API calls | `och api GET /api/user` |
 
-```yaml
-name: OCH Automation
-on: [push]
+Run `och <command> --help` for specific flags and subcommands.
 
-jobs:
-  sync:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-      - run: npm install -g opencodehub-cli
-      - run: |
-          export OCH_TOKEN="${{ secrets.OCH_TOKEN }}"
-          och config set serverUrl https://git.example.com
-          och config doctor
-          och repo push --branch main
-```
+---
 
-## Troubleshooting
+## 🔒 Security & Token Storage
 
-### `Not logged in. Run 'och auth login' first.`
+The CLI automatically stores credentials in your operating system's secure credential manager:
 
-- Run `och auth login --url <server>`.
-- Or export `OCH_TOKEN` for automation.
+- **macOS**: Apple Keychain (`security`)
+- **Linux**: Secret Service API / libsecret (`secret-tool`)
+- **Windows**: Windows Credential Manager / DPAPI
+- **CI / Headless**: Set the `OCH_TOKEN` and `OCH_URL` environment variables.
 
-### `Server URL not configured`
+---
 
-- Run `och config set serverUrl https://git.example.com`.
+## 📄 License
 
-### TLS / certificate issues
-
-- Use `och config set caFile /path/to/ca.pem` for custom CA.
-- Use `och config set insecure true` only for temporary debugging.
-
-### Validate setup end-to-end
-
-```bash
-och config doctor
-```
-
-## Development
-
-```bash
-cd cli
-npm install
-npm run build
-npm run test
-```
-
-## License
-
-MIT
+MIT © OpenCodeHub Contributors

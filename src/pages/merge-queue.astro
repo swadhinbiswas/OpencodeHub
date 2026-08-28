@@ -62,7 +62,7 @@ interface QueueItemWithDetails {
     } | null;
     stackInfo?: {
         id: string;
-        name: string;
+        name: string | null;
         position: number;
         total: number;
     };
@@ -116,7 +116,7 @@ try {
                     stackInfo = {
                         id: stackEntry.stack.id,
                         name: stackEntry.stack.name,
-                        position: stackEntry.position + 1,
+                        position: stackEntry.stackOrder + 1,
                         total: stackEntry.stack.entries.length,
                     };
                 }
@@ -130,9 +130,9 @@ try {
             id: item.id,
             position: currentPosition,
             status: item.status,
-            priority: item.priority,
+            priority: item.priority ?? 0,
             mergeMethod: item.mergeMethod || "merge",
-            addedAt: item.createdAt ? new Date(item.createdAt).toISOString() : new Date().toISOString(),
+            addedAt: item.addedAt ? new Date(item.addedAt).toISOString() : new Date().toISOString(),
             pr: item.pullRequest
                 ? {
                       number: item.pullRequest.number,

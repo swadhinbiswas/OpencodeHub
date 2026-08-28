@@ -68,7 +68,12 @@ export const PATCH: APIRoute = withErrorHandler(async ({ request }) => {
     })
     .where(eq(users.id, tokenPayload.userId));
 
-  logger.info({ userId: tokenPayload.userId }, "Password updated");
+  // Revoke all existing sessions — a password change must force re-login everywhere
+  await db.delete(schema.sessions).where(eq(schema.sessions.userId, tokenPayload.userId));
+  const { revokeUserSessionCache } = await import("@/lib/auth-cache");
+  revokeUserSessionCache(tokenPayload.userId);
 
-  return success({ message: "Password updated successfully" });
+  logger.info({ userId: tokenPayload.userId }, "Password updated, all sessions revoked");
+
+  return success({ message: "Password updated successfully. Please sign in again." });
 });

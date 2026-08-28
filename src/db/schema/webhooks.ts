@@ -57,7 +57,14 @@ export const webhookDeliveries = pgTable(
     event: text("event").notNull(),
     payload: text("payload").notNull(), // JSON
 
-    status: text("status").notNull(), // success | failure
+    // Queue lifecycle: pending | processing | delivered | dead.
+    // Legacy rows (pre-queue) may still carry success | failure.
+    status: text("status").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at"),
+    lockedAt: timestamp("locked_at"),
+    failureReason: text("failure_reason"),
+
     responseCode: integer("response_code"),
     responseBody: text("response_body"),
     durationMs: integer("duration_ms"),
@@ -71,6 +78,7 @@ export const webhookDeliveries = pgTable(
   (t) => ({
     webhookIdx: index("webhook_deliveries_webhook_idx").on(t.webhookId),
     createdAtIdx: index("webhook_deliveries_created_idx").on(t.createdAt),
+    queueIdx: index("webhook_deliveries_queue_idx").on(t.status, t.nextAttemptAt),
   }),
 );
 

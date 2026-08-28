@@ -1,5 +1,6 @@
 import { getDatabase, schema } from "@/db";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { verifyCommitsSignatures } from "@/lib/commit-signature";
 import { compareBranches, getMergeBase } from "@/lib/git";
 import { resolveRepoPath } from "@/lib/git-storage";
 import { canReadRepo } from "@/lib/permissions";
@@ -53,5 +54,25 @@ export const GET: APIRoute = withErrorHandler(async ({ params, request, locals }
     const { commits, diffs } = await compareBranches(repoPath, base, head);
     const mergeBase = await getMergeBase(repoPath, base, head);
 
-    return success({ commits, diffs, mergeBase });
+    // Commit signature verification (GitHub-style "Verified")
+    let commitList = commits;
+    if (
+      process.env.COMMIT_SIGNATURE_VERIFICATION !== "false" &&
+      commits.length > 0 &&
+      commits.some((c) => c.verification && c.verification.status !== "N")
+    ) {
+      const verifications = await verifyCommitsSignatures(
+        ownerName,
+        repoName,
+        commits.map((c) => c.sha),
+      );
+      if (verifications.size > 0) {
+        commitList = commits.map((c) => ({
+          ...c,
+          signatureVerification: verifications.get(c.sha),
+        }));
+      }
+    }
+
+    return success({ commits: commitList, diffs, mergeBase });
 });

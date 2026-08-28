@@ -1,0 +1,297 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDatabase } from "@/db";
+import { gists } from "@/db/schema/gists";
+import { Code, Globe, Lock, Plus, X } from "lucide-react";
+import { desc, eq } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+const db = getDatabase() as unknown as NodePgDatabase;
+
+// Only the caller's own gists are listed here (public + secret)
+let gistsList: any[] = [];
+try {
+  gistsList = await db
+    .select()
+    .from(gists)
+    .where(eq(gists.userId, user.id))
+    .orderBy(desc(gists.updatedAt))
+    .limit(100);
+} catch (e) {
+  console.error("Failed to fetch gists:", e);
+}
+
+function gistTitle(gist: any): string {
+  if (gist.description && gist.description.trim().length > 0) {
+    return gist.description;
+  }
+  const first = Array.isArray(gist.files) ? gist.files[0] : null;
+  return first?.filename || "Untitled gist";
+}
+
+function fileNames(gist: any): string[] {
+  return Array.isArray(gist.files) ? gist.files.map((f: any) => f.filename) : [];
+}
+
+function timeAgo(date: Date | string) {
+  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  if (seconds < 3600) return Math.floor(seconds / 60) + "m ago";
+  if (seconds < 86400) return Math.floor(seconds / 3600) + "h ago";
+  if (seconds < 604800) return Math.floor(seconds / 86400) + "d ago";
+  return new Date(date).toLocaleDateString();
+}
+---
+
+<BaseLayout title="Your gists · OpenCodeHub">
+  <div class="container max-w-[920px] mx-auto py-8 px-4 sm:px-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between gap-4 pb-6 border-b border-border mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-foreground tracking-tight flex items-center gap-2.5">
+          <Code className="h-6 w-6 text-foreground" />
+          <span>Your gists</span>
+        </h1>
+        <p class="text-sm text-muted-foreground mt-1">Standalone code snippets, quick notes, and scripts</p>
+      </div>
+      <button
+        id="new-gist-btn"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors shadow-sm"
+      >
+        <Plus className="h-3.5 w-3.5" />
+        <span>New gist</span>
+      </button>
+    </div>
+
+    <!-- Create Form -->
+    <div id="gist-create-form" class="hidden rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm p-4 mb-6 shadow-sm">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-foreground">Create a new gist</h2>
+        <button id="cancel-gist-btn" class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" aria-label="Cancel" title="Cancel">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <form id="gist-form" class="space-y-4">
+        <div>
+          <label for="gist-description" class="block text-xs font-medium text-muted-foreground mb-1">Description</label>
+          <input
+            id="gist-description"
+            name="description"
+            type="text"
+            maxlength="500"
+            placeholder="Optional description of your gist"
+            class="w-full h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-all"
+          />
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-medium text-muted-foreground">Files</label>
+            <button type="button" id="add-file-btn" class="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-card text-xs font-medium text-foreground hover:bg-accent transition-colors">
+              <Plus className="h-3 w-3" />
+              Add file
+            </button>
+          </div>
+          <div id="file-rows" class="space-y-3"></div>
+        </div>
+
+        <label class="flex items-center gap-2 text-sm text-muted-foreground select-none cursor-pointer">
+          <input type="checkbox" id="gist-public" class="h-4 w-4 rounded border-border accent-primary" />
+          <span>Public gist &mdash; visible to everyone</span>
+        </label>
+
+        <div class="flex items-center gap-2">
+          <button
+            type="submit"
+            id="gist-submit-btn"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+          >
+            Create gist
+          </button>
+          <span id="gist-error" class="hidden text-xs text-destructive"></span>
+        </div>
+      </form>
+    </div>
+
+    <!-- Gist List -->
+    <div class="rounded-xl border border-border/80 bg-card/60 backdrop-blur-sm overflow-hidden shadow-sm">
+      {gistsList.length === 0 ? (
+        <div class="text-center py-16 px-4">
+          <div class="w-12 h-12 rounded-full bg-secondary/80 border border-border flex items-center justify-center mx-auto mb-3 text-muted-foreground">
+            <Code className="h-6 w-6" />
+          </div>
+          <h3 class="text-base font-semibold text-foreground mb-1">No gists yet</h3>
+          <p class="text-sm text-muted-foreground max-w-sm mx-auto">Create your first gist to share snippets and quick scripts.</p>
+        </div>
+      ) : (
+        <div class="divide-y divide-border/60">
+          {gistsList.map((gist: any) => (
+            <a href={`/gists/${gist.id}`} class="group flex items-start gap-4 p-4 transition-colors hover:bg-accent/40">
+              <div class="flex-shrink-0 mt-0.5 h-6 w-6 rounded-full bg-secondary text-muted-foreground flex items-center justify-center border border-border">
+                <Code className="h-3.5 w-3.5" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-baseline justify-between gap-2">
+                  <span class="text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                    {gistTitle(gist)}
+                  </span>
+                  <span class="text-xs text-muted-foreground flex-shrink-0">{timeAgo(gist.updatedAt)}</span>
+                </div>
+                <div class="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+                  <span class:list={[
+                    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-medium",
+                    gist.public
+                      ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                      : "bg-amber-500/10 text-amber-500 border-amber-500/20",
+                  ]}>
+                    {gist.public ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+                    {gist.public ? "Public" : "Secret"}
+                  </span>
+                  <span>{Array.isArray(gist.files) ? gist.files.length : 0} file{(Array.isArray(gist.files) ? gist.files.length : 0) === 1 ? "" : "s"}</span>
+                </div>
+                {!gist.description && (
+                  <p class="text-xs text-muted-foreground mt-1 truncate font-mono">{fileNames(gist).join(", ")}</p>
+                )}
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  const formContainer = document.getElementById('gist-create-form');
+  const openBtn = document.getElementById('new-gist-btn');
+  const cancelBtn = document.getElementById('cancel-gist-btn');
+  const form = document.getElementById('gist-form') as HTMLFormElement | null;
+  const addFileBtn = document.getElementById('add-file-btn');
+  const fileRows = document.getElementById('file-rows');
+  const errorEl = document.getElementById('gist-error');
+  const submitBtn = document.getElementById('gist-submit-btn') as HTMLButtonElement | null;
+
+  function show(el: HTMLElement | null, showIt: boolean) {
+    el?.classList.toggle('hidden', !showIt);
+  }
+
+  function showError(message: string) {
+    if (!errorEl) return;
+    errorEl.textContent = message;
+    show(errorEl, true);
+  }
+
+  if (openBtn && formContainer) {
+    openBtn.addEventListener('click', () => show(formContainer, true));
+  }
+  if (cancelBtn && formContainer && form) {
+    cancelBtn.addEventListener('click', () => {
+      show(formContainer, false);
+      form.reset();
+      if (fileRows) fileRows.innerHTML = '';
+    });
+  }
+
+  function addFileRow(filename = '', content = '') {
+    if (!fileRows || fileRows.children.length >= 10) return;
+    const row = document.createElement('div');
+    row.className = 'gist-file-row rounded-lg border border-border bg-background p-3 space-y-2';
+
+    const top = document.createElement('div');
+    top.className = 'flex items-center gap-2';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'gist-file-name flex-1 h-8 rounded-md border border-border bg-card px-2 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20';
+    input.placeholder = 'filename.ext';
+    input.maxLength = 255;
+    input.value = filename;
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'remove-file-btn p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-accent transition-colors';
+    remove.setAttribute('aria-label', 'Remove file');
+    remove.textContent = '\u00d7';
+
+    top.appendChild(input);
+    top.appendChild(remove);
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'gist-file-content w-full min-h-[96px] rounded-md border border-border bg-card px-2 py-1.5 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y';
+    textarea.placeholder = 'File content...';
+    textarea.value = content;
+
+    row.appendChild(top);
+    row.appendChild(textarea);
+    fileRows!.appendChild(row);
+
+    remove.addEventListener('click', () => row.remove());
+  }
+
+  addFileBtn?.addEventListener('click', () => addFileRow());
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!errorEl) return;
+    show(errorEl, false);
+
+    const rows = Array.from(document.querySelectorAll('.gist-file-row'));
+    const descriptionEl = document.getElementById('gist-description') as HTMLInputElement | null;
+    const publicEl = document.getElementById('gist-public') as HTMLInputElement | null;
+
+    const files = rows
+      .map((row) => ({
+        filename: (row.querySelector('.gist-file-name') as HTMLInputElement)?.value.trim() ?? '',
+        content: (row.querySelector('.gist-file-content') as HTMLTextAreaElement)?.value ?? '',
+      }))
+      .filter((f) => f.filename.length > 0 || f.content.length > 0);
+
+    if (files.some((f) => f.filename.length === 0)) {
+      showError('Every file needs a filename.');
+      return;
+    }
+    if (files.length === 0) {
+      showError('Add at least one file.');
+      return;
+    }
+
+    try {
+      submitBtn?.setAttribute('disabled', 'true');
+      const res = await fetch('/api/gists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: descriptionEl?.value ?? '',
+          public: publicEl?.checked ?? false,
+          files,
+        }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        const detail =
+          json?.error?.details && Array.isArray(json.error.details) && json.error.details.length > 0
+            ? json.error.details.map((d: any) => d.message).join('; ')
+            : json?.error?.message || 'Failed to create gist.';
+        throw new Error(detail);
+      }
+      window.location.reload();
+    } catch (err) {
+      submitBtn?.removeAttribute('disabled');
+      showError(err instanceof Error ? err.message : 'Failed to create gist.');
+    }
+  });
+
+  // Seed one empty file row when the panel first opens
+  openBtn?.addEventListener(
+    'click',
+    () => {
+      if (fileRows && fileRows.children.length === 0) addFileRow();
+    },
+    { once: true },
+  );
+</script>

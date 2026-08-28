@@ -3,7 +3,10 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { cleanupAllRepos } from "@/lib/cron/cleanup-branches";
 import { logger } from "@/lib/logger";
 import { syncAllMirrors } from "@/lib/mirror-sync";
+import { processDuePushMirrors } from "@/lib/push-mirror";
+import { processWebhookQueue } from "@/lib/webhooks";
 import { queueWorker } from "@/lib/queue-worker";
+import { publishRealtimeEvent } from "@/lib/realtime";
 import { runDueDigests } from "@/lib/chat-notifications";
 import { eq } from "drizzle-orm";
 import { createServer } from "http";
@@ -14,6 +17,10 @@ const MIRROR_SYNC_INTERVAL = parseInt(process.env.MIRROR_SYNC_INTERVAL || "60000
 const CLEANUP_INTERVAL = parseInt(process.env.CLEANUP_INTERVAL || "3600000", 10);
 const DIGEST_INTERVAL = parseInt(process.env.DIGEST_INTERVAL || "300000", 10);
 const SCHEDULE_INTERVAL = parseInt(process.env.SCHEDULE_INTERVAL || "60000", 10);
+const WEBHOOK_POLL_INTERVAL_MS = parseInt(process.env.WEBHOOK_POLL_INTERVAL_MS || "5000", 10);
+const WEBHOOK_QUEUE_BATCH = parseInt(process.env.WEBHOOK_QUEUE_BATCH || "20", 10);
+const PUSH_MIRROR_INTERVAL_MS = parseInt(process.env.PUSH_MIRROR_INTERVAL_MS || "60000", 10);
+const PUSH_MIRROR_BATCH = parseInt(process.env.PUSH_MIRROR_BATCH || "10", 10);
 const HEALTH_PORT = parseInt(process.env.WORKER_HEALTH_PORT || "9090", 10);
 const MAX_RETRIES = parseInt(process.env.WORKER_MAX_RETRIES || "3", 10);
 const STALE_JOB_TIMEOUT_MS = parseInt(process.env.WORKER_STALE_TIMEOUT || "300000", 10);
@@ -29,6 +36,8 @@ let lastMirrorRun = 0;
 let lastCleanupRun = 0;
 let lastDigestRun = 0;
 let lastScheduleRun = 0;
+let lastWebhookRun = 0;
+let lastPushMirrorRun = 0;
 
 // Circuit breaker state per task
 interface CircuitBreakerState {
@@ -140,6 +149,13 @@ async function runQueueProcessor() {
         if (isShuttingDown) break;
         try {
           await queueWorker.processQueue(repoId);
+          // Notify browsers connected to the web process (separate OS process)
+          // that queue positions may have changed for this repository.
+          await publishRealtimeEvent({ kind: "repository", repositoryId: repoId }, {
+            type: "queue:position_changed",
+            timestamp: new Date(),
+            data: { repositoryId: repoId },
+          });
         } catch (error) {
           logger.error({ err: error, repoId }, "Failed to process queue for repo");
           recordFailure("queue-processor");
@@ -152,6 +168,62 @@ async function runQueueProcessor() {
   } catch (error) {
     recordFailure("queue-processor");
     logger.error({ err: error }, "Fatal error in queue processor loop");
+  }
+}
+
+// ── Webhook Delivery Processor ────────────────────────────────────────────────
+async function runWebhookProcessor() {
+  if (isCircuitOpen("webhook-processor")) {
+    logger.warn("Webhook processor circuit open — skipping");
+    return;
+  }
+
+  try {
+    const result = await processWebhookQueue(WEBHOOK_QUEUE_BATCH);
+    if (result.claimed > 0 || result.swept > 0) {
+      logger.info(
+        {
+          swept: result.swept,
+          claimed: result.claimed,
+          delivered: result.delivered,
+          retried: result.retried,
+          dead: result.dead,
+        },
+        "Processed webhook delivery queue",
+      );
+    }
+    recordSuccess("webhook-processor");
+    lastWebhookRun = Date.now();
+  } catch (error) {
+    recordFailure("webhook-processor");
+    logger.error({ err: error }, "Fatal error in webhook processor loop");
+  }
+}
+
+// ── Push Mirror Processor ─────────────────────────────────────────────────────
+async function runPushMirrorProcessor() {
+  if (isCircuitOpen("push-mirror")) {
+    logger.warn("Push mirror circuit open — skipping");
+    return;
+  }
+
+  try {
+    const result = await processDuePushMirrors({ limit: PUSH_MIRROR_BATCH });
+    if (result.pushed > 0 || result.failed > 0) {
+      logger.info(
+        {
+          pushed: result.pushed,
+          failed: result.failed,
+          durationMs: result.durationMs,
+        },
+        "Processed push mirrors",
+      );
+    }
+    recordSuccess("push-mirror");
+    lastPushMirrorRun = Date.now();
+  } catch (error) {
+    recordFailure("push-mirror");
+    logger.error({ err: error }, "Fatal error in push mirror loop");
   }
 }
 
@@ -200,6 +272,7 @@ function startHealthServer() {
         status: healthy ? "healthy" : "unhealthy",
         uptime: process.uptime(),
         lastQueueRun: new Date(lastQueueRun).toISOString(),
+        lastWebhookRun: new Date(lastWebhookRun).toISOString(),
         circuitBreakers: Object.fromEntries(
           Array.from(circuitBreakers.entries()).map(([k, v]) => [
             k,
@@ -265,6 +338,10 @@ async function startWorker() {
       queueInterval: WORKER_INTERVAL,
       mirrorInterval: MIRROR_SYNC_INTERVAL,
       cleanupInterval: CLEANUP_INTERVAL,
+      webhookPollIntervalMs: WEBHOOK_POLL_INTERVAL_MS,
+      webhookQueueBatch: WEBHOOK_QUEUE_BATCH,
+      pushMirrorIntervalMs: PUSH_MIRROR_INTERVAL_MS,
+      pushMirrorBatch: PUSH_MIRROR_BATCH,
       healthPort: HEALTH_PORT,
       maxRetries: MAX_RETRIES,
       circuitBreakerThreshold: CIRCUIT_BREAKER_THRESHOLD,
@@ -291,6 +368,8 @@ async function startWorker() {
       const { pipelineRunner } = await import("@/lib/pipeline");
       await runScheduledWorkflows(pipelineRunner);
     }, SCHEDULE_INTERVAL, () => lastScheduleRun, (t) => { lastScheduleRun = t; }),
+    runLoop("webhook-processor", runWebhookProcessor, WEBHOOK_POLL_INTERVAL_MS, () => lastWebhookRun, (t) => { lastWebhookRun = t; }),
+    runLoop("push-mirror", runPushMirrorProcessor, PUSH_MIRROR_INTERVAL_MS, () => lastPushMirrorRun, (t) => { lastPushMirrorRun = t; }),
   ]);
 }
 

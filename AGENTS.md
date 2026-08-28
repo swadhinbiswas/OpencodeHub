@@ -201,6 +201,8 @@
 - `issues` — Issue tracking
 - `projects` / `milestones` / `labels` — Project organization
 - `wiki` — Repository wiki pages
+- `gists` — Standalone code snippets (public/private, JSON file arrays)
+- `discussions` / `discussionComments` — GitHub-style repo discussions
 
 ### CI/CD
 - `workflows` / `workflowRuns` / `workflowJobs` / `workflowSteps` — Pipeline execution
@@ -374,7 +376,7 @@ docker-compose up -d            # Full stack with postgres + redis + runner
 - **Load**: Custom load tests in `tests/load/`
 - **Accessibility**: `@axe-core/playwright`
 
-**Current status: 546 tests passing across 114 test files (100% pass rate)**
+**Current status: 682 tests passing across 130 test files (100% pass rate)**
 
 ---
 
@@ -420,7 +422,7 @@ docker-compose up -d            # Full stack with postgres + redis + runner
 ## 14. Common Pitfalls
 
 1. **Git operations timeout**: `GIT_PROCESS_TIMEOUT_SECS` default is 300s; increase for large repos
-2. **Pack size limits**: `MAX_PACK_SIZE_MB` default is 500MB
+2. **Pack size limits**: `MAX_PACK_SIZE_MB` default is 2048MB
 3. **SSH host key**: Generated automatically at `GIT_SSH_HOST_KEY` on first start
 4. **Runner privileges**: CI runner needs `--privileged` for Docker-in-Docker
 5. **Database driver mismatch**: Schemas use `pgTable` — PostgreSQL is required for production
@@ -435,12 +437,15 @@ docker-compose up -d            # Full stack with postgres + redis + runner
 - Git hosting (HTTP + SSH)
 - PRs, issues, milestones, project boards
 - Wiki, organizations, teams
+- Discussions and gists
 - Stacked PRs (web + CLI)
 - Merge queue with speculative builds
 - CI/CD pipeline engine
-- Webhooks and automations
-- Rate limiting, CSRF, MFA, OAuth
-- REST API (140+ routes) + GraphQL
+- Webhooks with queued delivery (worker-processed, dead-letter) and automations
+- Push + pull repo mirroring
+- Commit signature verification ("Verified" via openpgp + DB GPG keys)
+- Rate limiting, CSRF, MFA, OAuth, login lockout
+- REST API (140+ routes) + GraphQL (cursor-paginated)
 - CLI with 20+ command groups
 
 **Expanding**:

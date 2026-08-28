@@ -20,13 +20,42 @@ export interface GraphQLContext {
     user?: typeof schema.users.$inferSelect;
 }
 
-// Helper to create page info
-function createPageInfo(nodes: any[], first: number, after?: string) {
+// Offset-based cursor helpers (GitHub-style opaque base64 cursors)
+const CURSOR_PREFIX = "cursor:";
+
+function encodeCursor(offset: number): string {
+    return Buffer.from(`${CURSOR_PREFIX}${offset}`).toString("base64");
+}
+
+function decodeCursor(cursor?: string | null): number | null {
+    if (!cursor) return null;
+    try {
+        const decoded = Buffer.from(cursor, "base64").toString("utf8");
+        if (!decoded.startsWith(CURSOR_PREFIX)) return null;
+        const offset = Number.parseInt(decoded.slice(CURSOR_PREFIX.length), 10);
+        if (!Number.isInteger(offset) || offset < 0) return null;
+        return offset;
+    } catch {
+        return null;
+    }
+}
+
+// Helper to create page info. Callers fetch first+1 rows and pass the fetched
+// row count as `total`, yielding an honest hasNextPage without a COUNT query.
+function createPageInfo(
+    nodes: any[],
+    first: number,
+    after?: string | null,
+    total?: number
+) {
+    const offset = decodeCursor(after) ?? 0;
+    const hasNextPage =
+        typeof total === "number" ? offset + nodes.length < total : false;
     return {
-        hasNextPage: nodes.length === first,
-        hasPreviousPage: !!after,
-        startCursor: nodes[0]?.id || null,
-        endCursor: nodes[nodes.length - 1]?.id || null,
+        hasNextPage,
+        hasPreviousPage: offset > 0,
+        startCursor: nodes.length > 0 ? encodeCursor(offset) : null,
+        endCursor: nodes.length > 0 ? encodeCursor(offset + nodes.length) : null,
     };
 }
 
@@ -70,50 +99,66 @@ export const resolvers = {
 
         search: async (
             _: unknown,
-            { query, type, first = 10 }: { query: string; type: string; first: number },
+            { query, type, first = 10, after }: {
+                query: string;
+                type: string;
+                first: number;
+                after?: string | null;
+            },
             ctx: GraphQLContext
         ) => {
             const searchTerm = `%${query}%`;
+            const offset = decodeCursor(after) ?? 0;
 
             switch (type) {
                 case "REPOSITORY": {
                     const repos = await ctx.db.query.repositories.findMany({
                         where: like(schema.repositories.name, searchTerm),
-                        limit: first,
+                        limit: first + 1,
+                        offset,
                     });
+                    const nodes = repos.slice(0, first);
                     return {
-                        nodes: repos,
-                        pageInfo: createPageInfo(repos, first),
-                        totalCount: repos.length,
+                        nodes,
+                        pageInfo: createPageInfo(nodes, first, after, repos.length),
+                        totalCount: nodes.length,
                     };
                 }
 
                 case "USER": {
                     const users = await ctx.db.query.users.findMany({
                         where: like(schema.users.username, searchTerm),
-                        limit: first,
+                        limit: first + 1,
+                        offset,
                     });
+                    const nodes = users.slice(0, first);
                     return {
-                        nodes: users,
-                        pageInfo: createPageInfo(users, first),
-                        totalCount: users.length,
+                        nodes,
+                        pageInfo: createPageInfo(nodes, first, after, users.length),
+                        totalCount: nodes.length,
                     };
                 }
 
                 case "PULL_REQUEST": {
                     const prs = await ctx.db.query.pullRequests.findMany({
                         where: like(schema.pullRequests.title, searchTerm),
-                        limit: first,
+                        limit: first + 1,
+                        offset,
                     });
+                    const nodes = prs.slice(0, first);
                     return {
-                        nodes: prs,
-                        pageInfo: createPageInfo(prs, first),
-                        totalCount: prs.length,
+                        nodes,
+                        pageInfo: createPageInfo(nodes, first, after, prs.length),
+                        totalCount: nodes.length,
                     };
                 }
 
                 default:
-                    return { nodes: [], pageInfo: createPageInfo([], first), totalCount: 0 };
+                    return {
+                        nodes: [],
+                        pageInfo: createPageInfo([], first, after),
+                        totalCount: 0,
+                    };
             }
         },
     },
@@ -121,18 +166,21 @@ export const resolvers = {
     User: {
         repositories: async (
             user: typeof schema.users.$inferSelect,
-            { first = 10 }: { first: number },
+            { first = 10, after }: { first: number; after?: string | null },
             ctx: GraphQLContext
         ) => {
+            const offset = decodeCursor(after) ?? 0;
             const repos = await ctx.db.query.repositories.findMany({
                 where: eq(schema.repositories.ownerId, user.id),
-                limit: first,
+                limit: first + 1,
+                offset,
                 orderBy: [desc(schema.repositories.updatedAt)],
             });
+            const nodes = repos.slice(0, first);
             return {
-                nodes: repos,
-                pageInfo: createPageInfo(repos, first),
-                totalCount: repos.length,
+                nodes,
+                pageInfo: createPageInfo(nodes, first, after, repos.length),
+                totalCount: nodes.length,
             };
         },
 
@@ -142,18 +190,24 @@ export const resolvers = {
             ctx: GraphQLContext
         ) => {
             const prs = await ctx.db.query.pullRequests.findMany({
-                where: eq(schema.pullRequests.authorId, user.id),
-                limit: first,
+                where: states
+                    ? and(
+                          eq(schema.pullRequests.authorId, user.id),
+                          inArray(
+                              schema.pullRequests.state,
+                              states.map((s) => s.toLowerCase())
+                          )
+                      )
+                    : eq(schema.pullRequests.authorId, user.id),
+                limit: first + 1,
                 orderBy: [desc(schema.pullRequests.updatedAt)],
             });
 
-            const filtered = states
-                ? prs.filter((pr) => states.includes(pr.state.toUpperCase()))
-                : prs;
+            const filtered = prs.slice(0, first);
 
             return {
                 nodes: filtered,
-                pageInfo: createPageInfo(filtered, first),
+                pageInfo: createPageInfo(filtered, first, null, prs.length),
                 totalCount: filtered.length,
             };
         },
@@ -219,18 +273,24 @@ export const resolvers = {
             ctx: GraphQLContext
         ) => {
             const prs = await ctx.db.query.pullRequests.findMany({
-                where: eq(schema.pullRequests.repositoryId, repo.id),
-                limit: first,
+                where: states
+                    ? and(
+                          eq(schema.pullRequests.repositoryId, repo.id),
+                          inArray(
+                              schema.pullRequests.state,
+                              states.map((s) => s.toLowerCase())
+                          )
+                      )
+                    : eq(schema.pullRequests.repositoryId, repo.id),
+                limit: first + 1,
                 orderBy: [desc(schema.pullRequests.updatedAt)],
             });
 
-            const filtered = states
-                ? prs.filter((pr) => states.includes(pr.state.toUpperCase()))
-                : prs;
+            const filtered = prs.slice(0, first);
 
             return {
                 nodes: filtered,
-                pageInfo: createPageInfo(filtered, first),
+                pageInfo: createPageInfo(filtered, first, null, prs.length),
                 totalCount: filtered.length,
             };
         },
@@ -242,13 +302,14 @@ export const resolvers = {
         ) => {
             const issues = await ctx.db.query.issues.findMany({
                 where: eq(schema.issues.repositoryId, repo.id),
-                limit: first,
+                limit: first + 1,
                 orderBy: [desc(schema.issues.updatedAt)],
             });
+            const nodes = issues.slice(0, first);
             return {
-                nodes: issues,
-                pageInfo: createPageInfo(issues, first),
-                totalCount: issues.length,
+                nodes,
+                pageInfo: createPageInfo(nodes, first, null, issues.length),
+                totalCount: nodes.length,
             };
         },
 
@@ -326,12 +387,13 @@ export const resolvers = {
         ) => {
             const reviews = await ctx.db.query.pullRequestReviews.findMany({
                 where: eq(schema.pullRequestReviews.pullRequestId, pr.id),
-                limit: first,
+                limit: first + 1,
             });
+            const nodes = reviews.slice(0, first);
             return {
-                nodes: reviews,
-                pageInfo: createPageInfo(reviews, first),
-                totalCount: reviews.length,
+                nodes,
+                pageInfo: createPageInfo(nodes, first, null, reviews.length),
+                totalCount: nodes.length,
             };
         },
 
@@ -342,12 +404,13 @@ export const resolvers = {
         ) => {
             const comments = await ctx.db.query.pullRequestComments.findMany({
                 where: eq(schema.pullRequestComments.pullRequestId, pr.id),
-                limit: first,
+                limit: first + 1,
             });
+            const nodes = comments.slice(0, first);
             return {
-                nodes: comments,
-                pageInfo: createPageInfo(comments, first),
-                totalCount: comments.length,
+                nodes,
+                pageInfo: createPageInfo(nodes, first, null, comments.length),
+                totalCount: nodes.length,
             };
         },
 

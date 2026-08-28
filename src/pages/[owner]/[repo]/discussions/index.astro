@@ -1,0 +1,331 @@
+---
+import RepoHeader from "@/components/repo/RepoHeader.astro";
+import { getDatabase } from "@/db";
+import { discussions, DISCUSSION_CATEGORIES } from "@/db/schema/discussions";
+import { repositories } from "@/db/schema/repositories";
+import { users } from "@/db/schema/users";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { canReadRepo } from "@/lib/permissions";
+import { and, desc, eq } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+
+const { owner: ownerName, repo: repoName } = Astro.params;
+const db = getDatabase() as unknown as NodePgDatabase;
+
+// 1. Fetch Repo & Owner
+const [ownerUser] = await db
+  .select({ id: users.id, username: users.username })
+  .from(users)
+  .where(eq(users.username, ownerName!))
+  .limit(1);
+
+if (!ownerUser) return Astro.redirect("/404");
+
+const [repoData] = await db
+  .select()
+  .from(repositories)
+  .where(
+    and(
+      eq(repositories.ownerId, ownerUser.id),
+      eq(repositories.name, repoName!),
+    ),
+  )
+  .limit(1);
+
+if (!repoData) return Astro.redirect("/404");
+
+// Check permissions
+const currentUser = Astro.locals.user;
+const hasAccess = await canReadRepo(currentUser?.id, repoData);
+if (!hasAccess) {
+  return Astro.redirect("/404");
+}
+
+// 2. Fetch Discussions with author
+const rows = await db
+  .select({
+    id: discussions.id,
+    title: discussions.title,
+    body: discussions.body,
+    category: discussions.category,
+    pinned: discussions.pinned,
+    closed: discussions.closed,
+    commentCount: discussions.commentCount,
+    lastActivityAt: discussions.lastActivityAt,
+    createdAt: discussions.createdAt,
+    authorUsername: users.username,
+  })
+  .from(discussions)
+  .innerJoin(users, eq(discussions.authorId, users.id))
+  .where(eq(discussions.repositoryId, repoData.id))
+  .orderBy(desc(discussions.pinned), desc(discussions.lastActivityAt));
+
+const categories = DISCUSSION_CATEGORIES;
+const activeCategory = Astro.url.searchParams.get("category");
+
+const stateFilter = Astro.url.searchParams.get("state") === "closed" ? "closed" : "open";
+const filtered = rows
+  .filter((d) => !!d.closed === (stateFilter === "closed"))
+  .filter((d) => !activeCategory || d.category === activeCategory);
+
+const pinnedDiscussions = filtered.filter((d) => d.pinned);
+const listWithoutPinned = filtered.filter((d) => !d.pinned);
+const openCount = rows.filter((d) => !d.closed).length;
+const closedCount = rows.filter((d) => d.closed).length;
+
+const repoForHeader = {
+  ...repoData,
+  owner: ownerUser.username,
+  topics: repoData.topics ? JSON.parse(repoData.topics) : [],
+};
+
+function timeAgo(date: Date | null | undefined) {
+  if (!date) return "";
+  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+  const intervals: [number, string][] = [
+    [31536000, "y"],
+    [2592000, "mo"],
+    [86400, "d"],
+    [3600, "h"],
+    [60, "m"],
+  ];
+  for (const [secs, unit] of intervals) {
+    if (seconds >= secs) return `${Math.floor(seconds / secs)}${unit} ago`;
+  }
+  return `${seconds}s ago`;
+}
+
+const categoryColors: Record<string, string> = {
+  General: "bg-secondary text-secondary-foreground",
+  Ideas: "bg-purple-500/15 text-purple-400",
+  "Q&A": "bg-blue-500/15 text-blue-400",
+  "Show and tell": "bg-green-500/15 text-green-400",
+};
+---
+
+<BaseLayout title={`Discussions · ${ownerUser.username}/${repoData.name}`}>
+  <div class="container py-6">
+    <RepoHeader repo={repoForHeader as any} activeTab="discussions" />
+
+    <div class="mt-6 space-y-4">
+      <!-- Header row: open/closed tabs + new discussion -->
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <div class="flex items-center gap-2">
+          <a
+            href={`/${ownerName}/${repoName}/discussions`}
+            class:list={[
+              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
+              stateFilter === "open"
+                ? "bg-primary/10 text-foreground font-semibold"
+                : "text-muted-foreground hover:bg-accent",
+            ]}
+          >
+            <svg class="h-4 w-4" viewBox="0 0 16 16" fill="currentColor"><path d="M8 9.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"></path><path fill-rule="evenodd" d="M8 0a8 8 0 100 16A8 8 0 008 0zM1.5 8a6.5 6.5 0 1113 0 6.5 6.5 0 01-13 0z"></path></svg>
+            {openCount} Open
+          </a>
+          <a
+            href={`/${ownerName}/${repoName}/discussions?state=closed`}
+            class:list={[
+              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
+              stateFilter === "closed"
+                ? "bg-primary/10 text-foreground font-semibold"
+                : "text-muted-foreground hover:bg-accent",
+            ]}
+          >
+            <svg class="h-4 w-4" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M11.28 6.78a.75.75 0 00-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 00-1.06 1.06l2 2a.75.75 0 001.06 0l3.5-3.5z"></path><path fill-rule="evenodd" d="M16 8A8 8 0 110 8a8 8 0 0116 0zm-1.5 0a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"></path></svg>
+            {closedCount} Closed
+          </a>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <a
+            href={`/${ownerName}/${repoName}/discussions`}
+            class:list={[
+              "px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
+              !activeCategory
+                ? "border border-primary/50 text-foreground"
+                : "border border-border text-muted-foreground hover:bg-accent",
+            ]}
+          >
+            All
+          </a>
+          {
+            categories.map((category) => (
+              <a
+                href={`/${ownerName}/${repoName}/discussions?category=${encodeURIComponent(category)}`}
+                class:list={[
+                  "px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
+                  activeCategory === category
+                    ? "border border-primary/50 text-foreground"
+                    : "border border-border text-muted-foreground hover:bg-accent",
+                ]}
+              >
+                {category}
+              </a>
+            ))
+          }
+        </div>
+
+        {
+          currentUser && (
+            <details class="w-full md:w-auto">
+              <summary class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-[#238636] hover:bg-[#2ea043] text-white text-xs sm:text-sm font-medium transition-colors shadow-sm cursor-pointer list-none">
+                New discussion
+              </summary>
+              <form id="create-discussion-form" class="mt-3 p-4 rounded-md border border-border bg-card space-y-3">
+                <input
+                  type="text"
+                  name="title"
+                  placeholder="Title"
+                  required
+                  maxlength="300"
+                  class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <select
+                  name="category"
+                  class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  {categories.map((category) => (
+                    <option value={category}>{category}</option>
+                  ))}
+                </select>
+                <textarea
+                  name="body"
+                  placeholder="Start the conversation…"
+                  required
+                  class="min-h-[140px] w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <p class="text-xs text-muted-foreground">Markdown is supported.</p>
+                <div class="flex justify-end">
+                  <button
+                    type="submit"
+                    id="submit-discussion-btn"
+                    class="px-3.5 py-1.5 rounded-md bg-[#238636] hover:bg-[#2ea043] text-white text-xs sm:text-sm font-medium transition-colors shadow-sm"
+                  >
+                    Start discussion
+                  </button>
+                </div>
+              </form>
+            </details>
+          )
+        }
+      </div>
+
+      <!-- Pinned section -->
+      {
+        pinnedDiscussions.length > 0 && (
+          <section class="space-y-2">
+            <h2 class="text-sm font-semibold text-muted-foreground">Pinned</h2>
+            <div class="rounded-md border border-border divide-y divide-border overflow-hidden">
+              {pinnedDiscussions.map((discussion) => (
+                <a
+                  href={`/${ownerName}/${repoName}/discussions/${discussion.id}`}
+                  class="flex items-start gap-3 p-4 hover:bg-accent/50 transition-colors"
+                >
+                  <span class:list={["mt-1 shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold", categoryColors[discussion.category] ?? "bg-secondary text-secondary-foreground"]}>
+                    {discussion.category}
+                  </span>
+                  <div class="min-w-0">
+                    <span class="text-sm font-medium text-foreground group-hover:text-cyan-400 truncate">{discussion.title}</span>
+                    <p class="text-xs text-muted-foreground mt-0.5">
+                      #{discussion.id.slice(0, 7)} started by {discussion.authorUsername}
+                    </p>
+                  </div>
+                  <span class="ml-auto text-xs text-muted-foreground shrink-0">{discussion.commentCount ?? 0} comments</span>
+                </a>
+              ))}
+            </div>
+          </section>
+        )
+      }
+
+      <!-- Discussion list -->
+      <div class="rounded-md border border-border divide-y divide-border overflow-hidden">
+        {
+          listWithoutPinned.map((discussion) => (
+            <a
+              href={`/${ownerName}/${repoName}/discussions/${discussion.id}`}
+              class="flex items-start gap-3 p-4 hover:bg-accent/50 transition-colors"
+            >
+              <span class:list={["mt-1 shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold", categoryColors[discussion.category] ?? "bg-secondary text-secondary-foreground"]}>
+                {discussion.category}
+              </span>
+              <div class="min-w-0">
+                <span class="text-sm font-medium text-foreground hover:text-cyan-400 truncate">{discussion.title}</span>
+                <p class="text-xs text-muted-foreground mt-0.5">
+                  #{discussion.id.slice(0, 7)} started by {discussion.authorUsername} · updated {timeAgo(discussion.lastActivityAt)}
+                </p>
+              </div>
+              <span class="ml-auto text-xs text-muted-foreground shrink-0">{discussion.commentCount ?? 0} comments</span>
+            </a>
+          ))
+        }
+      </div>
+
+      <!-- Empty state -->
+      {
+        filtered.length === 0 && (
+          <div class="p-12 text-center rounded-md border border-border bg-card/40">
+            <h3 class="text-lg font-semibold text-foreground mb-2">Welcome to Discussions!</h3>
+            <p class="text-muted-foreground mb-6 max-w-md mx-auto">
+              Discussions are the place for community Q&amp;A, ideas, and showing off what you've built.
+            </p>
+            {currentUser && (
+              <p class="text-sm text-muted-foreground">
+                Use the <span class="font-medium text-foreground">New discussion</span> button above to start the first one.
+              </p>
+            )}
+          </div>
+        )
+      }
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById(
+      "create-discussion-form",
+    ) as HTMLFormElement | null;
+
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById(
+        "submit-discussion-btn",
+      ) as HTMLButtonElement | null;
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Starting…";
+      }
+
+      try {
+        const pathParts = window.location.pathname.split("/");
+        const owner = pathParts[1];
+        const repo = pathParts[2];
+
+        const formData = new FormData(form);
+        const response = await fetch(`/api/repos/${owner}/${repo}/discussions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: formData.get("title"),
+            body: formData.get("body"),
+            category: formData.get("category"),
+          }),
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result?.error?.message || result?.message || "Failed to create discussion");
+        }
+
+        window.location.href = `/${owner}/${repo}/discussions/${result.data.id}`;
+      } catch (error) {
+        console.error("Error creating discussion:", error);
+        alert(error instanceof Error ? error.message : "An error occurred");
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Start discussion";
+        }
+      }
+    });
+  </script>
+</BaseLayout>

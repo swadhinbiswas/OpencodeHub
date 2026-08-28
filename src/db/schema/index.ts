@@ -112,3 +112,6 @@ export * from "./packages";
 export * from "./review-analysis";
 export * from "./oauth-apps";
 export * from "./org-invites";
+
+// Gists (standalone code snippets)
+export * from "./gists";
