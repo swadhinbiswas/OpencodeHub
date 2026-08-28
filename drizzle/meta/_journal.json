@@ -57,6 +57,20 @@
       "when": 1787125181115,
       "tag": "0007_add_mirror_username",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787400000000,
+      "tag": "0008_add_push_mirror",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787500000000,
+      "tag": "0009_add_webhook_queue",
+      "breakpoints": true
     }
   ]
 }
