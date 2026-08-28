@@ -7,7 +7,7 @@ import { defineConfig } from "drizzle-kit";
 const driver = process.env.DATABASE_DRIVER || "postgres";
 const url =
   process.env.DATABASE_URL ||
-  "postgresql://localhost:5432/opencodehub";
+  "postgresql://opencodehub:opencodehub@localhost:5432/opencodehub";
 
 // Map driver to Drizzle dialect
 const dialectMap: Record<string, "sqlite" | "postgresql" | "mysql" | "turso"> =
